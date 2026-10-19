@@ -4,6 +4,10 @@ import { tmpdir } from "node:os";
 import path from "node:path";
 
 import { EvalAgentDefinition } from "../../evals/agent";
+import {
+  localBrowserConnection,
+  validateLocalChromium,
+} from "../local-browser";
 import { BrowserbaseSessions } from "./browserbase";
 import { CodexRunner } from "./codex-runner";
 
@@ -17,6 +21,7 @@ type BrowserConnection = {
 };
 
 export class CodexAgent extends CodexRunner {
+  protected localBrowser = false;
   private browsers: BrowserbaseSessions | undefined;
   private browserTemporaryDirectory: string | undefined;
 
@@ -49,6 +54,7 @@ export class CodexAgent extends CodexRunner {
   }
 
   protected async connectBrowser(): Promise<BrowserConnection> {
+    if (this.localBrowser) return localBrowserConnection();
     this.browsers = new BrowserbaseSessions(
       path.join(this.context.runDirectory, "browser-sessions"),
       process.env.BROWSERBASE_API_KEY || "",
@@ -148,5 +154,29 @@ export const codexAgent: EvalAgentDefinition = {
   },
   create(context) {
     return new CodexAgent(context);
+  },
+};
+
+class LocalCodexAgent extends CodexAgent {
+  protected localBrowser = true;
+
+  protected async collectCost() {
+    const cost = await super.collectCost();
+    // Local browsers have no provider charge, so model cost is the whole cost.
+    return cost && { ...cost, costComplete: true };
+  }
+}
+
+export const codexLocalAgent: EvalAgentDefinition = {
+  name: "Codex (local browser)",
+  reportSubdirectory: "codex-local",
+  concurrency: 2,
+  async validateEnvironment() {
+    if (!process.env.OPENAI_API_KEY)
+      throw new Error("OPENAI_API_KEY is required.");
+    await validateLocalChromium();
+  },
+  create(context) {
+    return new LocalCodexAgent(context);
   },
 };

@@ -30,6 +30,7 @@ export function parseFullAppOptions(args: string[]): FullAppOptions {
       fixtures: { type: "string" },
       "grade-only": { type: "boolean", default: false },
       "run-id": { type: "string", multiple: true },
+      browser: { type: "string", default: "browserbase" },
     },
     strict: true,
   });
@@ -57,7 +58,7 @@ export function parseFullAppOptions(args: string[]): FullAppOptions {
       "--run-id selects saved runs to regrade with --grade-only.",
     );
   return {
-    agent: values.agent,
+    agent: resolveAgent(values.agent, values.browser),
     fixtures: values.fixtures,
     concurrency,
     maxConcurrentSubAgents,
@@ -66,4 +67,13 @@ export function parseFullAppOptions(args: string[]): FullAppOptions {
     gradeOnly: values["grade-only"],
     runIds: parseRunIds(values["run-id"]),
   };
+}
+
+function resolveAgent(agent: string | undefined, browser: string) {
+  if (browser !== "browserbase" && browser !== "local")
+    throw new Error("--browser must be browserbase or local.");
+  if (browser === "browserbase") return agent;
+  if (agent !== "codex" && agent !== "claude")
+    throw new Error("--browser applies only to --agent codex or claude.");
+  return `${agent}-local`;
 }

@@ -17,6 +17,7 @@ import { combinedCost } from "../../evals/browser-cost";
 import { writeJson } from "../../evals/json-file";
 import { CodexAgent } from "../codex/codex-agent";
 import { FindingsStore } from "../codex/findings-store";
+import { validateLocalChromium } from "../local-browser";
 import { startReportingServer } from "./reporting";
 
 const require = createRequire(import.meta.url);
@@ -227,7 +228,10 @@ export class ClaudeAgent extends CodexAgent {
     const browser = await this.collectBrowserCost();
     const cost = browser
       ? combinedCost(this.modelCost, this.modelCost !== null, browser)
-      : { estimatedUsd: this.modelCost, costComplete: false };
+      : {
+          estimatedUsd: this.modelCost,
+          costComplete: this.localBrowser && this.modelCost !== null,
+        };
     await writeJson(path.join(this.context.reportDirectory, "cost.json"), cost);
     return {
       bugCount: report.bugs.length,
@@ -249,5 +253,24 @@ export const claudeAgent: EvalAgentDefinition = {
   },
   create(context) {
     return new ClaudeAgent(context);
+  },
+};
+
+class LocalClaudeAgent extends ClaudeAgent {
+  protected localBrowser = true;
+}
+
+export const claudeLocalAgent: EvalAgentDefinition = {
+  name: "Claude (local browser)",
+  reportSubdirectory: "claude-local",
+  concurrency: 2,
+  async validateEnvironment() {
+    if (!process.env.ANTHROPIC_API_KEY)
+      throw new Error("ANTHROPIC_API_KEY is required.");
+    await validateLocalChromium();
+    await promisify(execFile)(process.execPath, [CLAUDE_COMMAND, "--version"]);
+  },
+  create(context) {
+    return new LocalClaudeAgent(context);
   },
 };

@@ -4,8 +4,8 @@ import { readFile, rm, writeFile } from "node:fs/promises";
 import path from "node:path";
 import { z } from "zod";
 
-import { claudeRunner } from "../agents/claude/runner";
-import { codexRunner } from "../agents/codex/runner";
+import { claudeLocalRunner, claudeRunner } from "../agents/claude/runner";
+import { codexLocalRunner, codexRunner } from "../agents/codex/runner";
 import { moRunner } from "../agents/mo/runner";
 import { partitionAreaAssessment } from "./area-assessment";
 import {
@@ -40,7 +40,9 @@ const root = path.resolve(import.meta.dirname, "../..");
 const RUNNERS: Record<Agent, BenchmarkAgent> = {
   mo: moRunner,
   codex: codexRunner,
+  "codex-local": codexLocalRunner,
   claude: claudeRunner,
+  "claude-local": claudeLocalRunner,
 };
 
 export async function gradeFixture(

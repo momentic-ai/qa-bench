@@ -1,5 +1,8 @@
-import { claudeAgent } from "../../agents/claude/claude-agent";
-import { codexAgent } from "../../agents/codex/codex-agent";
+import {
+  claudeAgent,
+  claudeLocalAgent,
+} from "../../agents/claude/claude-agent";
+import { codexAgent, codexLocalAgent } from "../../agents/codex/codex-agent";
 import { moAgent } from "../../agents/mo/mo-agent";
 import { selectComparisonFixtures } from "../../evals/fixture-selection";
 import { createRunId } from "../../evals/report-files";
@@ -20,7 +23,13 @@ export async function runFullAppEval(options: FullAppOptions): Promise<void> {
   );
   try {
     await runFullAppFixtures({
-      agent: { mo: moAgent, codex: codexAgent, claude: claudeAgent }[agent],
+      agent: {
+        mo: moAgent,
+        codex: codexAgent,
+        "codex-local": codexLocalAgent,
+        claude: claudeAgent,
+        "claude-local": claudeLocalAgent,
+      }[agent],
       options,
       runId,
       fixtures,

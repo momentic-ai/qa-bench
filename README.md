@@ -4,8 +4,9 @@ Runs QA agents against seeded open-source apps and grades their bug reports
 against labeled ground truth.
 
 Agents: `mo` (through the `qa` CLI), `codex` and `claude`. Each fixture runs in
-its own E2B sandbox. Codex and Claude drive a Browserbase browser through
-Playwright MCP.
+its own E2B sandbox. Codex and Claude drive a browser through Playwright MCP:
+Browserbase by default, or a headless Chromium on the eval host with
+`--browser local`. Local runs are scored as `codex-local` and `claude-local`.
 
 ## Setup
 
@@ -22,7 +23,7 @@ Environment:
 | --- | --- |
 | `E2B_API_KEY` | all runs |
 | `OPENAI_API_KEY` | grading, `codex` |
-| `BROWSERBASE_API_KEY` | `codex`, `claude` |
+| `BROWSERBASE_API_KEY` | `codex`, `claude` (not with `--browser local`) |
 | `ANTHROPIC_API_KEY` | `claude` |
 
 `mo` needs `qa` 0.24.0 or later, signed in. Set `MO_EVAL_CLI` to use another
