@@ -1,0 +1,46 @@
+{
+  "bugs": [
+    {
+      "id": "gitea-pass2-004",
+      "name": "Global milestone repository filter shows milestones from other repositories",
+      "summary": "Selecting the highlighted eval/harbor-handbook repository filter shows only two milestones labeled with ORG-Milestones repositories, and the incorrect result persists after refresh.",
+      "expected": "Selecting eval/harbor-handbook in the global Milestones repository filter should show milestones labeled eval/harbor-handbook and preserve that filtered result after refresh.",
+      "actual": "Clicking eval/harbor-handbook highlighted it in the left filter, but the results showed only two ORG-Milestones-7264 repository milestones and no harbor-handbook rows. Refresh retained the same two rows and filter URL state.",
+      "reproSteps": [
+        "Sign in as eval and open /milestones with milestones in multiple accessible repositories.",
+        "Start with the default unfiltered repository selection, in which all listed repositories are active.",
+        "Click the already selected harbor-handbook repository in the left filter.",
+        "Observe harbor-handbook is deselected and the other selected repositories remain in the results. Refresh preserves those selections. The rejected report assumes this toggle is an exclusive selection."
+      ],
+      "reason": "User confirmed this is a known rejection. Global milestone repository filters are multi-select toggles. On an unfiltered list all three repositories are already selected. Clicking the active harbor-handbook entry deselects it, leaving repository IDs 2 and 3 selected. Native evidence shows harbor-handbook loses its active highlight and the two remaining repository milestones match the URL, including after refresh. The reported exclusive-selection expectation and claim that the click newly highlights harbor-handbook are incorrect."
+    },
+    {
+      "id": "gitea-pass2-006",
+      "name": "Milestone Type filter Created by you retains items authored by another user",
+      "summary": "The milestone Type > Created by you filter updates the URL but leaves issue #4 and pull request #5, both opened by eval, visible to the signed-in admin viewer.",
+      "expected": "With the repository viewer signed in as admin, selecting Created by you should show only items created by admin. Since issue #4 and pull request #5 are both shown as opened by eval, neither should remain in the list.",
+      "actual": "Selecting Created by you changed the URL to /eval/harbor-handbook/milestone/13?type=created_by&state=open&milestone=13, but both issue #4 and pull request #5 remained visible. The reviewed browser recording shows they stayed visible without changing over time.",
+      "reproSteps": [
+        "Sign in as eval, which has the admin role, and open a milestone containing issues or pull requests authored by eval.",
+        "Open the Type filter and select Created by you.",
+        "Observe the eval-authored items remain listed. The rejected report misidentifies the admin role badge as a different signed-in username."
+      ],
+      "reason": "Known rejection authorized after an independent code and recording check. The browser remains signed in as eval, not a separate user named admin. Its account menu says Signed in as eval and its Profile link points to /eval. Both retained items also have author links to /eval. The blue admin label is a role badge. Created by you correctly retains items authored by the signed-in account; code sets PosterID to ctx.Doer.ID and filters issue.poster_id by that ID. This does not establish other-user leakage or an administrator bypass."
+    },
+    {
+      "name": "Milestone due dates display one calendar day earlier than entered",
+      "summary": "Date-only milestone values display one day early in lists and detail pages: 2026-09-30 becomes Sep 29, 2026, and 2030-12-31 becomes Dec 30, 2030. One report compared the list directly with the unchanged edit-form value; another confirmed the create request sent the intended date.",
+      "expected": "Milestone list and detail dates should match the date entered in the form.",
+      "actual": "Date-only milestone values display one day early in lists and detail pages: 2026-09-30 becomes Sep 29, 2026, and 2030-12-31 becomes Dec 30, 2030. One report compared the list directly with the unchanged edit-form value; another confirmed the create request sent the intended date.",
+      "reproSteps": [
+        "Sign in to Gitea with the fixture account and create a fresh private repository.",
+        "Open Issues → Milestones → New Milestone.",
+        "Enter a unique title and set Due Date to 2026-09-30; verify the form displays 09/30/2026.",
+        "Create the milestone. Observe Sep 29, 2026 on the milestone list instead of Sep 30.",
+        "Compare the displayed date with the edit form. Another observed fixture had 12/31/2030 in Edit and Dec 30, 2030 in the list."
+      ],
+      "reason": "Rejected for the pinned Gitea 1.24.7 fixture (source commit 99053ce4fa2b45f1bca5837418c0c57f793ca824): the date-only source flow preserves the entered calendar date and renders local midnight rather than parsing it as UTC. A fresh private-repository browser check in America/Los_Angeles displayed Sep 30, 2026 for 2026-09-30 and Dec 31, 2030 for 2030-12-31; the edit form retained the entered value and the detail page agreed. The reported one-day shift was not reproduced.",
+      "severity": 3
+    }
+  ]
+}

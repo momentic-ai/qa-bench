@@ -1,0 +1,271 @@
+{
+  "bugs": [
+    {
+      "name": "Tags page uses plural grammar when one tag is listed",
+      "summary": "A repository with one tag displays the heading `1 Tags` while the nearby tab correctly displays `1 Tag`.",
+      "expected": "The tag heading should use singular grammar when exactly one tag exists.",
+      "actual": "A repository with one tag displays the heading `1 Tags` while the nearby tab correctly displays `1 Tag`.",
+      "reproSteps": [
+        "Open an authenticated repository that contains exactly one tag.",
+        "Open the repository's Tags page.",
+        "Observe that the list heading says `1 Tags` while the nearby tab says `1 Tag`."
+      ],
+      "severity": 1
+    },
+    {
+      "name": "Release RSS channel link points to a 404 page",
+      "summary": "The repository Releases RSS feed advertises a singular `/release/` channel link that returns 404 instead of linking to `/releases`.",
+      "expected": "The RSS channel link should point to a working Releases page.",
+      "actual": "The repository Releases RSS feed advertises a singular `/release/` channel link that returns 404 instead of linking to `/releases`.",
+      "reproSteps": [
+        "Open an authenticated repository's Releases page and its RSS feed.",
+        "Inspect the RSS channel link and observe that it points to the repository's singular `/release/` path.",
+        "Open the advertised channel link and observe a persistent 404 page instead of the repository Releases page at `/releases`."
+      ],
+      "severity": 5
+    },
+    {
+      "id": "gitea-novel-007",
+      "name": "Repository RSS release-item link retains refs/tags and opens a 404",
+      "summary": "The repository activity RSS feed publishes a release-item URL containing refs/tags/ before the tag name. Opening that generated destination displays a full-page 404 instead of release details.",
+      "expected": "A published-release item's link in the repository activity RSS feed should open that release's details using its tag name without the refs/tags/ prefix.",
+      "actual": "The Distribution Fixture Beta item advertises /eval/harbor-handbook/releases/tag/refs/tags/dist-explore-7263b. Opening that URL displays 404 Not Found instead of the release details at /eval/harbor-handbook/releases/tag/dist-explore-7263b.",
+      "reproSteps": [
+        "Sign in to the feed-enabled Gitea fixture and use a repository with a published release on an ordinary valid tag. The recorded case uses eval/harbor-handbook, release Distribution Fixture Beta, tag dist-explore-7263b.",
+        "Open the repository activity RSS feed at /eval/harbor-handbook.rss using the repository header's RSS icon. This is distinct from /eval/harbor-handbook/releases.rss, the separate release-list feed.",
+        "Locate the published-release item and inspect its link. The recorded item contains /releases/tag/refs/tags/dist-explore-7263b.",
+        "Open that feed-advertised item URL and observe the persistent full-page 404. The recorded run opened the URL extracted from the RSS XML; it did not demonstrate clicking a rendered feed-reader item."
+      ],
+      "severity": 5,
+      "matchingGuidance": {
+        "distinctFromExistingReference": "This concerns an individual publication item's /releases/tag/refs/tags/<tag> destination in the repository activity feed. The existing RSS channel reference concerns singular /release versus /releases in the release-list feed's channel link."
+      }
+    },
+    {
+      "id": "gitea-release-long-tag-name-server-error",
+      "name": "Tag names accepted by the form crash creation with HTTP 500",
+      "summary": "The new-release form permits a 255-character tag name, but submitting a 251–255-character ASCII tag replaces the editor with a filename-too-long server error.",
+      "expected": "If a tag name is allowed by the form but unsupported by tag creation, show inline validation and retain the entered tag, release title, and notes so the user can correct the name. Publishing or creating a tag must not replace the form with an HTTP 500 page.",
+      "actual": "Publish Release with an exact 255-character ASCII tag and Create Tag Only with a separate exact 251-character ASCII tag both return HTTP 500. The error page reports that Git cannot create refs/tags/<name>.lock because the filename is too long.",
+      "reproSteps": [
+        "Sign in with the fixture account and open the seeded harbor-handbook repository → Releases → New Release. Leave the target branch as main.",
+        "Enter qa-boundary- followed by exactly 243 lowercase x characters (255 ASCII characters total). Enter a release title and release notes. Do not shorten the tag.",
+        "Click Publish Release. Observe the full-page 500 Internal Server Error with Filename too long instead of inline validation.",
+        "Separately verified control: return to New Release, enter qa-tagonly- followed by exactly 240 lowercase x characters (251 ASCII characters total), and click Create Tag Only. Observe the same full-page error."
+      ],
+      "severity": 5,
+      "matchingGuidance": {
+        "scope": "Grade the full-page server error on a tag length accepted by the form. Inline rejection of an unsupported length is valid expected behavior; do not require the application to support every 255-character tag. Exact boundaries depend on the fixture filesystem."
+      }
+    },
+    {
+      "id": "gitea-release-tag-namespace-conflict-server-error",
+      "name": "Hierarchical tag namespace conflicts replace the release form with HTTP 500",
+      "summary": "Creating a tag whose name conflicts with an existing parent or child tag namespace replaces the release editor with a raw Git error page.",
+      "expected": "Reject a parent/child tag namespace conflict with a clear validation error identifying the conflict, while keeping the form and entered release information available for correction.",
+      "actual": "With qa-mo-ns3/slash-v2 already existing, publishing a release tagged qa-mo-ns3 returns 500 Internal Server Error and a raw cannot lock ref message. With v1.0.0 already existing, Create Tag Only for v1.0.0/qa-mo-patch returns the same full-page error; the editable form is gone.",
+      "reproSteps": [
+        "Sign in with the fixture account and open the seeded harbor-handbook repository → Releases → New Release.",
+        "Create a disposable tag qa-mo-ns3/slash-v2 targeting main with Create Tag Only.",
+        "Return to New Release. Enter tag qa-mo-ns3 and release title Parent namespace conflict, then click Publish Release. Observe 500 Internal Server Error instead of a recoverable validation message.",
+        "Separately, with the seeded tag v1.0.0 present, enter v1.0.0/qa-mo-patch in New Release and click Create Tag Only. Observe the parent-tag namespace conflict also returns a full-page 500."
+      ],
+      "severity": 5,
+      "matchingGuidance": {
+        "scope": "A validation error rejecting a conflicting tag is correct. Accept this reference only for a parent/child tag namespace submission causing the full-page server error. Long tag-name filesystem limits are covered by the separate accepted-length reference."
+      }
+    },
+    {
+      "id": "gitea-pass2-011",
+      "name": "Mobile Pre-Release checkbox overlaps its label on the New Release form",
+      "summary": "At 390×844 CSS pixels, the New Release form stretches the Pre-Release checkbox input across its label, placing the native checkbox glyph over the text.",
+      "expected": "The checkbox and Mark as Pre-Release label remain separately visible and legible at the mobile viewport.",
+      "actual": "An independent browser at actual 390×844 CSS pixels, scale 1 and DPR 1 showed the unchecked checkbox over the label. Its input measured about 149 pixels wide instead of 15. At a 520-pixel control viewport the input remained 15 pixels wide and sat separately from the label.",
+      "reproSteps": [
+        "Sign in as eval with write access to a repository and open its Releases > New Release form.",
+        "Set the viewport to 390×844 CSS pixels and scroll to the Mark as Pre-Release option.",
+        "Inspect the unchecked control. The checkbox glyph overlaps the label text. No release publication is needed.",
+        "For comparison, widen the viewport to 520 CSS pixels. The checkbox is separately positioned beside its label."
+      ],
+      "severity": 1,
+      "matchingGuidance": {
+        "deduplication": "Distinct from the existing mobile Releases-list Pre-Release status-badge clipping reference; this item concerns the New Release form’s checkbox."
+      }
+    },
+    {
+      "name": "Tag-only detail page claims a release was published",
+      "summary": "A Git tag with no release has New Release on the Tags list, but its detail page says “eval released this.”",
+      "expected": "A tag without a release should not claim a release was published.",
+      "actual": "A Git tag with no release has New Release on the Tags list, but its detail page says “eval released this.”",
+      "reproSteps": [
+        "Create a disposable Git tag on the seeded repository without creating a release.",
+        "Open Releases → Tags and verify the row offers New Release.",
+        "Open the tag detail page and observe “eval released this.”"
+      ],
+      "severity": 1
+    },
+    {
+      "name": "Pre-Release status badge text is clipped on the mobile Releases page",
+      "summary": "A newly published Pre-Release displays a clipped “Pre-Relea” badge in the mobile Releases listing, and the clipping remains after refresh.",
+      "expected": "At 390×844 CSS pixels, the Releases listing should display the full “Pre-Release” status badge text.",
+      "actual": "The newly published release’s orange badge visibly shows only “Pre-Relea,” with the remaining characters clipped. The same clipping remained after waiting and refreshing the listing.",
+      "reproSteps": [
+        "Sign in as eval using the fixture credentials and open eval/harbor-handbook → Releases.",
+        "Create a release targeting main with a unique tag, title, and release notes. Select Mark as Pre-Release and publish.",
+        "Set the browser viewport to 390 × 844 CSS pixels.",
+        "Inspect the release’s orange badge in the Releases listing. Observe the text clipped to Pre-Relea.",
+        "Wait for the page to settle and refresh. Observe the clipping persists."
+      ],
+      "severity": 1
+    },
+    {
+      "id": "codex-30m-gitea-5",
+      "name": "Tags created from commit Operations cannot be published as releases",
+      "summary": "The Create tag action on a commit produces a valid browsable tag, but the Tags page's New Release action cannot publish a release for it.",
+      "expected": "An existing tag created through the application should be usable to publish a release without requiring a branch change.",
+      "actual": "The release form recognizes 'Existing tag.' but Publish Release returns 'Target branch does not exist.' No target branch selector is available for the existing tag. Reproduced with bash/tag and bash-commit-tag from branch commit 6b749e5869 and bash-main-commit-tag from main commit bfa9c3b716. Publishing the seeded tag and converting a tag created through Create Tag Only both succeed.",
+      "reproSteps": [
+        "Sign in as admin and open an existing commit in admin/harbor-handbook (tested main commit bfa9c3b716a7a5bc72060cba3155d9736206a5d0).",
+        "Open Operations, choose Create tag, enter a unique tag name such as bash-main-commit-tag, and click Create tag.",
+        "Open the repository Tags page; locate the new tag and click its New Release link.",
+        "Enter a release title and click Publish Release.",
+        "Observe 'Target branch does not exist.' despite the form showing 'Existing tag.'"
+      ],
+      "severity": 3
+    },
+    {
+      "id": "gitea-release-selected-branch-resolves-colliding-tag",
+      "name": "Release creation resolves a selected branch as a same-named tag",
+      "summary": "When branch main and tag main point to different existing commits, publishing a new release with branch main explicitly selected creates its tag at the existing main tag commit.",
+      "expected": "The branch target dropdown must resolve the chosen branch reference. Selecting main creates the new tag at refs/heads/main, even when refs/tags/main points elsewhere.",
+      "actual": "The new release links to side-branch commit 698207d676, matching tag main. The selected main branch still points to 4ff25d14a0; no new source commit was created.",
+      "reproSteps": [
+        "Sign in to the seeded eval/harbor-handbook repository. Confirm main points to 4ff25d14a0 and docs/release-owners points to its child 698207d676.",
+        "Use New Release to create a disposable release with tag name main and target branch docs/release-owners. This creates refs/tags/main at the side-branch commit while leaving refs/heads/main unchanged.",
+        "Open New Release again, enter an unused tag name such as qa-main-target-proof and a release title. Explicitly choose main from the branch target dropdown and publish.",
+        "Inspect the new release commit link and compare the Code view for branch main. The new release incorrectly points to 698207d676 instead of 4ff25d14a0."
+      ],
+      "severity": 3,
+      "matchingGuidance": {
+        "scope": "Credit selecting the wrong existing commit during release creation. The separate negative commits-since-release count is already covered by codex-30m-gitea-6; observing that count alone does not establish this reference. A colliding tag name matters; the release display title does not."
+      }
+    },
+    {
+      "id": "codex-30m-gitea-6",
+      "name": "Tag details display a negative count of commits since release",
+      "summary": "Tagging a commit on a branch with more history than the default branch makes the tag details show a negative number of commits to main.",
+      "expected": "A count of commits since a tag must be nonnegative and account for branch ancestry, or show that the tag is on a different branch.",
+      "actual": "Both bash/tag and bash-commit-tag show '-4 commits to main since this release'. Their tagged commit has seven commits in its history while main has three; the displayed count is negative.",
+      "reproSteps": [
+        "Sign in as admin. Use a repository where a non-default branch has more commits than main (tested admin/harbor-handbook: main has 3 commits, tagged branch commit 6b749e5869 has 7).",
+        "Open that branch's commit and use Operations → Create tag to create a unique tag.",
+        "Open Tags and click the new tag name to view its details.",
+        "Observe '-4 commits to main since this release' on the tag details page."
+      ],
+      "severity": 3
+    },
+    {
+      "id": "gitea-novel-003",
+      "name": "Duplicate-tag creation error describes the attempted operation as branch creation",
+      "summary": "Repeating Operations > Create tag with an existing tag name correctly rejects the duplicate but describes the attempted operation as creating a branch.",
+      "expected": "Duplicate-tag feedback identifies the attempted operation as tag creation and explains that the tag already exists.",
+      "actual": "The validation message says: Branch \"<tag-name>\" cannot be created as a tag with same name already exists in the repository.",
+      "reproSteps": [
+        "Use the English locale and sign in with write access to an initialized, unarchived repository. Use a unique disposable tag name; the original observation used a 390×844 viewport.",
+        "Open a commit from the repository’s main branch, choose Operations > Create tag, enter the disposable tag name, and create it.",
+        "Return to the same commit, choose Operations > Create tag again, and submit the identical tag name.",
+        "Inspect the validation message. It says Branch \"<tag-name>\" cannot be created as a tag with same name already exists in the repository, despite the attempted operation being tag creation."
+      ],
+      "severity": 1
+    },
+    {
+      "id": "gitea-novel-008",
+      "name": "Mobile tag row clips release and delete actions that scrolling cannot reveal",
+      "summary": "At a 390×844 viewport, the tag row clips New Release and leaves Delete Tag outside the visible row; ordinary horizontal scrolling on the row and page does not expose the actions.",
+      "expected": "Authorized tag-row actions remain accessible through the rendered UI at a narrow viewport, whether by responsive layout or ordinary scrolling.",
+      "actual": "The v1.0.0 row displays only a clipped beginning of New Release and leaves Delete Tag offscreen. Horizontal scrolling attempts on the row and page do not reveal the hidden controls.",
+      "reproSteps": [
+        "Sign in with code-write and release-write access to an unarchived repository. Use a tag without an associated published release so New Release and Delete Tag apply; the recorded run used the seeded v1.0.0 tag.",
+        "Set the browser viewport to 390×844 CSS pixels.",
+        "Open the repository Tags page and search for the tag. The recorded path was /eval/harbor-handbook/tags?q=v1.0.0.",
+        "Inspect the tag action row: only the beginning of New Release is visible and Delete Tag is offscreen.",
+        "Attempt ordinary horizontal scrolling on the row and page. Observe that the actions remain clipped or hidden; no tag deletion or release creation is necessary to inspect the defect."
+      ],
+      "severity": 3
+    },
+    {
+      "id": "gitea-release-validation-loses-upload",
+      "name": "Tag validation drops the uploaded release attachment",
+      "summary": "A validation error preserves other release fields but loses successfully uploaded files. Correcting the error and saving produces a release/draft without its attachment.",
+      "expected": "Retain completed uploaded-file associations after a recoverable tag validation error, so correcting only the tag publishes the attachment. If the upload cannot be retained, clearly require re-upload rather than silently publishing without it.",
+      "actual": "After invalid..qa is rejected, the title and notes remain but the completed attachment card disappears without a warning. Correcting only the tag and publishing produces Downloads containing only source archives; validation-asset.txt is absent.",
+      "reproSteps": [
+        "Sign in to eval/harbor-handbook and open Releases → New Release. Enter invalid..qa as the tag and fill a release title and notes.",
+        "Upload a small text attachment such as validation-asset.txt and wait for its completed file card.",
+        "Click Publish Release. Observe the recoverable tag-validation message, preserved title/notes, and missing uploaded-file card.",
+        "Change only the tag to an unused valid name and publish. Expand the release Downloads and confirm the uploaded file is missing."
+      ],
+      "severity": 3,
+      "matchingGuidance": {
+        "scope": "Credit the attachment association lost across validation and missing from the corrected published release. This does not claim the underlying temporary file bytes were erased."
+      }
+    },
+    {
+      "id": "gitea-novel-019",
+      "name": "Published release list bullets differ from Preview",
+      "summary": "Nested list bullets use different styles in the New Release preview and the published notes for the same Markdown.",
+      "expected": "The same nested Markdown list should use consistent bullet marker styles in Preview and after publishing the release.",
+      "actual": "The New Release preview showed a filled-circle marker for “Added widget-v2” and a hollow-circle marker for nested “Improved workflow.” After publishing, the same notes showed a hollow-circle marker for the first item and a filled-square marker for the nested item. Inline code and strikethrough rendered in both.",
+      "reproSteps": [
+        "Sign in with release-write permission and open New Release in an initialized disposable repository.",
+        "Enter a unique unused tag and title. In the release notes enter a Markdown heading, a first-level unordered item Added `widget-v2`, a nested unordered item Improved workflow, and another first-level item Supports ~~legacy widget~~ removal. Use ordinary Markdown indentation for the nested item.",
+        "Open Preview. Observe a filled circle for the first-level item and a hollow circle for the nested item.",
+        "Publish Release and inspect the same notes in the Releases list. The first-level marker is now a hollow circle and the nested marker is a filled square; text, inline code, strikethrough, and list hierarchy remain present."
+      ],
+      "severity": 1
+    },
+    {
+      "id": "gitea-release-tag-field-overflows-mobile",
+      "name": "New Release Tag name field overflows the mobile viewport",
+      "summary": "At a mobile viewport the New Release Tag name field is 500 CSS pixels wide, extending beyond the page while the release title and notes fit.",
+      "expected": "At 390×844 and 320×740 CSS pixels, the New Release Tag name control and target selector should fit the available viewport width. Ordinary typing should not require horizontal page scrolling to reach the field edge.",
+      "actual": "The tag control measures 500 CSS pixels and the document measures 520 pixels wide at both mobile widths. The control’s right edge lies outside the visible viewport; the release title and notes fit. The wide control exists before typing.",
+      "reproSteps": [
+        "Sign in with write access to eval/harbor-handbook and open Releases > New Release.",
+        "Set the browser viewport to 390×844 CSS pixels and inspect the empty Tag name field. Its outer right edge lies outside the viewport while the title and notes fit.",
+        "Type mobile-overflow-check. The tag control remains too wide; horizontal page scrolling reveals its right edge. This is outer control overflow, not normal scrolling of long text inside an input.",
+        "Repeat at 320×740 CSS pixels. The same 500-pixel control extends outside the narrower viewport. Do not submit the release."
+      ],
+      "severity": 1
+    },
+    {
+      "id": "gitea-release-case-only-uppercase-tag",
+      "name": "Case-only uppercase tag rejected as duplicate after lowercase release exists",
+      "summary": "After a lowercase release exists, Gitea rejects a Git-valid tag name that differs only by case as a duplicate in both Publish Release and Create Tag Only.",
+      "expected": "Git tag names are case-sensitive. With a lowercase release already published, an uppercase tag differing only by case should be treated as a distinct tag; Publish Release should create its separate release, and Create Tag Only should create the standalone tag.",
+      "actual": "After publishing lowercase tag case-tag-qa, both Publish Release and Create Tag Only reject uppercase CASE-TAG-QA with “A release with this tag name already exists.” The form still identifies the uppercase name as a new tag, and no uppercase tag or release is created.",
+      "reproSteps": [
+        "Sign in as the fixture admin and open Releases > New Release for eval/harbor-handbook.",
+        "Publish a lowercase release using tag case-tag-qa and a disposable title.",
+        "Open New Release again, enter uppercase CASE-TAG-QA, and observe the “New tag” helper. Click Publish Release and observe “A release with this tag name already exists.” Confirm the uppercase release was not created.",
+        "Open New Release again, enter CASE-TAG-QA, and click Create Tag Only. Observe the same duplicate-release error and confirm no uppercase Git tag was created."
+      ],
+      "severity": 3
+    },
+    {
+      "id": "gitea-release-empty-title-edit-loses-unsaved-state",
+      "name": "Invalid release edit with an empty title discards unsaved notes and prerelease state",
+      "summary": "Submitting an existing release edit with an empty required title shows validation feedback but replaces the submitted notes and checked prerelease state with the saved values.",
+      "expected": "After the empty-title validation error, retain the submitted notes and prerelease selection so the user can correct the title and retry without re-entering those changes.",
+      "actual": "After editing a release's notes, checking Mark as Pre-Release, clearing its title, and submitting, the form shows `form.Title cannot be empty.` but restores the saved title and notes and unchecks Mark as Pre-Release. The saved release itself remains unchanged.",
+      "reproSteps": [
+        "Sign in as eval and open /eval/harbor-handbook/releases. Create or use an existing release with a nonempty title and saved notes.",
+        "Open that release's edit form.",
+        "Replace the notes with `QA replacement notes, second reproduction.`, check Mark as Pre-Release, and clear the required Release title field.",
+        "Click Update Release.",
+        "After the title validation error appears, observe that the saved title and notes are restored and Mark as Pre-Release is unchecked."
+      ],
+      "severity": 3
+    }
+  ]
+}

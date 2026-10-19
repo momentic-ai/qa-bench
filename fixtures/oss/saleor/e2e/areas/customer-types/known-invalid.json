@@ -1,0 +1,66 @@
+{
+  "bugs": [
+    {
+      "name": "Customer-type search includes nonmatching type when searching for an exact name",
+      "summary": "An exact customer-type search for custtype-qsearch continues to show several nonmatching customer types, including custtype-qunassign, after settling, clearing and repeating the search, and refreshing.",
+      "expected": "With custtype-qsearch entered in the visible “Search customer types...” field, only customer types whose names match that query should be shown.",
+      "actual": "The settled table showed custtype-qsearch alongside custtype-qattr, custtype-qcreate-7f3a91, custtype-qdelete, and custtype-qunassign. The latter names do not contain the full query. The same mismatch remained after refreshing and repeating the search.",
+      "reproSteps": [
+        "Open / and use the provided saved admin authentication state (admin account; no credentials entered).",
+        "In the left navigation, expand Customers and open Customer Types.",
+        "Confirm custtype-qsearch and the distinct comparison type custtype-qunassign are present in the list; both were already present, so no fixture creation was needed.",
+        "Enter custtype-qsearch in the visible “Search customer types...” field and wait for the results to settle. The browser URL becomes /customer-types/?asc=true&sort=name&query=custtype-qsearch.",
+        "Observe that the table includes custtype-qunassign and other names that do not contain the full query. Refresh, clear the field, enter the same query again, and wait; the nonmatching rows remain."
+      ],
+      "reason": "Customer-type search deliberately matches trigram-similar names or slugs. An exact-looking query can therefore return similar names; the source does not promise exact equality or substring-only matching."
+    },
+    {
+      "id": "mo-30m-saleor-6",
+      "name": "Customer Types search misses names containing a substring",
+      "summary": "The customer-types search returns “No customer types found” for `SearchMatch` even though a newly created, visible customer type contains that exact substring; the full-name search finds it, and the failure repeats after the page settles.",
+      "expected": "Searching the customer types list for `SearchMatch` should show the type `QA-customer-types SearchMatch verify-582941`, whose visible name contains that exact query.",
+      "actual": "The list showed the new type before filtering. Searching `SearchMatch` changed the list to “No customer types found.” Searching its full name showed the new type, but searching `SearchMatch` again returned the same stable no-results state after waiting.",
+      "reproSteps": [
+        "Open /customer-types/?asc=true&sort=name with the supplied saved authentication state loaded (authenticated as the supplied admin account).",
+        "Click Create customer type, enter `QA-customer-types SearchMatch verify-582941`, and create it. Leave the default type unchanged.",
+        "Return to the Customer Types list and wait until `QA-customer-types SearchMatch verify-582941` is visible.",
+        "Enter `SearchMatch` in the “Search customer types…” field and wait for the list to update. The page URL becomes /customer-types/?asc=true&sort=name&query=SearchMatch, and the list shows “No customer types found.”",
+        "As a falsification check, search for the fixture’s full name and confirm the record appears. Re-enter `SearchMatch`; the list again shows “No customer types found” and remains in that state after waiting."
+      ],
+      "reason": "The candidate assumes any internal substring must match. Reviewed local evidence documents trigram-similar name/slug matching rather than substring search, so full-name success and short-substring failure do not demonstrate a promised-match omission. Choose not_a_bug as written unless a supplied requirement specifically demands substring support.",
+      "severity": 3
+    },
+    {
+      "id": "mo-60m-saleor-26",
+      "name": "Customer Types nonmatching search retains prior result",
+      "summary": "A unique nonmatching Customer Types query briefly shows “No customer types found,” then the prior matching customer type reappears and remains visible after refresh.",
+      "expected": "A unique query matching no customer type should leave the list empty; the UI itself briefly displays “No customer types found” for that query.",
+      "actual": "After replacing the exact-name query with NO-MATCH-MOMENTIC-QA-20260621-4F7Q9, the table first showed “No customer types found,” then repopulated with the previously matching “Momentic QA Search 20260621 184732 ZK9Q.” After refresh, the nonmatching query remained in the search field while that unrelated type remained in the table for over 25 seconds.",
+      "reproSteps": [
+        "As the signed-in administrator using the provided authenticated session, open /customer-types/.",
+        "Create a fresh customer type named “Momentic QA Search 20260621 184732 ZK9Q” and return to the customer-types list.",
+        "Search for the exact name “Momentic QA Search 20260621 184732 ZK9Q” and wait for the list to filter to that type.",
+        "Replace the search with the unique nonmatching query “NO-MATCH-MOMENTIC-QA-20260621-4F7Q9” and press Enter. Observe the empty-state message briefly, followed by the created type reappearing.",
+        "Refresh. At /customer-types/?asc=true&sort=name&query=NO-MATCH-MOMENTIC-QA-20260621-4F7Q9, verify that the search field still contains the nonmatching query while the created type remains in the table; wait and confirm it persists."
+      ],
+      "reason": "The failing query is deliberately nonsense. Unrelated/fallback results are expressly allowed for such queries without an explicit empty-result promise. A transient No customer types found message is not a documented guarantee that fallback results will never appear. Under the stated rule this is not_a_bug as written.",
+      "severity": 3
+    },
+    {
+      "id": "mo-60m-saleor-27",
+      "name": "Exact customer type search includes unrelated type",
+      "summary": "The exact Customer Types search for customerschema-search-source-847291 shows both that type and unrelated customerschema-explore-625; the extra result remains after refresh.",
+      "expected": "Searching for the exact customer type name customerschema-search-source-847291 should show only that customer type.",
+      "actual": "The settled results showed both customerschema-search-source-847291 and customerschema-explore-625. The same two rows remained after refreshing with the query applied.",
+      "reproSteps": [
+        "Use the provided authenticated admin session (admin role; loaded saved authentication state, with no credentials entered) and open /.",
+        "In the left navigation, open Customers > Customer Types.",
+        "Enter customerschema-search-source-847291 in the “Search customer types” field and wait for the results to settle.",
+        "Observe the table at /customer-types/?asc=true&sort=name&query=customerschema-search-source-847291; it shows both customerschema-search-source-847291 and customerschema-explore-625.",
+        "Refresh the filtered page and verify that both rows remain."
+      ],
+      "reason": "The reviewed local record documents customer-type search matching trigram-similar names or slugs, with no exact-equality or substring-only promise. The desired exact result is present; the extra similar type does not violate that contract. The candidate borrows exclusivity from generic Search and should be not_a_bug independent of duplicates.",
+      "severity": 3
+    }
+  ]
+}

@@ -1,0 +1,110 @@
+{
+  "bugs": [
+    {
+      "name": "Protected tag pattern validation exposes internal form field key",
+      "summary": "The invalid protected-tag pattern is correctly rejected, but the visible validation alert exposes the internal key `form.NamePattern` instead of the form's user-facing “Tag Pattern” label.",
+      "expected": "Reject the unmatched `[` pattern and show a user-facing validation message that identifies “Tag Pattern” and explains the invalid syntax without displaying an internal form identifier.",
+      "actual": "After clicking Protect Tag, the page displayed `form.NamePattern glob pattern is invalid: unexpected end of input.` The invalid pattern was rejected, but the rendered alert exposed `form.NamePattern`.",
+      "reproSteps": [
+        "Sign in as eval.",
+        "Create a fresh private personal repository named `mo-gitea-05-account-tagpattern-20260924-7f3d9b`.",
+        "Open Settings > Tags at /eval/mo-gitea-05-account-tagpattern-20260924-7f3d9b/settings/tags.",
+        "Enter the unmatched opening bracket `[` in Tag Pattern, leave Allowed users unchanged, and click Protect Tag.",
+        "Observe the validation alert above the form: `form.NamePattern glob pattern is invalid: unexpected end of input.`"
+      ],
+      "severity": 1
+    },
+    {
+      "name": "Invalid branch-protection pattern returns 500 after saving the rule",
+      "summary": "Saving an invalid branch-protection glob returns an Internal Server Error, but the rule is persisted despite the failed response.",
+      "expected": "The form should reject an invalid branch-name pattern before creating a rule and show a validation error.",
+      "actual": "Saving `[` displayed an HTTP 500 error page. Returning to branch settings showed a protected-branch rule named `[`. The test rule was deleted afterward.",
+      "reproSteps": [
+        "Sign in to the seeded Gitea fixture and open a repository’s Settings > Branches.",
+        "Select Add New Rule and enter `[` as Protected Branch Name Pattern.",
+        "Select Save Rule and observe the Internal Server Error page.",
+        "Return to Settings > Branches and observe that the `[` rule was created."
+      ],
+      "severity": 5
+    },
+    {
+      "id": "gitea-pass2-020",
+      "name": "Anonymous Read settings omit the site-wide mandatory sign-in override",
+      "summary": "With site-wide mandatory sign-in enabled, Public Access still describes Anonymous Read as allowing logged-out access and saves it without explaining that the global login requirement overrides it.",
+      "expected": "When mandatory sign-in is enabled, explain on the Public Access page that Anonymous Read does not bypass the instance-wide login requirement. Preserve the global login requirement.",
+      "actual": "After saving Anonymous Read for Code, the page reports success and continues to say that users who are not logged in can access the unit with read permission, without warning that this instance requires sign-in. Signed-out visitors are correctly redirected to login under that global policy.",
+      "reproSteps": [
+        "Sign in as eval, an administrator, on the seeded Gitea fixture where REQUIRE_SIGNIN_VIEW=true. Use a disposable writable public repository.",
+        "Open the repository’s Settings > Public Access. If the navigation link is absent, open /eval/<repository>/settings/public_access.",
+        "Select Anonymous Read for Code and click Update Settings. Confirm the success banner and retained selection.",
+        "Read the Anonymous Read explanation below the permissions table. It promises read access for users who are not logged in, with no qualification or warning about the enabled site-wide mandatory sign-in setting."
+      ],
+      "severity": 1
+    },
+    {
+      "id": "gitea-pass2-019",
+      "name": "Public Access settings link is hidden until a non-default permission is saved",
+      "summary": "A public repository with default unit permissions has no Public Access settings link. The page works at its known URL, and saving a non-default grant makes the missing navigation entry appear.",
+      "expected": "Repository administrators should have a discoverable settings path to supported public-access permissions before a custom grant exists, including the Wiki Everyone Write option that can change access on a public repository.",
+      "actual": "On a new public repository, the Settings sidebar omits Public Access. Opening the known settings/public_access URL shows a working editor with every unit set to Not Set. Saving Code Anonymous Read adds the sidebar link; restoring Not Set removes it again.",
+      "reproSteps": [
+        "Sign in as eval, an administrator, and create a disposable public repository with default unit permissions. Open the new repository’s Settings page.",
+        "Inspect the Settings sidebar and observe that Public Access is absent. Do not change repository visibility or add any public-access grants first.",
+        "Open the known /<owner>/<repository>/settings/public_access URL directly as a control. Confirm the page works and every unit permission is Not Set; the sidebar link is still absent.",
+        "Select Anonymous Read for Code and click Update Settings. Confirm the saved selection and that the Public Access sidebar link now appears.",
+        "Set Code back to Not Set and click Update Settings. Confirm that all grants return to their defaults and the Public Access sidebar link disappears again."
+      ],
+      "severity": 1,
+      "sourceCause": "The settings sidebar renders Public Access only for a private repository or an existing anonymous/everyone unit grant. A default public repository satisfies neither condition even though the editor supports meaningful permissions such as Wiki Everyone Write."
+    },
+    {
+      "id": "codex-30m-gitea-0",
+      "name": "Template generation without Git Content breaks repository initialization",
+      "summary": "Generating a template with only metadata selected creates an empty default branch. The setup commands omit the branch, and the visible New File and Upload File links lead to 404 pages.",
+      "expected": "The empty generated repository should use a valid default branch such as main, show complete setup commands, and allow adding its first file through New File or Upload File.",
+      "actual": "The quick guide shows `git checkout -b ` and `git push -u origin ` without a branch name. New File opens /_new// and Upload File opens /_upload//; both display 404 Not Found. A normal empty repository correctly uses main. Reproduced with Issue Labels only and Webhooks plus Branch Protection.",
+      "reproSteps": [
+        "Sign in as admin and open an initialized repository with default branch main (tested with admin/bash-settings-1009).",
+        "Open Settings, enable 'Make repository a template', and save.",
+        "Return to Code and click 'Use this template'.",
+        "Enter a unique repository name, select Issue Labels only, and leave Git Content unchecked.",
+        "Create the repository and inspect its Code quick setup guide; checkout and push commands lack a branch name.",
+        "Click New File; observe a 404 at /_new//.",
+        "Return to Code and click Upload File; observe a 404 at /_upload//."
+      ],
+      "severity": 5
+    },
+    {
+      "name": "Duplicate branch-rule creation overwrites existing protection without confirmation",
+      "summary": "Add New Rule with an existing protected-branch pattern updates the original rule using the new form defaults without warning or confirmation beforehand. This removes its saved approval requirement and administrator enforcement.",
+      "expected": "Duplicate creation should reject the existing pattern or request explicit confirmation before replacing the original rule settings.",
+      "actual": "A saved rule with 1 required approval and administrator enforcement enabled becomes 0 approvals with administrator enforcement disabled after the same pattern is submitted through Add New Rule with defaults. The success message reports an update and the list still contains one rule; reopening proves the submitted defaults replaced the persisted configuration.",
+      "reproSteps": [
+        "Sign in to the Gitea 1.24.7 fixture and create a disposable repository initialized with a README.",
+        "Create a disposable branch and open Settings > Branches. Add a protection rule for that branch with Required approvals set to 1 and Administrators must follow branch protection rules checked. Save and reopen to confirm 1/on.",
+        "Return to Settings > Branches and choose Add New Rule. Enter exactly the same protected-branch pattern.",
+        "Leave the new form defaults: 0 required approvals and administrator enforcement unchecked. Click Save Rule.",
+        "Observe an update success message and exactly one rule in the list.",
+        "Reopen the original rule using Edit. Required approvals is 0 and administrator enforcement is unchecked. No duplicate warning or confirmation was shown before the overwrite."
+      ],
+      "severity": 3,
+      "matchingGuidance": {
+        "rootCause": "SettingsProtectedBranchPost handles RuleID 0 by loading the existing rule with the submitted RuleName, then applies all submitted values and persists that same rule. New form defaults overwrite RequiredApprovals and BlockAdminMergeOverride."
+      }
+    },
+    {
+      "id": "gitea-existing-file-editor-disables-unprotected-direct-commit",
+      "name": "Existing-file editor disables direct commit despite an unprotected-file exception",
+      "summary": "With branch push disabled and an existing file matched by the rule's unprotected-file pattern, the web editor disables direct commit and forces the new-branch option, despite the rule help promising that matching files can be changed directly by users with write access.",
+      "expected": "For an existing file that matches an unprotected-file pattern, allow a user with write access to select Commit directly to the main branch, as the branch-rule help specifies.",
+      "actual": "With main protected by Disable Push, unprotected file patterns set to `**`, protected file patterns empty, and signed commits not required, editing the existing README shows Commit directly to the main branch greyed out. The new-branch/pull-request option is forced and the button says Propose file change.",
+      "reproSteps": [
+        "As the repository owner eval, create a repository initialized with a README and default branch main.",
+        "Add a protection rule for main with Disable Push selected, unprotected file patterns `**`, protected file patterns empty, Require Signed Commits unchecked, and Administrators must follow branch protection rules enabled.",
+        "Open the existing README at /eval/pushrule-repro1/_edit/main/README.md and make a change.",
+        "At Commit Changes, observe that Commit directly to the main branch is disabled, the new-branch/pull-request option is selected, and the submit button says Propose file change."
+      ],
+      "severity": 3
+    }
+  ]
+}

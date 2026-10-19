@@ -1,0 +1,85 @@
+{
+  "bugs": [
+    {
+      "name": "Creating an organization cleanup rule says it was updated",
+      "summary": "The success confirmation for a newly added cleanup rule uses update wording.",
+      "expected": "Creating a cleanup rule should show a creation confirmation.",
+      "actual": "After Add creates a rule, the confirmation says “Cleanup rule has been updated.”",
+      "reproSteps": [
+        "Create a disposable organization and open Settings > Packages.",
+        "Choose Add cleanup rule, select a package type, enable it, and save.",
+        "Read the confirmation on the resulting edit page."
+      ],
+      "severity": 1
+    },
+    {
+      "id": "mo-30m-forgejo-5",
+      "name": "Package search field is blank after browser Back restores the query URL",
+      "summary": "Browser Back returns to the package-search URL with the prior q parameter, but the Search field remains empty while Cargo stays selected; this persisted after a fresh repeat and a settled-state check.",
+      "expected": "After Back returns to the package URL with q=missing-package-example&type=cargo, the Search field should show missing-package-example and the Type filter should show Cargo.",
+      "actual": "Back returned to /admin/packages?q=missing-package-example&type=cargo. The Type filter showed Cargo, but the Search field showed its Search... placeholder and was empty.",
+      "reproSteps": [
+        "In a fresh browser, load the authorized administrator session and open /admin/packages.",
+        "Enter missing-package-example in the package Search field and press Enter.",
+        "Choose Cargo in the Type filter and click the magnifying-glass search button.",
+        "Focus the Search field, press Control+A and Backspace to clear it, then click the magnifying-glass search button.",
+        "Use browser Back once. Observe the URL /admin/packages?q=missing-package-example&type=cargo, the Cargo Type filter, and the empty Search field showing its placeholder."
+      ],
+      "severity": 3
+    },
+    {
+      "id": "codex-60m-forgejo-7",
+      "name": "Cleanup-rule validation resets the selected package type",
+      "summary": "An invalid version regex resets the cleanup rule's selected Type from npm to Alpine. Correcting just the reported regex error then saves a rule for the wrong package type.",
+      "expected": "Preserve the chosen package type and all other valid form values after regex validation fails.",
+      "actual": "Selecting npm and submitting Keep versions matching '[' displays the invalid-regex error but resets Type to Alpine while retaining '['. Correcting the regex to '^stable$' and submitting creates an Alpine rule. Agent reproduced the reset twice and verified the saved disabled rule.",
+      "reproSteps": [
+        "Sign in and open /user/settings/packages.",
+        "Click Add cleanup rule.",
+        "Choose Type npm and set Keep versions matching to [.",
+        "Click Add.",
+        "Observe the regex validation error and that Type has changed to Alpine.",
+        "Correct only the regex to ^stable$ and click Add.",
+        "Open the saved rule and observe its Type is Alpine instead of npm."
+      ],
+      "severity": 3,
+      "reviewedVariants": [
+        {
+          "id": "mo-60m-forgejo-6",
+          "name": "Invalid cleanup-rule regex resets the selected package type",
+          "summary": "Submitting an invalid cleanup-rule regex resets Cargo to Alpine; correcting only the regex then saves the rule as Alpine.",
+          "expected": "When the invalid regex is rejected, the form should retain Cargo. Correcting the regex and resubmitting without changing Type should create a Cargo rule.",
+          "actual": "The validation error appeared and the form changed Type from Cargo to Alpine while retaining the Keep versions matching value. After I corrected only the regex, the app reported success and showed the rule as Alpine.",
+          "reproSteps": [
+            "Using the authenticated own account momentic-admin session, open /user/settings/packages. The provided saved session was used; no credentials were entered during the flow.",
+            "Click Add cleanup rule. Leave Enabled unchecked, choose Cargo in Type, enter mo-account-cleanup-4b7c2e91 in Keep versions matching, and enter [ in Remove versions matching.",
+            "Click Add. Observe the regex validation error, Type showing Alpine, and the Keep versions matching value still present.",
+            "Without changing Type, replace [ with the valid regex ^$ and click Add. Observe the success message and the resulting edit form showing Type as Alpine.",
+            "Click Remove for this uniquely named test rule. Verify the cleanup-rules page reports that there are no cleanup rules."
+          ]
+        }
+      ]
+    },
+    {
+      "id": "mo-60m-forgejo-4",
+      "name": "Packages summary text obscured by cleanup button at narrow viewport",
+      "summary": "At 390×844 on the Packages page, the Clean up expired data button visibly covers part of the Manage packages summary, making its total-size text unreadable; the overlap persists after refresh and waiting.",
+      "expected": "The Manage packages summary, including package count, total size, and unreferenced size, should remain readable and unobscured by the cleanup button.",
+      "actual": "At 390×844, the cleanup button covers the middle/right portion of the first summary line, obscuring the total-size text. The unreferenced-size value remains visible on the next line. The overlap persisted after refreshing and waiting five seconds.",
+      "reproSteps": [
+        "Start with the authorized administrator session (the provided authenticated state was loaded before navigation).",
+        "Set the browser viewport to 390×844 CSS pixels.",
+        "Navigate to /admin, expand Code assets, and select Packages.",
+        "On /admin/packages, inspect the Manage packages summary near the top of the page. Do not activate Clean up expired data.",
+        "Refresh the page and wait five seconds; the button still obscures the total-size text."
+      ],
+      "severity": 1,
+      "matchingGuidance": {
+        "acceptanceScope": "Accepted as a valid reference by user instruction; source prerequisites and remaining evidence gaps are retained below.",
+        "prerequisites": [
+          "390px viewport and summary/button widths exceed header width."
+        ]
+      }
+    }
+  ]
+}

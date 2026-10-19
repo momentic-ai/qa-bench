@@ -1,0 +1,123 @@
+{
+  "bugs": [
+    {
+      "name": "Open with editors misspells IntelliJ IDEA",
+      "summary": "The site configuration list labels IntelliJ IDEA as “Intellij IDEA.”",
+      "expected": "The editor name should use the product’s capitalization, IntelliJ IDEA.",
+      "actual": "The site configuration list labels IntelliJ IDEA as “Intellij IDEA.”",
+      "reproSteps": [
+        "Open Site Administration → Configuration → Settings.",
+        "Expand Open with editors and read the IntelliJ IDEA entry."
+      ],
+      "severity": 1
+    },
+    {
+      "name": "Cron task label contains duplicate punctuation",
+      "summary": "The archive cleanup task ends with “etc..” in the Cron Tasks list.",
+      "expected": "The task label should end with one period.",
+      "actual": "The archive cleanup task ends with “etc..” in the Cron Tasks list.",
+      "reproSteps": [
+        "Open Site Administration → Monitoring → Cron Tasks.",
+        "Find the Delete all repositories’ archives task and inspect its label."
+      ],
+      "severity": 1
+    },
+    {
+      "name": "Admin repository alphabetical sort groups results by owner",
+      "summary": "The eval repository list places an organization’s aaa-org-repo after all eval-owned repositories when sorted Alphabetically.",
+      "expected": "Alphabetically should order the Name column across owners.",
+      "actual": "The eval repository list places an organization’s aaa-org-repo after all eval-owned repositories when sorted Alphabetically.",
+      "reproSteps": [
+        "Create a disposable organization and an organization repository named aaa-org-repo alongside eval-owned repositories.",
+        "Open Site Administration → Code Assets → Repositories and choose Sort → Alphabetically.",
+        "Observe that aaa-org-repo appears after all eval-owned names, including names starting with m."
+      ],
+      "severity": 3
+    },
+    {
+      "id": "gitea-pass2-028",
+      "name": "Malformed Open with editor override is silently discarded without validation feedback",
+      "summary": "Submitting a nonempty Open with editor override without the required mapping delimiter silently clears the field without explaining that the entry was discarded.",
+      "expected": "When a nonempty editor entry is discarded because its mapping is malformed, provide visible feedback explaining what needs correction. An intentionally empty override should continue to select the defaults.",
+      "actual": "On two submissions, Malformed Editor Entry was visible before Save, but the settings page reloaded with a blank textarea and no validation message. Refreshing kept the field blank. The help gives mappings using = and explains that an empty override uses the defaults.",
+      "reproSteps": [
+        "Sign in as eval, an administrator, on a disposable Gitea fixture. Open Site Administration > Configuration > Settings and start with the Repository Open with editor override empty.",
+        "Enter Malformed Editor Entry in the editor override textarea, omitting the = delimiter, and click that section’s Save button.",
+        "Observe that the page reloads with a blank textarea and no visible explanation that the nonempty entry was invalid and discarded.",
+        "Repeat the same nonempty entry and Save. Confirm the same silent clearing, then refresh and confirm the field remains blank.",
+        "Expand the help to see the mapped examples using = and the stated empty-field default behavior. Leave the override empty and save to restore the initial default configuration."
+      ],
+      "severity": 1,
+      "sourceCause": "The settings parser skips nonempty lines that lack = or either mapping component without returning an error. With every line skipped, it saves a nil editor list successfully; the reloaded textarea is blank and the form receives no validation feedback."
+    },
+    {
+      "id": "gitea-novel-009",
+      "name": "Stacktrace page overflows mobile viewport",
+      "summary": "At 390×844, the Stacktrace page permits whole-document horizontal scrolling that shifts the process card and controls offscreen.",
+      "expected": "Horizontal scrolling for long stack text should remain within its content area and leave the process card and page controls in place.",
+      "actual": "A normal horizontal scroll from the page margin outside the stack content shifts the process card and Download diagnosis report control left and exposes blank space. The document already overflows before expanding ProcessStacktraces.func2; expansion is part of the observed flow, not an established cause.",
+      "reproSteps": [
+        "Sign in as a site administrator in the current Gitea fixture and set a desktop browser viewport to 390×844 CSS pixels.",
+        "Use Site Administration → Monitoring → Trace → Stacktrace.",
+        "Locate the monitoring request process and expand code.gitea.io/gitea/modules/process.(*Manager).ProcessStacktraces.func2.",
+        "From the page margin outside the card/code content, perform a normal horizontal scroll to the right, approximately 350 CSS pixels.",
+        "Observe the process card and diagnosis controls shifting left and blank space appearing on the right. The overflow is already present before the expansion."
+      ],
+      "severity": 1,
+      "matchingGuidance": {
+        "relatedReference": {
+          "id": "mo-60m-gitea-15",
+          "distinction": "The existing reference concerns the diagnosis button covering the Stacktrace tab label. This reference concerns stack content causing whole-document horizontal displacement; toolbar overlap alone is not treated as its evidence."
+        }
+      }
+    },
+    {
+      "id": "mo-60m-gitea-15",
+      "name": "At mobile width, the diagnosis-report button overlaps and obscures the Stacktrace tab label",
+      "summary": "At mobile width, the diagnosis-report button overlaps and obscures the Stacktrace tab label",
+      "expected": "The Stacktrace tab and Download diagnosis report button are separately laid out so the button does not obscure the tab label or its click target at this viewport.",
+      "actual": "At 390 × 844, the Download diagnosis report button covers the right side of the Stacktrace tab, leaving its label partially hidden. The exposed part of the tab remains clickable.",
+      "reproSteps": [
+        "/-/admin/monitor/stacktrace",
+        "Read-only browser exploration only. Do not change authentication details or sign out; do not create, start, stop, or modify running jobs or global data. Do not inspect application source, benchmarks, ground truth, or prior evaluation reports, and do not treat coverage metadata or failed/untested jobs as bugs.",
+        "Start with the authorized administrator session and navigate to /-/admin/monitor/stacktrace at a 390 × 844 CSS-pixel viewport.",
+        "Observe the toolbar above the goroutine count. The Download diagnosis report button overlaps the Stacktrace tab."
+      ],
+      "severity": 1,
+      "matchingGuidance": {
+        "acceptanceScope": "Accepted as a valid reference by user instruction; source prerequisites and remaining evidence gaps are retained below.",
+        "prerequisites": [
+          "390px content width below tab strip plus diagnosis form intrinsic widths."
+        ]
+      }
+    },
+    {
+      "id": "gitea-novel-002",
+      "name": "Mobile organization total overlaps its create button",
+      "summary": "At a 390px width, the New Organization button covers part of the organization-total heading.",
+      "expected": "At mobile width, the organization heading and New Organization button should not paint over each other. Wrapping or deliberate truncation is acceptable; the defect is overlap.",
+      "actual": "After returning to the inventory, the header visibly reads “Organization Management (Total: 8” and the New Organization button covers the closing parenthesis. The number 8 is legible, but the complete label is not; the overlap remains static in the recorded view.",
+      "reproSteps": [
+        "Sign in as a site administrator, use English, and set the viewport to 390 by 844 CSS pixels.",
+        "Open Site Administration > Organizations and choose New Organization.",
+        "Create a uniquely named disposable public organization using the default permissions, then return through the UI to the administrator organization inventory.",
+        "Inspect Organization Management (Total: N) beside New Organization. In the supplied reproduction at Total: 8, the button covers the closing parenthesis. The numeric total stays readable and organization creation succeeds."
+      ],
+      "severity": 1
+    },
+    {
+      "id": "gitea-admin-delete-drops-search-and-privacy-filter",
+      "name": "Deleting a repository clears administrator inventory search and privacy filters",
+      "summary": "After an administrator deletes the sole repository matching an inventory search and Public filter, the redirect drops both query parameters, clears the search, and displays unrelated repositories instead of the now-empty filtered results.",
+      "expected": "After successful deletion, return to the same inventory search and privacy filter. Since the deleted repository was the only match, show the filtered empty state rather than unrelated repositories.",
+      "actual": "The session narrative reports that the administrator searched `qa-delete-filter`, selected Public (`private=0`), and confirmed deletion. It then landed at `/-/admin/repos?page=1&sort=recentupdate` without `q` or `private`, where unrelated `harbor-handbook` appeared.",
+      "reproSteps": [
+        "As an administrator, have a disposable public repository named `qa-delete-filter` and another public repository `harbor-handbook`.",
+        "Open /-/admin/repos, search for `qa-delete-filter`, and select the Public filter. Confirm only the matching repository appears.",
+        "Click that repository's delete control and confirm deletion.",
+        "Observe whether the resulting inventory URL retains `q=qa-delete-filter` and `private=0`; the recorded session narrative says both are dropped and unrelated repositories are shown."
+      ],
+      "severity": 3
+    }
+  ]
+}

@@ -1,0 +1,192 @@
+{
+  "bugs": [
+    {
+      "name": "Staff Status filter does not filter pending invites",
+      "summary": "Applying the staff filter Status is Active updates the filter indicator and URL but leaves Pending invite staff in the table.",
+      "expected": "With Status is Active applied, the listing should contain only Active staff members; Pending invite rows should not be shown.",
+      "actual": "After Apply, the filter count shows 1 and the URL is /staff/?0%5Bs0.staffMemberStatus%5D=ACTIVE&sort=name&asc=true, but the table still shows the admin row as Active alongside numerous Pending invite rows.",
+      "reproSteps": [
+        "As the fixture Saleor admin, navigate to /staff/.",
+        "Open Filters, select Status as the condition field, keep the operator set to is, and select Active as the value.",
+        "Click Apply. The resulting URL is /staff/?0%5Bs0.staffMemberStatus%5D=ACTIVE&sort=name&asc=true.",
+        "Inspect the staff table: the admin is marked Active, but rows such as William Archer and Adrian Atkins are marked Pending invite and remain visible."
+      ],
+      "severity": 3
+    },
+    {
+      "name": "Tax class saves a negative country rate despite a zero minimum",
+      "summary": "A tax class accepts and persists a negative country tax rate even though the rate input declares a minimum of zero.",
+      "expected": "The rate input’s minimum of zero should prevent a negative tax rate from being saved.",
+      "actual": "The Books tax class saved Austria at -5%, and the value remained -5% after reload. The input has `min=\"0\"` and `max=\"100\"`. The original 10% was restored after verification.",
+      "reproSteps": [
+        "Sign in to the local Saleor dashboard and open Configuration > Taxes > Tax classes > Books.",
+        "Observe that the Austria tax-rate input declares a minimum of 0.",
+        "Enter -5 for Austria and select Save.",
+        "Reload the tax class and observe that Austria still displays -5%."
+      ],
+      "severity": 3
+    },
+    {
+      "name": "Company Information promises a customer contact email, but no email field is available on the Store settings form",
+      "summary": "The Company Information section promises an email address for customer contact but exposes no email input, preventing admins from setting it there.",
+      "expected": "The Company Information form should expose an editable email field because its visible description says the email address provided there will be used as the contact address for customers.",
+      "actual": "The form showed Company, Address line 1, Address line 2, City, ZIP / Postal code, Country, and Phone, then ended; there was no email field. The missing field remained absent after scrolling the entire section into view and rechecking the settled page.",
+      "reproSteps": [
+        "Start signed in as the authorized admin admin@example.com using the provided saved admin session; no credentials were entered.",
+        "Navigate to /configuration/.",
+        "Open the Store settings card.",
+        "Inspect Company Information and scroll until the full section, including its final Phone field and section boundary, is visible. Observe its customer-contact-email promise and the absence of an email input."
+      ],
+      "severity": 3
+    },
+    {
+      "name": "Tax settings Back silently discards unsaved country and channel edits",
+      "summary": "Back from Taxes country and channel settings discards unsaved changes without a warning.",
+      "expected": "Leaving a tax settings form with unsaved changes should warn before discarding them.",
+      "actual": "Adding Afghanistan to Austria or unchecking Charge taxes on Channel-USD enabled Save, but Back returned to Configuration without a prompt; the edits were not saved.",
+      "reproSteps": [
+        "Sign in to the local Saleor fixture as admin@example.com.",
+        "Open Taxes > Countries > Austria, add Afghanistan, and leave the change unsaved.",
+        "Click Back and reopen the country settings; Afghanistan is absent and no discard prompt appeared.",
+        "Repeat on Taxes > Channels by changing Channel-USD Charge taxes and clicking Back; the edit is discarded without a warning."
+      ],
+      "severity": 3
+    },
+    {
+      "name": "The bulk-delete success toast calls deleted structures “Menus”.",
+      "summary": "The bulk-delete success toast calls deleted structures “Menus”.",
+      "expected": "The success notification should refer to the deleted structures, consistent with the Structures page and confirmation dialog.",
+      "actual": "After the successful bulk deletion, the notification reads “Menus deleted” even though the user is deleting structures.",
+      "reproSteps": [
+        "/structures",
+        "Start signed in as an admin on Modeling > Structures in an isolated test workspace.",
+        "Create two fresh, uniquely named disposable structures and return to the Structures list.",
+        "Select only those two rows, click Remove, and confirm Delete.",
+        "Observe the success notification shown after deletion."
+      ],
+      "severity": 1
+    },
+    {
+      "name": "Postal-code range form accepts and persists reversed ranges",
+      "summary": "A fresh price-based shipping method accepts, saves, and retains the reversed postal-code range 2000–1000 without validation.",
+      "expected": "A postal-code range whose start is greater than its end should be rejected with visible validation feedback and not added to the method.",
+      "actual": "The Add action accepted 2000 as the start and 1000 as the end, added “2000 - 1000” under excluded postal-code ranges without validation feedback, and the range remained after saving the method and refreshing.",
+      "reproSteps": [
+        "Create a fresh shipping zone named “QA reversed postal range 20260926-1932-R8,” assign Afghanistan, and save the zone.",
+        "In that zone, choose Add shipping method under Price-based shipping methods and name the method “QA Reversed Range Method 20260926-1932-R8.”",
+        "Choose Add postal code range, enter 2000 in Postal codes (start) and 1000 in Postal codes (end), then select Add. Observe “2000 - 1000” appear in the excluded postal-code range list without validation feedback.",
+        "Save the shipping method, refresh its detail page, and verify that “2000 - 1000” remains in the excluded postal-code range list."
+      ],
+      "severity": 3
+    },
+    {
+      "id": "codex-60m-saleor-1",
+      "name": "Invalid shipping delivery range fails without showing its validation error",
+      "summary": "Saving a shipping method with minimum delivery time greater than maximum fails, but the dashboard does not display the error or identify the invalid field. The backend returns a specific validation error; only the save button briefly says Try again. Reported variant (codex-30m-saleor-8): A minimum delivery time greater than the maximum causes shipping-rate creation to fail without identifying the invalid fields. Count this as the same reference rather than a separate bug.",
+      "expected": "Show a validation message explaining that minimum delivery days must be lower than maximum, next to the delivery fields or in a notification.",
+      "actual": "The form remains unsaved with no field error or notification. The button briefly changes to Try again, then Save. Repeated with ranges 10–2 and 8–4; the response says 'Minimum delivery days should be lower than maximum delivery days.'",
+      "reproSteps": [
+        "Sign in and open Configuration → Shipping Methods.",
+        "Open a shipping zone and an existing shipping method with valid channel pricing (tested QA Shipping 0526 → QA Standard 0529).",
+        "Set Min Delivery Time to 10 and Max Delivery Time to 2.",
+        "Click Save and wait for it to finish.",
+        "Observe no explanation beside either delivery field or in notifications, and the changes remain unsaved.",
+        "Reported variant (codex-30m-saleor-8): Sign in and open Configuration > Shipping methods.",
+        "Reported variant (codex-30m-saleor-8): Create a shipping zone assigned to Channel-USD.",
+        "Reported variant (codex-30m-saleor-8): Add a Price-based rate, enter a name, and assign Channel-USD under Availability.",
+        "Reported variant (codex-30m-saleor-8): Enter a price of 10, Min Delivery Time of 5, and Max Delivery Time of 2.",
+        "Reported variant (codex-30m-saleor-8): Click Save.",
+        "Reported variant (codex-30m-saleor-8): Change only Max Delivery Time to 7 and click Save again."
+      ],
+      "severity": 1,
+      "reviewedVariants": [
+        {
+          "id": "codex-30m-saleor-8",
+          "name": "Invalid shipping delivery range fails without an explanation",
+          "summary": "A minimum delivery time greater than the maximum causes shipping-rate creation to fail without identifying the invalid fields.",
+          "expected": "The form explains that maximum delivery time cannot be less than minimum delivery time.",
+          "actual": "The invalid range leaves the create form open and briefly shows Try again without any inline error, toast, or explanation. Changing only the maximum to 7 succeeds with Shipping rate created. Reproduced twice.",
+          "reproSteps": [
+            "Sign in and open Configuration > Shipping methods.",
+            "Create a shipping zone assigned to Channel-USD.",
+            "Add a Price-based rate, enter a name, and assign Channel-USD under Availability.",
+            "Enter a price of 10, Min Delivery Time of 5, and Max Delivery Time of 2.",
+            "Click Save.",
+            "Change only Max Delivery Time to 7 and click Save again."
+          ]
+        }
+      ]
+    },
+    {
+      "id": "codex-30m-saleor-2",
+      "name": "Store description persists despite failed save and discard",
+      "summary": "Saving only the store description with the existing empty company address reports a Country validation error, but still persists the description and leaves the form dirty.",
+      "expected": "A description-only update should either save successfully, or a failed save followed by discarding changes should leave the stored description unchanged.",
+      "actual": "Save reports This field is required beneath Country and in an Error notification, with a Try again button. It nevertheless persists the changed description; reopening Store after Ignore changes displays the new value. Reproduced twice.",
+      "reproSteps": [
+        "Sign in and open Configuration > Store with Company information and Country empty.",
+        "Change Store description to a recognizable value.",
+        "Click Save.",
+        "Observe the Country error and failed-save notification.",
+        "Click the Configuration breadcrumb and choose Ignore changes in Leave without saving changes?.",
+        "Reopen Store."
+      ],
+      "severity": 3
+    },
+    {
+      "id": "mo-30m-saleor-18",
+      "name": "All model types view shows unfiltered rows while retaining the previous search text",
+      "summary": "Selecting All model types leaves Brand in the search field while the table stably displays nonmatching model types.",
+      "expected": "After selecting All model types, the list should either remain filtered to Brand while Brand remains in the search field, or clear the search field when showing all model types.",
+      "actual": "After selecting All model types, the search field still showed Brand while the table showed Brand, Default Type, Lector, QA-modeltypes-20261009-A7F3-renamed, Refund Reason, and Simple. This mismatch remained after a five-second wait and a fresh browser observation.",
+      "reproSteps": [
+        "Start in an authenticated admin session restored from the supplied saved authentication state; no sign-in form was used.",
+        "Navigate to /model-types/?asc=true&sort=name.",
+        "In the Search model types field, enter Brand and wait until the table shows only Brand.",
+        "Click the plus button beside the view name, enter the fresh preset name QA-modeltypes-view-20260719-a83f, and click Save.",
+        "Open the view dropdown and select All model types.",
+        "Wait five seconds. Observe that the search field still shows Brand while the table includes nonmatching model types such as Default Type, Lector, Refund Reason, and Simple."
+      ],
+      "severity": 3,
+      "reviewedVariants": [
+        {
+          "id": "mo-60m-saleor-13",
+          "name": "All warehouses view shows unfiltered rows while retaining the warehouse search chip",
+          "summary": "Selecting All warehouses removes the warehouse search from the displayed results while leaving its query chip visible, so unrelated warehouses appear beneath an active-looking search.",
+          "expected": "With the exact warehouse-name query still visible in the search field, the list should show only the matching newly created warehouse.",
+          "actual": "After selecting All warehouses, the query chip remained visible but the table showed all warehouse rows, including Africa, Americas, Asia, Default, and other nonmatching entries. Waiting and pressing Enter did not restore filtering.",
+          "reproSteps": [
+            "Open /warehouses/ authenticated as the admin account using the provided saved authentication state; the dashboard account label is displayed as admin@example….",
+            "Create and save one fresh warehouse named warehouses-repro-06172026-mx7842, using United States of America, California, address 123 Repro Street, city Sacramento, and ZIP 95814.",
+            "Search for the exact name warehouses-repro-06172026-mx7842. At /warehouses/?asc=true&sort=name&query=warehouses-repro-06172026-mx7842, verify that only the new warehouse is listed.",
+            "Click the plus control beside the warehouse-list title and save a new view preset named warehouses-view-repro-06172026-mx7842.",
+            "Open the view selector and choose All warehouses.",
+            "At /warehouses/?asc=true&sort=name, observe that the search chip still shows warehouses-repro-06172026-mx7842 while unrelated warehouse rows are displayed. Wait at least six seconds and press Enter in the search field; the unfiltered rows remain."
+          ]
+        }
+      ]
+    },
+    {
+      "id": "mo-60m-saleor-11",
+      "name": "Has variant attributes = Yes filter excludes Product Types with saved variant attributes",
+      "summary": "The Product Types Has variant attributes = Yes filter repeatedly returns an empty list for a saved type with options enabled and Color assigned under Variant attributes; the UI also shows a 400 response error.",
+      "expected": "A Product Type with options enabled and Color saved in the Variant attributes section should appear when filtering for Has variant attributes is Yes. The detail page labels the section Variant attributes and describes both selection-on and selection-off entries as variant attributes.",
+      "actual": "Applying Has variant attributes is Yes showed “No product types found” and a visible “Response not successful: Received status code 400” error. The result persisted after refresh and on a second filter attempt. Clearing the filter showed the new type in the list, and reopening it confirmed options were enabled and Color remained saved under Variant attributes.",
+      "reproSteps": [
+        "Using the configured admin account, load the supplied authenticated session without changing authentication details, then open /configuration/ and click the Product Types card.",
+        "Click Create product type. Create a Regular product named catalogschema-variant-filter-20261123-7c41bd.",
+        "On its detail page, enable “Products of this type have options.” In the Variant attributes section, assign the existing Color attribute and save; observe the Product type updated confirmation and Color in the section.",
+        "Return to the Product Types list at /product-types/. Open Filters, set Where to Has variant attributes, keep the operator is, choose Yes, and click Apply.",
+        "Observe “No product types found” and the visible 400 response error. Refresh the filtered page at /product-types/?0%5Bs0.configurable%5D=true&sort=name&asc=true; the empty result remains.",
+        "Clear the filter and verify catalogschema-variant-filter-20261123-7c41bd is visible in the unfiltered list. Reopen it and verify options remain enabled and Color remains under Variant attributes. Return to the list and repeat Has variant attributes is Yes; it again shows no product types found."
+      ],
+      "severity": 3,
+      "matchingGuidance": {
+        "acceptanceScope": "Accepted as a valid reference by user instruction; source prerequisites and remaining evidence gaps are retained below.",
+        "prerequisites": [
+          "UI Yes resolves to configurable enum; fixture type has attributes independent of has_variants."
+        ]
+      }
+    }
+  ]
+}

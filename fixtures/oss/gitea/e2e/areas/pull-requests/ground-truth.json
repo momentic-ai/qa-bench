@@ -1,0 +1,215 @@
+{
+  "bugs": [
+    {
+      "name": "Pull request summary uses plural commits for one commit",
+      "summary": "A pull request containing exactly one commit uses the plural “1 commits” in its merge summary.",
+      "expected": "The merge summary should use the singular “1 commit” when the pull request contains one commit.",
+      "actual": "The summary says “wants to merge 1 commits” while the Commits tab shows a count of 1.",
+      "reproSteps": [
+        "Sign in as eval with password momentic-eval-1 and open eval/harbor-handbook.",
+        "Create a disposable branch from main, add a small Markdown file, and commit it once on that branch.",
+        "Create a pull request from the new branch into main.",
+        "Open its conversation page and confirm that the Commits tab shows 1.",
+        "Read the merge summary and observe “1 commits” instead of “1 commit”."
+      ],
+      "severity": 1
+    },
+    {
+      "id": "gitea-latest-single-commit-pr-review-submit-404",
+      "name": "Review submission from the latest single-commit PR view fails with HTTP 404",
+      "summary": "The latest single-commit PR diff offers an enabled Review panel, but submitting its comment uses a missing commit-scoped route and posts no review.",
+      "expected": "Submitting an enabled review from the latest/head single-commit PR diff should post the review successfully through the canonical PR review-submission endpoint.",
+      "actual": "The review is not submitted. A raw JSON parse error banner appears, the page stays on the commit-filtered URL, and the text remains in the panel.",
+      "reproSteps": [
+        "Sign in as eval and create or use a PR whose latest/head commit can be selected from Files Changed.",
+        "Through the PR commit selector, open the latest single-commit diff. Confirm Review is enabled.",
+        "Open Review, type a unique comment, and click Comment.",
+        "Observe that no review is posted, the page stays on the commit-scoped URL with the draft retained, and the request reaches HTTP 404. The recorded banner exposes a JSON parsing error."
+      ],
+      "severity": 3,
+      "matchNotes": {
+        "scope": "Enabled Review submission from the latest/head single-commit PR diff fails to post because its action reaches the missing commit-scoped route. Do not require all filtered views to permit review, and do not match a report solely about raw error-message wording to this functional reference."
+      }
+    },
+    {
+      "id": "gitea-pr-review-http-error-raw-json-network-feedback",
+      "name": "Review submission HTTP error is mislabeled Network error and exposes a JSON SyntaxError",
+      "summary": "A failed Review-panel submission receives a plaintext HTTP 404, but the UI labels a resulting client JSON parse exception as a network error.",
+      "expected": "When Review submission receives an HTTP error, show understandable submission-failure feedback and preserve the draft. Distinguish an HTTP rejection from a network outage, and do not expose an internal JSON parser exception.",
+      "actual": "The server responds HTTP404 with plain text Not found. The banner says Network error followed by SyntaxError: Unexpected token N / Not found is not valid JSON. The review draft remains in the panel.",
+      "reproSteps": [
+        "Sign in as eval and open a PR’s latest/head single-commit Files Changed view, where Review is enabled.",
+        "Open Review, enter a unique comment, and click Comment.",
+        "Observe the red banner combining Network error, SyntaxError and invalid JSON details. The request reached the server and received HTTP404; it was not a transport failure."
+      ],
+      "severity": 1,
+      "matchNotes": {
+        "scope": "Credit the Review-panel HTTP error being presented as a network outage with rawJSONparser exception. The missing-route/no-review-posted functional claim matches the separate severity3 reference. A generic parser allegation without this workflow should not gain an extra match here.",
+        "relatedReference": "For the author self-review Re-request Review sidebar case, use codex-60m-gitea-5 instead."
+      },
+      "matchingGuidance": {
+        "relatedExistingReference": "codex-60m-gitea-5 covers the author’s Re-request Review sidebar workflow receiving an empty403 and the same shared parser/catch failure. This reference is scoped to Review-panel submission feedback; it does not claim a new underlying generic-parser defect."
+      }
+    },
+    {
+      "name": "Reviewed by you omits a pull request with a recorded review by the current user",
+      "summary": "An open PR authored by the signed-in eval records that eval’s review comment, but global Pull Requests > Reviewed by you remains at 0 and shows no results, even after refresh.",
+      "expected": "The eval-authored PR should appear in the “Reviewed by you” view because the PR timeline records that the same eval reviewed it.",
+      "actual": "PR #8 displayed “eval reviewed now,” the submitted review comment, and eval in the Reviewers sidebar. Global Pull Requests > Reviewed by you showed a count of 0 and “No results”; this remained true after refreshing.",
+      "reproSteps": [
+        "Sign in as eval using the fixture credentials and open eval/harbor-handbook.",
+        "Create a fresh branch, add a file, and open a pull request into main authored by eval.",
+        "Open Files Changed → Review, enter a review comment, and submit with Comment.",
+        "Confirm the pull request timeline records eval’s review and the Reviewers sidebar includes eval.",
+        "Open global Pull Requests → Reviewed by you with state=open. Refresh and observe count 0 and No results despite the recorded review."
+      ],
+      "severity": 1
+    },
+    {
+      "id": "gitea-pr-dashboard-includes-disabled-unit",
+      "name": "Global Pull Requests dashboard lists and counts PRs from repositories with Pull Requests disabled",
+      "summary": "After Pull Requests is disabled for a repository, the global dashboard still includes its open PR in results and counts, presenting an unavailable PR as actionable.",
+      "expected": "The global Pull Requests dashboard should exclude PRs from repositories where Pull Requests is disabled, including their contribution to the displayed open count and repository grouping. Disabling the feature must not leave an actionable dashboard result leading to an unavailable detail page.",
+      "actual": "With Pull Requests disabled on qa-pull-review/pull-sandbox, the repository navigation has no Pull Requests tab, but /pulls still lists Organization release review and counts it as 1 Open and In your repositories 1. Clicking its title reaches 404 Not Found while the same administrator retains repository access.",
+      "reproSteps": [
+        "Sign in as eval with administration access to an initialized disposable repository. Create an open pull request between two changed branches, or use an existing open PR.",
+        "Open repository Settings, disable Pull Requests, and save. Confirm the repository navigation no longer has a Pull Requests tab; remain signed in as the same administrator.",
+        "Choose Pull Requests in the global navigation to open /pulls. Locate the PR from the repository whose Pull Requests feature was disabled. Observe that it remains listed and contributes to the open count and repository grouping.",
+        "Click that visible PR title. Observe 404 Not Found. The qualifying failure is retaining the unavailable PR in the global results/counts; the repository intentionally disabling its detail route is not a separate bug."
+      ],
+      "severity": 3,
+      "matchingGuidance": {
+        "deduplication": "Latest main d49150034f has no accepted reference for disabled-repository PRs remaining in global results. The disabled issue-tracker dashboard reference concerns Issues; existing PR filter-loss references use different triggers. This reference covers global PR results and counts only; organization dashboard variants are not independently confirmed here."
+      }
+    },
+    {
+      "id": "gitea-pr-assigned-exact-search-omits-match",
+      "name": "Assigned-to-you exact search hides a matching assigned pull request",
+      "summary": "The global Pull Requests dashboard lists an assigned PR without a query, but searching a matching title term under Assigned to you hides it while the same query under Created by you finds it.",
+      "expected": "An open PR assigned to the signed-in user remains visible under Assigned to you when an Exact search matches its title. Searching must retain the matching assigned result and its count.",
+      "actual": "Assigned to you lists the open PR Update README.md with count 1 before searching. Submitting README with Exact selected retains type=assigned but changes the count to 0 and shows No results. Created by you returns the same PR for the same query.",
+      "reproSteps": [
+        "Sign in as eval and create a disposable PR titled Update README.md, authored by eval and assigned to eval. Confirm its assignee on the PR detail.",
+        "Open global Pull Requests and select Assigned to you with state Open and an empty search. Confirm that Update README.md appears and the Assigned to you count includes it.",
+        "Enter README in Search pulls with Exact selected and submit. The URL retains type=assigned and includes q=README&search_mode=exact.",
+        "Observe that the assigned matching PR disappears, Assigned to you shows 0, and No results appears.",
+        "Choose Created by you with the same README query. Confirm the PR appears, establishing that its matching title is searchable. Return to Assigned to you and repeat the search."
+      ],
+      "severity": 3,
+      "matchNotes": {
+        "scope": "Credit a matching assigned PR disappearing from the global Assigned to you view after keyword search while type=assigned remains selected. The same-query Created by you control establishes that the title is indexed.",
+        "deduplication": "The accepted Assigned-to-you exact-search omission for Issues shares a likely implementation defect but belongs to a different eval product area and record type. Keep this PR reference separate under the existing grading contract. PR dashboard search dropping an explicit assignee/author parameter instead admits previously excluded records; it is a distinct trigger and result and must not be matched to this missing-result reference."
+      }
+    },
+    {
+      "id": "gitea-bulk-reopen-deleted-head-pr",
+      "name": "Bulk Open reopens a closed PR whose head branch was deleted, leaving it broken",
+      "summary": "Bulk Open reopens a closed PR after its head branch is deleted, bypassing the detail page’s explicit reopening prohibition and leaving a broken open PR.",
+      "expected": "Bulk Open must enforce the same deleted-head restriction as PR detail: keep the PR closed and explain that its deleted branch prevents reopening.",
+      "actual": "The detail page says the PR cannot be reopened because its branch was deleted and offers no Reopen control. Bulk Open nevertheless persists an Open state and reopened event; the resulting detail page reports missing fork information and offers no merge control.",
+      "reproSteps": [
+        "Sign in as eval and create a disposable open PR with its own head branch.",
+        "Close the PR, use Delete Branch, and confirm deletion. On the PR detail, confirm the deleted-branch notice and absence of a Reopen control.",
+        "Open the repository Pull Requests list, select Closed, select the PR’s checkbox, and click bulk Open.",
+        "Open the PR detail again. It is now Open with a reopened event, but its merge box says This pull request is broken due to missing fork information and has no merge control."
+      ],
+      "severity": 3,
+      "matchingGuidance": {
+        "matchScope": "Deleted-head PR reopening and resulting invalid open state. The separate duplicate-open-PR bulk-reopen finding has a different constraint and outcome."
+      }
+    },
+    {
+      "id": "codex-60m-gitea-5",
+      "name": "Re-request review on the author's comment review fails with a raw JSON error",
+      "summary": "After an author submits a comment-only review of their own pull request, the reviewer sidebar offers Re-request review for that author. The action fails with a raw network/JSON exception on every attempt.",
+      "expected": "The sidebar should offer review re-request only when it can succeed, or display a clear validation message for a self-review request.",
+      "actual": "Clicking the circular Re-request review action beside admin displays 'Network error SyntaxError: Failed to execute json on Response: Unexpected end of JSON input' and creates no review request. Reloading and repeating reproduces the error.",
+      "reproSteps": [
+        "Sign in as admin and open a pull request authored by admin, such as /admin/bugbash-code-flows/pulls/4.",
+        "Open Files Changed, choose Review, submit a Comment review.",
+        "Return to Conversation. In Reviewers, admin now appears with a Re-request review action.",
+        "Click Re-request review beside admin.",
+        "Observe the raw network/JSON error. Reload and repeat to confirm it fails again."
+      ],
+      "severity": 3
+    },
+    {
+      "id": "gitea-pr-dashboard-search-drops-author",
+      "name": "Global /pulls text search drops the selected Author (poster) filter",
+      "summary": "Submitting text search on the global PR dashboard drops its selected Author filter and admits PRs by other authors.",
+      "expected": "Keep the selected Author filter when submitting a text search, returning PRs matching both the keyword and author.",
+      "actual": "The URL becomes /pulls?type=your_repositories&sort=recentupdate&state=open&q=ownership&search_mode=exact with no poster parameter, and eval's PR #5 shows up in the results.",
+      "reproSteps": [
+        "Sign in as eval. Create or use an open PR by eval with a unique title token, and identify another fixture author such as alex.",
+        "Open global /pulls and select alex through Author. Confirm the eval-authored PR is excluded and poster=alex is present in the URL.",
+        "Search the unique title token and submit.",
+        "Observe poster disappears and the eval-authored matching PR is returned. A combined q-and-poster query retains the correct empty result."
+      ],
+      "severity": 3,
+      "matchingGuidance": {
+        "scope": "Global PR dashboard Author filtering lost on text-search submission. Different from state tabs dropping filters or searching Assigned to you omitting a matching assigned PR."
+      }
+    },
+    {
+      "id": "mo-60m-gitea-5",
+      "name": "Quote Reply drops the quoted comment when submitting a reply",
+      "summary": "Quote Reply visibly inserts the source comment into the editor, but the posted reply omits it; the omission persisted after refresh and a second attempt.",
+      "expected": "Submitting a reply composed with Quote Reply should preserve the visibly inserted quoted source along with the reply text.",
+      "actual": "In two attempts, the editor visibly showed the source quote followed by reply text before submission, but the posted reply displayed only the reply text. The omission remained after refreshing the PR conversation.",
+      "reproSteps": [
+        "Open /admin/harbor-handbook/pulls and load the supplied signed-in admin session; no credentials were entered, and the session remained signed in.",
+        "As admin, create a fresh private repository named pulls-comment-quote-20260611-4827 through the UI, initialize it with the default main branch, and create the repository.",
+        "Create branch pulls-comment-quote-feature, add pulls-comment-quote.txt with a short pulls-comment-prefixed line, and commit it through the UI.",
+        "Create an open pull request from pulls-comment-quote-feature into main.",
+        "On the pull request Conversation view, post a top-level comment: “pulls-comment: quoted source”. Open that comment’s actions menu and choose Quote Reply.",
+        "Confirm the editor visibly contains “> pulls-comment: quoted source”, append “pulls-comment: reply text” on the following line, and submit with Comment.",
+        "Inspect the posted reply at /admin/pulls-comment-quote-20260611-4827/pulls/1#issuecomment-44; it shows only “pulls-comment: reply text”. Refresh and confirm the omission persists.",
+        "To rule out accidentally replacing the quote while typing, repeat with a second top-level comment “pulls-comment: quoted source retry” and append “pulls-comment: retry reply text”; the editor visibly shows both before submission, but the posted reply shows only the reply text at /admin/pulls-comment-quote-20260611-4827/pulls/1#issuecomment-67."
+      ],
+      "severity": 3,
+      "matchingGuidance": {
+        "acceptanceScope": "Accepted as a valid reference by user instruction; source prerequisites and remaining evidence gaps are retained below.",
+        "prerequisites": [
+          "Programmatic quote insertion fails to synchronize the submitted field/editor instance."
+        ]
+      }
+    },
+    {
+      "name": "Top-level Pull Requests search drops Assignee filter and includes unassigned PR",
+      "summary": "Submitting search on the top-level Pull Requests dashboard drops the selected assignee filter and displays a matching unassigned PR that was excluded before the search.",
+      "expected": "Search should retain the selected assignee and return only matching pull requests assigned to that user.",
+      "actual": "With Assignee=eval selected, the dashboard URL contains assignee=eval and excludes the unassigned fixture. Submitting a keyword shared by the assigned and unassigned fixtures removes assignee=eval and shows both pull requests. The unassigned result remains visible after waiting for the search to settle.",
+      "reproSteps": [
+        "Sign in as the Gitea fixture account eval. Use fresh disposable records and a unique shared title token.",
+        "Create a disposable initialized repository and two changed branches. Open two pull requests with titles containing the shared token; assign one to eval and leave the other unassigned.",
+        "Open the top-level Pull Requests dashboard at /pulls, keep the Open state, and select eval through its Assignee control.",
+        "Confirm the URL contains assignee=eval and the unassigned PR is excluded from the narrowed list.",
+        "Enter the shared token into the dashboard search and click the magnifying-glass search button.",
+        "Observe that assignee=eval disappears from the URL and the results include both fixtures, including the unassigned PR. Wait at least five seconds to confirm the broadened result remains."
+      ],
+      "severity": 3,
+      "matchingGuidance": {
+        "scope": "Accept the independently reproduced assignee-search failure on the Pull Requests dashboard. Author, label, and Open/Closed variants are not required for matching this reference.",
+        "deduplication": "The Issues and Pull Requests reports share an implementation defect but affect separate eval product areas and record types. Keep separate grading slots under the existing grading contract. The accepted Assigned-to-you exact-search omission describes a different result and trigger."
+      }
+    },
+    {
+      "name": "Pull Requests dashboard does not visibly indicate the active assignee outside the dropdown",
+      "summary": "The top-level Pull Requests dashboard does not visibly distinguish Assignee=eval from no explicit assignee filter while the dropdown is closed.",
+      "expected": "The collapsed filter control or another visible indicator should identify the active assignee, so the current result scope is apparent without opening the dropdown or reading the URL.",
+      "actual": "With assignee=eval active, the closed control still displays only Assignee with the same styling as the unfiltered control and no selected-name chip, avatar, or active badge. Reopening the dropdown reveals eval in its input. Without a keyword, assigned records are correctly retained and unassigned records excluded; the missing feedback is a visual-state defect, separate from search dropping the filter.",
+      "reproSteps": [
+        "Sign in as fixture account eval and open the top-level Pull Requests dashboard at /pulls with In your repositories and Open selected. Use disposable assigned and unassigned records to compare the unfiltered and filtered results.",
+        "Open Assignee, select eval, and close the dropdown. Confirm assignee=eval is in the URL and unassigned records are excluded.",
+        "Inspect the collapsed results view. The control still reads only Assignee and has no selected username, avatar, chip, or active styling to distinguish it from the unfiltered state.",
+        "Reopen Assignee and observe eval in its input; close it and observe that the selection is no longer visibly identified.",
+        "Repeat the display comparison with a keyword q and assignee=eval both present in the /pulls URL. The collapsed control still reads only Assignee. This step checks selection feedback rather than the correctness of exact-search results."
+      ],
+      "severity": 1,
+      "matchingGuidance": {
+        "scope": "Missing indication in the collapsed results view; do not claim the selection is invisible inside the opened menu. A generic label after search has genuinely cleared the filter is not this defect.",
+        "deduplication": "Separate Issues and Pull Requests product-area references for their independently observed collapsed controls. Neither matches the accepted assignee-search broadening references, where the filter itself is removed."
+      }
+    }
+  ]
+}

@@ -1,0 +1,78 @@
+{
+  "bugs": [
+    {
+      "id": "gitea-earlier-org-webhook-copy",
+      "name": "Organization-level Gitea webhook editor refers to “your repository” instead of the organization",
+      "summary": "The organization-level Gitea webhook editor uses repository-specific helper copy.",
+      "expected": "The helper copy should refer to configuring Gitea for the organization, since this is an organization-level webhook that applies across the organization's repositories.",
+      "actual": "The organization-level webhook form displays “Integrate Gitea into your repository.”, which describes an individual repository rather than the organization.",
+      "reproSteps": [
+        "Sign in with organization-owner access and open a disposable organization’s Settings > Webhooks.",
+        "Choose Add Webhook > Gitea.",
+        "Read the helper text above Target URL, which says Integrate Gitea into your repository on the organization-level form."
+      ],
+      "reason": "The user explicitly rejected this generic helper-copy wording as a non-actionable issue. The report demonstrates repository-oriented wording on an organization webhook form, without showing incorrect webhook event scope or a failed operation. This records the human acceptance decision; it does not claim the wording is organization-specific or that a maintainer explicitly endorsed it."
+    },
+    {
+      "id": "gitea-novel-023",
+      "name": "Pulse release title opens tag source",
+      "summary": "Clicking a published-release title in Pulse opens the tag source browser instead of its release details.",
+      "expected": "Clicking “Pulse link target” in the published-release feed entry opens the release details for tag v0.1.0-pulse-link.",
+      "actual": "The click navigated to /eval/pulse-release-link-repro-m7q4-20261014/src/tag/v0.1.0-pulse-link. The Code tab and tag file browser were visible, with README.md and the repository README; the release title appeared only in the sidebar.",
+      "reproSteps": [
+        "Starting from /eval/harbor-handbook/activity, use the provided authenticated session signed in as admin; do not modify the seeded repository.",
+        "Use the global create menu to create and initialize the disposable repository eval/pulse-release-link-repro-m7q4-20261014.",
+        "Open the fixture’s Releases UI, create a release with tag v0.1.0-pulse-link and title “Pulse link target,” and publish it.",
+        "Open /eval/pulse-release-link-repro-m7q4-20261014/activity and locate the “Published v0.1.0-pulse-link Pulse link target” entry.",
+        "Click “Pulse link target.” The browser navigates to /eval/pulse-release-link-repro-m7q4-20261014/src/tag/v0.1.0-pulse-link, displaying the tag source-code view."
+      ],
+      "reason": "Rejected under the user’s explicit rule: opening the source snapshot of the released commit is acceptable. The reported destination /src/tag/v0.1.0-pulse-link resolves the release’s Git tag to its commit, and release publishing records its commit SHA using the same GetTagCommit(tag) operation. Showing that tagged source instead of release notes therefore does not establish this bug. Rejection is scoped to the reported ordinary, unchanged tag; no wrong branch, moved tag or mismatched commit is demonstrated."
+    },
+    {
+      "id": "mo-60m-gitea-7",
+      "name": "Organization project board Label filter does not open",
+      "summary": "On the fresh organization project board, the Label filter stayed inert despite a visible issue carrying the repository label; the adjacent Assignee filter opened normally.",
+      "expected": "The board's Label filter should open choices for labels represented by its project issues, including board-label-fixture, so the user can filter the board.",
+      "actual": "On the board, the issue card visibly displayed board-label-fixture, but clicking Label and its dropdown arrow did not open a menu or change the board. The adjacent Assignee control opened its menu normally.",
+      "reproSteps": [
+        "Open / with the supplied admin saved-auth session already loaded; the signed-in account is shown as admin. No authentication details were changed and no sign-out was performed.",
+        "Use the top-right plus menu > New Organization and create the fresh organization projects-org-label-filter-96a71.",
+        "In that organization, create repository label-filter-fixture and create the organization-owned project Label filter fixture board through the organization's Projects tab > New Project.",
+        "Open the repository's Issues > Labels page and create label board-label-fixture.",
+        "Create issue Label filter board fixture issue, apply board-label-fixture, and add it to Label filter fixture board using the issue sidebar's Projects control.",
+        "Open the organization project board at /projects-org-label-filter-96a71/-/projects/20. Confirm the issue card and its board-label-fixture badge are visible.",
+        "Click the board's Label filter and its dropdown arrow. Observe that no menu opens and the board remains unchanged; click Assignee to confirm its menu opens, then close it and retry Label."
+      ],
+      "reason": "Human review rejected the reported expectation as inconsistent with intended behavior. The introducing board-filter PR31999 intentionally scopes organization boards to organization labels. Its landed patch includes TODO Add option to filter also by repository specific labels, which directly identifies the candidate expectation as an unimplemented extension. The shared template deliberately disables the dropdown when the supplied organization-label set is empty. A repository-only label displayed on an issue card does not populate that set. The report expects board filters to include all labels on visible cards; that broader scope is contradicted by the explicit design limitation, even though the adjacent assignee menu has choices.",
+      "severity": 3
+    },
+    {
+      "id": "gitea-novel-021",
+      "name": "Code Frequency chart omits date context for populated single-week history",
+      "summary": "On a fresh private repository with a qualifying three-commit same-week history, Code Frequency rendered nonzero additions and deletions but showed no horizontal date labels; hovering both plotted regions showed no date context, so the changes could not be tied to a week.",
+      "expected": "A populated Code Frequency time series should provide visible horizontal date context through its time axis or interaction with its plotted data.",
+      "actual": "The settled chart displayed 6 green additions and 4 red deletions, but no horizontal date labels. Hovering the green additions and red deletions regions showed no date context. The normal same-origin chart-data GET returned HTTP 200 with one weekly record: {\"week\":1791676800000,\"additions\":6,\"deletions\":4,\"commits\":3}.",
+      "reproSteps": [
+        "Set the viewport to 1440 by 1000 CSS pixels and sign in as the fixture administrator. Through the UI, create a fresh private repository initialized with a README.",
+        "On main, create a text file with four lines and commit it, then delete the file and commit again within the same week. Before opening Activity, confirm three commits and the four-line deletion in the visible history and diff.",
+        "Open Activity > Code Frequency and wait for the graph to settle. In the recorded repository, it displays six additions and four deletions from one weekly data bucket.",
+        "Inspect the horizontal axis and hover the filled additions and deletions regions. The reported same-month range has no date labels or date-specific hover feedback. These observations are preserved as the rejected claim, not evidence of incorrect statistics."
+      ],
+      "reason": "Human review rejected this report as written: weekly commit aggregation and calendar-month-or-coarser axis ticks explain the observed short-history chart. Chart.js retains only month ticks inside the plotted range, so a same-month weekly interval can have no date labels. The report establishes no incorrect totals, loading failure or broken trend. A sparse-history date fallback could be a usability enhancement; no explicit maintainer endorsement of blank axes is claimed."
+    },
+    {
+      "id": "gitea-novel-018",
+      "name": "Copy button overlaps narrow Generic package instructions",
+      "summary": "At a 390px browser width, hovering over Generic package instructions reveals a copy button that covers part of the command.",
+      "expected": "The complete installation command, including its URL, should remain readable when the copy button is visible at a 390×844 viewport.",
+      "actual": "On hover, the copy button appears over the right end of line 2 and visibly obscures `/ap` in the URL. The text becomes readable again when the pointer leaves the code block.",
+      "reproSteps": [
+        "At a 390×844 CSS viewport, authenticate as Contributor Alex using the supplied saved authentication session, then open /eval/harbor-handbook/packages.",
+        "Open the existing Generic package ri-admin-f3c19d, version 1.0.0, at /eval/-/packages/generic/ri-admin-f3c19d/1.0.0.",
+        "Scroll until the Installation command block is visible; the command wraps across multiple lines.",
+        "Hover over the command block to reveal the copy button. Observe that it obscures the trailing /ap on the second line; move the pointer to the package heading and observe that the button disappears and the URL becomes readable again."
+      ],
+      "reason": "Human review rejected this report as a product bug. The reported copy-button overlap is a temporary desktop-browser hover overlay; moving the pointer away restores the text. The supplied flow does not establish failure to read or copy the installation command, and a 390px desktop hover does not establish touch-phone behavior."
+    }
+  ]
+}

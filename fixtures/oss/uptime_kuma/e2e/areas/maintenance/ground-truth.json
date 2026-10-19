@@ -1,0 +1,170 @@
+{
+  "bugs": [
+    {
+      "name": "Day-of-month maintenance list disagrees with its saved UTC time and effective range",
+      "summary": "A recurring day-of-month maintenance row shows a UTC occurrence that disagrees with its saved day, time, and effective range.",
+      "expected": "The maintenance list should reflect the saved day, UTC time, and effective range.",
+      "actual": "A recurring day-of-month maintenance row shows a UTC occurrence that disagrees with its saved day, time, and effective range.",
+      "reproSteps": [
+        "Create a disposable maintenance window for a seeded monitor.",
+        "Choose Recurring - Day of Month, day 1, 00:00–00:15, UTC, with a future effective range beginning on the first day of a month.",
+        "Save it and compare the list row with the values shown after reopening Edit.",
+        "Delete only the disposable maintenance afterward."
+      ],
+      "severity": 3
+    },
+    {
+      "name": "Weekday maintenance list shifts the configured UTC interval by seven hours",
+      "summary": "A recurring weekday maintenance row shifts the configured UTC time window by several hours after saving.",
+      "expected": "The maintenance list should show the saved UTC weekday time window.",
+      "actual": "A recurring weekday maintenance row shifts the configured UTC time window by several hours after saving.",
+      "reproSteps": [
+        "Create a disposable maintenance window for a seeded monitor.",
+        "Choose Recurring - Day of Week, select Mon and Wed, set 09:00–10:30 and UTC, and save.",
+        "Compare the list row’s UTC time with the edit form’s 09:00–10:30 window.",
+        "Delete only the disposable maintenance afterward."
+      ],
+      "severity": 3
+    },
+    {
+      "name": "Default single-window maintenance times save as an already-ended UTC range",
+      "summary": "Saving a single maintenance window with untouched Same as Server Timezone defaults can immediately mark it Ended.",
+      "expected": "The default single-window times should save as an active or future window.",
+      "actual": "Saving a single maintenance window with untouched Same as Server Timezone defaults can immediately mark it Ended.",
+      "reproSteps": [
+        "Open Schedule Maintenance and enter a unique title for a seeded monitor.",
+        "Leave Single Maintenance Window, Same as Server Timezone, and the prefilled times unchanged.",
+        "Save and inspect whether the new row is already Ended despite a future-looking form window.",
+        "Delete only the disposable maintenance afterward."
+      ],
+      "severity": 3
+    },
+    {
+      "name": "Single Maintenance Window accepts an end time earlier than its start",
+      "summary": "A new single-window maintenance schedule was saved and shown as Scheduled even though its displayed end time precedes its start time.",
+      "expected": "The form should prevent saving the single maintenance window or show clear validation requiring an end time after its start.",
+      "actual": "After Save, the maintenance list displayed the uniquely titled schedule as Scheduled with start 2026-10-05 14:00 and end 2026-10-05 13:00.",
+      "reproSteps": [
+        "Sign in as the fixture admin and open Maintenance > Schedule Maintenance.",
+        "Create a disposable Single Maintenance Window for a seeded monitor on a future day, with Start at 14:00 and End at 13:00 on that same day.",
+        "Click Save. Observe the new maintenance card marked Scheduled with the end time before the start time."
+      ],
+      "severity": 3
+    },
+    {
+      "name": "Cron maintenance list shows the wrong occurrence day and time",
+      "summary": "A newly saved weekly Monday 04:15 Asia/Kolkata cron maintenance schedule is listed as Sunday 2026-09-27 15:45–16:30 instead of its first configured occurrence on Monday.",
+      "expected": "For cron `15 4 * * 1` with timezone Asia/Kolkata and an effective start of 2026-09-26 08:00, the first occurrence should be Monday 2026-09-28 at 04:15 Asia/Kolkata, lasting 45 minutes; the list should display an occurrence consistent with that schedule.",
+      "actual": "After saving the new schedule, its visible maintenance-list row showed 2026-09-27 15:45–16:30 with UTC+05:30 Asia/Kolkata. This is Sunday afternoon, not the form-confirmed Monday 04:15 schedule. The displayed interval is 45 minutes.",
+      "reproSteps": [
+        "Sign in as the fixture admin and create a disposable Cron Expression maintenance schedule for a seeded monitor.",
+        "Enter `15 4 * * 1` (Monday 04:15), duration 45 minutes, timezone Asia/Kolkata, and an effective range beginning on a future Saturday and spanning the following Monday.",
+        "Save and compare the list row with the form-confirmed Monday 04:15 occurrence. In this run the list showed Sunday 15:45–16:30 instead."
+      ],
+      "severity": 3
+    },
+    {
+      "name": "Interval recurrence description omits the configured number of days",
+      "summary": "The Interval field accepts 2, but its visible recurrence description remains “Interval (Run once every days)” and omits the configured frequency.",
+      "expected": "With Recurring - Interval selected and the interval set to 2, the visible recurrence description should state that the maintenance runs once every 2 days.",
+      "actual": "The input visibly contains 2, while the label reads “Interval (Run once every days).” The omission persisted after blurring the field and waiting five seconds.",
+      "reproSteps": [
+        "Open Schedule Maintenance and select Recurring - Interval.",
+        "Enter 2 in the Interval field and blur it.",
+        "Observe that the label says Run once every days without the number."
+      ],
+      "severity": 1
+    },
+    {
+      "name": "Pause confirmation dialog has grammatically incorrect prompt copy",
+      "summary": "Pause confirmation dialog has grammatically incorrect prompt copy Reported variant: The dialog asks “Are you sure want to pause?”, omitting “you”. Count this as the same reference rather than a separate bug.",
+      "expected": "The confirmation prompt should use grammatical copy, such as “Are you sure you want to pause?”",
+      "actual": "The visible confirmation prompt reads “Are you sure want to pause?”",
+      "reproSteps": [
+        "Create a disposable future maintenance schedule.",
+        "Click Pause on the schedule.",
+        "Observe that the confirmation asks Are you sure want to pause?",
+        "Reported variant: Open /dashboard/2",
+        "Reported variant: Open the Dashboard.",
+        "Reported variant: Open the non-first monitor “Application Entry API”.",
+        "Reported variant: Select Pause to open the confirmation dialog."
+      ],
+      "severity": 1,
+      "reviewedVariants": [
+        {
+          "name": "Pause confirmation prompt is missing “you”",
+          "expected": "The confirmation should use grammatically complete copy, such as “Are you sure you want to pause?”.",
+          "actual": "The dialog asks “Are you sure want to pause?”, omitting “you”."
+        }
+      ]
+    },
+    {
+      "name": "Recurring interval maintenance is listed as scheduled after its effective end date/time",
+      "summary": "A recurring daily maintenance entry with an effective end on Oct 8 was saved and listed for an occurrence on Oct 9, after its retained end time.",
+      "expected": "The visible “Effective Date Range” should bound the recurring schedule: if its end precedes the next recurrence, that later occurrence should not be listed as scheduled.",
+      "actual": "The form showed a retained effective range of 10/08/2026 12:53 PM–01:53 PM and a daily 02:00–03:00 window, but after saving the maintenance list showed the entry as Scheduled for 10/09/2026 02:00–03:00 (UTC-07:00 America/Los_Angeles).",
+      "reproSteps": [
+        "Start in the provided authenticated admin session (saved authentication state loaded; no credentials entered) and open /dashboard.",
+        "Open the account menu, choose Maintenance, then click Schedule Maintenance.",
+        "Enter the unique title MO-MAINT-Interval-Expiry-Check-1949 and select MO-MAINT-Recurrence-Explore-1944 as the affected monitor.",
+        "Set Strategy to Recurring - Interval, leave the interval at 1 day, set the maintenance time window to 02:00–03:00, and leave the timezone as Same as Server Timezone.",
+        "Set or retain an effective date range that starts at the current time and ends later the same day before the next 02:00 occurrence. In this run the form showed 10/08/2026 12:53 PM–10/08/2026 01:53 PM.",
+        "Click Save and inspect the maintenance list. The new entry is shown as Scheduled for 2026-10-09 02:00–03:00 (UTC-07:00 America/Los_Angeles).",
+        "Open Edit on the new entry and verify the effective end remains 10/08/2026 01:53 PM; return to the list and verify the next-day Scheduled occurrence remains."
+      ],
+      "severity": 3
+    },
+    {
+      "name": "Recurring maintenance without a selected day shows raw CronPattern errors",
+      "summary": "Weekly and monthly recurring maintenance permit submission with no selected day and expose internal CronPattern errors instead of field validation. This reference does not assert that no database row was stored.",
+      "expected": "When Recurring - Day of Week or Recurring - Day of Month is selected, Save should require at least one weekday or month day and show a clear field validation message.",
+      "actual": "Saving with no selected weekday or month day shows a raw CronPattern parser error and leaves the form open instead of explaining the missing recurrence day.",
+      "reproSteps": [
+        "Sign in as admin and open Maintenance > Schedule Maintenance.",
+        "Enter a title and select one affected monitor, such as BB-MON-manual.",
+        "Set Strategy to Recurring - Day of Week; leave all weekday checkboxes unselected and click Save.",
+        "Observe the raw CronPattern dayOfWeek error.",
+        "Open a fresh Maintenance > Schedule Maintenance form, enter a title, and select an affected monitor.",
+        "Set Strategy to Recurring - Day of Month; leave all numbered days and Last Day of Month unselected and click Save.",
+        "Observe the raw CronPattern configuration-format error."
+      ],
+      "severity": 1
+    },
+    {
+      "id": "codex-60m-uptime_kuma-5",
+      "name": "Required maintenance title accepts whitespace and creates an unnamed entry",
+      "summary": "Maintenance's required Title validation accepts whitespace-only input, persisting a blank heading in the maintenance list.",
+      "expected": "Save rejects a title containing only whitespace and asks for a visible title, as it does for an empty title.",
+      "actual": "Save reports success. The maintenance card has no visible heading, and reopening after reload preserves the whitespace-only title.",
+      "reproSteps": [
+        "Sign in, open Maintenance and create or edit an entry with an affected monitor.",
+        "Enter three spaces in the required Title field.",
+        "Select Manual strategy and click Save.",
+        "Reload the maintenance list, then reopen the entry."
+      ],
+      "severity": 3
+    },
+    {
+      "id": "mo-60m-uptime_kuma-15",
+      "name": "Recurring interval maintenance retains an unintended one-hour effective range",
+      "summary": "A new two-day recurring interval schedule persists a prefilled one-hour effective range when the optional date-range controls are left untouched.",
+      "expected": "With Recurring - Interval set to every 2 days and the Effective Date Range (Optional) left untouched, the schedule should remain scheduled with an upcoming occurrence.",
+      "actual": "Selecting Recurring - Interval with a two-day interval leaves the automatically populated one-hour effective date range in the saved schedule. Those bounds limit recurrence to that hour, and the schedule becomes Ended once the upper bound passes.",
+      "reproSteps": [
+        "Open /maintenance in the authenticated admin session supplied for this test.",
+        "Create a fresh monitor named exp-maint-interval-verify-20261009-8634a1 with URL the app and save it.",
+        "From the account menu, open Maintenance and select Schedule Maintenance.",
+        "Enter title exp-maint-interval-default-range-verify-4b70d2 and a description; select only the newly created test monitor and leave All Status Pages unchecked.",
+        "Select Recurring - Interval, set the interval to 2 days, select UTC, and leave the Effective Date Range (Optional) inputs unchanged.",
+        "Save the schedule. Observe the Added Successfully confirmation and verify that the saved recurring schedule retains a one-hour effective range even though the optional range controls were left untouched."
+      ],
+      "severity": 3,
+      "matchingGuidance": {
+        "acceptanceScope": "Accepts the untouched optional range limiting recurrence. Immediate Ended status at the specific reported UTC time requires runtime clock/timezone conditions and is not part of this reference.",
+        "prerequisites": [
+          "Populated default range remains; server now is past saved end bound."
+        ]
+      }
+    }
+  ]
+}

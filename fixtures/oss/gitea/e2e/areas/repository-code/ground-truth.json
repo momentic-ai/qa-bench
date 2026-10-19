@@ -1,0 +1,301 @@
+{
+  "bugs": [
+    {
+      "name": "Invalid regular expression produces a 500 in repository code search",
+      "summary": "Submitting an invalid regular expression in repository code search opens a 500 error page instead of showing a validation message.",
+      "expected": "Invalid regular expressions should produce a validation message, not a server error.",
+      "actual": "Submitting an invalid regular expression in repository code search opens a 500 error page instead of showing a validation message.",
+      "reproSteps": [
+        "Sign in and open the seeded repository.",
+        "Search code once, then switch Search mode to Regexp.",
+        "Submit the malformed expression `[`.",
+        "Observe whether a 500 page with internal diagnostics replaces the search results."
+      ],
+      "severity": 5
+    },
+    {
+      "name": "Commit detail summary uses incorrect singular/plural grammar for one changed file",
+      "summary": "Commit detail and branch comparison diff summaries use plural “files” when exactly one file changed.",
+      "expected": "Diff summaries should use singular “file” when exactly one file changed.",
+      "actual": "A commit changing one file displays “1 changed files with 1 additions and 0 deletions”. Comparing docs/release-owners against main also displays “1 changed files with 5 additions and 0 deletions”.",
+      "reproSteps": [
+        "Open an authenticated repository's commit history.",
+        "Open a commit that changes exactly one file.",
+        "Read the changed-files summary above the diff and observe that it says `1 changed files with 1 additions and 0 deletions`.",
+        "Reported comparison-page variant: open eval/harbor-handbook → Branches and choose New Pull Request beside docs/release-owners, with main as the base.",
+        "Read the comparison summary and observe “1 changed files with 5 additions and 0 deletions”."
+      ],
+      "severity": 1
+    },
+    {
+      "id": "gitea-branch-percent-substring-search-misses-match",
+      "name": "Branch search loses matching literal-percent substrings",
+      "summary": "A saved branch containing an allowed percent sign is found by an ordinary substring or full name but disappears for a matching substring ending in percent.",
+      "expected": "Branch search must retain the existing qa/hash#percent% result for matching substrings such as percent% and hash#percent%, as it does for percent and the complete saved name.",
+      "actual": "Searching percent finds qa/hash#percent%; percent% and hash#percent% show no matching branch. Searching the complete qa/hash#percent% finds it again.",
+      "reproSteps": [
+        "In eval/harbor-handbook, create a branch from main named qa/hash#percent% using the normal branch-creation control.",
+        "Open the repository Branches page and search for percent. Confirm the saved branch appears below the default branch.",
+        "Replace the query with percent% and submit. Observe that the matching branch disappears.",
+        "Search hash#percent% and observe the same missing result. Search the complete qa/hash#percent% and confirm the branch reappears."
+      ],
+      "severity": 3,
+      "matchingGuidance": {
+        "scope": "Credit omission of a specific existing branch for a literal matching substring. Extra wildcard results alone are insufficient. This branch-inventory workflow is distinct from the accepted Explore repository-description search reference."
+      }
+    },
+    {
+      "id": "gitea-empty-upload-stores-nul-buffer",
+      "name": "Uploading an empty file commits 1024 NUL bytes",
+      "summary": "A genuine zero-byte text upload is stored and committed as a 1024-byte binary file; the downloaded bytes change, as well as its displayed size and editability.",
+      "expected": "Preserve uploaded file contents exactly. A zero-byte file must remain zero bytes after commit and download, as a blank file created through New File does.",
+      "actual": "The upload card shows 0 B, but after commit the file is 1.0 KiB and binary with copy/edit unavailable. Download yields exactly 1024 NUL bytes. A blank editor-created file on the same branch remains 0 B plaintext.",
+      "reproSteps": [
+        "Sign in to eval/harbor-handbook and create a disposable branch from main.",
+        "Prepare a genuinely empty .txt file and confirm its local size is 0 bytes. Use Add File → Upload File and confirm its upload card shows 0 B.",
+        "Commit the upload, open the resulting file, and click Download. Inspect the downloaded file: it contains 1024 bytes, each NUL.",
+        "As a control on the same branch, use Add File → New File to create another .txt with a blank editor. Commit and confirm the empty-file dialog; it remains 0 B plaintext."
+      ],
+      "severity": 3,
+      "matchingGuidance": {
+        "scope": "Credit persistent upload-byte corruption, confirmed by download. An incorrect size label alone is insufficient for this severity-3 reference."
+      }
+    },
+    {
+      "id": "gitea-pass2-013",
+      "name": "Disabled fork creation also disables the header forks-list link",
+      "summary": "When the current user cannot create a fork and has no existing personal or organization fork, the header disables the entire Fork group, including its separate read-only forks-list link.",
+      "expected": "Keep unsupported fork creation disabled while allowing the separate header count link to open the forks list.",
+      "actual": "On the recorded owned repository with zero forks and a disabled Fork group, clicking the 0 count leaves the Code page unchanged. The Forks list itself is readable and empty. A separate visible link from the repository card on the owner profile reaches that list.",
+      "reproSteps": [
+        "Use a disposable account that owns a nonempty repository, with self-forking disabled, no eligible organization destination for a fork, and no existing personal or organization fork of that repository. Keep the repository at zero forks to match the recorded case.",
+        "Open that repository’s Code page as its owner. Confirm that the header Fork group is disabled and displays a separate 0 count.",
+        "Click the 0 count in the disabled header group. Observe that the Code page and URL remain unchanged instead of opening the forks list.",
+        "For the alternate visible path, click the repository owner, locate the repository in the profile’s repository list, and click that card’s fork icon/count. Confirm that the empty Forks list opens."
+      ],
+      "severity": 1,
+      "matchingGuidance": {
+        "scope": "Only zero forks in the original disabled owner state were recorded. Do not claim existing fork data is inaccessible, ordinary enabled Fork controls fail, or there is no alternate UI path. Creating a fork into an eligible organization enables the header and is a different state."
+      }
+    },
+    {
+      "id": "gitea-pass3-002",
+      "name": "Browser Back changes URL to docs directory but leaves README.md rendered",
+      "summary": "Browser Back returns the URL to the docs directory but leaves the README breadcrumb and content rendered; refreshing that URL restores the directory listing.",
+      "expected": "After browser Back from README.md, the docs directory page should render with the docs breadcrumb and directory listing.",
+      "actual": "After using browser Back from README.md and waiting six seconds, the URL points to the docs directory, but the breadcrumb still identifies README.md and the main pane still renders the README. Refreshing the same docs URL restores the directory breadcrumb and listing.",
+      "reproSteps": [
+        "Sign in as eval and open the seeded eval/harbor-handbook repository.",
+        "Select the docs/release-owners branch and open the docs directory from the main file list, producing a full-page directory navigation.",
+        "Collapse docs with its chevron in the left Files tree, then click README.md in that tree.",
+        "Use browser Back and wait at least five seconds. The URL returns to the docs directory, but the breadcrumb and main pane still show README.md.",
+        "Refresh the same docs URL and observe that the directory breadcrumb and listing return."
+      ],
+      "severity": 3,
+      "rootCause": "File-tree navigation pushes {treePath, url} history state and replaces the repository content fragment. The initial full-page directory entry has null history state and is never initialized with replaceState. The popstate handler reloads content only when state.url exists, so Back to that initial entry updates the URL without restoring the directory content."
+    },
+    {
+      "name": "New-file commit message placeholder exposes {filename} token",
+      "summary": "After entering a filename in the New File editor, the commit-message placeholder still displays the literal template token {filename}.",
+      "expected": "The commit-message placeholder should use the entered filename or generic wording without an unresolved template token.",
+      "actual": "The Commit Changes form displays the literal placeholder “Add '{filename}'”.",
+      "reproSteps": [
+        "Sign in as eval with password momentic-eval-1 and open eval/harbor-handbook.",
+        "Create a disposable branch from main using the branch selector.",
+        "Choose Add File > New File and enter a Markdown filename and a line of content.",
+        "Scroll to Commit Changes without submitting and inspect the commit-message placeholder.",
+        "Observe the literal {filename} token in the placeholder instead of the entered filename."
+      ],
+      "severity": 1
+    },
+    {
+      "name": "Synced fork links an upstream merge commit’s pull request number to a missing local issue",
+      "summary": "After syncing a fork with its upstream repository, the fork's commit history renders the upstream merge commit's #3 pull request reference as a link under the fork, where that issue does not exist. The link opens a 404 instead of the actual upstream pull request.",
+      "expected": "A pull request number embedded in an upstream merge commit should link to the pull request in the upstream repository, eval/D-from-template/pulls/3, or otherwise avoid a broken link in the fork's history.",
+      "actual": "After merging a contribution into eval/review-upstream and syncing alex/review-fork, the fork’s commit history links the generated #1 pull-request reference to /alex/review-fork/issues/1, which returns HTTP 404. The actual merged upstream PR at /eval/review-upstream/pulls/1 returns HTTP 200. Reproduced on Gitea 1.24.7 with a correctly configured public URL.",
+      "reproSteps": [
+        "Sign in using the fixture accounts. Create a public repository as eval and fork it as alex.",
+        "As alex, create a contribution branch in the fork, add a file, and open a pull request against the upstream main branch.",
+        "As eval, merge that pull request using the default merge-commit message.",
+        "Sync the fork’s main branch with the upstream main branch.",
+        "Open the fork’s Commits page and click the #N pull-request reference in the generated merge-commit subject.",
+        "Observe that the link targets an issue in the fork and returns 404, while the upstream /eval/<upstream-repository>/pulls/N page exists and returns 200."
+      ],
+      "severity": 3
+    },
+    {
+      "id": "codex-30m-gitea-1",
+      "name": "Submitting an upload directory without files redirects to 404",
+      "summary": "The Upload File form accepts an empty upload queue with a new directory name and sends the user to a directory that does not exist.",
+      "expected": "With no files selected, Commit Changes should be disabled or the form should show a validation message and remain usable.",
+      "actual": "Commit Changes is enabled with no files selected. Submitting with a new directory redirects to a 404 page saying the path does not exist. Reproduced with bash-uploads/ and bash-empty-folder/.",
+      "reproSteps": [
+        "Sign in as admin and open the Code page of an initialized repository on a writable branch (tested admin/harbor-handbook, branch bash/renamed).",
+        "Open Add File and choose Upload File.",
+        "Leave the upload queue empty; enter bash-empty-folder/ in 'Add a directory…'.",
+        "Click Commit Changes.",
+        "Observe the 404 page: 'Path bash-empty-folder doesn't exist in branch/bash/renamed'."
+      ],
+      "severity": 5
+    },
+    {
+      "id": "mo-30m-gitea-2",
+      "name": "File history shows the grammatically incorrect count label “1 Commits” when there is exactly one commit.",
+      "summary": "File history shows the grammatically incorrect count label “1 Commits” when there is exactly one commit.",
+      "expected": "The history count uses singular wording for one commit, such as “1 Commit.”",
+      "actual": "The history page displays “1 Commits” above its single-commit listing.",
+      "reproSteps": [
+        "/",
+        "Use only a fresh repository and file created for this reproduction; keep all seeded and other-run data read-only.",
+        "Sign in as the admin account and create a fresh, uniquely named admin-owned repository for this run; do not reuse seeded or other-run repositories or files.",
+        "On the repository Code page, choose New File and create docs/field-notes.md with short Markdown content, then commit directly to the main branch.",
+        "Open the new file's History view."
+      ],
+      "severity": 1
+    },
+    {
+      "id": "mo-60m-gitea-8",
+      "name": "Reverse comparison labels distinct branches as equal",
+      "summary": "Reversing the two repository branches makes the read-only Compare commits view claim they are equal, despite the opposite direction showing one commit and a file diff; this persisted after refresh and a repeat reversal.",
+      "expected": "With docs/release-owners as the base and main as the compare branch, the read-only comparison should accurately indicate that main has no commits ahead of docs/release-owners, not say the branches are equal.",
+      "actual": "At /admin/harbor-handbook/compare/docs/release-owners..main, the visible Compare commits page says “These branches are equal.” In the opposite direction, main versus docs/release-owners showed 1 commit and a docs/releases.md diff. Refreshing and reversing again reproduced the equality message.",
+      "reproSteps": [
+        "Use the supplied signed-in administrator session (authenticated via saved session; no environment-variable credentials used) and open /admin/harbor-handbook.",
+        "Open the Code tab, select docs/release-owners in the branch selector, and click the adjacent comparison control.",
+        "On the comparison preview, use the comparison-type control to open the read-only Compare commits view at /admin/harbor-handbook/compare/main..docs/release-owners. Confirm it shows 1 commit and a docs/releases.md diff.",
+        "Click the “Switch head and base” arrow. The resulting page at /admin/harbor-handbook/compare/docs/release-owners..main displays “These branches are equal.”",
+        "Refresh and repeat the reversal to confirm the message persists. Do not submit a pull request."
+      ],
+      "severity": 3
+    },
+    {
+      "name": "Exact code search silently removes leading hyphens",
+      "summary": "Exact searches for '-Harbor' or '--Harbor' return lines containing 'Harbor' without the required hyphens.",
+      "expected": "Exact search should preserve the entire search term and only return lines containing '-Harbor' (or '--Harbor' respectively). These seeded README lines should not match.",
+      "actual": "Searching '-Harbor' returns README lines '# Harbor engineering handbook' and 'Welcome to Harbor...' even though neither contains '-Harbor'. Searching '--Harbor' produces the same false matches. Source modules/git/grep.go strips all leading hyphens with strings.TrimLeft(search, \"-\") before passing the query as an -e value.",
+      "reproSteps": [
+        "Sign in as eval and open /eval/harbor-handbook.",
+        "Enter '-Harbor' in Search code and submit.",
+        "Keep Search type set to Exact (its description says it only includes results matching the exact search term).",
+        "Observe README results containing Harbor with no preceding hyphen.",
+        "Repeat with '--Harbor' and observe the same false matches."
+      ],
+      "severity": 3,
+      "matchingGuidance": {
+        "rootCause": "SearchModeExact reaches GrepModeExact, whose git grep pattern removes all leading hyphens with strings.TrimLeft(search, \"-\"). The original command wrapper rejects leading hyphens in dynamic option values."
+      }
+    },
+    {
+      "name": "Main branch RSS channel link points to a 404 route",
+      "summary": "The main-branch RSS feed emits a channel link to /branch/main, which remains a visible 404; the corresponding branch page at /src/branch/main loads successfully.",
+      "expected": "The RSS channel link for the feed titled “Latest commits for branch main” should open the main branch page at /eval/harbor-handbook/src/branch/main.",
+      "actual": "The visible RSS XML channel link was /eval/harbor-handbook/branch/main. Opening that exact feed-provided URL displayed “404 Not Found” for at least five seconds. Opening the corresponding /src/branch/main URL loaded the branch file list.",
+      "reproSteps": [
+        "Start authenticated as eval using the provided signed-in session and open /eval/harbor-handbook/src/branch/main/README.md.",
+        "Open the branch selector and choose “View all branches” to reach the repository branches page (the repository’s “2 Branches” listing).",
+        "On the Default Branch row for main, click its RSS Feed icon. The browser displays the feed at /eval/harbor-handbook/rss/branch/main.",
+        "Read the visible XML channel <link>: /eval/harbor-handbook/branch/main.",
+        "Open that exact feed-provided URL. Observe the visible “404 Not Found” page, and confirm it remains after five seconds.",
+        "Open /eval/harbor-handbook/src/branch/main and observe the branch file list."
+      ],
+      "severity": 5,
+      "matchingGuidance": {
+        "scope": "Branch-list RSS feed to the branch directory page. The README-toolbar RSS feed to a file page has its own accepted reference.",
+        "rootCause": "Verified in go-gitea/gitea tag v1.24.7: routers/web/feed/branch.go, ShowBranchFeed, constructs the channel href as repo.HTMLURL() + \"/\" + ctx.Repo.RefTypeNameSubURL(). For main this produces /branch/main, omitting /src. The corresponding branch-view route is built with /src/ plus the ref path (routers/web/repo/view.go, LastCommit/renderDirectoryFiles), and templates/repo/branch/list.tmpl links branch names to /src/branch/<name>. Runtime output and the observed 404 match this route mismatch."
+      }
+    },
+    {
+      "name": "README file RSS channel link omits the source route and returns 404",
+      "summary": "The README toolbar RSS feed advertises a channel URL missing /src/, and opening it consistently shows 404 while the corresponding README route loads.",
+      "expected": "The README-specific RSS XML channel <link> should open the corresponding file page at /eval/harbor-handbook/src/branch/main/README.md.",
+      "actual": "The file-specific feed XML at /eval/harbor-handbook/rss/branch/main/README.md advertises /eval/harbor-handbook/branch/main/README.md, which consistently displays 404 Not Found. The corresponding /src/branch/main/README.md URL renders the README.",
+      "reproSteps": [
+        "Load the supplied authenticated browser state; the account menu confirms “Signed in as eval.”",
+        "Open /eval/harbor-handbook/src/branch/main/README.md.",
+        "Click the RSS icon in the README file toolbar beside Download and Copy, immediately before Edit and Delete (not the repository-header RSS icon).",
+        "Observe the file feed at /eval/harbor-handbook/rss/branch/main/README.md. Its “Latest commits for file README.md” channel link is /eval/harbor-handbook/branch/main/README.md.",
+        "Open the advertised channel URL. It displays 404 Not Found, including after waiting and re-observing.",
+        "Open /eval/harbor-handbook/src/branch/main/README.md in the same session; the README renders successfully."
+      ],
+      "severity": 5,
+      "matchingGuidance": {
+        "scope": "README-toolbar RSS feed to the README file page. The branch-list RSS feed to a directory page has its own accepted reference.",
+        "rootCause": "Verified against go-gitea/gitea v1.24.7, routers/web/feed/file.go, feed.ShowFileFeed. The channel Href is built from repo.HTMLURL(), ctx.Repo.RefTypeNameSubURL(), and the escaped tree path without the /src/ prefix used by the README page route. That construction matches the observed malformed link and 404; this is a verified diagnosis, not a hypothesis. No fix was tested."
+      }
+    },
+    {
+      "id": "gitea-novel-006",
+      "name": "Branch delete controls overflow at tablet width",
+      "summary": "At a 768px width, branch-row delete controls extend past the outer table border.",
+      "expected": "At 768 × 1024, branch-row actions, including the delete control, remain within the outer table border.",
+      "actual": "After navigating to and refreshing the branch list, the trash icon on the docs/release-owners row and other live branch rows extends past the table’s outer right border. It remained outside the border after waiting; no branch controls were clicked and no branch data was changed.",
+      "reproSteps": [
+        "Set the browser viewport to 768 × 1024 CSS pixels.",
+        "Load the supplied contributor session using the provided saved authentication state; no credentials were typed or environment variables used.",
+        "Navigate to the current fixture's /eval/harbor-handbook/branches page.",
+        "Inspect the rendered controls on the docs/release-owners row and other live branch rows. Refresh and inspect again; do not click any row control or change branch data."
+      ],
+      "severity": 1
+    },
+    {
+      "id": "gitea-file-tree-stale-tab-title",
+      "name": "File-tree navigation leaves the browser tab title on the previous file",
+      "summary": "Navigating from docs/contributing.md to releases.md through the repository file tree updates the URL, breadcrumb, and rendered content, but the browser tab title stays on the previous file until refresh.",
+      "expected": "After file-tree navigation, the browser tab title should identify the file currently displayed.",
+      "actual": "After navigating from docs/contributing.md to releases.md through the file tree, the URL, breadcrumb, and page body identify releases.md, while the real Chrome tab hover card still says contributing.md. Refreshing the page corrects the tab title.",
+      "reproSteps": [
+        "Sign in to the seeded Gitea repository and open docs/contributing.md.",
+        "Use the repository file tree to navigate to releases.md without reloading the page.",
+        "Confirm that the URL, breadcrumb, and rendered file body now identify releases.md.",
+        "Hover the real Chrome tab and observe that its title still identifies contributing.md. Reload the page and confirm the tab title updates to releases.md."
+      ],
+      "severity": 1
+    },
+    {
+      "id": "gitea-tag-history-count-collides-with-branch-cache",
+      "name": "Tag history count and pagination use a same-named branch's cached history size",
+      "summary": "After the longer same-named branch history has been visited, a tag's Code and History views show the branch's cached commit count even though the tag points to one commit, exposing a nonexistent empty history page.",
+      "expected": "The tag's commit count and pagination should describe the tag's own history. A one-commit tag should show one commit and no second page, regardless of a same-named branch.",
+      "actual": "After visiting the longer branch history first to populate the count cache, opening the unchanged one-commit tag shows 51 Commits. Its History page has the single tag commit, but still reports 51; clicking Next opens an empty second page. Reloading preserves the incorrect count.",
+      "reproSteps": [
+        "In eval/harbor-handbook, ensure tag qa/code-renamed points to initial commit 4ff25d14a0 and branch qa/code-renamed points to the later 51-commit tip.",
+        "Visit /eval/harbor-handbook/commits/branch/qa/code-renamed first so the longer branch history populates the shared commit-count cache.",
+        "Open /eval/harbor-handbook/src/tag/qa/code-renamed. Its file tree is the initial three-file snapshot, while the statistics link says 51 Commits.",
+        "Open /eval/harbor-handbook/commits/tag/qa/code-renamed. Observe the 51 Commits heading with only the initial 4ff25d14a0 row.",
+        "Click Next and observe the empty second page still labeled 51 Commits."
+      ],
+      "severity": 1
+    },
+    {
+      "id": "gitea-tea-clone-command-used-in-ide-checkout-links",
+      "name": "Tea CLI clone command is inserted into IDE checkout link targets",
+      "summary": "Selecting Tea CLI changes the visible VS Code, VSCodium, and IntelliJ checkout link targets to use the shell command `tea clone eval/harbor-handbook` as the repository URL instead of a Git URL.",
+      "expected": "When the clone display is set to Tea CLI, IDE checkout links should retain a usable Git repository URL or be hidden because Tea mode is a shell command rather than an IDE checkout protocol.",
+      "actual": "The rendered DOM keeps the VS Code, VSCodium, and IntelliJ links available but places the Tea shell command in their repository parameters, for example `vscode://vscode.git/clone?url=tea%20clone%20eval%2Fharbor-handbook`. Switching back to HTTPS restores Git URL targets; selecting Tea again replaces them. No external IDE was launched, so an actual checkout failure is not claimed.",
+      "reproSteps": [
+        "Open /eval/harbor-handbook and expand the Code popup.",
+        "With HTTPS selected, inspect the Open with VS Code link target and confirm its url parameter is the repository HTTPS `.git` URL.",
+        "Select Tea CLI.",
+        "Inspect the VS Code, VSCodium, and IntelliJ IDEA link targets. Observe that each repository parameter contains `tea clone eval/harbor-handbook` instead of a Git URL.",
+        "Switch back to HTTPS and then select Tea CLI again to confirm the link targets change with the selected display mode."
+      ],
+      "severity": 3
+    },
+    {
+      "id": "gitea-branch-archive-serves-same-named-tag",
+      "name": "Branch archive downloads silently return a same-named tag's contents",
+      "summary": "When a branch and a tag share a name but point at different commits, Code → Download ZIP on the branch page links to /archive/<name>.zip and serves the tag's older tree instead of the displayed branch tip, without any warning.",
+      "expected": "Download ZIP from a branch's Code menu archives that branch's tip, including every file the branch page lists, even if a tag shares the branch name.",
+      "actual": "The branch's Download ZIP href is /archive/<name>.zip, identical to the tag's archive URL. The downloaded ZIP's commit comment is the tag's commit, and files added on the branch after that commit are missing. No warning is shown.",
+      "reproSteps": [
+        "Sign in to Gitea with the fixture account and open a repository.",
+        "Create a branch from main, add a file such as branch-only.txt, and commit it.",
+        "Open an earlier commit that lacks the file, choose Operations → Create tag, and name the tag exactly like the branch.",
+        "Open /<owner>/<repo>/src/branch/<name> and confirm branch-only.txt is listed.",
+        "Choose Code → Download ZIP. Observe the link is /<owner>/<repo>/archive/<name>.zip.",
+        "Inspect the ZIP. Its comment is the tag's commit, and branch-only.txt is missing."
+      ],
+      "severity": 3
+    }
+  ]
+}

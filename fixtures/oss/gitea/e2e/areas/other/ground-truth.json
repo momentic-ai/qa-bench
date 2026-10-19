@@ -1,0 +1,193 @@
+{
+  "bugs": [
+    {
+      "name": "Failed sign-in removes the settings redirect parameter",
+      "summary": "A failed sign-in removes the redirect back to the originally requested settings page.",
+      "expected": "A failed sign-in should preserve the intended destination for a subsequent successful sign-in.",
+      "actual": "A failed sign-in removes the redirect back to the originally requested settings page.",
+      "reproSteps": [
+        "Sign out and open the account settings route.",
+        "At the sign-in form, enter the fixture username and an invalid password.",
+        "After the error, inspect whether the URL still retains the return destination."
+      ],
+      "severity": 3
+    },
+    {
+      "id": "gitea-earlier-org-name-fragments",
+      "name": "Organization name wraps into narrow fragments on mobile Members page",
+      "summary": "A valid 39-character organization name wraps into 12 narrow lines on the mobile Members page and pushes the member row down.",
+      "expected": "On the mobile Members page, the organization heading should remain legible without breaking into many very narrow lines or dominating the viewport.",
+      "actual": "The 39-character organization name rendered beside the large avatar in roughly 12 short lines. The wrapping persisted on the Members page, with the member entry pushed near the bottom of the 844px viewport.",
+      "reproSteps": [
+        "Set the browser viewport to 390×844 CSS pixels and sign in as fixture administrator eval.",
+        "Create a disposable private organization named omember-eval-members-390-20260608-7q3kx, a valid 39-character name. Leave its display name empty.",
+        "Open the organization profile and click its visible Members link.",
+        "Inspect the heading beside the avatar and refresh. The organization name breaks into approximately 12 narrow fragments, creating a roughly 555px-tall heading and pushing the member row toward the bottom of the viewport. Membership controls remain available."
+      ],
+      "severity": 1,
+      "sourceCause": "The shared organization header keeps a 100px avatar beside the information column, while the 36px title, visibility badge and follow/RSS controls share a horizontal flex row. At 390px, the remaining title width is very narrow; overflow-wrap:anywhere allows the valid name to split into many short fragments. The private badge further constrains this space."
+    },
+    {
+      "id": "gitea-novel-022",
+      "name": "Visiting a private organization’s Packages page breaks public organization package inventory access",
+      "summary": "A public organization’s Packages inventory becomes inaccessible to a nonmember after an administrator visits a private organization’s Packages page on the same server process.",
+      "expected": "After eval visits the private qa-private-022 Packages page and alex signs back in, alex should still be able to open the public qa-public-022-a Packages tab and see boundary-probe (Generic), version 1.0.0.",
+      "actual": "As alex, the public qa-public-022-a Packages tab showed boundary-probe during the baseline. After eval visited the visibly Private qa-private-022 Packages page and the browser visibly signed out and back in as alex, clicking the public organization’s visible Packages tab reached a persistent 404 stating, “The page you are trying to reach either does not exist or you are not authorized to view it.” Repeating the in-app navigation and Packages-tab click as alex produced the same 404.",
+      "reproSteps": [
+        "Precondition: a fresh package-enabled Gitea server process with public organization qa-public-022-a and private organization qa-private-022, each containing Generic package boundary-probe version 1.0.0. Administrator eval can access the private organization; alex is an unrestricted nonmember of both. Seed this state before the run without browsing private organization pages.",
+        "Set the viewport to 1920 by 1080 CSS pixels. Sign in as alex. Through Explore > Organizations, open qa-public-022-a, click its visible Packages tab, and confirm boundary-probe is listed. Establish this working baseline before any private-inventory visit.",
+        "Use the account menu to sign out and sign in as eval. Through Explore > Organizations, confirm qa-private-022 is marked Private, open its homepage, click its visible Packages tab, and confirm boundary-probe is listed.",
+        "Use the account menu to sign out and sign in again as alex. Through Explore > Organizations, open the same public qa-public-022-a homepage and click its visible Packages tab.",
+        "Observe the persistent 404 saying the page does not exist or the viewer is not authorized. Repeat the public organization homepage and Packages-tab navigation: the homepage and link remain accessible, but the Packages inventory still returns 404. Leave organization visibility, membership and packages unchanged throughout."
+      ],
+      "severity": 3
+    },
+    {
+      "id": "gitea-earlier-webhook-delivery-overlap",
+      "name": "Mobile organization webhook delivery IDs overlap their relative-age timestamps",
+      "summary": "At 390×844, organization webhook delivery IDs overlap their relative-age timestamps in Recent Deliveries.",
+      "expected": "Each delivery ID and its relative-age timestamp remain visually separate and readable at a mobile viewport.",
+      "actual": "At 390×844, the delivery-ID links overlap the right-aligned relative-age timestamps in Recent Deliveries, making both pieces of text difficult to read.",
+      "reproSteps": [
+        "Sign in with organization-owner access and create a uniquely named disposable organization with an initialized repository.",
+        "Add an active Gitea organization webhook targeting a harmless fixture-local URL, with Custom Events > Issues selected.",
+        "Create a disposable issue in that organization repository, then open the organization’s Settings > Webhooks and open the webhook’s Recent Deliveries.",
+        "At a 390×844 CSS-pixel viewport, inspect the delivery-ID links and relative-age timestamps. They overlap instead of remaining separately readable."
+      ],
+      "severity": 1,
+      "sourceCause": "Recent Deliveries places a long UUID link group and its relative-age timestamp at opposite ends of the same flex row, without an explicit mobile stacking rule in the template. Those contents compete for space at narrow widths, supporting the overlap shown in the reported 390-pixel screenshot."
+    },
+    {
+      "name": "Webhook overview describes only POST after creating a GET webhook",
+      "summary": "A repository webhook configured with GET is saved, but the overview still says webhooks automatically make HTTP POST requests.",
+      "expected": "The overview should not describe all configured webhooks as POST when GET is supported.",
+      "actual": "A repository webhook configured with GET is saved, but the overview still says webhooks automatically make HTTP POST requests.",
+      "reproSteps": [
+        "Create a disposable repository and add a Gitea webhook with HTTP Method GET.",
+        "Return to the Webhooks overview.",
+        "Observe the saved webhook and the POST-only description above it."
+      ],
+      "severity": 1
+    },
+    {
+      "id": "gitea-earlier-contributors-plural",
+      "name": "The Contributors row uses the plural “Commits” for a count of one.",
+      "summary": "A contributor with one commit is labeled 1 Commits.",
+      "expected": "A contributor with a count of one should be labeled “1 Commit.”",
+      "actual": "The visible contributor row says “1 Commits.”",
+      "reproSteps": [
+        "Use the English locale and sign in to the seeded eval/harbor-handbook repository, where a contributor has exactly one commit.",
+        "Open Activity > Contributors and find the contributor card with a commit count of one.",
+        "Read the count label: it displays 1 Commits rather than 1 Commit."
+      ],
+      "severity": 1,
+      "sourceCause": "The contributor card concatenates the numeric commit total with a fixed locale value, Commits, without choosing singular wording when the total is one.",
+      "matchingGuidance": {
+        "deduplication": "Existing file-history and pull-request merge-summary plural-count references concern separate renderers; this item covers the Contributors card."
+      }
+    },
+    {
+      "id": "gitea-check-005",
+      "name": "Delete Project confirmation clipped at right edge on 390px viewport",
+      "summary": "The repository project deletion confirmation is shifted slightly beyond the visible right edge in a 390px mobile browser viewport.",
+      "expected": "The complete confirmation dialog, including its border, should fit within the visible mobile viewport.",
+      "actual": "The dialog was stable and visibly clipped at the right edge: its bounds were x=44 to x=395 while the visible viewport was 390px wide. Cancel and Confirm remained visible. Clicking Cancel dismissed the dialog and left the same project detail page intact.",
+      "reproSteps": [
+        "Use a mobile-emulated browser at 390×844 CSS pixels and sign in as fixture administrator eval. A desktop browser merely resized to these dimensions does not reproduce the same layout.",
+        "Open eval/harbor-handbook through repository navigation, select Projects, and create a disposable project through New Project.",
+        "Open the new project and click Delete. Leave the confirmation open for at least five seconds.",
+        "Observe its right edge: the visible/client viewport is 390px, while the expanded layout and dimmer are 439px. The 351px-wide dialog spans x44 through x395, clipping roughly 5px at the visible right edge.",
+        "Click Cancel and verify that the dialog closes and the project remains. Both Cancel and Confirm are visible; do not submit deletion."
+      ],
+      "severity": 1,
+      "sourceCause": "The unwrapped project action menu expands the mobile layout to 439px while the visible/client viewport remains 390px. The shared confirmation is centered by a body-level fixed flex dimmer that measures 439px. Its 90vw width cap computes to 351px; centering places it at x44..395, clipping its right edge by 5px. The responsive width cap alone does not ensure positioning within the visible viewport."
+    },
+    {
+      "name": "Activity Pulse overview displays a broken-image placeholder beneath the commit activity chart.",
+      "summary": "For a repository with at least one commit, the Activity Pulse overview shows a broken-image placeholder beneath its commit activity chart.",
+      "expected": "The associated image renders normally or has an intentional fallback.",
+      "actual": "A broken-image placeholder appears beneath the blue commit activity bar.",
+      "reproSteps": [
+        "Sign in as eval and open eval/harbor-handbook; the repository must have at least one commit.",
+        "Open Activity > Pulse.",
+        "Inspect the area beneath the commit activity chart; a broken-image placeholder is visible."
+      ],
+      "severity": 1
+    },
+    {
+      "id": "mo-60m-gitea-9",
+      "name": "Project-list sorting clears the submitted search filter",
+      "summary": "Choosing Alphabetically on the organization project list clears the submitted search query and restores nonmatching projects.",
+      "expected": "After searching for projects-org-life-sort-d3f8q, choosing Alphabetically should retain that filter and reorder only the matching -alpha and -zulu projects.",
+      "actual": "The submitted search showed only the two matching projects. Choosing Alphabetically changed the URL query to q= and expanded the list to all five projects, including the nonmatching Lifecycle Board 20261009 and projects-org-life-other-d3f8q.",
+      "reproSteps": [
+        "Sign in as admin using the supplied saved authentication state and open /.",
+        "Open My Organizations, select projects-org-20261009, then open its Projects tab.",
+        "Through New Project, create three fresh projects: projects-org-life-sort-d3f8q-alpha, projects-org-life-sort-d3f8q-zulu, and projects-org-life-other-d3f8q.",
+        "Search for projects-org-life-sort-d3f8q and submit. The observed filtered URL is /projects-org-20261009/-/projects?state=open&q=projects-org-life-sort-d3f8q; only the alpha and zulu projects appear.",
+        "Open Sort and choose Alphabetically. The observed URL becomes /projects-org-20261009/-/projects?q=&sort=alphabetically&state=open, and the list shows all five projects, including nonmatches."
+      ],
+      "severity": 3
+    },
+    {
+      "id": "gitea-novel-020",
+      "name": "Package repository link cannot be cleared in Gitea package Settings",
+      "summary": "Package Settings has no visible way to clear an existing repository association, preventing unlinking through the repository selector.",
+      "expected": "The clearable repository selector should offer a visible way to clear the current association; saving and reloading should leave the package unlinked.",
+      "actual": "At 1440×1000, the closed selector displayed harbor-handbook with only a dropdown arrow. Hovering/focusing did not reveal a clear icon. Opening it showed only harbor-handbook, with no blank or None choice. Backspace and Delete left the selection unchanged. Saving showed “Repository link was successfully updated,” and reloading still showed harbor-handbook.",
+      "reproSteps": [
+        "Precondition: a package-enabled fixture with a Generic package owned by eval and linked to eval/harbor-handbook. The recorded package was qa-unlink-desktop-20261015 version 1.0.0, containing probe.txt; the independent recording starts with that association already present.",
+        "Set the viewport to 1440 by 1000 CSS pixels and sign in as the fixture administrator. Through the profile Packages navigation, open the linked Generic package, then its Settings.",
+        "Click Update Repository Link to save the selected harbor-handbook association, then reload Settings and confirm it remains selected.",
+        "Hover the selector’s right edge, focus it, and open the menu. Inspect for a visible clear control or an unlinked choice. In the recorded state, only harbor-handbook and the dropdown arrow are visible; the menu contains no blank or None option.",
+        "Press Backspace and Delete while focused; the selection remains unchanged. Click Update Repository Link and observe the success message, then reload Settings and confirm harbor-handbook remains selected. Saving an unchanged selection is expected; the defect is the missing visible way to clear it."
+      ],
+      "severity": 3
+    },
+    {
+      "id": "mo-60m-gitea-10",
+      "name": "Packages search field stays empty after browser Back restores query URL",
+      "summary": "Browser Back restores the Packages URL query and Alpine filter, but leaves Search visibly empty; reloading that same URL repopulates the query.",
+      "expected": "After browser Back restores /-/admin/packages?q=mobile-no-match&type=alpine, the Search field should show “mobile-no-match” and the Type selector should show Alpine.",
+      "actual": "After Back, the URL was /-/admin/packages?q=mobile-no-match&type=alpine and the Type selector showed Alpine, but the visible Search field was empty. Refreshing at that same URL repopulated the field with “mobile-no-match.”",
+      "reproSteps": [
+        "Set the viewport to 390×844 and open /-/admin/packages in the supplied signed-in admin session (saved admin authentication state loaded; no credentials entered).",
+        "Enter “mobile-no-match” in Search and press Enter.",
+        "Choose Alpine in the Type selector and click the magnifying-glass search button. Confirm the URL is /-/admin/packages?q=mobile-no-match&type=alpine.",
+        "Focus Search, click its visible X clear control, then click the magnifying-glass search button to submit the empty query.",
+        "Use browser Back. After the page settles, observe the URL /-/admin/packages?q=mobile-no-match&type=alpine, the Alpine selection, and the visibly empty Search field.",
+        "As a check for a transient stale render, refresh at that URL. Search then displays “mobile-no-match.”"
+      ],
+      "severity": 3
+    },
+    {
+      "id": "gitea-novel-024",
+      "name": "Invalid migration destination replaces the form with a full-page 500 error",
+      "summary": "Submitting the invalid migration destination name \"..\" replaces the migration form with a full-page 500 error instead of recoverable validation feedback.",
+      "expected": "Reject the invalid name with clear validation feedback while keeping the migration form available for correction. An inline message, dialog, or toast can satisfy this; replacing the page with a server error does not.",
+      "actual": "The submission opens a full-page \"500 Internal Server Error\" screen and removes the migration form. For the admin in the recorded run, the page also displays MigratePost, name is invalid [..]: must be valid alpha or numeric or dash(-_) or dot characters.",
+      "reproSteps": [
+        "Precondition: use a Git source allowed by the fixture’s migration policy. The recorded run enabled local-network migrations in its disposable fixture before using a fixture-local Git source.",
+        "Sign in as the fixture administrator. Through New Repository, create a fresh initialized private repository owned by eval with a unique disposable name.",
+        "Choose New Migration > Git. In the recorded setup, enter the source http://127.0.0.1:3000/eval/<disposable-source>.git and the supplied fixture account credentials.",
+        "Keep owner eval, set Repository Name to \"..\", and click Migrate Repository.",
+        "Observe that the browser replaces the migration form with the full-page 500 error, preventing correction within the form. Invalid-name rejection itself is expected; the full-page error handling is the defect."
+      ],
+      "severity": 5
+    },
+    {
+      "id": "gitea-novel-010",
+      "name": "Mobile package totals overlap the cleanup button",
+      "summary": "At a 390px width, Clean up expired data overlaps the Package Management totals.",
+      "expected": "At mobile width the Package Management totals and cleanup button must not paint over each other. Wrapping or deliberate truncation is acceptable; no specific cleanup action behavior is asserted.",
+      "actual": "The cleanup button is drawn over the right side of the totals heading, obscuring its text. The overlap remains visible after refresh and after the page settles.",
+      "reproSteps": [
+        "Sign in as a site administrator in the package-enabled fixture and set the viewport to 390 by 844 CSS pixels.",
+        "Open Site Administration > Packages through its visible navigation. Use the existing fixture package rows and totals.",
+        "Inspect the Package Management totals heading beside Clean up expired data. The button overlaps the totals text in the supplied state.",
+        "Refresh, let the page settle, and confirm the overlap remains. No cleanup click is needed."
+      ],
+      "severity": 1
+    }
+  ]
+}

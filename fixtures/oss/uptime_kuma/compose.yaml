@@ -1,0 +1,36 @@
+name: diy-mo-uptime-kuma
+
+services:
+  uptime-kuma:
+    image: ${FIXTURE_IMAGE:-louislam/uptime-kuma:2.2.1@sha256:7337368a77873f159435de9ef09567f68c31285ed5f951dec36256c4b267ee44}
+    restart: unless-stopped
+    ports:
+      - "${FIXTURE_PORT:-5503}:3001"
+    volumes:
+      - ${FIXTURE_DATA_VOLUME:-../data}:/app/data
+    healthcheck:
+      test: ["CMD", "extra/healthcheck"]
+      interval: 5s
+      timeout: 5s
+      retries: 60
+      start_period: 30s
+
+  seed:
+    image: ${FIXTURE_IMAGE:-louislam/uptime-kuma:2.2.1@sha256:7337368a77873f159435de9ef09567f68c31285ed5f951dec36256c4b267ee44}
+    restart: unless-stopped
+    working_dir: /app
+    entrypoint: ["node", "/fixture/app/seed.cjs"]
+    environment:
+      NODE_PATH: /app/node_modules
+      FIXTURE_URL: ${FIXTURE_URL:-http://localhost:5503/}
+      FIXTURE_HOST: ${FIXTURE_HOST:-localhost}
+    volumes:
+      - ../seed.cjs:/fixture/app/seed.cjs:ro
+    depends_on:
+      uptime-kuma:
+        condition: service_healthy
+    healthcheck:
+      test: ["CMD-SHELL", "test -f /tmp/fixture-seeded"]
+      interval: 2s
+      timeout: 2s
+      retries: 120

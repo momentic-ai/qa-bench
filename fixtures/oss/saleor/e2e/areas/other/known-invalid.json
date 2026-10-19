@@ -1,0 +1,36 @@
+{
+  "bugs": [
+    {
+      "id": "mo-60m-saleor-31",
+      "name": "Product Types Digital filter excludes non-shippable product types",
+      "summary": "The Product Types Type = Digital filter returns no results for a saved Regular product type with Requires shipping off, despite the unfiltered search showing that type as Not shippable; the empty result persisted after refresh and after clearing the search query.",
+      "expected": "A Regular product type with Requires shipping turned off should appear when Type is Digital is applied. The editor says Regular product types can be physical or digital, its shipping helper says digital goods can stay off, and the filter offers Digital as a Type value.",
+      "actual": "The exact-name search showed the saved fixture as Not shippable. Applying Type is Digital displayed “No product types found.” The same empty result remained after refresh and when the search query was cleared while retaining the Digital filter.",
+      "reproSteps": [
+        "Using the supplied saved admin authentication state, open /product-types/.",
+        "Create a new Regular product type named catalogschema-digital-verify-20260602-8f3c1a.",
+        "Open that type, turn off Requires shipping, and save.",
+        "Return to the Product Types list, search for catalogschema-digital-verify-20260602-8f3c1a, and verify the row appears as Not shippable.",
+        "Open Filters, set Type to Digital, and apply. The list displays “No product types found.” The filtered URL observed after refresh was /product-types/?0%5Bs0.typeOfProduct%5D=DIGITAL&query=catalogschema-digital-verify-20260602-8f3c1a&sort=name&asc=true.",
+        "Refresh and observe the same empty result. Clear the search query but retain the Digital filter; the list still displays “No product types found.”",
+        "After reproducing, clear filters, search for the fixture, select only that row, and confirm deletion."
+      ],
+      "reason": "Human review rejected the reported expectation as inconsistent with intended behavior. Pinned product-type tests separately model Digital (non-shipping, digital) and Subscription (non-shipping, non-digital), and sort DIGITAL and SHIPPING_REQUIRED as separate dimensions. Excluding a merely non-shippable type from the Digital filter is consistent with that tested distinction; the report equates two flags the API deliberately separates.",
+      "severity": 3
+    },
+    {
+      "name": "Model Types search returns unrelated prefix matches for a deleted full name",
+      "summary": "Searching the full unique name of a deleted model type persistently returns an unrelated type sharing only the broad “MoBugbash” prefix.",
+      "expected": "Searching for the exact full name of the deleted model type should show no model types.",
+      "actual": "After deleting GT SearchPrefix Beta, searching its full exact name returned the unrelated GT SearchPrefix Alpha model type. The two names shared only the GT SearchPrefix prefix.",
+      "reproSteps": [
+        "Sign in to the local Saleor fixture as admin@example.com and open Model Types.",
+        "Create two disposable model types with a shared prefix and distinct suffixes, such as GT SearchPrefix Alpha and GT SearchPrefix Beta.",
+        "Delete the second model type and return to the Model Types list.",
+        "Search for the full exact name of the deleted second type; the unrelated first type appears as a match."
+      ],
+      "reason": "Model-type search is intentionally fuzzy on name or slug. The accepted 2021 refactor #7395 explicitly changed this endpoint from substring matching to trigram similarity. Exact-version page-type tests assert broad/non-exact matches; no UI/API promise of exact-only lookup was found.",
+      "severity": 3
+    }
+  ]
+}

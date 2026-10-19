@@ -1,0 +1,95 @@
+{
+  "bugs": [
+    {
+      "name": "Long milestone titles overlap repository labels in the global milestone list at 390×844",
+      "summary": "At a 390×844 viewport, a long milestone title overlaps its repository label in the global milestone list.",
+      "expected": "Milestone titles and repository labels remain separately readable.",
+      "actual": "The long title overlaps and obscures the eval/harbor-handbook repository label, including after filtering to Open and sorting by Name.",
+      "reproSteps": [
+        "Sign in as eval and create an open milestone named mo-milestones-small-viewport-390-20260614-1812-q3x in eval/harbor-handbook.",
+        "Set the viewport to 390×844 CSS pixels and open /milestones.",
+        "Select Open and sort by Name.",
+        "Inspect the long milestone row; its title overlaps the repository label and remains overlapped after waiting five seconds."
+      ],
+      "severity": 1
+    },
+    {
+      "id": "gitea-global-milestone-name-sort-drops-repositories",
+      "name": "Global milestones: Sort > Name discards the repository filter and restores excluded milestones",
+      "summary": "Sorting global milestones by Name clears the active repository selection and restores milestones from excluded repositories.",
+      "expected": "Name sorting should reorder only milestones in the selected repositories, retaining the active repository selection and excluding milestones from deselected repositories.",
+      "actual": "After deselecting eval/harbor-handbook, the global list shows 2 Open milestones. Sort > Name removes repos from the URL, resets the sidebar selection, and shows 3 Open including the previously excluded Handbook 1.1 milestone.",
+      "reproSteps": [
+        "Sign in as fixture administrator eval. Through the UI, ensure at least two accessible repositories have open milestones; create disposable repositories/milestones if necessary.",
+        "Open the global /milestones dashboard. Deselect one repository in the sidebar and confirm its milestone disappears while another repository remains selected.",
+        "Open Sort and choose Name.",
+        "Observe that the repository selection resets, the URL loses repos, and the excluded milestone returns. In the native reproduction the count increased from 2 Open to 3 Open."
+      ],
+      "severity": 3,
+      "matchingGuidance": {
+        "deduplication": "Distinct from gitea-milestone-search-sort-reset (repository search drops sorting) and gitea-pass2-004 (rejected multiselect interpretation). This reference requires a verified excluded repository returning after global Name sorting."
+      }
+    },
+    {
+      "id": "gitea-milestone-search-sort-reset",
+      "name": "Milestone search clears the selected due-date sort",
+      "summary": "Searching milestones clears the selected Latest due date sort and shows the future-due milestone after the past-due milestone.",
+      "expected": "After selecting Latest due date and searching QA, retain sort=furthestduedate and show the latest-due QA milestone before the past-due one, with undated milestones afterward.",
+      "actual": "The search navigated to /eval/harbor-handbook/milestones?state=open&q=QA, dropping sort=furthestduedate. The visible filtered rows put undated QA Alpha first, QA Beta Past (Oct 1, 2026) before QA Gamma Future (Feb 28, 2027). This persisted in the reviewed recording.",
+      "reproSteps": [
+        "Sign in as fixture user eval and open the repository Milestones page for eval/harbor-handbook. Through New Milestone, create three uniquely suffixed open milestones: QA Alpha Updated - QA-01 with no due date, QA Beta Past - QA-01 due 2026-10-01, and QA Gamma Future - QA-01 due 2027-02-28.",
+        "Open Sort and select Latest due date. Confirm that the URL contains sort=furthestduedate and that QA Gamma Future appears before QA Beta Past, with undated milestones afterward. This applies the sort before searching.",
+        "Enter QA in the milestone search field and press Enter.",
+        "Inspect the resulting URL and rows. The search URL contains state=open&q=QA but no sort parameter; undated QA Alpha rows appear first, and QA Beta Past appears before QA Gamma Future. Searching has reset the applied ordering."
+      ],
+      "severity": 3,
+      "sourceCause": "Repository milestones use the shared issue search form, whose hidden sort input is inside the not PageIsMilestones condition. The milestone handler sets PageIsMilestones=true, so normal search submission sends state and q without the applied sort. The handler then passes an empty SortType to the milestone query, changing deadline_unix DESC to the default deadline_unix ASC, name ASC. This reverses dated rows and moves undated zero-deadline rows first."
+    },
+    {
+      "id": "gitea-milestone-epoch-date-placeholder",
+      "name": "Milestone due date January 1, 1970 renders as '-' despite being saved",
+      "summary": "A saved January 1, 1970 milestone deadline displays a dash in the milestone list even though Edit retains the date.",
+      "expected": "The milestone list should display the saved January 1, 1970 deadline as a date, consistently with other saved deadlines; it should not substitute a dash.",
+      "actual": "The list shows a calendar icon followed by '-' for the milestone. Opening Edit shows the saved Due Date as 01/01/1970.",
+      "reproSteps": [
+        "Sign in as eval in the fixture default UTC environment and open a writable repository’s Milestones > New Milestone.",
+        "Create a uniquely named milestone with Due Date January 1, 1970.",
+        "Inspect its row in the milestone list: the calendar icon is followed by '-' rather than the date.",
+        "Open Edit Milestone and confirm the saved Due Date remains January 1, 1970."
+      ],
+      "severity": 1,
+      "matchingGuidance": {
+        "scope": "Default UTC fixture display path. No lost date or identical behavior in every timezone is claimed."
+      }
+    },
+    {
+      "id": "gitea-pass2-005",
+      "name": "Milestone All issues retains the implicit Assigned to you filter",
+      "summary": "Returning the milestone Type filter from Assigned to you to All issues preserves an assignee restriction that the first selection injected, so previously visible open items remain hidden.",
+      "expected": "Choosing All issues reverses the restriction introduced by Assigned to you and restores the milestone’s previously visible items when no independent Assignee filter was selected.",
+      "actual": "At 390×844, the milestone initially displayed two open items, issue #4 and PR #5. Assigned to you showed no results. Selecting All issues still showed 0 Open, 0 Closed, and No results after five seconds; the URL contained type=all and assignee=1 despite no independent Assignee selection.",
+      "reproSteps": [
+        "Sign in as eval. Create a disposable milestone and two open issues in a writable repository. Select that milestone in each issue’s Milestone picker, leaving both issues unassigned.",
+        "Set the viewport to 390×844 CSS pixels and open the milestone detail. With no independent Assignee filter selected, confirm both open items are visible.",
+        "Open the Type filter and choose Assigned to you. Confirm the unassigned items disappear.",
+        "In the same Type filter, choose All issues. Wait five seconds and observe that the items remain hidden and the URL includes type=all with an assignee parameter for the signed-in user."
+      ],
+      "severity": 3
+    },
+    {
+      "name": "Closing a milestone opens an empty closed-milestone list",
+      "summary": "Closing the milestone redirects to a list URL with `state=close`; the page reports one closed milestone but renders no row until the Closed filter changes the URL to `state=closed`.",
+      "expected": "After closing the milestone, the closed-milestone list should display the milestone consistently with its closed count, without requiring the user to select the Closed filter again.",
+      "actual": "The close action landed at /eval/mo-gitea-03-issues-milestones-close-repro/milestones?state=close. The page showed “1 Closed” but no milestone row. Selecting “1 Closed” navigated to /eval/mo-gitea-03-issues-milestones-close-repro/milestones?state=closed and displayed the milestone row.",
+      "reproSteps": [
+        "Sign in as eval.",
+        "Create a fresh repository named `mo-gitea-03-issues-milestones-close-repro` through the UI.",
+        "Open the repository’s Issues > Milestones page and create a milestone titled `mo-gitea-03-issues-close-repro-milestone`.",
+        "Open that milestone’s detail page and click its Close action.",
+        "On the resulting page at /eval/mo-gitea-03-issues-milestones-close-repro/milestones?state=close, observe “1 Closed” and no milestone row; the state remained visible after five seconds.",
+        "Click the visible “1 Closed” filter. At /eval/mo-gitea-03-issues-milestones-close-repro/milestones?state=closed, observe the milestone row."
+      ],
+      "severity": 3
+    }
+  ]
+}

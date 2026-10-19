@@ -1,0 +1,143 @@
+{
+  "bugs": [
+    {
+      "name": "Renaming a wiki page hides its earlier revisions from page history",
+      "summary": "Changing a wiki page title through Edit resets the page's visible Revisions list to the rename commit, even though the wiki commit itself identifies a file rename with an existing parent history. Users cannot review the page's earlier content revisions from the renamed page.",
+      "expected": "A renamed wiki page retains its earlier creation and edit revisions in the page's Revisions view, so its content history remains accessible.",
+      "actual": "In eval/D-from-template, D-history-1 showed 2 revisions after creation and a content edit. Renaming it to D-history-2 preserved content but reduced the Revisions view to 1 commit, 'D- rename history'. A later edit raised it to only 2 commits (rename plus later edit), still omitting both pre-rename revisions. The rename commit detail shows D-history-1.-.md → D-history-2.-.md with a parent commit, confirming the earlier Git history exists. The old page URL redirects to Pages.",
+      "reproSteps": [
+        "Sign in as eval and open a repository’s Wiki.",
+        "Create a page named History-before with first content.",
+        "Edit its content without changing its title and save. Verify the page has two revisions.",
+        "Edit again, changing only the title to History-after, and save.",
+        "Open the renamed page’s Revisions. Observe only the rename commit appears, omitting the two earlier revisions even though the rename commit has a parent and records the filename change."
+      ],
+      "severity": 3
+    },
+    {
+      "id": "gitea-novel-004",
+      "name": "Mobile wiki history provides no visible navigation to revision diffs",
+      "summary": "At a 390×844 viewport, wiki revision history provides no visible way to open a listed revision in the diff viewer. Desktop history links to the same working diff route.",
+      "expected": "The narrow-screen wiki history UI exposes a visible way to open a listed revision’s diff. It need not retain the SHA column or make the message text clickable if another normal UI control provides that navigation.",
+      "actual": "At 390×844 the SHA column and its revision-diff links are hidden. Revision messages are plain text, and the remaining copy-hash control does not open a diff. No alternative diff-navigation control is provided in the history UI. At 1440×1000 the same revision’s SHA link opens the diff viewer.",
+      "reproSteps": [
+        "Sign in with wiki write access to an unarchived repository and create a disposable wiki page with initial content.",
+        "Edit that page with distinct content, supply a unique plain-text commit note, and save, producing at least two revisions.",
+        "Use the page’s revision-history control to open its Revisions view and set the viewport to 390×844 CSS pixels.",
+        "Inspect the visible revision navigation. The SHA links are hidden, the commit-note text is not linked, and the copy-hash control offers no navigation to the diff viewer.",
+        "For comparison, view the same history at 1440×1000 and click a revision’s SHA link. It opens that wiki revision’s diff. The failure being graded is the absent mobile UI route to this working viewer, not omission of a particular column."
+      ],
+      "severity": 1
+    },
+    {
+      "id": "codex-60m-gitea-3",
+      "name": "Renaming a wiki page to an existing title silently overwrites the target",
+      "summary": "The wiki rejects duplicate titles during page creation but fails to check them when renaming. Saving a renamed page replaces another page's content without warning and removes the source page.",
+      "expected": "Renaming to an existing wiki title should show a duplicate-title error and preserve both pages, consistent with new-page validation.",
+      "actual": "Renaming Rename Source to Rename Target saves successfully. Rename Target now displays Source content marker QA instead of Target content marker QA, persists after reload, and the original Rename Source is removed. Also reproduced by renaming Folder/Page to existing Café guide.",
+      "reproSteps": [
+        "Sign in as admin and open /qa-org-20261009/qa-template-copy/wiki (or another editable repository wiki).",
+        "Create Rename Source with content Source content marker QA.",
+        "Create Rename Target with content Target content marker QA.",
+        "Edit Rename Source, change only Page title to Rename Target, and click Save Page.",
+        "Observe there is no duplicate-title error or overwrite confirmation. Rename Target now contains Source content marker QA.",
+        "Reload Rename Target and open the original Rename Source URL to verify the overwritten content persists and the source page no longer exists."
+      ],
+      "severity": 3
+    },
+    {
+      "id": "codex-60m-gitea-0",
+      "name": "Wiki preview links point to localhost and fail to open existing pages",
+      "summary": "Relative wiki links work in saved pages but preview renders them with https://localhost:5503, so clicking them leaves the hosted application and fails.",
+      "expected": "Preview links to another wiki page should open that page on the current application host, as they do on the saved page.",
+      "actual": "The preview's Second page link is https://localhost:5503/admin/harbor-handbook/wiki/Second-Page. Clicking it opens a browser error: localhost refused to connect, ERR_CONNECTION_REFUSED.",
+      "reproSteps": [
+        "Sign in as admin and open /admin/harbor-handbook/wiki.",
+        "Create a page named Second Page and save it with any content.",
+        "Create or edit Home with the Markdown link [Second page](Second-Page) and save. The saved link uses /admin/harbor-handbook/wiki/Second-Page.",
+        "Edit Home and select Preview.",
+        "Click Second page in the preview; observe the localhost connection failure."
+      ],
+      "severity": 5,
+      "matchingGuidance": {
+        "acceptanceScope": "Accepted as a valid reference by user instruction; source prerequisites and remaining evidence gaps are retained below.",
+        "prerequisites": [
+          "Preview request backend Host is localhost:5503 and forwarded scheme is https (or an equivalent incorrect guessed application origin)."
+        ]
+      }
+    },
+    {
+      "id": "gitea-novel-011",
+      "name": "Duplicate wiki title validation discards the draft",
+      "summary": "Submitting a new wiki page with an existing title rejects the duplicate but replaces the submitted draft in the editor with \"Welcome to the Wiki.\".",
+      "expected": "After duplicate-title validation fails, retain the submitted draft in the editor so the user can correct the title or copy the content.",
+      "actual": "Gitea displays \"A wiki page with the same name already exists.\" and replaces the attempted draft with \"Welcome to the Wiki.\". The existing saved page is not overwritten.",
+      "reproSteps": [
+        "Sign in with wiki write access to an unarchived repository and use the English locale.",
+        "Choose Wiki > New Page, enter a unique disposable title and content \"Original saved content\", and save the page.",
+        "Choose New Page again. Enter the same title and distinct nonempty content \"Duplicate attempt draft to preserve\".",
+        "Click Save Page. Observe the duplicate-title validation error and that the editor now contains \"Welcome to the Wiki.\" instead of the attempted draft."
+      ],
+      "severity": 3
+    },
+    {
+      "id": "gitea-novel-012",
+      "name": "Long wiki title covers the mobile Code button",
+      "summary": "At a 320px width, a long wiki-page title covers the Code button and intercepts normal clicks.",
+      "expected": "At 320px, selecting a valid wiki page must keep the Code dropdown visible and usable without the title painting over it. Wrapping controls or truncating the displayed title is acceptable.",
+      "actual": "On Home, Page: Home and the blue Code dropdown were separately visible. After selecting CaseNarrowNav-7314 Δ Momentic2026, the page chooser stretched across the row and the Code dropdown was no longer visible. This remained the rendered state after a six-second wait.",
+      "reproSteps": [
+        "Sign in with wiki-write permission, set the viewport to 320 by 800 CSS pixels, and open the repository Wiki through its tab.",
+        "Choose New Page, use a unique title of similar length to CaseNarrowNav-7314 Δ Momentic2026, keep nonempty content, and save.",
+        "Use the Page chooser to select Home. Confirm the chooser and Code control are separately visible.",
+        "Open the Page chooser, filter for the unique title, and select that page.",
+        "After the row settles, observe that the title stretches across the row and covers the adjacent Code control."
+      ],
+      "severity": 3
+    },
+    {
+      "id": "gitea-wiki-legacy-editor-unsaved-navigation-loss",
+      "name": "Leaving the legacy wiki editor discards unsaved body changes without a warning",
+      "summary": "When a wiki body has unsaved edits in the legacy editor, navigating to the repository Wiki page list proceeds without a warning and silently discards the changes. The simple editor presents a dismissible navigation confirmation for the same action.",
+      "expected": "Leaving a wiki page with unsaved legacy-editor content should show a navigation confirmation so the user can cancel and keep the edit, as in simple textarea mode.",
+      "actual": "After adding a visible marker to the legacy wiki body and blurring the editor, clicking the repository Wiki tab navigates to the page list without a warning. Reopening Edit shows only the saved baseline. With the same navigation in simple textarea mode, the confirmation can be dismissed and the unsaved marker remains in the form.",
+      "reproSteps": [
+        "Create and save a wiki page with a known baseline body, then open Edit and select Use the legacy editor instead.",
+        "Append a visible marker to the body and blur through the optional update-note field without saving.",
+        "Click the repository Wiki tab. Observe that navigation proceeds without a confirmation.",
+        "Reopen Edit and observe that only the saved baseline remains; the unsaved legacy marker was discarded.",
+        "Switch to simple textarea mode, append a different marker, blur the body, and click Wiki again. Dismiss the navigation confirmation and observe that the edit form and marker remain."
+      ],
+      "severity": 3
+    },
+    {
+      "id": "gitea-wiki-whitespace-title-renames-to-unnamed",
+      "name": "Editing a wiki page with a whitespace-only title renames it to unnamed",
+      "summary": "Saving an existing wiki page after replacing its title with three spaces succeeds without validation and renames the page to unnamed. New-page creation rejects the same whitespace-only title.",
+      "expected": "A whitespace-only title should be rejected with “Title cannot be empty,” and the existing wiki page should keep its title.",
+      "actual": "Saving the existing page with a three-space title redirects to /wiki/unnamed. The heading and page selector show unnamed at revision 2, while the page content is unchanged. The new-page form rejects the same title.",
+      "reproSteps": [
+        "Create a wiki page named ReproWs77 with body “hello content.”",
+        "Open its Edit form and replace the title with exactly three spaces, leaving the content unchanged.",
+        "Click Save Page. Observe that no validation error is shown and the browser redirects to /wiki/unnamed.",
+        "Confirm the heading and page selector show unnamed at revision 2 and the page content remains unchanged.",
+        "As a control, attempt to create a new wiki page with the same three-space title and observe “Title cannot be empty.”"
+      ],
+      "severity": 3
+    },
+    {
+      "id": "gitea-wiki-reserved-title-edit-returns-500",
+      "name": "Renaming an existing wiki page to reserved title `raw` returns a full-page 500",
+      "summary": "Renaming an existing wiki page to the reserved title `raw` replaces the editor with a full-page 500 error instead of showing an actionable validation message in the edit form.",
+      "expected": "Reject the reserved title with the field-level message `The wiki page name \"raw\" is reserved.` and keep the existing-page edit form available for correction.",
+      "actual": "Saving an existing wiki page after changing its title to `raw` replaces the editor with a full-page 500 Internal Server Error displaying `EditWikiPage, wiki title is reserved: raw`. The original page remains at its previous title.",
+      "reproSteps": [
+        "Create an ordinary wiki page, such as `commit`, in /eval/harbor-handbook/wiki.",
+        "Open that page and select Edit.",
+        "Change Page title to `raw` and click Save Page.",
+        "Observe that the edit form is replaced by a full-page 500 with `EditWikiPage, wiki title is reserved: raw`; the original page remains unchanged."
+      ],
+      "severity": 5
+    }
+  ]
+}

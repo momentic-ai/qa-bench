@@ -1,0 +1,146 @@
+{
+  "bugs": [
+    {
+      "name": "Promotion name substring search returns no matching promotions",
+      "summary": "Searching the promotions listing for “court” removes the visible “Happy court day!” promotion and shows “No promotions found.”",
+      "expected": "The promotion named “Happy court day!” remains visible when searching for the name substring “court”; the visible field is explicitly labeled “Search promotions.”",
+      "actual": "The URL changed to /discounts/sales?asc=true&sort=name&query=court, but the rendered listing displayed “No promotions found.” The unfiltered list had shown “Happy court day!” as an active promotion, and the empty state remained visible after waiting five seconds.",
+      "reproSteps": [
+        "Sign in as the fixture Saleor admin.",
+        "Navigate to /discounts/sales and verify that the unfiltered listing visibly includes “Happy court day!”.",
+        "Enter “court” in the visible “Search promotions...” field.",
+        "Wait for the listing to settle. At /discounts/sales?asc=true&sort=name&query=court, observe “No promotions found” instead of the matching promotion."
+      ],
+      "severity": 3
+    },
+    {
+      "name": "Scheduled status filter clears promotions grid",
+      "summary": "Applying the Scheduled status filter removes the promotions grid despite two promotions visibly marked Scheduled in the unfiltered list.",
+      "expected": "The listing should retain and display the promotions matching Status is Scheduled, including the two scheduled entries visible before filtering.",
+      "actual": "After Apply, the filtered page showed no grid rows or empty-state message; only the row-count and disabled pagination controls remained. The blank state persisted after waiting five seconds.",
+      "reproSteps": [
+        "Loaded the authenticated dashboard session for the admin account admin@example.com; no credentials were entered during this reproduction.",
+        "Opened the promotions listing at /discounts/sales (the page displayed the unfiltered list at /discounts/sales?asc=true&sort=name), where “Happy black day!” and “Happy maybe day!” were both labeled “Scheduled · in 24 hours.”",
+        "Opened Filters and configured the condition Status is Scheduled.",
+        "Clicked Apply. The browser reached /discounts/sales?0%5Bs0.promotionStatus%5D=SCHEDULED&sort=name&asc=true.",
+        "Waited five seconds and observed the filtered listing still had no grid rows or empty-state message, with only row-count and disabled pagination controls visible."
+      ],
+      "severity": 5
+    },
+    {
+      "name": "Promotion name validation shows the rule-name error",
+      "summary": "After saving a named promotion rule, the blank Discount name field remains outlined in red but displays “Rule name is required.”",
+      "expected": "With the promotion Discount name left blank, its validation message identifies the missing promotion/discount name.",
+      "actual": "After saving the rule mo-saleor-04-promotions-rule-validation for Channel-USD with a $10 reward, the blank Discount name field showed “Rule name is required.” The saved rule was visibly present in the form.",
+      "reproSteps": [
+        "Load the authorized Saleor admin session (visible account: admin@example.com, admin role); no credentials were entered during this run.",
+        "Navigate to /discounts/sales and select Create promotion. The create form URL observed was /discounts/sales/add.",
+        "Leave the Discount name field empty and select Add rule.",
+        "Enter mo-saleor-04-promotions-rule-validation as the rule name, select Channel-USD, enter reward value 10, and save the rule.",
+        "Observe the red-outlined blank Discount name field showing “Rule name is required”; the named rule remains visible below."
+      ],
+      "severity": 1
+    },
+    {
+      "name": "Subtotal price operator change splits threshold into 5 and 0",
+      "summary": "Changing the saved Subtotal price rule from greater than $50 to between immediately populated the range as 5 and 0; correcting it to 50 and 100 allowed the rule to save with the intended range.",
+      "expected": "Changing the operator should preserve $50 as the lower bound or show a clear empty/default range, rather than silently replacing the threshold with unrelated values.",
+      "actual": "The saved rule summary showed “greater than $50.00.” In the Edit rule dialog, selecting “between” without changing the existing amount immediately showed bounds 5 and 0. I then corrected the bounds to 50 and 100 and saved; the rule summary displayed $50.00–$100.00.",
+      "reproSteps": [
+        "Start authenticated as the Saleor Dashboard admin (admin@example.com) using the provided saved admin session, and open /discounts/sales.",
+        "Create a fresh Order promotion named mo-saleor-04-promotions-subtotal-range-investigation-20260601-731904. Add a rule named mo-saleor-04-promotions-subtotal-range-investigation-20260601-731904-rule for Channel-USD; set Reward type to Gift and select Darko Polo - S; add Subtotal price greater than 50. Save the rule and promotion.",
+        "Choose Ignore changes in the leave-without-saving prompt to open the saved promotion at /discounts/sales/UHJvbW90aW9uOjFjNDE4NThjLWQ2YTItNGM4Zi05MThhLWNkYWFlZjQxN2I4Mg==.",
+        "Open the rule editor and change the Subtotal price operator from greater to between without editing either amount field. The editor displays 5 and 0."
+      ],
+      "severity": 3
+    },
+    {
+      "name": "Promotion save shows a false discard prompt and retry creates duplicate rows",
+      "summary": "The first successful promotion save leaves the create form open behind an unsaved-changes prompt; retrying Save creates a second promotion.",
+      "expected": "A successful promotion creation should navigate to the saved promotion exactly once without warning that its saved fields will be discarded.",
+      "actual": "A scheduled Catalog promotion displayed Discount created and Leave without saving changes? together. Choosing Keep editing and clicking Save again created a second promotion with the same exact name.",
+      "reproSteps": [
+        "Sign in to the local Saleor fixture as admin@example.com and open Promotions > Create promotion.",
+        "Create a unique scheduled Catalog promotion with a named rule, Channel-PLN, and a nonzero reward.",
+        "Click Save once; observe Discount created alongside Leave without saving changes? while still on /discounts/sales/add.",
+        "Choose Keep editing, click Save again, then choose Ignore changes in the repeated prompt.",
+        "Search Promotions for the exact new name; two matching rows remain after the list settles."
+      ],
+      "severity": 3
+    },
+    {
+      "name": "Re-enabling the Ends column moves it to the first position in the Promotions table",
+      "summary": "Re-enabling Ends consistently moves it ahead of Name in the Promotions table instead of keeping the order shown in the Columns list.",
+      "expected": "Toggling Ends off and back on should keep it after Starts, consistent with the ordered Columns list and the existing table order.",
+      "actual": "After Ends was turned back on, the visible table placed Ends before Name, Status, Discount type, and Starts. The order remained after the picker was dismissed and the page settled.",
+      "reproSteps": [
+        "As the signed-in admin@example.com account (authenticated using the loaded saved authentication state), open /discounts/sales?asc=true&sort=name. Do not edit promotion records.",
+        "Open Pick columns. On this run Ends is initially disabled; the picker lists Name, Status, Discount type, Starts, Ends. Enable Ends once to establish the all-columns state.",
+        "Turn Ends off and observe the table without that column.",
+        "Turn Ends back on. The table places Ends before Name, Status, Discount type, and Starts.",
+        "Dismiss the picker and re-observe the settled table; Ends remains first."
+      ],
+      "severity": 3
+    },
+    {
+      "name": "Promotions search horizontally shifts and clips content at mobile width",
+      "summary": "Focusing Promotions search at 390×844 shifts the content horizontally; after searching “Happy court day!”, the page heading and matching promotion name remain clipped even after filtering settles and the field is blurred.",
+      "expected": "At 390×844, focusing and using the Promotions search should leave the page heading and promotion names readable while the search is active.",
+      "actual": "Focusing the search shifted the content horizontally: “All promotions” was reduced to its trailing “ons,” and after the exact search settled the matching “Happy court day!” row showed only its trailing “t day!” portion. The clipped state remained after clicking elsewhere and waiting six seconds.",
+      "reproSteps": [
+        "Set the browser viewport to 390×844.",
+        "Open /home in the administrator-authenticated session (the provided auth state was loaded; no credentials were entered).",
+        "Open the navigation menu, expand Discounts, and select Promotions. Dismiss the Saleor Pulse panel if it obscures the list.",
+        "On the Promotions page, click the Search promotions field and enter “Happy court day!”.",
+        "Wait for the filter to settle. Observe that the matching row is visible but its leading text, along with the page heading, is clipped. Click outside the field and wait; the clipping remains. The final filtered URL was /discounts/sales?asc=true&sort=name&query=Happy%20court%20day%21."
+      ],
+      "severity": 1,
+      "reviewedVariants": [
+        {
+          "id": "mo-60m-saleor-24",
+          "name": "Mobile Staff Members search pans away from its filtered result",
+          "summary": "At 390 × 844, focusing and using Staff Members search horizontally pans the page so the filtered first-column result and directory controls are offscreen; the issue persists after settling and requires scrolling back to read Wendy Hess.",
+          "expected": "Using the visible “Search staff members” field should let the administrator see the matching staff record in the Name column and access the relevant directory controls without the page panning away from them.",
+          "actual": "At 390 × 844, focusing the search field alone panned the page horizontally before any text was entered. After entering Wendy Hess, the query filtered the directory, but the first-column result and left-side controls were outside the viewport; the view remained shifted after waiting. Scrolling horizontally back revealed Wendy Hess as the matching row.",
+          "reproSteps": [
+            "Set the viewport to 390 × 844 CSS pixels and open / in the authorized administrator session already supplied; no interactive sign-in was performed. The session has Configuration > Staff Members access.",
+            "Open the navigation menu, choose Configuration, use Search settings to find Staff Members, and open the Staff Members result. The directory is at /staff/?asc=true&sort=name, with the Name column visible and Wendy Hess already present.",
+            "Focus the Search staff members field and enter Wendy Hess.",
+            "Observe the filtered directory at /staff/?asc=true&sort=name&query=Wendy%20Hess. The page is panned horizontally, leaving the first-column name and left-side controls offscreen; wait at least five seconds and observe that it remains shifted.",
+            "Scroll horizontally back to the left and verify Wendy Hess is the filtered result. No staff records are created, edited, or deleted."
+          ]
+        }
+      ]
+    },
+    {
+      "id": "codex-60m-saleor-14",
+      "name": "Promotion price conditions accept reversed ranges",
+      "summary": "An order promotion's 'between' condition can save lower bounds greater than upper bounds, leaving an impossible price interval with no validation.",
+      "expected": "Reject a reversed numeric interval with an actionable error, or normalize it before saving.",
+      "actual": "Subtotal price between100 and10 saved and remained $100.00–$10.00 after promotion creation and reload. Editing to80 and20 also succeeded and persisted $80.00–$20.00 without a field error.",
+      "reproSteps": [
+        "Open Discounts > Promotions > Create promotion. Choose Order and enter a unique name.",
+        "Add a rule, enter a name, choose Channel-USD, and set a fixed reward of5.",
+        "Add a condition: Subtotal price, between, first value100, second value10.",
+        "Save the rule and promotion; reload the created promotion. The reversed interval is still displayed.",
+        "Edit the rule to interval80–20, save and reload; the second reversed interval also persists."
+      ],
+      "severity": 3
+    },
+    {
+      "id": "codex-60m-saleor-17",
+      "name": "Editable promotion type changes are discarded after a successful Save",
+      "summary": "Existing promotion details expose an editable Discount type selector, but changing Order to Catalog is silently ignored while reporting a successful update.",
+      "expected": "If the promotion type can change, persist it and handle incompatible rules. If it is immutable, disable the selector or explicitly reject the change.",
+      "actual": "Selecting Catalog on an existing Order promotion changed the selector and marked General information dirty. Save displayed 'Success Promotion updated', but the header remained Order and reload restored the selector to Order. A second attempt alongside a name change saved the new name while discarding the type change.",
+      "reproSteps": [
+        "Open an existing test Order promotion, QA Order Promotion0600, under Discounts > Promotions.",
+        "Open Discount type and choose Catalog (keyboard selection also works). Observe Catalog in the selector and Unsaved changes: general.",
+        "Click Save. Observe 'Success Promotion updated'.",
+        "Reload; the promotion header and selector still show Order.",
+        "Repeat changing type while also renaming the promotion. Save and observe the name persists but type returns to Order."
+      ],
+      "severity": 3
+    }
+  ]
+}

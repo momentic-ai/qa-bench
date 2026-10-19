@@ -1,0 +1,137 @@
+{
+  "bugs": [
+    {
+      "name": "Global Issues filter URL corrupts Type with sort token after selecting All projects",
+      "summary": "Selecting All projects in Global Issues changes the Type filter into a sort token rather than preserving the selected issue type.",
+      "expected": "Changing the project filter should preserve the selected issue type.",
+      "actual": "Selecting All projects in Global Issues changes the Type filter into a sort token rather than preserving the selected issue type.",
+      "reproSteps": [
+        "Sign in and open Global Issues.",
+        "Choose a Type filter and then choose All projects from the Project filter.",
+        "Inspect the visible Type control and URL; the issue type is lost or replaced by a sort value."
+      ],
+      "severity": 3
+    },
+    {
+      "name": "Deleting an own comment leaves the issue comment count stale",
+      "summary": "Deleting the only comment removes it from the issue timeline, but the header still reports one comment until reload.",
+      "expected": "The issue header should update to zero comments when the only comment is deleted.",
+      "actual": "The comment disappears while the header continues to show 1 comment; reloading the issue changes it to 0 comments.",
+      "reproSteps": [
+        "Sign in as the repository owner and create an issue in momentic-admin/field-notes.",
+        "Post a nonempty comment and confirm the issue header says 1 comment.",
+        "Delete that comment from its Comment menu and confirm the prompt.",
+        "Observe the absent comment and stale 1 comment header, then reload and see 0 comments."
+      ],
+      "severity": 3
+    },
+    {
+      "name": "Global issue search leaves unrelated issues in the results",
+      "summary": "Submitting a title query on the global Issues page preserves the query in the URL and search field but does not filter the issue list.",
+      "expected": "The global issue list should contain only issues matching the submitted query.",
+      "actual": "Searching for Document the import workflow leaves all three seeded open issues visible, including Track mobile layout follow-up and Add a weekly release checklist. The URL contains q=Document+the+import+workflow and project=ZgotmplZ.",
+      "reproSteps": [
+        "Sign in as the fixture administrator and open the global Issues page.",
+        "Confirm the three seeded open issues are visible, then search for Document the import workflow and press Enter.",
+        "Observe that the search term appears in the URL and field but all three issues remain in the list."
+      ],
+      "severity": 3
+    },
+    {
+      "id": "codex-60m-forgejo-6",
+      "name": "Bulk-closing a blocked issue silently fails",
+      "summary": "The issue-list bulk Close action provides no explanation when an open dependency prevents closure. The issue remains open and the selection clears, while closing from its detail page correctly displays an error.",
+      "expected": "Show why the selected issue could not close, including its open blocking dependency, and make the failed result clear.",
+      "actual": "Selecting only #11 (depending on open #1) and clicking bulk Close refreshes the list, clears selection, and leaves #11 open with no error banner or reason. Reproduced twice using this simple dependency, independent of the circular-dependency bug.",
+      "reproSteps": [
+        "Sign in as repository owner. Create an open issue A depending on another open issue B (tested field-notes #11 depends on #1).",
+        "Open the repository Issues list.",
+        "Select only issue A's row checkbox.",
+        "Click the bulk Close action.",
+        "Observe issue A remains Open, selection resets, and no failure explanation appears.",
+        "Open issue A and click Close issue to contrast the explicit dependency error shown on its detail page."
+      ],
+      "severity": 3
+    },
+    {
+      "id": "codex-30m-forgejo-5",
+      "name": "Combining a personal-project filter and issue search hides matching issues",
+      "summary": "Both global and repository issue lists show an issue when filtered by its personal project, but searching for a word in its title yields no results. Either filter works independently.",
+      "expected": "The issue remains visible because its title matches qa and it belongs to the selected project.",
+      "actual": "Project-only filtering shows 1 Open and qa referenced issue. Searching qa while project=1 is selected shows zero matches and No results. Clearing search restores the issue; searching qa with All projects also finds it. Both filter orders and both global/repository issue lists reproduce.",
+      "reproSteps": [
+        "Sign in and create a personal project and an open issue whose title contains qa (verified with qa-personal-project and field-notes issue #7 qa referenced issue).",
+        "Assign the issue to the personal project using the global Issues bulk Project action.",
+        "Open /issues and select qa-personal-project in the Project filter; confirm the matching issue appears.",
+        "Enter qa in Search issues and press Enter.",
+        "Clear the search; alternatively search qa with All projects and then select qa-personal-project.",
+        "Repeat the project filter and qa search from /momentic-admin/field-notes/issues."
+      ],
+      "severity": 3
+    },
+    {
+      "id": "mo-30m-forgejo-9",
+      "name": "Inactive external issue-tracker URL blocks Issues settings save after switching to built-in tracker",
+      "summary": "With the built-in issue tracker selected, a malformed URL retained in the inactive external tracker field still triggers browser URL validation and blocks the Issues settings save.",
+      "expected": "Selecting “Use built-in issue tracker” makes the external tracker URL inactive, so that URL should not block saving Issues settings.",
+      "actual": "After switching to the built-in tracker without changing the retained `not-a-url` value, clicking the Issues “Save settings” button displayed the browser’s “Please enter a URL” tooltip on the faded external URL field. No successful save feedback appeared, and the validation block remained visible after five seconds.",
+      "reproSteps": [
+        "Load the authorized admin session from the supplied saved authentication state (admin role; no username/password environment variables were used). Navigate to /momentic-admin/field-notes/settings/units without changing the seed repository.",
+        "Through the organization UI, use Create > New repository to create a fresh private repository named `momentic-bug-itswitch-7f3c9d`.",
+        "Open the new repository’s Settings > Units > Issues page at /momentic-admin/momentic-bug-itswitch-7f3c9d/settings/units#issues.",
+        "Select “Use external issue tracker,” enter `not-a-url` in “External issue tracker URL,” and click the Issues section’s “Save settings” button. Observe the “Please enter a URL” validation tooltip.",
+        "Select “Use built-in issue tracker” without editing the external URL, then click the Issues section’s “Save settings” button again.",
+        "Observe that the built-in radio remains selected, the external URL field retains `not-a-url` and is visibly faded, and the “Please enter a URL” tooltip appears again on that field with no successful-save feedback."
+      ],
+      "severity": 3
+    },
+    {
+      "id": "codex-60m-forgejo-3",
+      "name": "Issue-row label links clear the project filter and sort order",
+      "summary": "Clicking an issue-row label drops the active Project and Sort parameters. It unexpectedly includes issues outside the chosen project and resets the selected ordering.",
+      "expected": "A row-label click should narrow the existing issue filters while preserving project selection and sort order.",
+      "actual": "With project=1 selected, list contains #6/#7. Clicking bug-bash/ready on #6 navigates to labels=9 without project=1 and includes outside-project #4. Separately, with ready label and sort=oldest, #4 precedes #6; clicking a row label removes sort=oldest and reverses the order. Both cases reproduced twice; parent independently confirmed project loss.",
+      "reproSteps": [
+        "Sign in and open /momentic-admin/field-notes/issues. Precondition: project #1 contains #6/#7; #4 is outside it; #4/#6 share bug-bash/ready (label 9).",
+        "Select project #1 (Bug bash project edited) with the Project dropdown.",
+        "Click bug-bash/ready on issue #6's list row.",
+        "Observe project=1 is removed and #4 appears outside the pinned section.",
+        "For the sort variant, use the ready label filter and select Sort > Oldest; confirm #4 then #6.",
+        "Click the ready label on a list row again; observe sort=oldest disappears and the rows become #6 then #4."
+      ],
+      "severity": 3
+    },
+    {
+      "id": "codex-60m-forgejo-4",
+      "name": "Three-issue dependency cycles are accepted and prevent all involved issues from closing",
+      "summary": "Dependency validation blocks a direct two-issue cycle but allows a transitive three-issue cycle. Each issue then blocks closure of the next, so none can close until a dependency is manually removed.",
+      "expected": "Reject adding a dependency that forms a circular chain, including cycles through more than two issues.",
+      "actual": "Adding #6 depends on #7, #7 depends on #4, and #4 depends on #6 succeeds and persists. Attempting to close each issue reports 'You need to close all issues blocking this issue before you can close it.' Removing and readding the final edge reproduced acceptance and closure failure. Direct two-issue cycle was correctly rejected.",
+      "reproSteps": [
+        "Sign in and create three open issues A, B, and C in a repository with dependencies enabled and no existing dependencies between them (tested on field-notes #6, #7, #4).",
+        "On issue A, use Dependencies search to choose issue B and add it, making A depend on B.",
+        "On issue B, add issue C as a dependency.",
+        "On issue C, add issue A as a dependency.",
+        "Observe the final dependency is accepted and saved.",
+        "Attempt to close each of A, B, and C; each is blocked by another issue in the cycle."
+      ],
+      "severity": 3
+    },
+    {
+      "id": "mo-60m-forgejo-19",
+      "name": "Nearest due date sort orders global issues farthest-first",
+      "summary": "Selecting “Nearest due date” leaves the global issue list ordered farthest-first; a separate sort changes the order, but selecting nearest again restores the reversed due-date order.",
+      "expected": "The selected “Nearest due date” sort should place the open issues in ascending due-date order: earliest (Jan 2, 2030), middle (Jan 4, 2030), latest (Jan 6, 2030). The visible “Farthest due date” option provides the contrasting order.",
+      "actual": "After selecting “Nearest due date,” the list showed latest (Jan 6, 2030), middle (Jan 4, 2030), earliest (Jan 2, 2030). Reopening the menu showed “Nearest due date” selected. Selecting “Oldest” changed the list to earliest, middle, latest; then selecting “Nearest due date” again returned it to latest, middle, earliest, unchanged after waiting six seconds.",
+      "reproSteps": [
+        "Start at /issues authenticated as the authorized momentic-admin admin using the provided saved session; no credentials were entered during this run.",
+        "Create a fresh private repository under momentic-admin named `mo-bug-neardue-verify-6f3a91`.",
+        "In that repository, create three open issues in this order: `mo-neardue-6f3a91 earliest` with due date Jan 2, 2030; `mo-neardue-6f3a91 middle` with due date Jan 4, 2030; and `mo-neardue-6f3a91 latest` with due date Jan 6, 2030.",
+        "Return to the global Issues page and search for `mo-neardue-6f3a91`. Confirm the baseline order is latest (Jan 6), middle (Jan 4), earliest (Jan 2).",
+        "Open Sort and select “Nearest due date.” The list remains latest, middle, earliest; the final page URL is /issues?type=created_by&sort=nearduedate&project=&state=open&labels=&q=mo-neardue-6f3a91.",
+        "To rule out a missed selection or stale display, select “Oldest” and observe earliest, middle, latest. Select “Nearest due date” again and wait six seconds; the visible list returns to latest (Jan 6), middle (Jan 4), earliest (Jan 2)."
+      ],
+      "severity": 3
+    }
+  ]
+}

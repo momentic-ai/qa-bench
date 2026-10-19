@@ -1,0 +1,71 @@
+{
+  "bugs": [
+    {
+      "name": "Selecting the Default transaction flow Settings result opens the Channels overview instead of the setting",
+      "summary": "The Settings result for “Default transaction flow” consistently navigates to the generic Channels overview instead of opening the setting.",
+      "expected": "Selecting the Settings result labeled “Default transaction flow” should open that setting.",
+      "actual": "The command menu closed and the browser landed at /channels/, showing the generic Channels page and channel rows, with no Default transaction flow setting displayed. The same result recurred on a second attempt.",
+      "reproSteps": [
+        "Start at /home as authenticated administrator admin@example.com; use the supplied saved administrator session (no additional sign-in action).",
+        "Press Ctrl+K to open the Command menu.",
+        "Search for “default transaction flow.”",
+        "Select the Settings result labeled “Default transaction flow” under Channels.",
+        "Observe that the browser opens /channels/ and displays the generic Channels list rather than the setting."
+      ],
+      "severity": 3
+    },
+    {
+      "name": "Mobile Search overflows horizontally, hiding query input and clipping result content when a scope is selected",
+      "summary": "Selecting Products on the 390×844 Search page leaves the query input and product names clipped by page-wide horizontal overflow. Reported variant: Global Search scope filters are unavailable on the mobile layout.",
+      "expected": "At 390×844, selecting Products should filter the search results while keeping the query input and result content readable in the viewport, with any overflow contained within the relevant control or results area.",
+      "actual": "After selecting Products, the URL changes to scope=products, but the page shifts horizontally: only a narrow right portion of the query field remains visible and the left side, including product names, is clipped. The same state remained after waiting five seconds.",
+      "reproSteps": [
+        "Set the browser viewport to 390×844 CSS pixels and load the provided authorized admin session; no credentials were entered during this run.",
+        "Navigate to /search?q=shirt&scope=all and observe the query input and All results.",
+        "Select the Products scope filter without opening any result.",
+        "Wait five seconds and observe that the URL is /search?q=shirt&scope=products while the query field and product names remain clipped.",
+        "Reported variant: At 390×844, open Search as the fixture administrator and search for shirt.",
+        "Reported variant: Observe mixed entity results with no visible scope selector; compare the same search on desktop, where the scope controls are visible."
+      ],
+      "severity": 1,
+      "reviewedVariants": [
+        {
+          "name": "Global Search scope filters are unavailable on the mobile layout",
+          "expected": "On the mobile Search page, users should be able to select a result scope such as Products, Variants, Categories, Collections, Orders, Models, or Model types to narrow results.",
+          "actual": "After searching for “shirt,” the settled mobile page displayed mixed Order, Category, Product, and Variant results below the search field, with no scope controls. Horizontal scrolling did not reveal any. In the same search on desktop, scope controls were visible and selecting Products reduced the list to product results."
+        }
+      ]
+    },
+    {
+      "name": "Global Search query ampersand is not URL-encoded",
+      "summary": "Global Search interpolates reserved characters into the query URL without encoding, so reloading loses the query suffix after & or #.",
+      "expected": "The complete search query, including literal & and # characters, should survive a page reload unchanged.",
+      "actual": "Entering café & tea initially displays the complete query, but reloading restores only café followed by a space. Entering !@#$%^&*() initially displays the complete query, but reloading restores only !@.",
+      "reproSteps": [
+        "Open the provided Saleor Dashboard fixture and sign in through the normal UI with the authorized fixture account.",
+        "From the rendered Home page, click Search in the sidebar.",
+        "Enter café & tea in the Global Search field and wait for the page to settle. Verify that the field shows the complete query.",
+        "Reload the page. Observe that the field now shows only café followed by a space; & tea is lost.",
+        "In a fresh browser context, sign in through the normal UI, open Home, and click Search in the sidebar.",
+        "Enter !@#$%^&*() and wait for the page to settle. Verify that the field shows the complete query.",
+        "Reload the page. Observe that the field now shows only !@; the suffix starting with # is lost."
+      ],
+      "severity": 3,
+      "rootCause": "In saleor/saleor-dashboard@a6e7bee68ab183147ec680e03e86c29f717a11d5, src/search/useSearchCriteria.ts:25–27 sets local query state and navigates to `?q=${query}&scope=${scope}` without encoding the query. The raw & in café & tea starts another URL parameter; the earlier raw # in !@#$%^&*() starts a fragment. On reload, lines 10–16 parse window.location.search and initialize the input from the truncated q value. Both reports share this missing-encoding cause; the second report is not an ampersand-only parsing failure."
+    },
+    {
+      "name": "Ctrl+K customer commands are grouped under the “Orders” heading",
+      "summary": "Ctrl+K customer commands are grouped under the “Orders” heading",
+      "expected": "Customer-related commands appear under a customer-related heading.",
+      "actual": "The command results show “Orders” above “Create customer” and “Go to customers.”",
+      "reproSteps": [
+        "the app",
+        "Sign in to the authorized fixture account and open the Saleor Dashboard home page.",
+        "Press Ctrl+K to open the command palette.",
+        "Enter “customer” and wait for the matching results.",
+        "Observe the heading immediately above “Create customer” and “Go to customers.”"
+      ],
+      "severity": 1
+    }
+  ]
+}

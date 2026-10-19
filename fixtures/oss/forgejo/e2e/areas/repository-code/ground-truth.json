@@ -1,0 +1,135 @@
+{
+  "bugs": [
+    {
+      "name": "Invalid RegEx code-search query returns a 500 error",
+      "summary": "Submitting `[` in repository RegEx code search reproduces a visible 500 Internal server error with the raw git grep missing-`]` diagnostic.",
+      "expected": "The search page should remain usable and show a user-facing indication that the regular expression is invalid, without an internal server error.",
+      "actual": "Submitting `[` navigated to /momentic-admin/field-notes/search/branch/main?path=&q=%5B&mode=regexp and displayed a 500 Internal server error page exposing `GrepSearch, unable to run git grep: exit status 128, stderr: fatal: -e option, '[': missing terminating ] for character class`. The error remained visible after waiting six seconds.",
+      "reproSteps": [
+        "Sign in as the fixture Forgejo admin.",
+        "Open the seeded, read-only repository at /momentic-admin/field-notes.",
+        "In the repository code-search field, open the search-mode dropdown and select RegEx.",
+        "Enter `[` in the search field and submit the search.",
+        "Observe the 500 page at /momentic-admin/field-notes/search/branch/main?path=&q=%5B&mode=regexp, including the git grep diagnostic; it remains visible after waiting six seconds."
+      ],
+      "severity": 5
+    },
+    {
+      "id": "codex-60m-forgejo-1",
+      "name": "Code search line links open rendered Markdown without locating the matched line",
+      "summary": "Line-number links from code search append #L3 to a Markdown file URL, but the destination opens rendered Markdown without source line numbers or a highlighted match.",
+      "expected": "Clicking a code search line number should open source view at the matching numbered line.",
+      "actual": "Searching Browser finds line 3 of bug-bash-notes.md. Clicking 3 opens .../bug-bash-notes.md#L3 in rendered view (heading and paragraph); no numbered or selected source line appears. The page instead offers View source. Reproduced twice.",
+      "reproSteps": [
+        "Sign in and open a repository with a Markdown file containing searchable text (field-notes/bug-bash-notes.md has Browser file creation test. on line 3).",
+        "On the repository Code page, enter Browser in Search code and submit.",
+        "Click the line-number 3 link beside the matching result.",
+        "Observe the destination opens rendered Markdown despite the #L3 fragment, without locating the source line."
+      ],
+      "severity": 3
+    },
+    {
+      "id": "codex-30m-forgejo-2",
+      "name": "Template generation without Git content breaks New file and Upload file",
+      "summary": "Generating a repository from a template with Git content unchecked produces an empty default-branch name. Both browser initialization links return 404 and the command-line quick guide omits the branch.",
+      "expected": "The generated empty repository has a valid default branch, usable New file/Upload file forms, and complete Git setup commands.",
+      "actual": "New file points to /<owner>/<repo>/_new// and Upload file to /<owner>/<repo>/_upload//; both return 404. The quick guide displays git switch -c and git push -u origin without a branch. Independently reproduced in qa-from-template and qa-from-template-empty-confirm; generation with Git content checked produces a usable qa-main branch.",
+      "reproSteps": [
+        "Sign in. Create an initialized repository with a default branch (tested qa-org-explore/qa-org-repo, branch qa-main).",
+        "In repository Settings enable Template repository and save.",
+        "Open Code and choose Use this template.",
+        "Enter an available repository name, leave Git content unchecked, select Issue labels, and create the repository.",
+        "From its Quick guide click New file. Return to Code and click Upload file."
+      ],
+      "severity": 5
+    },
+    {
+      "id": "mo-30m-forgejo-0",
+      "name": "Clearing nested file basename creates root-level merged filename",
+      "summary": "Clearing the basename after entering a nested file path collapsed the folder breadcrumb into `notesguide.md`; the commit succeeded and that unintended root-level file persisted in the Code listing.",
+      "expected": "The app should reject the commit when the basename is empty or preserve the requested `notes/` directory path; it should not silently create a differently named root-level file.",
+      "actual": "The form initially displayed `notes/` as a directory breadcrumb and `guide.md` as the basename. After Ctrl+A and Backspace in the basename field, the breadcrumb collapsed and the field displayed `notesguide.md`. Commit changes succeeded, and the repository Code list showed `notesguide.md` at the root.",
+      "reproSteps": [
+        "Load the provided authenticated browser session for the momentic-admin account; no credentials were entered.",
+        "Navigate to the seeded repository at /momentic-admin/field-notes.",
+        "Open the global plus menu and choose New repository.",
+        "Create a fresh repository named `momentic-explore-qa71k9` with Initialize repository enabled, then open its Code tab at /momentic-admin/momentic-explore-qa71k9.",
+        "Choose Add file > New file. Enter `notes/guide.md` as the path, `Short field note.` as content, and `Add guide note` as the commit message.",
+        "In the basename input showing `guide.md` beside the `notes/` breadcrumb, press Ctrl+A and Backspace. Observe the breadcrumb collapse and the input display `notesguide.md`.",
+        "Click Commit changes, then return to the repository Code tab. The root file list contains `notesguide.md` instead of the requested nested `notes/guide.md` file."
+      ],
+      "severity": 3
+    },
+    {
+      "id": "codex-60m-forgejo-13",
+      "name": "Cancel after new-file validation opens a nonexistent file",
+      "summary": "After an invalid filename is rejected in the New file form, the bottom Cancel link changes from the repository directory to the rejected new file path and opens a 404.",
+      "expected": "Cancel abandons the unsaved new file and returns to the existing repository directory, as the top Cancel link does.",
+      "actual": "After rejecting .git/config, the bottom Cancel navigates to /src/branch/main/.git/config and shows HTTP 404, Path .git/config doesn't exist in branch main. Reproduced twice; the top Cancel still points to the repository root.",
+      "reproSteps": [
+        "Sign in as repository owner and open momentic-admin/field-notes Code on main.",
+        "Choose Add file → New file.",
+        "Enter .git/config as the filename and enter any text content.",
+        "Click Commit changes; observe The filename is invalid: .git/config.",
+        "Click the bottom Cancel beside the commit controls.",
+        "Observe a 404 for the nonexistent .git/config file instead of returning to the repository directory."
+      ],
+      "severity": 5
+    },
+    {
+      "id": "codex-60m-forgejo-14",
+      "name": "File form validation clears Signed-off-by selection",
+      "summary": "The New file form turns off a selected Signed-off-by trailer after rejecting an invalid new branch name. Correcting just the branch and submitting then creates a commit without the requested trailer.",
+      "expected": "Recoverable validation errors retain the selected Signed-off-by option along with the other entered values.",
+      "actual": "Selecting Signed-off-by and submitting branch bad..branch yields a friendly branch validation error but resets the checkbox to unchecked. This was repeated twice. Correcting only the branch to bug-bash-signoff created commit 0280813cf2 without a Signed-off-by trailer.",
+      "reproSteps": [
+        "Sign in as repository owner and open Code → Add file → New file.",
+        "Enter a fresh filename and content.",
+        "Select Add a Signed-off-by trailer and Create a new branch for this commit.",
+        "Enter bad..branch as the branch name and click Propose file change.",
+        "Observe the branch validation error and that Signed-off-by is now unchecked while the filename, content, branch mode, and branch name remain.",
+        "Correct only the branch name to a valid fresh name and submit.",
+        "Open the resulting commit and observe the requested Signed-off-by trailer is absent."
+      ],
+      "severity": 3
+    },
+    {
+      "id": "codex-60m-forgejo-16",
+      "name": "Invalid tag validation removes the Create tag action",
+      "summary": "Submitting an invalid tag through Create tag on the New release form removes the tag-only creation action. Correcting the tag name cannot recover the action without reopening the form.",
+      "expected": "Validation preserves Create tag so the user can correct the name and retry tag-only creation.",
+      "actual": "Invalid bad tag or bad..tag shows a friendly Git reference validation message, but the response only offers Save draft and Publish release. Correcting the name leaves Create tag absent. Freshly opening the form restores it. Reproduced on two fresh pages with both invalid names.",
+      "reproSteps": [
+        "Sign in as owner of an initialized repository (tested momentic-admin/bash-settings-renamed).",
+        "Open Releases → New release.",
+        "Enter bad tag (or bad..tag) as the tag name.",
+        "Click Create tag and observe the Git reference validation error.",
+        "Replace the input with a valid, unused tag name.",
+        "Observe Create tag is no longer offered; only Save draft and Publish release remain.",
+        "Open New release afresh and observe Create tag is restored."
+      ],
+      "severity": 3
+    },
+    {
+      "id": "mo-60m-forgejo-2",
+      "name": "Main-branch archive download menu clips the TAR.GZ option on mobile",
+      "summary": "The main-branch archive menu persistently extends past the right edge at 390×844, clipping the TAR.GZ option label; selecting it nevertheless completes the archive download.",
+      "expected": "At 390×844, the archive menu and its format labels, including TAR.GZ, remain fully visible so the user can identify the format.",
+      "actual": "The menu extends beyond the viewport’s right edge and visibly truncates the TAR.GZ label. This remained true after waiting and reopening the menu. Selecting the option did complete the archive download.",
+      "reproSteps": [
+        "Use the authorized repository-owner/admin account with its provided authenticated session; no credentials were entered during this test.",
+        "Navigate to /momentic-admin/field-notes.",
+        "Set the viewport to 390×844 CSS pixels.",
+        "Select the repository’s “1 branch” count to open the branches page.",
+        "In the main branch row, open the download menu. Observe that its right side extends beyond the viewport and the TAR.GZ label is truncated; wait five seconds and confirm it remains clipped.",
+        "Select the TAR.GZ option. The archive download completes.",
+        "Reopen the main branch download menu and wait five seconds. The TAR.GZ label remains clipped."
+      ],
+      "severity": 1,
+      "matchingGuidance": {
+        "acceptanceScope": "Accepted as a valid reference by user instruction; source prerequisites and remaining evidence gaps are retained below.",
+        "prerequisites": ["390px viewport and right-edge action-menu anchor."]
+      }
+    }
+  ]
+}

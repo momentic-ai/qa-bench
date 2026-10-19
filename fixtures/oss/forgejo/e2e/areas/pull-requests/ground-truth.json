@@ -1,0 +1,115 @@
+{
+  "bugs": [
+    {
+      "name": "No project selection resets Created by you pull-request type filter",
+      "summary": "Selecting no project in Global Pull Requests resets a previously selected Created by you type filter.",
+      "expected": "Clearing the project filter should preserve the selected pull-request type.",
+      "actual": "Selecting no project in Global Pull Requests resets a previously selected Created by you type filter.",
+      "reproSteps": [
+        "Sign in and open Global Pull Requests.",
+        "Select Created by you in Type.",
+        "Open Project and select no project or All projects.",
+        "Observe that the Type filter is reset rather than preserved."
+      ],
+      "severity": 3
+    },
+    {
+      "name": "Files changed summary uses plurals for single counts",
+      "summary": "A pull request with one changed file and one addition shows plural nouns for both counts.",
+      "expected": "The summary should say one changed file and one addition.",
+      "actual": "The Files changed view says “1 changed files with 1 additions and 0 deletions.”",
+      "reproSteps": [
+        "Create a pull request that adds exactly one file and one line.",
+        "Open its Files changed view at desktop width.",
+        "Read the change summary above the diff."
+      ],
+      "severity": 1
+    },
+    {
+      "name": "Saving with repository pull requests disabled overwrites pull-request defaults",
+      "summary": "Saving with repository pull requests disabled replaced the saved pull-request defaults; the changed defaults remained after re-enabling and saving the unit.",
+      "expected": "Changing only Enable repository pull requests should preserve the separately configured pull-request defaults, including the saved Create squash commit merge style and the other defaults.",
+      "actual": "After saving the unit as disabled, the reopened form showed Fast-forward only, Update branch by rebase, maintainer edits enabled, branch deletion enabled, and manual-merge detection enabled instead of the previously saved values. These changes remained after re-enabling, saving, and reopening the settings.",
+      "reproSteps": [
+        "Sign in as momentic-admin and create a fresh private repository.",
+        "Open repository Settings → Units → Pull requests. Note the initial defaults.",
+        "Set Default merge style to Create squash commit, save, and reopen to verify it persisted.",
+        "Disable Enable repository pull requests, save, and reopen the section.",
+        "Observe defaults changed to Fast-forward only and Update branch by rebase, with maintainer edits, branch deletion, and manual-merge detection enabled.",
+        "Re-enable pull requests, save, and reopen. Observe the changed defaults persist."
+      ],
+      "severity": 1
+    },
+    {
+      "id": "codex-60m-forgejo-0",
+      "name": "Merged pull request links its deleted source branch to a 404 page",
+      "summary": "After merging with Delete branch checked, the source branch in the merged pull request header remains a clickable link to the removed branch. Clicking it reproducibly opens Page not found.",
+      "expected": "The merged pull request should link to the retained source commit or present the deleted branch as non-clickable text so its navigation does not lead to a missing page.",
+      "actual": "The bug-bash-files source link in merged pull request #5 points to /momentic-admin/field-notes/src/branch/bug-bash-files, which returns HTTP 404 and displays Page not found. Reproduced twice.",
+      "reproSteps": [
+        "Sign in and open momentic-admin/field-notes.",
+        "Use Add file > New file, enter a filename and content, choose Create a new branch for this commit and start a pull request, and name it bug-bash-files.",
+        "Propose the change and create the pull request.",
+        "Open Create merge commit, check Delete branch \"bug-bash-files\", and confirm the merge.",
+        "On the merged pull request page, click the bug-bash-files source branch link in the header."
+      ],
+      "severity": 5
+    },
+    {
+      "id": "mo-60m-forgejo-5",
+      "name": "Resolving a remaining inline reply after deleting its parent returns a 500 error",
+      "summary": "Resolving the remaining inline reply after deleting its parent navigates the narrow-width PR diff to a stable 500 Internal Server Error instead of resolving the conversation.",
+      "expected": "The visible “Resolve conversation” action should resolve the remaining inline discussion and leave the pull-request diff usable, without an internal server error.",
+      "actual": "After the parent comment was deleted and the reply remained visible, selecting “Resolve conversation” navigated to a stable 500 Internal server error page. It displayed “GetIssueByID, comment does not exist [id: 134, issue_id: 0]”; no resolved-thread summary appeared and the diff was no longer usable on that page.",
+      "reproSteps": [
+        "Set the browser viewport to 390×844. Load the provided authenticated session for the repository administrator (no credentials were entered) and open /momentic-admin/field-notes/pulls.",
+        "Using the repository-administrator account momentic-admin, create and initialize a new private repository named mo-pr-comments-inline-7421 through the UI.",
+        "Create branch inline-comments-7421 from main. On that branch, create inline-comments.md with three added lines: “# Inline discussion test”, “A first added line.”, and “Line for a second thread.” Commit the file to the branch.",
+        "Create an open pull request from inline-comments-7421 into main. Open its Files changed view at /momentic-admin/mo-pr-comments-inline-7421/pulls/1/files.",
+        "On added line 3, post the ordinary inline comment “Mobile inline note.”, reply with “Reply from a narrow viewport.”, and edit that reply to “Edited from a narrow viewport.”.",
+        "Open the parent comment’s menu, choose Delete, and accept the browser confirmation. Verify that “Mobile inline note.” is gone while “Edited from a narrow viewport.” remains visible in the inline discussion.",
+        "Select “Resolve conversation” for the remaining discussion. Observe the 500 Internal server error and missing-comment message at the pull-request Files changed URL."
+      ],
+      "severity": 5
+    },
+    {
+      "id": "mo-60m-forgejo-11",
+      "name": "Pull requests subscription filter allows issue rows on page 2",
+      "summary": "The Pull requests type filter shows issue subscriptions on page 2, including the two reported issue rows; this persisted after reselecting the filter and waiting.",
+      "expected": "With Type set to Pull requests, every page of the subscription list should contain pull request subscriptions only.",
+      "actual": "Page 1 showed pull requests after selecting Type > Pull requests. Page 2 then visibly included issue rows “mo-bb-project-newissue board verification 20260611-1537” and “Default-column issue on blank board.” After reselecting Pull requests and navigating to page 2 again, the issue rows appeared again and remained visible after waiting six seconds.",
+      "reproSteps": [
+        "Start signed in as the admin account momentic-admin by loading the provided saved-auth session; no credentials were entered.",
+        "Open /notifications.",
+        "Click Subscriptions.",
+        "Open Type and select Pull requests; verify that the first page shows pull request rows.",
+        "Scroll to the pagination controls and select page 2.",
+        "On /notifications/subscriptions?page=2&sort=&state=all, observe the issue rows “mo-bb-project-newissue board verification 20260611-1537” and “Default-column issue on blank board.”",
+        "For a repeat check, select Type > Pull requests again, navigate to page 2, and wait six seconds; the issue rows remain visible."
+      ],
+      "severity": 3
+    },
+    {
+      "id": "mo-60m-forgejo-20",
+      "name": "Files changed summary counts do not match the visible PR diff",
+      "summary": "The fresh private repository's PR #1 shows +2 additions and -1 deletion, while its only Files changed diff contains one added line and no deletions; the mismatch persists after refresh.",
+      "expected": "The pull request summary should report +1 and -0 for a diff that adds only line 4 and deletes no lines.",
+      "actual": "At 768×1024, PR #1 displayed +2 and -1 beside its Files changed tab. The only changed file's hunk showed three unchanged baseline lines and one green added line 4, with no deleted line. Refreshing left the mismatch unchanged.",
+      "reproSteps": [
+        "Set the viewport to 768×1024 and use the provided authenticated session as repository administrator `momentic-admin`.",
+        "Navigate to / and create a fresh private repository named `mo-bb-inline-add-tablet-verify-2026-07-18-4c9f`, with repository initialization enabled so it has a `main` branch.",
+        "On `main`, create `inline-comments.md` containing three separate lines: `Baseline line one`, `Baseline line two`, and `Baseline line three`. Commit the file to `main`.",
+        "Edit `inline-comments.md` to append the fourth line `Added line four`. Select the option to create a branch and start a pull request, using branch `mo-bb-inline-add-tablet-feature`, and propose the change.",
+        "Create PR #1 into `main` and open its Files changed page at /momentic-admin/mo-bb-inline-add-tablet-verify-2026-07-18-4c9f/pulls/1/files.",
+        "Observe the PR summary and the only file hunk together. Refresh, wait for the page to settle, and confirm the summary remains +2/-1 while the diff still shows only one addition and no deletions."
+      ],
+      "severity": 3,
+      "matchingGuidance": {
+        "acceptanceScope": "Accepted as a valid reference by user instruction; source prerequisites and remaining evidence gaps are retained below.",
+        "prerequisites": [
+          "Whitespace-insensitive visible hunk differs from raw shortstat, or historical refs differ between fetches."
+        ]
+      }
+    }
+  ]
+}

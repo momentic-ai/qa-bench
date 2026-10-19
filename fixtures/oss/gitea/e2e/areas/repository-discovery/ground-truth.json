@@ -1,0 +1,82 @@
+{
+  "bugs": [
+    {
+      "name": "Out-of-range repository pagination shows an empty list but highlights the last valid page",
+      "summary": "Requesting a repository-list page past the last page shows an empty list while the paginator highlights the last valid page.",
+      "expected": "An out-of-range page should not show an empty list while marking another page as selected.",
+      "actual": "Requesting a repository-list page past the last page shows an empty list while the paginator highlights the last valid page.",
+      "reproSteps": [
+        "Open Explore > Repositories with enough repositories to show pagination.",
+        "Identify the last valid page and navigate directly to the next page number.",
+        "Observe an empty result while the paginator highlights the previous valid page."
+      ],
+      "severity": 3
+    },
+    {
+      "id": "gitea-dashboard-hash-search-drops-filters",
+      "name": "Dashboard hash search drops selected repository visibility filters",
+      "summary": "Entering a query containing # truncates the dashboard API request before its later filter parameters. A public repository appears while Private only remains visibly selected, and the mismatch persists after reload.",
+      "expected": "Keep selected repository filters effective while searching. With Private only checked, the public eval/harbor-handbook repository must remain excluded when #definitely-no-match-437 is entered and after refreshing.",
+      "actual": "Private only correctly produces an empty list without a query. Entering #definitely-no-match-437 restores public eval/harbor-handbook while Private stays checked and the dashboard URL retains repo-search-private=private. Waiting and refreshing preserve the inconsistent state.",
+      "reproSteps": [
+        "Sign in to the pinned fixture as eval and open the dashboard. Confirm eval/harbor-handbook is public, for example using its Public classification in Explore.",
+        "Open Other Filters and cycle Private from both through Public to checked Private only. Verify repo-search-private=private and an empty repository list.",
+        "Keep Private only selected and enter #definitely-no-match-437 in Search repos.",
+        "Observe public eval/harbor-handbook reappear while Private remains checked and the history URL retains the selected privacy filter.",
+        "Wait and refresh. Confirm the public row still appears under Private only, then clear the hash query and confirm the filter correctly produces an empty list again."
+      ],
+      "severity": 3,
+      "matchingGuidance": {
+        "scope": "Credit losing a selected repository filter after # starts the query URL fragment, demonstrated by Private only showing a public repository. Incorrect search results without a selected-filter failure belong to gitea-dashboard-special-character-query-mismatch. This is a result-filter bug; no access-control bypass is claimed."
+      }
+    },
+    {
+      "id": "codex-60m-gitea-4",
+      "name": "Sorting after browser Back silently reapplies an undone repository filter",
+      "summary": "Explore keeps stale filter state after browser Back. Results and URL correctly restore to unfiltered search, but changing the sort reapplies the previously selected Public filter and hides private repositories again.",
+      "expected": "Sorting after Back should preserve the filters shown by the restored URL/results and change only the sort order.",
+      "actual": "Back restores ?only_show_relevant=false&q=qa-team&sort=recentupdate and shows the private test repository. Sorting Alphabetically navigates to ?only_show_relevant=false&q=qa-team&private=0&sort=alphabetically and removes that repository. Reproduced twice at 390px and again at desktop 1280px.",
+      "reproSteps": [
+        "Sign in as admin. Ensure a private repository accessible to admin exists, such as qa-org-20261009/qa-team-repository.",
+        "Open /explore/repos and search qa-team; the private repository appears.",
+        "Open the Filter menu and select Public; the repository disappears and the URL includes private=0.",
+        "Use browser Back. Confirm the URL has no private parameter and the private repository appears again.",
+        "Open Sort and select Alphabetically.",
+        "Observe private=0 silently returns to the URL and the private repository disappears again."
+      ],
+      "severity": 3
+    },
+    {
+      "id": "gitea-dashboard-special-character-query-mismatch",
+      "name": "Dashboard repository search mangles literal queries containing URL special characters",
+      "summary": "Dashboard search sends reserved characters without encoding. A nonmatching query containing & or an invalid percent escape returns harbor-handbook because the full typed value is not delivered as the search term.",
+      "expected": "Keep the complete typed query as one search value. With default filters and no repository matching harbor&definitely-no-match-437 or definitely-no-match-437%zz, both queries should leave the list empty, as the ordinary nonmatching control does.",
+      "actual": "The ordinary query definitely-no-match-437 removes eval/harbor-handbook, but harbor&definitely-no-match-437 and definitely-no-match-437%zz display it. The full text remains in the input and dashboard history URL; the search request treats & as a parameter separator or contains the malformed percent escape.",
+      "reproSteps": [
+        "Sign in to the pinned fixture as eval and open the dashboard with default All repository filters. Confirm public eval/harbor-handbook is listed.",
+        "Enter definitely-no-match-437 in Search repos and wait for the repository row to disappear.",
+        "Replace the query with harbor&definitely-no-match-437 and wait. Observe that harbor-handbook returns even though the full typed value does not match its name or description.",
+        "Replace the query with definitely-no-match-437%zz and wait. Observe that harbor-handbook remains.",
+        "Repeat the ordinary nonmatching control to rule out a stale result, then re-enter the percent query and confirm the repository returns."
+      ],
+      "severity": 3,
+      "matchingGuidance": {
+        "scope": "Credit incorrect literal query transport/results without requiring an independently selected filter. A report only about # removing selected filters belongs to gitea-dashboard-hash-search-drops-filters. This reference does not require repository search to resolve an arbitrary full URL to a repository."
+      }
+    },
+    {
+      "id": "gitea-novel-017",
+      "name": "Explore description search loses a matching repository when the query ends in a literal percent sign",
+      "summary": "Explore finds a public repository by 100 in its description, but searching for the literal description text 100% removes that correct result.",
+      "expected": "When repository description search is enabled, searching for the existing literal text 100% keeps the matching visible repository discoverable.",
+      "actual": "The repository whose description is C++ 100% foo_bar \"quoted\" /path appears for 100 and disappears for 100%. The recorded run displays \"No matching results found\" for the second query.",
+      "reproSteps": [
+        "Use the pinned fixture with repository description search enabled and sign in with permission to create a public repository.",
+        "Through the UI, create a fresh public repository named disc-bound-percent-<unique-suffix> with description C++ 100% foo_bar \"quoted\" /path. Do not add matching topics or use 100 in its repository name.",
+        "Open Explore > Repositories, search for 100, and submit. Verify that the new repository appears.",
+        "Replace the query with 100%, keep all other filters unchanged, and submit. Observe that the same repository disappears despite containing that literal description text. The supplied run had no remaining results."
+      ],
+      "severity": 3
+    }
+  ]
+}

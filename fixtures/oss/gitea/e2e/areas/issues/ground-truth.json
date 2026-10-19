@@ -1,0 +1,357 @@
+{
+  "bugs": [
+    {
+      "name": "Canceled issue title draft reappears when editing again",
+      "summary": "Canceling an issue title edit restores the displayed saved title but retains the discarded draft in the editor.",
+      "expected": "Reopening the title editor after Cancel should show the persisted issue title.",
+      "actual": "On issue #2, replacing Clarify release ownership with FROZEN UNSAVED TITLE DRAFT and clicking Cancel restores the saved heading. Clicking Edit again shows FROZEN UNSAVED TITLE DRAFT in the textbox.",
+      "reproSteps": [
+        "Sign in to Gitea and open an issue you can edit, such as eval/harbor-handbook issue #2.",
+        "Click Edit next to the issue title and replace it with a distinct temporary draft.",
+        "Click Cancel and verify the saved heading returns.",
+        "Click Edit again; the textbox still contains the canceled draft."
+      ],
+      "severity": 3
+    },
+    {
+      "name": "Selecting a tag does not set the issue branch or tag reference",
+      "summary": "The issue sidebar offers an existing tag under Branch/Tag, but selecting it leaves the reference unset.",
+      "expected": "Selecting a listed tag should update the issue sidebar reference to that tag.",
+      "actual": "On a seeded issue, selecting Tags > v1.0.0 closes the picker but the field still says No Branch/Tag Specified.",
+      "reproSteps": [
+        "Sign in and open eval/harbor-handbook issue #2.",
+        "Open the No Branch/Tag Specified selector, choose Tags, and click v1.0.0.",
+        "Observe that the picker closes but the selector still reads No Branch/Tag Specified."
+      ],
+      "severity": 3
+    },
+    {
+      "id": "gitea-issues-state-switch-drops-user-filters",
+      "name": "Switching global Issues state drops the selected assignee or author filter",
+      "summary": "The top-level Issues dashboard loses its selected assignee/author filter when Open or Closed is clicked, broadening the results to unrelated issues.",
+      "expected": "Changing Open/Closed state should preserve the selected assignee and author and show only issues matching those filters in the newly selected state. A filtered count of zero Closed should open an empty filtered list.",
+      "actual": "With Assignee=alex selected, the dashboard shows 2 Open / 0 Closed. Clicking 0 Closed removes assignee=alex from the destination URL and shows an unrelated closed issue, Publish the initial contributor guide; the counts become the unfiltered 3 Open / 1 Closed. Returning to Open also uses the broadened scope.",
+      "reproSteps": [
+        "Sign in as the fixture account and open the top-level Issues dashboard at /issues. Use the seeded alex-assigned open issues and unrelated closed issue, or create equivalent disposable records.",
+        "Choose alex from Assignee. Confirm assignee=alex is in the URL and the narrowed counts show 2 Open / 0 Closed.",
+        "Click 0 Closed. Observe that assignee=alex is absent from the new URL, and the unrelated closed issue appears instead of an empty alex-filtered list.",
+        "Click Open. Observe that the selected assignee remains cleared and the list/counts reflect the broadened scope."
+      ],
+      "severity": 3,
+      "matchingGuidance": {
+        "deduplication": "The existing Issues dashboard search-clears-assignee reference concerns submitting the keyword form. This reference requires clicking an Open/Closed state link. The existing organization-label state-switch reference concerns label selection, whose handler/template propagation is separate. Do not credit mere missing collapsed-filter indication or search-only filter loss here."
+      }
+    },
+    {
+      "id": "gitea-empty-issue-search-tracked-time-total",
+      "name": "Issue-list tracked time includes issues excluded by text search",
+      "summary": "When issue text search matches no rows, the displayed tracked-time total includes time from issues excluded by the search.",
+      "expected": "When text search returns no issues, show zero tracked time or hide the tracked-time summary. Do not include time belonging to excluded issues.",
+      "actual": "A nonmatching search shows No results but retains a tracked-time total of 1 hour 30 minutes; the tooltip says that the total follows the list filters.",
+      "reproSteps": [
+        "Sign in as eval in a writable repository with time tracking enabled. Through the UI, create a disposable issue and record 1 hour 30 minutes using Time Tracker > Add Time.",
+        "Open the repository Issues list and confirm that the tracked-time summary includes the recorded duration.",
+        "Search for a unique token matching none of the issue titles or bodies.",
+        "Confirm the issue list shows No results while the tracked-time summary still includes the excluded issue’s 1 hour 30 minutes. Inspect its filter-based tooltip."
+      ],
+      "severity": 3,
+      "matchingGuidance": {
+        "matchScope": "Only the zero-keyword-match aggregate failure. Searches with a nonempty matched-ID set apply the restriction normally; unrelated stopped-timer or lost-filter reports do not match."
+      }
+    },
+    {
+      "id": "gitea-pass2-002",
+      "name": "Issue due-date history renders January 1, 0001 as missing",
+      "summary": "The issue sidebar correctly saves and shows January 1, 0001, but its activity history replaces that date with a dash. Changing the date also records the previous value as a dash.",
+      "expected": "A due date accepted and displayed in the sidebar should be identified consistently in the activity history, including the previous date when it is changed.",
+      "actual": "The sidebar shows January 1, 1, while the timeline says “eval added the due date -”. Changing the due date to December 31, 9999 produces “eval modified the due date from - to December 31, 9999”. The red overdue styling and sidebar date are correct.",
+      "reproSteps": [
+        "Sign in as eval on the seeded Gitea fixture with UTC date parsing. Create a disposable issue in a writable repository.",
+        "In the Due Date control, enter January 1, 0001 (0001-01-01) and save using the adjacent plus control. Confirm the sidebar displays January 1, 1.",
+        "Inspect the activity history: its added-date entry shows a dash instead of January 1, 0001.",
+        "Edit the due date to December 31, 9999 (9999-12-31), save, and confirm the sidebar shows that date.",
+        "Inspect the new history entry: the previous due date is shown as a dash, while the replacement date is displayed correctly."
+      ],
+      "severity": 1,
+      "matchingGuidance": {
+        "scope": "January 1, 0001 under date parsing that yields the UTC zero instant. Do not generalize to every date in year 0001 or ordinary due dates. Saving the date and the sidebar’s overdue styling work correctly; the accepted defect is history display only."
+      }
+    },
+    {
+      "name": "Issue sidebar says 1 Participants",
+      "summary": "An issue with one participant displays the plural label “1 Participants” in its sidebar.",
+      "expected": "One participant should use the singular label “1 Participant.”",
+      "actual": "An issue with one participant displays the plural label “1 Participants” in its sidebar.",
+      "reproSteps": [
+        "Open an issue with one participant in the seeded repository.",
+        "Inspect the Participants label in the right sidebar."
+      ],
+      "severity": 1
+    },
+    {
+      "id": "gitea-blocked-close-hidden-comment-duplicate-retry",
+      "name": "Blocked Close with Comment silently saves the comment, keeps the draft, and duplicates it on retry",
+      "summary": "Close with Comment posts the comment before dependency rejection, but leaves it invisible and retains its draft; retrying posts an identical duplicate.",
+      "expected": "When a dependency blocks closure after the comment has been posted, show the posted comment, clear the submitted draft, and display the dependency error while leaving the issue Open. The UI must reflect the persisted comment so retrying does not unknowingly duplicate it.",
+      "actual": "Each Close with Comment attempt shows only the blocking-dependency error. The editor retains the draft and the timeline/count stay unchanged. After two attempts, reload reveals two identical saved comments while the issue remains Open.",
+      "reproSteps": [
+        "Sign in as eval. Create two open disposable issues A and B and configure A as blocked by B through the dependency UI.",
+        "Open A, type a unique sentinel in its comment editor, and click Close with Comment.",
+        "Observe the dependency error, retained draft, and no displayed new comment. Click Close with Comment again without changing the draft.",
+        "Reload. Confirm A is still Open and two identical sentinel comments are present."
+      ],
+      "severity": 3,
+      "matchingGuidance": {
+        "matchScope": "Credit hidden successful posting combined with retained draft or duplicate retry after rejected Close with Comment. Do not match a claim that any comment persistence during blocked closure is inherently wrong."
+      }
+    },
+    {
+      "id": "gitea-issue-completed-attachment-comment-disabled",
+      "name": "Completed attachment-only upload leaves the issue Comment button disabled",
+      "summary": "After a PNG upload finishes, the issue editor still disables Comment when its text is empty, preventing supported attachment-only submission without changing issue state.",
+      "expected": "A completed attachment should enable Comment even with empty text, allowing an attachment-only comment while leaving the issue open. Buttons should remain disabled while an upload is still in progress.",
+      "actual": "A completed PNG preview with Remove file and Copy link appears, but the separate Comment button stays visibly grey and clicking it does nothing. Adding text enables Comment; removing the text disables it again. Close Issue posts that same attachment with empty text and closes the issue; reload confirms the attachment-only comment persisted.",
+      "reproSteps": [
+        "Sign in as eval and open an existing issue in an initialized repository with an empty comment editor.",
+        "Upload a valid PNG through the normal attachment chooser. Wait for completion: the image preview, Remove file and Copy link are visible.",
+        "Leave comment text empty and click the physical Comment button. Observe that it stays grey and no comment is posted.",
+        "Enter text and observe Comment becomes enabled; clear the text and observe it becomes disabled despite the completed attachment.",
+        "As a terminal control, click Close Issue: the attachment-only comment posts and the issue closes. Reload to confirm the saved attachment, then reopen the issue. This control demonstrates supported attachment-only content; closing is not the expected standalone Comment behavior."
+      ],
+      "severity": 3
+    },
+    {
+      "name": "Initial Open issues control includes closed issues",
+      "summary": "Clicking the Open count from the unfiltered issue list navigates to state=all and includes a closed issue.",
+      "expected": "Clicking Open should display only open issues.",
+      "actual": "Clicking the Open count from the unfiltered issue list navigates to state=all and includes a closed issue.",
+      "reproSteps": [
+        "Open the seeded repository Issues list with no state filter and note the separate Open and Closed counts.",
+        "Click Open and observe state=all in the URL and a closed issue in the resulting list."
+      ],
+      "severity": 3
+    },
+    {
+      "name": "Deleting an issue comment leaves its count stale",
+      "summary": "After deleting the only comment, its card disappears but the issue header continues to say “1 comment” until refresh.",
+      "expected": "The issue header should update to 0 comments when the comment is deleted.",
+      "actual": "After deleting the only comment, its card disappears but the issue header continues to say “1 comment” until refresh.",
+      "reproSteps": [
+        "Create a disposable issue and add one comment.",
+        "Delete the comment from its action menu.",
+        "Observe that the card disappears but the header still says 1 comment; refresh to see 0 comments."
+      ],
+      "severity": 3
+    },
+    {
+      "id": "gitea-issue-dashboards-include-disabled-tracker",
+      "name": "Issue dashboards list and count issues from repositories with the issue tracker disabled",
+      "summary": "Disabling a repository issue tracker leaves its open issue in organization and global dashboard results/counts, with an actionable title leading to 404.",
+      "expected": "Organization and global Issues dashboards should exclude issues from repositories whose issue tracker is disabled, including their contribution to displayed counts. Disabling the feature should not leave an actionable result pointing at an unavailable issue.",
+      "actual": "After disabling the tracker, the repository has no Issues tab, but the organization dashboard and global keyword-filtered dashboard still show the issue and 1 Open. Clicking its visible title opens 404 Not Found while the same administrator retains repository access.",
+      "reproSteps": [
+        "Sign in as eval with administration access. Create a disposable organization and initialized repository, then create an open issue with a distinctive title and confirm its detail page opens.",
+        "In repository Settings, disable Enable Repository Issue Tracker and save. Confirm the Issues tab is no longer present.",
+        "Use the organization Issues dashboard. Observe that the disabled repository issue remains listed and counted as open.",
+        "Click the visible issue title and observe 404 Not Found.",
+        "Open the global Issues dashboard and search the distinctive title. Observe that the same issue remains listed and contributes to the open count. Repository access is unchanged; the defect is stale dashboard membership/counts, not the disabled detail route itself."
+      ],
+      "severity": 3
+    },
+    {
+      "name": "Assigned-to-you exact search omits a matching issue",
+      "summary": "Exact-title search hides a matching issue in Assigned to you while Created by you returns it.",
+      "expected": "An open issue assigned to the signed-in user remains visible when searching for its exact title.",
+      "actual": "Assigned to you returns no results; the same query under Created by you returns the issue.",
+      "reproSteps": [
+        "Sign in as eval and create an issue titled mo-issues-assigned-search-7c91f0 in eval/harbor-handbook.",
+        "Assign the issue to eval. Open global Issues > Assigned to you and confirm it is listed.",
+        "Search for mo-issues-assigned-search-7c91f0 with Exact selected; observe zero results.",
+        "Keep the query and switch to Created by you; the issue appears. Return to Assigned to you; it is absent."
+      ],
+      "severity": 3
+    },
+    {
+      "id": "codex-60m-gitea-7",
+      "name": "Bulk closing a blocked issue silently fails without feedback",
+      "summary": "The issue-list bulk Close action silently skips issues with open dependencies. It deselects the issue and leaves it Open without explaining why, while the individual Close Issue action reports the blocking dependency.",
+      "expected": "Bulk Close should show which issues could not close and explain their open dependencies, consistent with the individual issue action.",
+      "actual": "For a single selected blocked issue, bulk Close returns to the same list with 1 Open and 0 Closed, deselects the issue, and displays no error, toast, or explanation. Direct Close Issue on the same issue displays the blocking-dependencies error. An unblocked issue closes successfully through bulk Close.",
+      "reproSteps": [
+        "Sign in as admin and create two open issues A and B, with A depending on B. Verified with /admin/harbor-handbook/issues/12 depending on open #5, which has no dependencies.",
+        "Open A and click Close Issue; confirm the dependency error and that A remains Open.",
+        "Open /admin/harbor-handbook/issues and search for A's title (QA acyclic blocked bulk close).",
+        "Select A's checkbox and choose the bulk Close action.",
+        "Observe the checkbox is deselected, the issue remains Open, and no failure reason is shown."
+      ],
+      "severity": 3
+    },
+    {
+      "id": "codex-60m-gitea-2",
+      "name": "Three-issue dependency cycles are accepted and block closing every issue",
+      "summary": "Dependency validation prevents direct two-issue cycles but accepts transitive cycles. Three open issues can each become blocked by another issue in the cycle, leaving all unable to close until a dependency is removed.",
+      "expected": "Adding a dependency that would create a cycle of any length should be rejected, as direct mutual dependencies already are.",
+      "actual": "A depends on B, B depends on C, and C depends on A are all accepted and persist after reload. Close Issue fails for each with 'You need to close all issues blocking this issue before you can close it.' The direct C depends on B alternative is correctly rejected.",
+      "reproSteps": [
+        "Sign in as admin. In /admin/harbor-handbook/issues create three open issues A, B, and C (verified using #7, #8, #9).",
+        "On A, use Add dependency, search for B, select it, and add it so A depends on B.",
+        "On B, add C as a dependency.",
+        "On C, add A as a dependency; observe that it is accepted. Reload and confirm C still depends on A.",
+        "Open each of A, B, and C and click Close Issue. Each remains Open with the blocking-dependencies error.",
+        "As a control, remove C's dependency on A and try adding B to C; the direct two-issue cycle is rejected. Adding A back is accepted again."
+      ],
+      "severity": 3
+    },
+    {
+      "id": "codex-30m-gitea-3",
+      "name": "Rejected issue closure leaves the time tracker showing a stopped timer as running",
+      "summary": "Closing an issue blocked by an open dependency stops its timer, but the Time Tracker menu continues to offer Stop timer and Discard timer until the page is reloaded.",
+      "expected": "After a rejected closure stops the active timer, the Time Tracker menu should reflect the stopped state and offer Start timer without requiring a manual reload.",
+      "actual": "The dependency error appears and the issue remains Open. The Time Tracker menu still shows Stop timer and Discard timer as if the timer were running. After reload, the same menu offers Start timer and the timeline shows the elapsed time logged by the rejected closure.",
+      "reproSteps": [
+        "Sign in as the fixture administrator and open the seeded harbor-handbook repository. Create an open issue named QA stale timer display and add the open issue Clarify release ownership (#2) as a dependency.",
+        "On QA stale timer display, open Time Tracker and choose Start timer.",
+        "Wait a few seconds, then click Close Issue.",
+        "Observe the dependency error and the issue remaining Open. Without reloading, open Time Tracker and observe Stop timer and Discard timer still offered. Wait five seconds and check again.",
+        "Reload the page and open Time Tracker. Observe Start timer replacing Stop timer and Discard timer, and elapsed time logged in the timeline."
+      ],
+      "severity": 3
+    },
+    {
+      "id": "gitea-issue-quote-reply-stale-comment-controls",
+      "name": "Quote Reply fills the comment box but leaves Comment disabled until the user types",
+      "summary": "On issue #1, Quote Reply puts a non-empty quote in the comment box. The Comment button stays disabled and the close button still says \"Close Issue\". Pressing Space and then Backspace leaves the same text, but then Comment becomes enabled and the close button changes to \"Close with Comment\".",
+      "expected": "After Quote Reply inserts a non-empty draft, Comment should be enabled and the close button should say \"Close with Comment\". This is what happens with the same text after a keyboard edit.",
+      "actual": "Right after Quote Reply, the box shows \"> I will draft the first-week checklist and link the access request instructions.\" but Comment is greyed out and the close button still says \"Close Issue\". After pressing Space and then Backspace, the text is unchanged, Comment is enabled and the close button says \"Close with Comment\".",
+      "reproSteps": [
+        "Use the supplied saved signed-in session for the fixture admin account (eval).",
+        "Open /eval/harbor-handbook/issues/1 with the comment box empty.",
+        "Open the three-dot menu on alex's comment and choose Quote Reply.",
+        "Check that the box contains the quoted text, Comment is disabled and the close button says \"Close Issue\".",
+        "Press Space, then Backspace. Comment is now enabled and the close button says \"Close with Comment\"."
+      ],
+      "severity": 3
+    },
+    {
+      "id": "gitea-rejected-close-stops-running-timer",
+      "name": "Rejected close of an issue with an open blocking dependency stops its running timer",
+      "summary": "Closing an issue blocked by an open dependency is rejected, but nevertheless stops its running timer and logs the elapsed time.",
+      "expected": "When Close Issue is rejected because a blocking dependency remains open, preserve the prior saved state: the issue stays Open and its active timer keeps running. A rejected closure must not complete or log the timer as an intermediate partial effect.",
+      "actual": "After reload, the issue is Open, Active Time Tracker is gone, and the timeline shows a new \"eval worked for 3 seconds\" entry.",
+      "reproSteps": [
+        "Sign in as eval. Create two open disposable issues A and B and configure A as blocked by B through the dependency UI.",
+        "Open A. In Time Tracker choose Start timer, confirm Active Time Tracker is present, and allow a few seconds to pass.",
+        "Click Close Issue. Confirm the blocking-dependency error and that the issue remains Open.",
+        "Reload. Observe that Active Time Tracker is gone and the timeline contains a new worked-for-N-seconds entry: the rejected close nevertheless stopped and logged the timer."
+      ],
+      "severity": 3,
+      "matchNotes": {
+        "scope": "Accept a failed dependency-blocked close stopping/logging a running timer while the issue remains Open. A report solely about stale Stop/Discard controls matches codex-30m-gitea-3 instead. These are distinct persisted-state and UI-feedback failures on the same surface.",
+        "expectedContract": "The required corrected end state is Open with the timer still running. The existing stale-display reference describes accurate UI feedback if the current error path has nevertheless stopped the timer; it does not override this keep-running contract."
+      },
+      "matchingGuidance": {
+        "relatedExistingReference": "codex-30m-gitea-3 covers the exact same issue-detail workflow but the stale controls before reload. This reference covers persisted timer completion despite rejected closure, demonstrable after reload without any stale-controls allegation. Preserve both symptom scopes; do not require a stale display to match this reference."
+      }
+    },
+    {
+      "id": "gitea-novel-005",
+      "name": "Negative manual time exposes raw range-validation feedback",
+      "summary": "Submitting -1 hours and 0 minutes in Manually Add Time correctly rejects the duration but displays untranslated RangeError feedback.",
+      "expected": "Reject the negative duration with a readable validation message explaining how to correct the input.",
+      "actual": "The error feedback includes the internal text RangeError: Range instead of an explanation of the allowed duration. The dialog stays open with the entered values and no time is recorded; those rejection behaviors are expected.",
+      "reproSteps": [
+        "Sign in as a contributor with repository write access in the time-tracking-enabled fixture. Open eval/harbor-handbook > Issues and create a disposable issue.",
+        "Open the issue's Time Tracker menu and choose Add Time.",
+        "Enter -1 in Hours and 0 in Minutes, then submit Add Time.",
+        "Observe the untranslated RangeError: Range feedback. The negative duration is correctly rejected and the dialog remains available for correction."
+      ],
+      "severity": 1
+    },
+    {
+      "id": "mo-12m-gitea-issues-6",
+      "name": "Repository issue search with an Assignee filter omits a matching assigned issue",
+      "summary": "In a repository's issue list, searching a fresh issue's title lists it, but adding the Assignee filter for its visible assignee shows No results.",
+      "expected": "The assigned, matching issue stays listed when filtering by its assignee.",
+      "actual": "No results is displayed, with no other filters applied.",
+      "reproSteps": [
+        "Sign in and create a disposable issue with a unique title, assigned to yourself.",
+        "In the repository Issues list, search its unique title and confirm it is listed.",
+        "Open Assignee and select yourself; observe No results."
+      ],
+      "severity": 3,
+      "matchNotes": {
+        "scope": "Credit the repository issue list's Assignee filter hiding a matching assigned issue. The dashboard Assigned to you exact search is the separate existing reference."
+      }
+    },
+    {
+      "id": "mo-12m-gitea-issues-9",
+      "name": "Task checkboxes added by inline issue edit are inert until reload",
+      "summary": "After adding task-list items to an issue body with inline Edit, clicking a new unchecked box does nothing; after a reload the same click checks and saves it.",
+      "expected": "Task checkboxes rendered after saving an inline edit should toggle and save, as they do after a reload.",
+      "actual": "The checkbox stays unchecked and nothing is saved until the page is reloaded.",
+      "reproSteps": [
+        "Sign in and create a disposable issue with a plain body.",
+        "Use the body's menu > Edit, replace the body with '- [ ] First task' and '- [x] Done task', and Save.",
+        "Without reloading, click the unchecked First task box; observe nothing changes.",
+        "Reload and click it again; observe it checks and persists."
+      ],
+      "severity": 3
+    },
+    {
+      "name": "Issues dashboard search clears assignee filter and includes unassigned issue",
+      "summary": "Submitting search on the top-level Issues dashboard drops the selected assignee filter and displays a matching unassigned issue that was excluded before the search.",
+      "expected": "Search should retain the selected assignee and return only matching issues assigned to that user.",
+      "actual": "With Assignee=eval selected, the dashboard URL contains assignee=eval and excludes the unassigned fixture. Submitting a keyword shared by the assigned and unassigned fixtures removes assignee=eval and shows both issues. The unassigned result remains visible after waiting for the search to settle.",
+      "reproSteps": [
+        "Sign in as the Gitea fixture account eval. Use fresh disposable records and a unique shared title token.",
+        "Create two open issues in a writable repository, both containing the shared title token. Assign one to eval and leave the other unassigned.",
+        "Open the top-level Issues dashboard at /issues, keep the Open state, and select eval through its Assignee control.",
+        "Confirm the URL contains assignee=eval and the unassigned issue is excluded from the narrowed list.",
+        "Enter the shared token into the dashboard search and press Enter.",
+        "Observe that assignee=eval disappears from the URL and the results include both fixtures, including the unassigned issue. Wait at least five seconds to confirm the broadened result remains."
+      ],
+      "severity": 3,
+      "matchingGuidance": {
+        "scope": "Accept the independently reproduced assignee-search failure on the Issues dashboard. Author, label, and Open/Closed variants are not required for matching this reference.",
+        "deduplication": "The Issues and Pull Requests reports share an implementation defect but affect separate eval product areas and record types. Keep separate grading slots under the existing grading contract. The accepted Assigned-to-you exact-search omission describes a different result and trigger."
+      }
+    },
+    {
+      "name": "Issues dashboard does not visibly indicate the active assignee outside the dropdown",
+      "summary": "The top-level Issues dashboard does not visibly distinguish Assignee=eval from no explicit assignee filter while the dropdown is closed.",
+      "expected": "The collapsed filter control or another visible indicator should identify the active assignee, so the current result scope is apparent without opening the dropdown or reading the URL.",
+      "actual": "With assignee=eval active, the closed control still displays only Assignee with the same styling as the unfiltered control and no selected-name chip, avatar, or active badge. Reopening the dropdown reveals eval in its input. Without a keyword, assigned records are correctly retained and unassigned records excluded; the missing feedback is a visual-state defect, separate from search dropping the filter.",
+      "reproSteps": [
+        "Sign in as fixture account eval and open the top-level Issues dashboard at /issues with In your repositories and Open selected. Use disposable assigned and unassigned records to compare the unfiltered and filtered results.",
+        "Open Assignee, select eval, and close the dropdown. Confirm assignee=eval is in the URL and unassigned records are excluded.",
+        "Inspect the collapsed results view. The control still reads only Assignee and has no selected username, avatar, chip, or active styling to distinguish it from the unfiltered state.",
+        "Reopen Assignee and observe eval in its input; close it and observe that the selection is no longer visibly identified.",
+        "Repeat the display comparison with a keyword q and assignee=eval both present in the /issues URL. The collapsed control still reads only Assignee. This step checks selection feedback rather than the correctness of exact-search results."
+      ],
+      "severity": 1,
+      "matchingGuidance": {
+        "scope": "Missing indication in the collapsed results view; do not claim the selection is invisible inside the opened menu. A generic label after search has genuinely cleared the filter is not this defect.",
+        "deduplication": "Separate Issues and Pull Requests product-area references for their independently observed collapsed controls. Neither matches the accepted assignee-search broadening references, where the filter itself is removed."
+      }
+    },
+    {
+      "id": "gitea-farthest-due-uses-undated-milestone-zero",
+      "name": "Farthest due sort uses an undated milestone as the issue date",
+      "summary": "When issues with different due dates are assigned to an existing milestone with no due date, Farthest due date sorts them by creation order instead of their issue dates. Without the milestone, or with Nearest due date, the issue-date order is correct.",
+      "expected": "For Farthest due date sorting, an assigned milestone with no due date should not override the issue due dates. The issues should remain ordered by their actual due dates; a dated milestone can still provide the milestone deadline.",
+      "actual": "With no milestone assigned, issues #2 (February 1, 2027), #4 (January 1, 2027), and #1 (December 1, 2026) sort correctly as #2, #4, #1. After assigning all three to the existing undated “Handbook 1.1” milestone, Farthest due date returns #4, #2, #1 and keeps that order after reload and direct navigation to the same correctly sorted URL. Nearest due date remains correct.",
+      "reproSteps": [
+        "In the seeded repository, use open issues #1, #2, and #4 with due dates December 1, 2026; February 1, 2027; and January 1, 2027 respectively. Their creation order differs from descending due-date order.",
+        "With no milestone assigned, open Sort and choose Farthest due date from the actual menu. Confirm the URL uses sort=farduedate and the dated issues are ordered #2, #4, #1.",
+        "Assign the three issues to the existing “Handbook 1.1” milestone, whose due date is empty. Confirm the milestone has no due date.",
+        "Again choose Farthest due date from the actual Sort menu and confirm the URL uses sort=farduedate. The list is now #4, #2, #1, which does not follow the February, January, December issue dates.",
+        "Reload the correctly sorted URL, then navigate directly to that same URL. Confirm the wrong #4, #2, #1 order persists. As a contrast, choose Nearest due date and confirm its dated issue order remains correct."
+      ],
+      "severity": 3,
+      "matchingGuidance": {
+        "requiredCondition": "At least two issues have positive, distinct due dates, are assigned to the same existing milestone with an empty due date, and their creation order differs from descending due-date order.",
+        "negativeControl": "A fresh no-milestone case correctly sorts #2 February, #4 January, #1 December; it does not include the required milestone condition and does not disprove this narrower finding."
+      }
+    }
+  ]
+}

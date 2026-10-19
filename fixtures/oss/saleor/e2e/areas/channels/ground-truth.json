@@ -1,0 +1,52 @@
+{
+  "bugs": [
+    {
+      "id": "codex-30m-saleor-15",
+      "name": "Negative abandoned-order expiry hides its controls and prevents correction",
+      "summary": "Entering a negative abandoned-order expiration duration turns off the setting, hides its fields, and leaves the toggle unable to turn back on.",
+      "expected": "The invalid duration remains editable with validation, and the setting can be toggled or corrected.",
+      "actual": "Expire after and Delete after disappear immediately, the toggle turns off, and the form reports unsaved order changes. Clicking the toggle again leaves it off without restoring the fields. Leaving, discarding changes, and reopening is required to recover. Reproduced twice.",
+      "reproSteps": [
+        "Sign in and open Configuration > Channels, then open a channel detail.",
+        "Turn on Expire abandoned Unconfirmed orders.",
+        "Enter -1 in Expire after.",
+        "Try turning Expire abandoned Unconfirmed orders back on."
+      ],
+      "severity": 3
+    },
+    {
+      "id": "codex-60m-saleor-10",
+      "name": "Channel shipping wizard reports success and leaves unusable methods after a negative rate",
+      "summary": "The channel's Create shipping shortcut accepts a negative flat rate, creates the zone and method, then fails to assign the price. It closes with a success message despite leaving an unpriced, unavailable method.",
+      "expected": "Reject negative flat rates before creating shipping objects, keep the form open with a field error, and do not report successful setup when channel price assignment fails.",
+      "actual": "Rates -5 and -1 each produced both Error400 and 'Success Shipping zone and rate created'; the dialog closed. The zone and method persisted, but the method showed Availability 0 of 1 channels and had no channel price. After reloading the first attempt, the channel nevertheless said 2 of 2 'Stock and shipping are ready' and enabled activation.",
+      "reproSteps": [
+        "Open Configuration > Channels and a test channel with a warehouse already assigned (QA wizard channel, channel4, USD/US).",
+        "In Delivery, open the setup dropdown and choose Create shipping.",
+        "Enter a unique shipping-zone name and rate name, and enter -5 for Flat rate.",
+        "Click the enabled Create shipping button. Observe the error and success notifications and the closed dialog.",
+        "Reload the channel, then open the newly created shipping zone and method. Observe setup marked ready but the method has no price and is unavailable to the channel.",
+        "Repeat Create shipping with different names and flat rate -1; observe the same partial creation and contradictory success notification."
+      ],
+      "severity": 3
+    },
+    {
+      "name": "Saving channel warehouse assignments briefly flashes a reversed order",
+      "summary": "During the saving state, the warehouse priority display briefly flips from Americas–Europe to Europe–Americas and then recovers; the saved order remains correct.",
+      "expected": "The displayed warehouse priority should remain in the chosen order while saving, without a brief reorder flash when the user has not reordered it.",
+      "actual": "Human review confirmed a brief flip-flop of the warehouse rows during the saving state. The display returns to Americas then Europe once saving settles, and that intended order remains after reload. This accepted severity-1 issue is the transient visual flash only.",
+      "reproSteps": [
+        "Sign in to the supplied Saleor Dashboard fixture through the normal UI with the authorized fixture account and open Configuration > Channels.",
+        "Create a uniquely named disposable channel with a unique slug, select United States of America and USD from the actual country and currency options, and open its detail page.",
+        "In Inventory, choose Assign. Check Americas first, then search for and check Europe. Confirm the two assignments and verify the displayed order is Americas then Europe with Follow the list order selected.",
+        "Click Save without dragging or otherwise reordering warehouses. Observe the warehouse rows throughout the brief saving state, rather than inspecting only a later settled screenshot.",
+        "Wait until Save has fully completed and the page has settled; verify Americas then Europe. Reload and verify the same intended order."
+      ],
+      "severity": 1,
+      "rootCause": "Channel Save first awaits the membership update and its refetch, then runs a separate warehouse reorder against the captured intended display order. Refreshed warehouse lists can replace the form display baseline between these operations. This source-supported intermediate state can explain a brief flash; the exact runtime transition was not independently captured.",
+      "matchingGuidance": {
+        "acceptanceScope": "A quick visual reorder only during the saving state, followed by recovery. No persistent warehouse-priority corruption or lasting wrong UI order after Save completes is accepted."
+      }
+    }
+  ]
+}

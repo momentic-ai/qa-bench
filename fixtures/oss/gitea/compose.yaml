@@ -1,0 +1,53 @@
+name: diy-mo-gitea
+
+services:
+  gitea:
+    image: gitea/gitea:1.24.7@sha256:918955f16b1e91732af6c449bb2db3a34271748dbed1ccfbae48f8a2fb5480b8
+    ports:
+      - "${FIXTURE_PORT:-5503}:3000"
+    environment:
+      GITEA__DEFAULT__APP_NAME: Harbor Engineering
+      GITEA__database__DB_TYPE: sqlite3
+      GITEA__database__PATH: /data/gitea/gitea.db
+      GITEA__server__ROOT_URL: ${FIXTURE_URL:?launchFixture must set FIXTURE_URL}
+      GITEA__server__DOMAIN: ${FIXTURE_HOST:?launchFixture must set FIXTURE_HOST}
+      GITEA__server__HTTP_PORT: "3000"
+      GITEA__server__DISABLE_SSH: "true"
+      GITEA__security__INSTALL_LOCK: "true"
+      GITEA__service__DISABLE_REGISTRATION: "true"
+      GITEA__service__REQUIRE_SIGNIN_VIEW: "true"
+      GITEA__service__ENABLE_NOTIFY_MAIL: "false"
+      GITEA__mailer__ENABLED: "false"
+      GITEA__picture__DISABLE_GRAVATAR: "true"
+      GITEA__openid__ENABLE_OPENID_SIGNIN: "false"
+      GITEA__openid__ENABLE_OPENID_SIGNUP: "false"
+      GITEA__actions__ENABLED: ${GITEA__actions__ENABLED:-false}
+    volumes:
+      - gitea-data:/data
+    healthcheck:
+      test: ["CMD", "curl", "--fail", "--silent", "http://localhost:3000/"]
+      interval: 3s
+      timeout: 5s
+      retries: 90
+
+  seed:
+    image: gitea/gitea:1.24.7@sha256:918955f16b1e91732af6c449bb2db3a34271748dbed1ccfbae48f8a2fb5480b8
+    user: "1000:1000"
+    environment:
+      FIXTURE_USERNAME: ${FIXTURE_USERNAME:-eval}
+      FIXTURE_PASSWORD: ${FIXTURE_PASSWORD:-momentic-eval-1}
+    entrypoint: ["/bin/sh", "${FIXTURE_SEED_SCRIPT:-/fixture/app/seed.sh}"]
+    volumes:
+      - gitea-data:/data
+      - ..:/fixture/app:ro
+    depends_on:
+      gitea:
+        condition: service_healthy
+    healthcheck:
+      test: ["CMD-SHELL", "test -f /tmp/setup-complete"]
+      interval: 2s
+      timeout: 2s
+      retries: 90
+
+volumes:
+  gitea-data:
