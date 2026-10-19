@@ -12,7 +12,7 @@ import { finished } from "node:stream/promises";
 import { promisify } from "node:util";
 import { z } from "zod";
 
-import { AgentContext, EvalAgentDefinition } from "../../evals/agent";
+import { AgentContext, Browser, EvalAgentDefinition } from "../../evals/agent";
 import { combinedCost } from "../../evals/browser-cost";
 import { writeJson } from "../../evals/json-file";
 import { CodexAgent } from "../codex/codex-agent";
@@ -241,36 +241,31 @@ export class ClaudeAgent extends CodexAgent {
   }
 }
 
-export const claudeAgent: EvalAgentDefinition = {
-  name: "Claude",
-  reportSubdirectory: "claude",
-  concurrency: Infinity,
-  async validateEnvironment() {
-    for (const name of ["ANTHROPIC_API_KEY", "BROWSERBASE_API_KEY"]) {
-      if (!process.env[name]) throw new Error(`${name} is required.`);
-    }
-    await promisify(execFile)(process.execPath, [CLAUDE_COMMAND, "--version"]);
-  },
-  create(context) {
-    return new ClaudeAgent(context);
-  },
-};
+export function claudeAgent(browser: Browser): EvalAgentDefinition {
+  return {
+    name: "Claude",
+    reportSubdirectory: "claude",
+    concurrency: browser === "local" ? 2 : Infinity,
+    config: { browser },
+    async validateEnvironment() {
+      if (!process.env.ANTHROPIC_API_KEY)
+        throw new Error("ANTHROPIC_API_KEY is required.");
+      if (browser === "local") await validateLocalChromium();
+      else if (!process.env.BROWSERBASE_API_KEY)
+        throw new Error("BROWSERBASE_API_KEY is required.");
+      await promisify(execFile)(process.execPath, [
+        CLAUDE_COMMAND,
+        "--version",
+      ]);
+    },
+    create(context) {
+      return browser === "local"
+        ? new LocalClaudeAgent(context)
+        : new ClaudeAgent(context);
+    },
+  };
+}
 
 class LocalClaudeAgent extends ClaudeAgent {
   protected localBrowser = true;
 }
-
-export const claudeLocalAgent: EvalAgentDefinition = {
-  name: "Claude (local browser)",
-  reportSubdirectory: "claude-local",
-  concurrency: 2,
-  async validateEnvironment() {
-    if (!process.env.ANTHROPIC_API_KEY)
-      throw new Error("ANTHROPIC_API_KEY is required.");
-    await validateLocalChromium();
-    await promisify(execFile)(process.execPath, [CLAUDE_COMMAND, "--version"]);
-  },
-  create(context) {
-    return new LocalClaudeAgent(context);
-  },
-};

@@ -5,7 +5,7 @@ import path from "node:path";
 
 import { loadKnownInvalid } from "./assessment";
 import { readGroundTruth } from "./ground-truth";
-import { findReportRun, verifyCaseMetadata } from "./report-files";
+import { findReportRun, runLabel, verifyCaseMetadata } from "./report-files";
 import { loadGroundTruth } from "./reports";
 import {
   AGENTS,
@@ -21,28 +21,34 @@ import { Fixture } from "./types";
 
 const SUITE_NAME = "OSS bug bash";
 
+/** A saved score plus its run's label, which separates runs with different settings. */
+export type LabeledScore = Score & { label: string };
+
 type ScoreGroup = {
   agent: Agent;
-  scores: Score[];
+  label: string;
+  scores: LabeledScore[];
 };
 
-export function groupScoresByRun(scores: Score[]) {
+export function groupScoresByRun(scores: LabeledScore[]) {
   const groups = new Map<string, ScoreGroup>();
   for (const score of scores) {
-    let group = groups.get(score.agent);
+    let group = groups.get(score.label);
     if (!group) {
       // Create groups only for observed scores so no empty runs are exported.
-      group = { agent: score.agent, scores: [] };
-      groups.set(score.agent, group);
+      group = { agent: score.agent, label: score.label, scores: [] };
+      groups.set(score.label, group);
     }
     group.scores.push(score);
   }
   return [...groups.values()].sort(
-    (a, b) => AGENTS.indexOf(a.agent) - AGENTS.indexOf(b.agent),
+    (a, b) =>
+      AGENTS.indexOf(a.agent) - AGENTS.indexOf(b.agent) ||
+      a.label.localeCompare(b.label),
   );
 }
 
-type ComparisonTotal = Score & {
+type ComparisonTotal = LabeledScore & {
   fixtureCount: number;
 };
 
@@ -52,9 +58,10 @@ export async function loadComparison(
   agents: readonly Agent[] = AGENTS,
   runIds: readonly string[] = [],
 ) {
-  const scores: Score[] = [];
+  const scores: LabeledScore[] = [];
   const reviewFiles = new Map<string, string>();
   const selectedRuns = new Set<string>();
+  const agentLabels = new Map<Agent, string>();
   for (const fixture of fixtures) {
     const { text: groundTruth, bugs } = await readGroundTruth(fixture);
     const hash = createHash("sha256").update(groundTruth).digest("hex");
@@ -120,9 +127,19 @@ export async function loadComparison(
           `Outside-area references changed for ${fixture.name}; regrade the saved report for ${agent}.`,
         );
       }
-      scores.push(score);
+      const label = await runLabel(agent, run.directory);
+      const previousLabel = agentLabels.get(agent);
+      if (previousLabel !== undefined && previousLabel !== label) {
+        // Latest runs per fixture can use different settings; totals must not mix them.
+        throw new Error(
+          `${agent} runs for the selected fixtures use different settings (${previousLabel}; ${label}). Select runs with --run-id or merge with --input.`,
+        );
+      }
+      agentLabels.set(agent, label);
+      const labeled = { ...score, label };
+      scores.push(labeled);
       reviewFiles.set(
-        reviewKey(score),
+        reviewKey(labeled),
         path.join(run.directory, path.posix.basename(score.review_path)),
       );
     }
@@ -137,12 +154,11 @@ export async function loadComparison(
 }
 
 export async function loadInputComparison(files: string[]) {
-  const scores: Score[] = [];
+  const scores: LabeledScore[] = [];
   const reviewFiles = new Map<string, string>();
   for (const file of files) {
     const directory = path.dirname(path.resolve(file));
     for (const score of await readScores(file)) {
-      scores.push(score);
       // Summaries sit above fixture folders, fixture scores beside review.md, and archived runs under archive/.
       const candidates = [
         path.join(directory, score.fixture, score.review_path),
@@ -155,20 +171,24 @@ export async function loadInputComparison(files: string[]) {
           score.review_path,
         ),
       ];
-      reviewFiles.set(
-        reviewKey(score),
-        candidates.find((candidate) => existsSync(candidate)) ?? candidates[0],
-      );
+      const reviewFile =
+        candidates.find((candidate) => existsSync(candidate)) ?? candidates[0];
+      const labeled = {
+        ...score,
+        label: await runLabel(score.agent, path.dirname(reviewFile)),
+      };
+      scores.push(labeled);
+      reviewFiles.set(reviewKey(labeled), reviewFile);
     }
   }
   return { ...buildComparison(scores), reviewFiles };
 }
 
-function reviewKey(score: Score) {
-  return JSON.stringify([score.agent, score.fixture]);
+function reviewKey(score: LabeledScore) {
+  return JSON.stringify([score.label, score.fixture]);
 }
 
-export function buildComparison(scores: Score[]) {
+export function buildComparison(scores: LabeledScore[]) {
   if (scores.length === 0) {
     // Empty inputs cannot produce totals or dashboard runs.
     throw new Error("No fixture scores to merge or upload.");
@@ -176,10 +196,10 @@ export function buildComparison(scores: Score[]) {
   const identities = new Set<string>();
   const references = new Map<string, Score>();
   for (const score of scores) {
-    const identity = JSON.stringify([score.agent, score.fixture]);
+    const identity = JSON.stringify([score.label, score.fixture]);
     if (identities.has(identity)) {
       // Repeated inputs must not double-count a session in aggregate metrics.
-      throw new Error(`Duplicate scores for ${score.agent}/${score.fixture}.`);
+      throw new Error(`Duplicate scores for ${score.label}/${score.fixture}.`);
     }
     identities.add(identity);
     if (!score.ground_truth_sha256 || !score.known_invalid_sha256) {
@@ -240,8 +260,12 @@ export function buildComparison(scores: Score[]) {
       "Different grading methods; regrade copied reports with the same eval harness before comparing agents.",
     );
   const totals: ComparisonTotal[] = groups.map(
-    ({ agent, scores: groupScores }) => ({
-      ...totalScores(groupScores, agent),
+    ({ agent, label, scores: groupScores }) => ({
+      ...totalScores(
+        groupScores.map(({ label: _, ...score }) => score),
+        agent,
+      ),
+      label,
       fixture: `Total (${SUITE_NAME})`,
       fixtureCount: groupScores.length,
     }),
@@ -268,7 +292,7 @@ function table(rows: (string | number)[][]) {
 }
 
 function reviewLink(
-  score: Score,
+  score: LabeledScore,
   outputDirectory: string,
   reviewFiles: ReadonlyMap<string, string>,
 ) {
@@ -292,7 +316,7 @@ function reviewLink(
 }
 
 export function renderComparison(
-  scores: Score[],
+  scores: LabeledScore[],
   totals: ComparisonTotal[],
   outputDirectory = REPORTS_DIRECTORY,
   reviewFiles: ReadonlyMap<string, string> = new Map(),
@@ -324,7 +348,7 @@ export function renderComparison(
       ],
       ...rows.map((score) => [
         score.fixture,
-        score.agent,
+        score.label,
         percent(score.recall),
         percent(score.precision),
         score.known_hits,
@@ -370,7 +394,7 @@ export function renderComparison(
         }
         return [
           score.fixture,
-          score.agent,
+          score.label,
           score.bugs,
           score.flags,
           `${score.severity_1} / ${score.severity_3} / ${score.severity_5}`,
@@ -421,7 +445,7 @@ export function renderComparison(
           }
         }
         return [
-          score.agent,
+          score.label,
           cost(costPerVerifiedBug(score)),
           costPerSession,
           (score.bugs / sessions).toFixed(1),

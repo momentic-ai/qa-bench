@@ -6,9 +6,3 @@ export const claudeRunner: BenchmarkAgent = {
   name: "Claude",
   reportDirectory: "claude",
 };
-
-export const claudeLocalRunner: BenchmarkAgent = {
-  ...codexRunner,
-  name: "Claude (local browser)",
-  reportDirectory: "claude-local",
-};

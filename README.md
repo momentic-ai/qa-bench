@@ -6,7 +6,8 @@ against labeled ground truth.
 Agents: `mo` (through the `qa` CLI), `codex` and `claude`. Each fixture runs in
 its own E2B sandbox. Codex and Claude drive a browser through Playwright MCP:
 Browserbase by default, or a headless Chromium on the eval host with
-`--browser local`. Local runs are scored as `codex-local` and `claude-local`.
+`--browser local`. The run records its browser in `duration.json`, and `merge`
+labels those rows, e.g. `codex (local browser)`.
 
 ## Setup
 

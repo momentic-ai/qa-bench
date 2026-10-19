@@ -294,3 +294,14 @@ export async function readOptionalCost(directory: string): Promise<unknown> {
     throw err;
   }
 }
+
+/** Agent name plus any non-default run settings recorded in duration.json. */
+export async function runLabel(agent: string, runDirectory: string) {
+  const config = JSON.parse(
+    await readFile(path.join(runDirectory, "duration.json"), "utf8"),
+  );
+  const settings: string[] = [];
+  if (config.browser === "local") settings.push("local browser");
+  if (config.subagents === false) settings.push("no subagents");
+  return settings.length ? `${agent} (${settings.join(", ")})` : agent;
+}

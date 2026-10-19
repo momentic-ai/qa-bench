@@ -3,7 +3,7 @@ import { createRequire } from "node:module";
 import { tmpdir } from "node:os";
 import path from "node:path";
 
-import { EvalAgentDefinition } from "../../evals/agent";
+import { Browser, EvalAgentDefinition } from "../../evals/agent";
 import {
   localBrowserConnection,
   validateLocalChromium,
@@ -143,19 +143,26 @@ export class CodexAgent extends CodexRunner {
   }
 }
 
-export const codexAgent: EvalAgentDefinition = {
-  name: "Codex",
-  reportSubdirectory: "codex",
-  concurrency: Infinity,
-  validateEnvironment() {
-    for (const name of ["OPENAI_API_KEY", "BROWSERBASE_API_KEY"]) {
-      if (!process.env[name]) throw new Error(`${name} is required.`);
-    }
-  },
-  create(context) {
-    return new CodexAgent(context);
-  },
-};
+export function codexAgent(browser: Browser): EvalAgentDefinition {
+  return {
+    name: "Codex",
+    reportSubdirectory: "codex",
+    concurrency: browser === "local" ? 2 : Infinity,
+    config: { browser },
+    async validateEnvironment() {
+      if (!process.env.OPENAI_API_KEY)
+        throw new Error("OPENAI_API_KEY is required.");
+      if (browser === "local") await validateLocalChromium();
+      else if (!process.env.BROWSERBASE_API_KEY)
+        throw new Error("BROWSERBASE_API_KEY is required.");
+    },
+    create(context) {
+      return browser === "local"
+        ? new LocalCodexAgent(context)
+        : new CodexAgent(context);
+    },
+  };
+}
 
 class LocalCodexAgent extends CodexAgent {
   protected localBrowser = true;
@@ -166,17 +173,3 @@ class LocalCodexAgent extends CodexAgent {
     return cost && { ...cost, costComplete: true };
   }
 }
-
-export const codexLocalAgent: EvalAgentDefinition = {
-  name: "Codex (local browser)",
-  reportSubdirectory: "codex-local",
-  concurrency: 2,
-  async validateEnvironment() {
-    if (!process.env.OPENAI_API_KEY)
-      throw new Error("OPENAI_API_KEY is required.");
-    await validateLocalChromium();
-  },
-  create(context) {
-    return new LocalCodexAgent(context);
-  },
-};

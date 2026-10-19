@@ -40,10 +40,14 @@ export interface EvalAgent {
   collectResults(signal: AbortSignal): Promise<AgentResults>;
 }
 
+export type Browser = "browserbase" | "local";
+
 export type EvalAgentDefinition = {
   name: string;
   reportSubdirectory: string;
   concurrency: number;
+  /** Run settings recorded once in duration.json; merge labels and separates runs by them. */
+  config?: Record<string, string | boolean>;
   validateEnvironment(
     timeLimitMs: number,
     fixtures?: Fixture[],

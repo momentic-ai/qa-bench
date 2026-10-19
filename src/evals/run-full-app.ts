@@ -167,6 +167,7 @@ async function runFixture({
       stopReason = "failed";
     }
     await writeJson(path.join(reportDirectory, "duration.json"), {
+      ...definition.config,
       startedAt: run.startedAt,
       duration: run.duration,
       startupDuration: run.startupDuration,

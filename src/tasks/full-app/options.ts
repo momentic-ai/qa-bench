@@ -1,5 +1,6 @@
 import { parseArgs } from "node:util";
 
+import { Browser } from "../../evals/agent";
 import {
   executionOptions,
   parseExecutionOptions,
@@ -18,6 +19,7 @@ export type FullAppOptions = {
   maxConcurrentSubAgents?: number;
   timeLimitMs: number;
   outputDirectory: string;
+  browser: Browser;
 };
 
 export function parseFullAppOptions(args: string[]): FullAppOptions {
@@ -58,7 +60,8 @@ export function parseFullAppOptions(args: string[]): FullAppOptions {
       "--run-id selects saved runs to regrade with --grade-only.",
     );
   return {
-    agent: resolveAgent(values.agent, values.browser),
+    agent: values.agent,
+    browser: parseBrowser(values.agent, values.browser),
     fixtures: values.fixtures,
     concurrency,
     maxConcurrentSubAgents,
@@ -69,11 +72,10 @@ export function parseFullAppOptions(args: string[]): FullAppOptions {
   };
 }
 
-function resolveAgent(agent: string | undefined, browser: string) {
+function parseBrowser(agent: string | undefined, browser: string): Browser {
   if (browser !== "browserbase" && browser !== "local")
     throw new Error("--browser must be browserbase or local.");
-  if (browser === "browserbase") return agent;
-  if (agent !== "codex" && agent !== "claude")
-    throw new Error("--browser applies only to --agent codex or claude.");
-  return `${agent}-local`;
+  if (browser === "local" && agent !== "codex" && agent !== "claude")
+    throw new Error("--browser local applies only to --agent codex or claude.");
+  return browser;
 }

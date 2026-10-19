@@ -28,9 +28,3 @@ export const codexRunner: BenchmarkAgent = {
     };
   },
 };
-
-export const codexLocalRunner: BenchmarkAgent = {
-  ...codexRunner,
-  name: "Codex (local browser)",
-  reportDirectory: "codex-local",
-};
