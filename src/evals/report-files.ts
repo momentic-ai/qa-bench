@@ -297,9 +297,10 @@ export async function readOptionalCost(directory: string): Promise<unknown> {
 
 /** Agent name plus any non-default run settings recorded in duration.json. */
 export async function runLabel(agent: string, runDirectory: string) {
-  const config = JSON.parse(
-    await readFile(path.join(runDirectory, "duration.json"), "utf8"),
-  );
+  const file = path.join(runDirectory, "duration.json");
+  const config = existsSync(file)
+    ? JSON.parse(await readFile(file, "utf8"))
+    : {};
   const settings: string[] = [];
   if (config.browser === "local") settings.push("local browser");
   if (config.subagents === false) settings.push("no subagents");

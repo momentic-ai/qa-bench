@@ -171,14 +171,21 @@ export async function loadInputComparison(files: string[]) {
           score.review_path,
         ),
       ];
-      const reviewFile =
-        candidates.find((candidate) => existsSync(candidate)) ?? candidates[0];
+      // Settings come from the run folder, which exists even if its review file was removed.
+      const runDirectory = candidates
+        .map((candidate) => path.dirname(candidate))
+        .find((candidate) => existsSync(path.join(candidate, "duration.json")));
       const labeled = {
         ...score,
-        label: await runLabel(score.agent, path.dirname(reviewFile)),
+        label: runDirectory
+          ? await runLabel(score.agent, runDirectory)
+          : score.agent,
       };
       scores.push(labeled);
-      reviewFiles.set(reviewKey(labeled), reviewFile);
+      reviewFiles.set(
+        reviewKey(labeled),
+        candidates.find((candidate) => existsSync(candidate)) ?? candidates[0],
+      );
     }
   }
   return { ...buildComparison(scores), reviewFiles };
