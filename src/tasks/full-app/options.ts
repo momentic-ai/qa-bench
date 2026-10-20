@@ -32,7 +32,7 @@ export function parseFullAppOptions(args: string[]): FullAppOptions {
       fixtures: { type: "string" },
       "grade-only": { type: "boolean", default: false },
       "run-id": { type: "string", multiple: true },
-      browser: { type: "string", default: "browserbase" },
+      browser: { type: "string" },
     },
     strict: true,
   });
@@ -72,10 +72,14 @@ export function parseFullAppOptions(args: string[]): FullAppOptions {
   };
 }
 
-function parseBrowser(agent: string | undefined, browser: string): Browser {
+function parseBrowser(
+  agent: string | undefined,
+  browser: string | undefined,
+): Browser {
+  if (browser === undefined) return "browserbase";
+  if (agent !== "codex" && agent !== "claude")
+    throw new Error("--browser applies only to --agent codex or claude.");
   if (browser !== "browserbase" && browser !== "local")
     throw new Error("--browser must be browserbase or local.");
-  if (browser === "local" && agent !== "codex" && agent !== "claude")
-    throw new Error("--browser local applies only to --agent codex or claude.");
   return browser;
 }
