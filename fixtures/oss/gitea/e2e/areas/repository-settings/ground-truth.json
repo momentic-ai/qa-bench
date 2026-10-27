@@ -105,6 +105,116 @@
         "At Commit Changes, observe that Commit directly to the main branch is disabled, the new-branch/pull-request option is selected, and the submit button says Propose file change."
       ],
       "severity": 3
+    },
+    {
+      "id": "gitea-protected-file-rename-bypasses-protection",
+      "name": "Renaming a protected file bypasses branch file protection",
+      "summary": "With a branch rule whose protected file patterns include README.md, editing or deleting README.md directly is blocked, but renaming it in the web editor commits directly and removes README.md from the branch.",
+      "expected": "Protected files cannot be changed directly, as the rule's help text says, so renaming README.md away should be rejected like an edit or delete.",
+      "actual": "The rename to README-renamed.md commits directly to main. README.md then returns 404 while the rule still lists it, and renaming the file back is rejected as protected. The same bypass works through the contents API with from_path and through a git push of a pure git mv.",
+      "reproSteps": [
+        "Sign in as the fixture account and create a new repository with Initialize Repository checked, so it has README.md on main.",
+        "In Settings → Branches, add a rule for main with Enable Push selected and README.md in Protected file patterns. Save it.",
+        "Edit README.md, change its content, and commit directly to main. Observe it is rejected with \"path is protected and can not be changed\".",
+        "Edit README.md again, change only the file name to README-renamed.md, and commit directly to main.",
+        "Observe the commit succeeds, the repository lists only README-renamed.md, and README.md returns 404 while the rule is unchanged."
+      ],
+      "severity": 3
+    },
+    {
+      "id": "gitea-protected-file-delete-returns-500",
+      "name": "Deleting a protected file in the web editor returns a full-page 500",
+      "summary": "Deleting a file that matches a branch rule's protected file patterns replaces the page with a full-page 500 Internal Server Error instead of a form error.",
+      "expected": "The delete is rejected with an in-page message that the path is protected, the same way an edit of that file is rejected, and the delete form stays available.",
+      "actual": "Choosing Commit Changes on the delete page shows \"500 Internal Server Error\" with \"DeleteRepoFile, path is protected and can not be changed [path: README.md]\". The file is not deleted.",
+      "reproSteps": [
+        "Sign in as the fixture account and create a new repository with Initialize Repository checked, so it has README.md on main.",
+        "In Settings → Branches, add a rule for main with Enable Push selected and README.md in Protected file patterns. Save it.",
+        "Open README.md, choose Delete File, and commit directly to main.",
+        "Observe a full-page 500 Internal Server Error reading \"DeleteRepoFile, path is protected and can not be changed [path: README.md]\". Reopen README.md and confirm it still exists."
+      ],
+      "severity": 5
+    },
+    {
+      "id": "gitea-repo-create-validation-drops-init-and-template",
+      "name": "Repository creation loses initialization and template choices after validation error",
+      "summary": "When New Repository is submitted with Initialize Repository and Make repository a template ticked but another field is invalid, the re-rendered form has both boxes unticked, so correcting the error silently creates an empty, non-template repository.",
+      "expected": "After a validation error, the form keeps the Initialize Repository and template choices, so correcting the invalid field creates the repository as configured.",
+      "actual": "Both checkboxes come back unticked while other fields such as visibility and description are kept. Submitting after fixing only the invalid field creates an empty repository (Quick Guide, no README) that is not marked as a template. With a license or .gitignore selected, Initialize survives but the template choice is still lost.",
+      "reproSteps": [
+        "Sign in as the fixture account and open New Repository.",
+        "Enter a unique name, tick Initialize Repository and Make repository a template, and enter an invalid default branch such as `bad branch`.",
+        "Choose Create Repository and observe the validation error. Both checkboxes are now unticked.",
+        "Correct only the default branch to `main` and submit.",
+        "Observe the repository is empty with the Quick Guide, and Settings shows Make repository a template unticked. As a control, the same choices with a valid branch on the first submit create a template repository with README.md."
+      ],
+      "severity": 3
+    },
+    {
+      "id": "gitea-branch-rule-validation-discards-policy",
+      "name": "Branch-rule validation discards the entire entered policy",
+      "summary": "When a branch protection rule is saved with a negative required-approvals value, Gitea shows the validation error but redirects to a form that has lost every other field the user entered.",
+      "expected": "The validation error keeps the entered rule (name, file patterns, push setting, checkboxes, and other values) so the user can fix only the invalid field.",
+      "actual": "The page shows \"Required approvals cannot be negative.\" but the branch name pattern, protected and unprotected file patterns, push setting, administrator enforcement, and approvals all reset to empty or defaults. Editing an existing rule this way discards the unsaved changes, and renaming one lands on a blank Add New Rule form. An invalid status-check pattern behaves the same.",
+      "reproSteps": [
+        "Sign in as the fixture account and open a repository's Settings → Branches → Add New Rule.",
+        "Enter a rule name such as `release/**`, protected file patterns such as `secrets/**`, choose Enable Push, tick administrator enforcement, and set Required approvals to `-1`.",
+        "Choose Save Rule and observe \"Required approvals cannot be negative.\"",
+        "Observe that the rule name, file patterns, push choice, administrator checkbox, and approvals have all reset.",
+        "As a control, submit the same values with Required approvals set to `2` and confirm every value is saved."
+      ],
+      "severity": 3
+    },
+    {
+      "id": "gitea-protected-file-pattern-leading-slash-never-matches",
+      "name": "Documented protected-file pattern with leading slash does not protect matching files",
+      "summary": "The branch-protection form's help text recommends `/docs/**/*.txt` as a protected file pattern, but patterns are matched as typed against repository paths that never start with `/`, so that pattern protects nothing.",
+      "expected": "Files matching the documented example `/docs/**/*.txt`, such as docs/policy/protected.txt, cannot be created, edited, or deleted directly on the protected branch.",
+      "actual": "With `/docs/**/*.txt` as the protected file pattern, creating, editing, and deleting docs/policy/protected.txt all commit directly, and the contents API and git push are not blocked either. The same rule with `docs/**/*.txt` blocks them. `/README.md` likewise protects nothing while `README.md` works.",
+      "reproSteps": [
+        "Sign in as the fixture account, create a repository, and add a file docs/policy/protected.txt on main.",
+        "In Settings → Branches, add a rule for main with Enable Push and Protected file patterns set to `/docs/**/*.txt`, as in the field's help text. Save it.",
+        "Edit docs/policy/protected.txt and commit directly to main. Observe the commit succeeds.",
+        "Change the pattern to `docs/**/*.txt` and save.",
+        "Edit the file again and observe it is now rejected as protected."
+      ],
+      "severity": 3
+    },
+    {
+      "id": "gitea-new-file-editor-rejects-unprotected-direct-commit",
+      "name": "New File editor rejects direct commits matching unprotected file patterns",
+      "summary": "With branch push disabled, the web New File and Upload File flows refuse to commit directly to the branch even when the new path matches the rule's unprotected-file pattern, although the rule help says matching files can be changed directly by users with write access.",
+      "expected": "A user with write access can commit a new file matching an unprotected-file pattern directly to the protected branch from New File or Upload File, as the branch-rule help specifies and as the contents API and git push already allow.",
+      "actual": "With main protected by Disable Push and unprotected file patterns `**` (or `docs/**`), New File and Upload File show Commit directly to the main branch disabled with a cannot-push warning. Submitting a direct commit anyway is rejected with `Cannot commit to protected branch \"main\".` and the file is not created. Changing only the push mode to Enable Push lets the same file commit.",
+      "reproSteps": [
+        "As the repository owner, create a repository initialized with a README and default branch main.",
+        "In Settings → Branches, add a rule for main with Disable Push, unprotected file patterns `**`, protected file patterns empty, and Require Signed Commits unchecked. Save it.",
+        "Open Add File → New File, name the file policy.txt, and enter any content.",
+        "At Commit Changes, observe Commit directly to the main branch is disabled. Submit a direct commit and observe it is rejected and policy.txt is not created.",
+        "Change only the rule's push mode to Enable Push and repeat; the file commits directly."
+      ],
+      "severity": 3,
+      "matchingGuidance": {
+        "relatedReference": {
+          "id": "gitea-existing-file-editor-disables-unprotected-direct-commit",
+          "distinction": "Both come from the web editor ignoring unprotected-file patterns under Disable Push, but the entry points differ: this reference covers creating a new file through New File or Upload File, and the related reference covers editing an existing file. Credit this reference for new-file or upload findings and the related one for existing-file edits."
+        }
+      }
+    },
+    {
+      "id": "gitea-collaborator-team-search-labels-general-access-none",
+      "name": "Collaborators team search labels General Access teams as 'none access'",
+      "summary": "In repository Settings → Collaborators, the Teams search prints each team's overall access mode as '<mode> access'. General Access teams store that mode as none and keep their real rights per unit, so a team with Code: Write is labelled 'none access'.",
+      "expected": "The search result describes a General Access team's real permissions, for example as Unit Permissions like the Teams list on the same page, rather than saying it has no access.",
+      "actual": "Searching the Teams box shows 'none access' under every General Access team, including one with Code: Write and other units Read, and one with every unit Read. An Administrator Access team correctly shows 'admin access'. After Add Team, the same page lists the General Access team as 'Unit Permissions' with its units. The label is display-only; adding the team grants the configured access.",
+      "reproSteps": [
+        "As an organization owner, create a team with Specific repositories and General Access, set Code to Write, and keep the other units Read.",
+        "Create a repository owned by the organization and open its Settings → Collaborators.",
+        "Type the team's name into the Teams search box and wait for the result.",
+        "Observe the result says 'none access', while the team's page shows Code Write.",
+        "Select the team and click Add Team, and observe the Teams list labels it 'Unit Permissions'."
+      ],
+      "severity": 1
     }
   ]
 }

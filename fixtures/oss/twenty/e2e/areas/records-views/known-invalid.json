@@ -1,0 +1,280 @@
+{
+  "bugs": [
+    {
+      "id": "records-views-N04",
+      "name": "Calendar Day date picker opens without selectable dates",
+      "summary": "The Calendar Day toolbar date dropdown shows month/year controls without selectable day cells.",
+      "expected": "The reported expectation was that the Day toolbar dropdown provides selectable individual dates.",
+      "actual": "The dropdown shows only month/year controls and arrows. Day cells exist but are hidden, while month/year navigation, day-by-day toolbar arrows, and Today work.",
+      "reproSteps": [
+        "Sign in to the seeded Apple workspace and open Tasks.",
+        "Create a uniquely named Calendar view and switch its calendar range to Day.",
+        "Open the displayed date dropdown and observe month/year controls without selectable days.",
+        "Use the picker month controls and the toolbar day arrows or Today; date navigation works."
+      ],
+      "reason": "The header-only picker is intentional. Its Storybook scenario explicitly specifies a hidden calendar grid with only the month/year header. Day navigation remains available through working toolbar controls; no supported contract requires an individual-day grid in this dropdown."
+    },
+    {
+      "id": "records-views-N12",
+      "name": "Grouping People by Company hides populated-company records",
+      "summary": "Grouping a People table by Company initially hides people linked to companies whose groups have not been added.",
+      "expected": "The reported expectation was that grouping by Company automatically displays every company group and preserves all visible people.",
+      "actual": "Only configured groups and the No Value group are shown initially. Adding a company through New group displays its people without changing their records.",
+      "reproSteps": [
+        "Open People and create a uniquely named Table view.",
+        "Group the view by Company and observe that people with populated Company relations disappear from the initial groups.",
+        "Choose New group and select a company that has linked people.",
+        "Observe that those people reappear without editing their records."
+      ],
+      "reason": "Relation groups are intentionally added explicitly through New group because a relation can have an unbounded number of groups. Both independent judges restored linked people by adding their company groups. Upstream PR #23619 explicitly documents this behavior as intended; its fixes concern changing or removing grouping, which is a separate defect."
+    },
+    {
+      "id": "records-views-N13",
+      "name": "Calendar Week mode renders a blank body without its grid",
+      "summary": "Switching Month to Week removes the entire calendar body, including date headings and grid. Reported across Companies, People, Opportunities, and Tasks, including mobile and tablet widths.",
+      "expected": "Week displays the days of the selected week in a usable calendar grid, even if there are no matching entries.",
+      "actual": "The Week selector and period navigation remain visible, but the body has no day/date columns, time grid, or record events. This is a missing calendar structure, rather than the seed issue that caps events on crowded dates.",
+      "reproSteps": [
+        "Sign in to the seeded Apple workspace and open /objects/companies.",
+        "Create a uniquely named disposable view and choose Options > Layout > Calendar. Confirm Month displays a dated grid.",
+        "Change the calendar range dropdown from Month to Week.",
+        "Observe that the toolbar remains but the entire calendar body disappears.",
+        "For the responsive variants, repeat at 390px or 768px width in Tasks, Opportunities, or People."
+      ],
+      "reason": "Both independent judges could not reproduce the reported blank Week body. Fresh Companies and Tasks views, other objects, desktop/tablet/mobile widths, empty weeks and reloads rendered dated Week grids. The original failing sandbox state is unavailable, so the cause of the historical Mo observation is unverified; this rejection does not establish that a blank calendar is intended."
+    },
+    {
+      "id": "records-views-N14",
+      "name": "Grouping Companies by Account Owner hides the matching Google record and changes count from 1 to 0",
+      "summary": "Grouping Companies by Account Owner initially hides companies belonging to owners whose groups have not been added, reducing the visible count.",
+      "expected": "The reported expectation was that grouping by Account Owner automatically includes every owner group and preserves all matching companies.",
+      "actual": "Only configured owner groups and No Value are initially shown. Adding the matching owner through New group restores the same company and count without changing the record.",
+      "reproSteps": [
+        "Sign in to the seeded Apple workspace, open Companies, and create a uniquely named disposable Table view.",
+        "Filter the view to Google and confirm the company is visible with count 1.",
+        "Group the view by Account Owner and observe that Google disappears and the count becomes 0.",
+        "Choose New group and select the owner assigned to Google.",
+        "Observe that the unchanged Google record and count 1 return; reload and confirm the owner group persists."
+      ],
+      "reason": "Relation-backed groups are intentionally added explicitly through New group. Grouping by Account Owner initially includes only configured groups, so a company whose owner group has not been added is excluded from both rows and counts. Both independent judges restored the same unchanged records by adding the appropriate owner group, including after reload. Upstream PR #23619 documents this explicit relation-group design; this matches the rejected People/Company grouping finding N12."
+    },
+    {
+      "id": "records-views-N15",
+      "name": "Mobile Select all checkbox does not keep People rows deselected",
+      "summary": "At mobile width, deselecting all five filtered People rows briefly unchecks them, then they become checked again without another action.",
+      "expected": "Clicking the checked Select all checkbox deselects all visible rows and leaves them unchecked.",
+      "actual": "Clicking the checked Select all checkbox briefly unchecks the rows, but after several seconds they revert to checked.",
+      "reproSteps": [
+        "Sign in to the seeded Apple workspace and set the viewport to 390 × 844.",
+        "Open /objects/people and create a uniquely named disposable Table view.",
+        "Apply an advanced Name Contains Kimberly filter and save. Confirm five matching rows.",
+        "Click the Select all header checkbox, then click the checked header checkbox again to deselect.",
+        "Wait several seconds without further input and observe the rows revert to checked."
+      ],
+      "reason": "Both independent judges could not reproduce rows rechecking themselves after header deselection. Repeated mobile tests, including the exact five-People filter, prolonged waits and metadata updates, left all rows unchecked. A separately reproduced defect clears selected rows; that is the opposite behavior and does not validate this claim. The historical delayed recheck remains unverified, rather than proven impossible."
+    },
+    {
+      "id": "records-views-N16",
+      "name": "Companies Kanban displays no company cards while the same unfiltered view in Table shows 599 companies",
+      "summary": "A fresh Companies Kanban view shows no cards and count zero, although switching the same unfiltered view to Table shows 599 companies with populated Account Owner values.",
+      "expected": "The Kanban layout displays companies grouped by Account Owner into lanes (including Jony Ive, Phil Schiller, and Tim Apple).",
+      "actual": "The Kanban layout displays only an empty 'No Value' lane with no company cards, despite the view containing 599 records.",
+      "reproSteps": [
+        "Sign in to the seeded Apple workspace and open /objects/companies.",
+        "Create a uniquely named disposable view with Kanban layout.",
+        "Observe only an empty No Value lane and zero record count.",
+        "Choose Options > Layout > Table and confirm 599 companies with populated Account Owner values.",
+        "Switch the same view back to Kanban and observe the missing company cards again."
+      ],
+      "reason": "Companies Kanban intentionally starts with configured Account Owner groups and No Value. Both judges saw unowned companies, and adding owner groups restored the complete Table record set without company edits. The historical exact zero-versus-599 count is data-dependent and was not independently reproduced. Upstream PR #23619 explicitly preserves manual relation-group creation as intended behavior."
+    },
+    {
+      "id": "records-views-N17",
+      "name": "Grouping Tasks by Assignee hides all 1,800 tasks and displays count 0",
+      "summary": "Changing a populated Tasks table to Assignee grouping hides all 1,800 tasks and reports zero results, leaving an empty No Value group.",
+      "expected": "Existing tasks remain visible, grouped under their assignees; changing grouping should not filter all tasks out.",
+      "actual": "Count changes from 1,800 to 0 and all task rows disappear, leaving only an empty No Value group. Options > Group shows Assignee selected.",
+      "reproSteps": [
+        "Sign in to the seeded Apple workspace and open /objects/tasks.",
+        "Create a uniquely named disposable Table view with no filters.",
+        "Group by Status and sort Title descending, matching the reported setup. Confirm 1,800 tasks and populated Assignee cells.",
+        "Choose Options > Group > Group by > Assignee.",
+        "Observe the count change to zero and all task rows disappear."
+      ],
+      "reason": "Tasks Assignee grouping intentionally starts with explicitly configured groups and No Value. Adding the actual assignee groups restored the full task count without task edits, including after reload. A separately observed stale grouping-removal defect belongs to N18, not this initial omission. Upstream PR #23619 explicitly preserves manual relation-group creation as intended behavior."
+    },
+    {
+      "id": "records-views-N19",
+      "name": "Switching People view layout to Kanban results in 0 records displayed instead of the 9 matching records",
+      "summary": "Changing a saved filtered People Calendar view to Kanban empties the result set and shows an empty No Value column, rather than preserving its matching people.",
+      "expected": "Kanban view should display the 9 matching records grouped by Company.",
+      "actual": "View count drops to 0 and only an empty 'No Value' column appears with no cards.",
+      "reproSteps": [
+        "Sign in to the seeded Apple workspace and open /objects/people at 390px width.",
+        "Create a uniquely named disposable Table view; filter Name Contains Mark, add a Name sort, and save. Confirm nine results.",
+        "Switch to Calendar at 768px width. At 390px, switch to Day, navigate to the next day, then use Today. Confirm Mark cards appear.",
+        "Choose Options > Layout > Kanban and dismiss the menu.",
+        "Observe count zero and an empty No Value column."
+      ],
+      "reason": "People Kanban groups by Company and intentionally shows only configured company groups and No Value. Adding the matching companies through New group restored the filtered people without editing them. Saved-filter controls establish this intended grouping flow independently of pending-filter loss. Upstream PR #23619 explicitly preserves manual relation-group creation as intended behavior."
+    },
+    {
+      "id": "records-views-N23",
+      "name": "Grouping Opportunities Kanban by Owner hides all 150 records and changes total to 0",
+      "summary": "Changing an unfiltered Opportunities Kanban board to Owner grouping hides all 150 opportunities and leaves only an empty No Value column.",
+      "expected": "Grouping the same unfiltered records by Owner should retain the 150 opportunities and display them under their owner groups.",
+      "actual": "The total changes from 150 to 0 and the board shows only an empty No Value column, without opportunity cards or owner-named groups.",
+      "reproSteps": [
+        "Sign in to the seeded Apple workspace and open /objects/opportunities.",
+        "Create a uniquely named disposable Kanban view with no filters. Add Amount descending, Count all summaries, and Hide empty groups to match the reported setup.",
+        "Confirm 150 opportunities with populated Owner values.",
+        "Open Options > Group > Group by and select Owner.",
+        "Observe count zero and no opportunity cards or owner-named groups."
+      ],
+      "reason": "Opportunities Kanban Owner grouping intentionally shows only configured relation groups and No Value. Adding the appropriate owner through New group restored owned cards; Stage grouping retained all records as a control. The original literal zero count was not reproduced because the shared fixture also contained unowned opportunities. Upstream PR #23619 explicitly preserves manual relation-group creation as intended behavior."
+    },
+    {
+      "id": "records-views-N26",
+      "name": "Table grouping by Owner hides all six matching opportunities and changes count to zero",
+      "summary": "Grouping a filtered Opportunities Table by Owner removes all six matching rows and changes the count to zero.",
+      "expected": "Grouping should partition the six matching rows into Owner groups, including unassigned rows, without excluding all records.",
+      "actual": "Six rows were visible before choosing Owner. Afterwards the table shows only column headers and New group, and count becomes 0.",
+      "reproSteps": [
+        "Sign in to the seeded Apple workspace and create a uniquely named Opportunities Table view.",
+        "Apply Amount greater than or equal to 2,800,000. Confirm six rows: three iPhone Corporate records at $3.2m and three Mac Pro Rendering records at $2.8m.",
+        "Choose Options > Group > Owner and dismiss the menu.",
+        "Observe count zero, no opportunity rows or owner groups, and only column headers and New group."
+      ],
+      "reason": "Opportunities Table Owner grouping intentionally includes only configured relation groups and No Value. Adding Tim Apple through New group restored all six matching owned opportunities without record edits. A separately reported failed grouping removal is N27, not this initial omission. Upstream PR #23619 explicitly preserves manual relation-group creation as intended behavior."
+    },
+    {
+      "id": "records-views-N25",
+      "name": "Tasks table Title column shows only initials rather than task titles at tablet width",
+      "summary": "At tablet width, horizontally scrolling the Tasks table collapses the Title column to initials until scrolled back.",
+      "expected": "The reported expectation was that readable task titles remain visible in the Title column at tablet width.",
+      "actual": "Titles are readable when the table opens. At widths up to 768px, horizontal scrolling deliberately hides title labels and compacts the first column to initials. Scrolling back restores titles and the initial remains clickable to open the task.",
+      "reproSteps": [
+        "Sign in to the seeded Apple workspace, set the viewport to 768px wide, and open a Tasks Table view.",
+        "Confirm that task titles are readable before horizontal scrolling.",
+        "Scroll the table horizontally to the right and observe that the first column compacts to initials.",
+        "Scroll back left and confirm that titles return. Tap an initial to verify that it opens the corresponding task."
+      ],
+      "reason": "The pinned fixture deliberately switches the first table column to compact initials while horizontally scrolled at widths up to 768px. Titles are readable on landing, scrolling back restores them, and tapping an initial opens the correct task. The landing-only missing-title claim did not reproduce. A later upstream change describes row-identification concerns and replaces compact mode, but that later design change does not make this deliberate, reversible behavior a bug in the fixture."
+    },
+    {
+      "id": "records-views-N28",
+      "name": "Create view from Update view drops the active email filter when opening the new view",
+      "summary": "A report claimed that creating a People view from current changes loses its active email filter after reload.",
+      "expected": "A completed view copy preserves the current email filter and its matching records after reload and reselection.",
+      "actual": "Completed copies retain the email filter and matching record. In the original report, refresh occurred before creation finished and the old unfiltered base view reopened; the claimed initial filtered state of the new view was not shown. Interrupting the sequential creation requests can leave a partial copy without its filter.",
+      "reproSteps": [
+        "Sign in to the seeded Apple workspace and create a uniquely named People Table view.",
+        "Apply an Emails filter matching an existing person, such as MARK.YOUNG@EXAMPLE.COM, and confirm the matching row.",
+        "Choose the arrow beside Update view, select Create view, and create a uniquely named copy.",
+        "Wait for creation to finish and for the copied view to become selected.",
+        "Reload and reselect the copied view. Confirm that the email filter and matching record remain."
+      ],
+      "reason": "The reported loss after a completed Create view copy did not reproduce: both independent judges retained the email filter through reload and view reselection. Review of the original Mo recording found that refreshing interrupted the multi-request creation flow before the new view opened, returning to the old unfiltered base view. A deliberately interrupted creation can leave a partial view without filters, but that does not establish the reported completed-copy filter-loss claim."
+    },
+    {
+      "id": "records-views-N30",
+      "name": "Clicking a selected Companies row checkbox after Select all discards the other selections and keeps that row selected",
+      "summary": "A report claimed that unchecking Microsoft after selecting all four filtered Companies retains only Microsoft and clears the other selections.",
+      "expected": "Microsoft becomes unchecked while the other three companies remain selected, showing 3 selected.",
+      "actual": "Both independent rechecks showed the expected selection: Microsoft unchecked, the other three checked and 3 selected. The reported state with only Microsoft selected did not reproduce.",
+      "reproSteps": [
+        "Sign in to the seeded Apple workspace and create a uniquely named Companies Table view.",
+        "Apply Name Contains micro and confirm MICROS Systems Inc, MicroStrategy, Microsoft and Microworkers.",
+        "Select all four using the header checkbox.",
+        "Click the checked Microsoft row checkbox.",
+        "Confirm that Microsoft becomes unchecked while the other three remain selected and the header shows 3 selected."
+      ],
+      "reason": "The reported inverted selection did not reproduce. Both independent judges repeatedly selected all four filtered companies and unchecked Microsoft; Microsoft became unchecked while the other three remained selected with count 3. Fresh views, saved and unsaved filters, the reported hidden-column/reload setup, different widths and input variations passed. The historical observation has no established cause and is not proven impossible; adjacent selection-clearing behavior does not validate this specific inversion claim."
+    },
+    {
+      "id": "records-views-N34",
+      "name": "Returning from a record resets Kanban scroll position",
+      "summary": "Returning through a record breadcrumb remounts the Kanban board at the top-left, losing its previous browsing position.",
+      "expected": "The reported expectation is to return near the opened card, retaining the board browsing position. Whether the fixture version still requires this behavior is uncertain.",
+      "actual": "Independent judges reproduced a vertical and horizontal reset while the By Status view remained selected. Side-panel closure preserves position, and the Table breadcrumb restores its opened row. The Kanban restoration implementation had been removed in a native-scrolling migration.",
+      "reproSteps": [
+        "Sign in to the seeded Apple workspace and open Tasks > By Status.",
+        "Scroll down the Kanban board about 1,200 pixels and note a visible card. At a narrow viewport, also scroll horizontally to another column.",
+        "Open a task in its full record page, then return using the Tasks breadcrumb.",
+        "Observe that By Status remains selected but the board returns to the top-left."
+      ],
+      "reason": "Scroll restoration was removed during the native-scrolling migration. Historical evidence supports preserving position, but we cannot establish that this remained required behavior in the fixture version. Treat this as an ambiguous feature regression rather than a confirmed bug. The observed vertical reset is real; its absence from the implementation alone does not prove it is intended. Horizontal preservation has still weaker contract evidence."
+    },
+    {
+      "id": "records-views-N39",
+      "name": "Opportunities stage headers disappear after grouping changes and reload",
+      "summary": "A report claimed that Opportunities Kanban stage headers disappear after changing grouping and refreshing.",
+      "expected": "Stage column headers displaying stage names and amount totals should render above the Kanban columns after refresh.",
+      "actual": "Both independent judges retained stage labels after the reported grouping-change and reload sequence. The source Mo recording also retains stage labels above loaded cards at 00:18–00:20.",
+      "reproSteps": [
+        "Sign in and open Opportunities > By Stage.",
+        "Create a fresh Kanban view grouped by Stage.",
+        "Change grouping to Owner, then Company, then restore Stage.",
+        "Choose Group > Sort > Reverse Alphabetical, refresh, and inspect all five stage headers."
+      ],
+      "reason": "The claimed disappearance was not reproduced in either independent investigation; both retained the stage labels on fresh views. The source Mo recording also visibly retains the labels. Placeholder aggregate dashes are distinct from missing stage headers. This does not establish that every historical header disappearance is impossible."
+    },
+    {
+      "id": "records-views-N40",
+      "name": "People secondary Emails sort ignores ascending direction",
+      "summary": "A report claimed that ascending Emails sorting is ignored when used after Name sorted by Last name.",
+      "expected": "The report expects Emails to break ties between equal last names before first names are considered.",
+      "actual": "Name sorting intentionally uses the other name component as its tie-breaker. Emails therefore applies only after both last name and first name tie. Both judges reproduced the reported appearance and verified that identical-full-name controls sort Emails correctly in both directions.",
+      "reproSteps": [
+        "Sign in and open People in a table view.",
+        "Sort Name by Last name and add Emails ascending as a secondary sort.",
+        "Inspect people sharing a last name but having different first names; first name breaks the tie before Emails.",
+        "As a control, create people with identical first and last names and distinct email addresses. Observe Emails sorts them correctly in both directions."
+      ],
+      "reason": "This is intended full-name tie-breaking, explicitly specified by upstream PR #20445 and covered by pinned source tests. Both independent judges confirmed that Emails sorts correctly when both name components tie, and when Name sorting is removed."
+    },
+    {
+      "id": "records-views-N44",
+      "name": "Calendar repeats single-date Opportunities on the following day",
+      "summary": "A late-night Opportunity appears on its Close date and the following day even when no end date is configured.",
+      "expected": "The report expects a record without a configured end date to appear only on its start date.",
+      "actual": "A Close date at 23:27 renders an interval through 00:27 on the following day. Independent browser controls reproduce the midnight overlap; earlier start times remain on one date.",
+      "reproSteps": [
+        "Sign in and create two test Opportunities with Close dates at 23:27 on distinct dates in the workspace time zone.",
+        "Create a Calendar view using Close date as the start and None as the end date.",
+        "Inspect Month and Week views. Observe that each late-night record spans its start date and the following day.",
+        "As controls, use start times of 10:00, 22:30 and 23:00; these remain on one date."
+      ],
+      "reason": "Intended fixture behavior: the date-time range utility and its tests explicitly assign a one-hour fallback when the end is missing or unusable. A 23:27 start therefore ends at 00:27 the next day. Upstream PR #22819 introduced this fallback; later PR #24868 simplified calendar configuration, which does not establish that the pinned behavior was a defect."
+    },
+    {
+      "id": "records-views-N49",
+      "name": "People table stops loading before its advertised record count",
+      "summary": "A report interpreted reaching Abigail Scott and Add New at the bottom of All People as premature pagination cutoff.",
+      "expected": "The People table should load every record counted in its current result set.",
+      "actual": "Both independent investigations loaded all 1,215 current distinct records without gaps, including all 1,200 seeded People. Abigail Scott was the terminal record in the tested ordering, followed by Add New. The final page returned the remaining 75 records and hasNextPage false.",
+      "reproSteps": [
+        "Sign in and open the default unfiltered All People table.",
+        "Note the current header total; the judged comparison had 1,215 People, including 15 retained test records.",
+        "Scroll through the table in smaller increments until Abigail Scott and Add New appear at the bottom.",
+        "Confirm intermediate scrolling continues to load rows normally and the terminal row agrees with the end of the current result set."
+      ],
+      "reason": "No pagination cutoff or missing records was demonstrated. Both independent judges reached the same normal dataset end and verified 1,215 distinct loaded IDs with no gaps, including every seeded position from 1 through 1,200. The source seed places Abigail last in the tested ordering. The original complete 1,200-record network session was not re-audited; this rejection does not claim that Abigail must remain last under other sorts or later insertions."
+    },
+    {
+      "id": "records-views-N60",
+      "name": "Owner grouping hides unowned Opportunities until another group is added",
+      "summary": "A report claimed that Owner grouping hides unowned Opportunities until another owner group is added.",
+      "expected": "Opportunities with no Owner should remain visible in the No Value group when grouping by Owner.",
+      "actual": "Both independent investigations retained genuinely unowned records in No Value across switching from Stage to Owner and reloading. Two fresh unowned records also stayed visible. Adding Tim Apple populated a separate owned-record column while No Value remained populated. The 150 seeded Opportunities were owned by Tim Apple, contrary to the report’s unowned-data premise.",
+      "reproSteps": [
+        "Sign in and create or identify disposable Opportunities whose Owner field is actually blank.",
+        "Create a fresh Opportunities Kanban view grouped by Stage and verify those records are present.",
+        "Change Group by to Owner and observe the genuinely unowned records remain in No Value.",
+        "Reload the view and confirm they remain visible.",
+        "Add Tim Apple through New group. Observe Tim-owned records appear in a separate owner column while unowned records stay in No Value."
+      ],
+      "reason": "The specific unowned-row disappearance did not reproduce in either independent investigation, including fresh truly unowned controls. The 150 seeded records were owned by Tim Apple, so their omission before adding his configured group does not establish disappearance of unowned records. This rejection is limited to the unowned-row claim; it does not reverse earlier accepted or rejected labels about populated relation groups. The unavailable full historical recording and data state remain unverified."
+    }
+  ]
+}

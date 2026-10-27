@@ -16,6 +16,7 @@ Requires Node.js 22.9+ and pnpm.
 ```bash
 pnpm install
 pnpm build-template            # once per E2B org: Docker host template (2 CPU / 4 GiB)
+pnpm build-template --cpu 4 --memory 8   # also once, for twenty
 ```
 
 Environment:

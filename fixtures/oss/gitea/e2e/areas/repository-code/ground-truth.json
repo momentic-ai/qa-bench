@@ -296,6 +296,50 @@
         "Inspect the ZIP. Its comment is the tag's commit, and branch-only.txt is missing."
       ],
       "severity": 3
+    },
+    {
+      "id": "gitea-branch-file-history-resolves-same-named-tag",
+      "name": "File History returns 404 when a same-named older tag lacks the file",
+      "summary": "When a branch and an older tag share a name, History for a branch file resolves the bare name to the tag. If the tag lacks the file, /commits/branch/<name>/<file> returns a full-page 404; if the tag has it, the page silently lists only the tag's older commits.",
+      "expected": "History opened from a branch's file page lists that branch's commits for the file, as it does for a branch at the same commit without a same-named tag.",
+      "actual": "Clicking History on a file that exists on the branch but not at the same-named older tag returns 404 Page Not Found, from the file page, directory History, and Blame alike. When the file also exists at the tag, History returns 200 but shows only the tag's commits, and the file's RSS and Atom feeds are empty or short the same way. The branch's full commit list, Blame, and history by commit SHA are correct.",
+      "reproSteps": [
+        "Sign in as the fixture account and, in a repository, create a branch and add a new file on it, for example docs/hist.txt.",
+        "Open an earlier commit that lacks the file, choose Operations → Create tag, and name the tag exactly like the branch.",
+        "Open the branch's file page for docs/hist.txt and confirm it renders.",
+        "Click History. Observe a full-page 404 Page Not Found at /commits/branch/<name>/docs/hist.txt.",
+        "As a control, create another branch at the same commit with no same-named tag and confirm its History for the file lists the commits."
+      ],
+      "severity": 5
+    },
+    {
+      "id": "gitea-compare-tag-selection-resolves-same-named-branch",
+      "name": "Selecting a tag in Compare commits compares a same-named branch instead",
+      "summary": "When a branch and a tag share a name, choosing the tag from the Tags tab of the Compare commits selector links to the bare name, and Gitea compares the same-named branch instead of the tag.",
+      "expected": "Choosing a tag from the Tags tab compares that tag, as it does when no branch shares its name and as /compare/main...refs/tags/<name> does.",
+      "actual": "The selection opens /compare/main...<name>, the same URL as the branch, and shows the branch's commits and changed files under a New Pull Request heading. With a tag at main's commit, the page lists the branch-only commit instead of \"These branches are equal.\" Choosing the tag as the base can falsely report that the refs are equal.",
+      "reproSteps": [
+        "Sign in as the fixture account and create a repository with Initialize Repository checked.",
+        "Create a branch named, for example, qa-same from main, and commit a new file branch-only.txt to it.",
+        "Open main's latest commit, choose Operations → Create tag, and name the tag qa-same.",
+        "Open Compare commits with main as the base, open the second selector, switch to its Tags tab, and choose qa-same.",
+        "Observe the page shows the branch-only commit and branch-only.txt. As a control, open /compare/main...refs/tags/qa-same and observe \"These branches are equal.\""
+      ],
+      "severity": 3
+    },
+    {
+      "id": "gitea-editor-preview-rename-shows-no-changes",
+      "name": "Preview Changes reports no changes for a file rename",
+      "summary": "In the web file editor, Preview Changes sends only the file content to the original path and never the new filename, so a rename-only edit previews as 'There are no changes to show.' even though Commit Changes is enabled and commits a rename.",
+      "expected": "Preview Changes for a rename-only edit indicates that the file is renamed, for example showing old path → new path with no content changes, as the resulting commit page does.",
+      "actual": "Changing only the filename of an existing file and opening Preview Changes shows 'There are no changes to show.' while Commit Changes stays enabled. Committing succeeds and the commit page lists the file as renamed (old → new, 1 changed file). Moving the file to another folder behaves the same, and a rename plus a content edit previews only the content change, with no mention of the rename.",
+      "reproSteps": [
+        "Open an existing file in the web editor (Edit File).",
+        "Change only the filename, leaving the content unchanged.",
+        "Click Preview Changes and observe 'There are no changes to show.' while Commit Changes is enabled.",
+        "Commit the change and observe the commit page shows the file renamed."
+      ],
+      "severity": 1
     }
   ]
 }

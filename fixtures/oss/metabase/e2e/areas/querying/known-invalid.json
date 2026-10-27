@@ -1,0 +1,317 @@
+{
+  "bugs": [
+    {
+      "id": "metabase-querying-156",
+      "name": "Typing in the source picker search navigates away from the notebook to a new document",
+      "summary": "Typing in the source picker search navigates away from the notebook to a new document.",
+      "expected": "Typing into the 'Search for tables and more...' input filters tables within the source picker while remaining on the notebook question.",
+      "actual": "Typing into the search input dismisses the notebook and navigates to a new document page with 's' typed into the editor.",
+      "reproSteps": [
+        "Open new notebook and search orders in the starting data search.",
+        "Select Orders table from Sample Database.",
+        "Click the Orders source button to change source.",
+        "Type products in Search for tables and more."
+      ],
+      "reason": "Not a product bug: the navigation came from the test agent clicking the global search again, not from typing in the source picker."
+    },
+    {
+      "id": "metabase-querying-153",
+      "name": "Entering row limit 0 silently runs the previous limit 5 and resets the input",
+      "summary": "Entering row limit 0 silently runs the previous limit 5 and resets the input.",
+      "expected": "Reject an invalid row limit with clear validation before running, rather than silently executing the previous limit.",
+      "actual": "The field displayed 0 before running, but Visualize returned five rows and reopening Editor showed 5. A whole-page multimodal assertion confirmed no warning, validation error or notification explained the rejection/reset.",
+      "reproSteps": [
+        "Create a fresh question from Sample Database > Products.",
+        "Sort Price ascending, set row limit 5, visualize, and save with a unique QA-RESULT name.",
+        "Reopen Editor, replace row limit 5 with 0 and blur the field.",
+        "Click Visualize, then reopen Editor."
+      ],
+      "reason": "Works as intended: the row limit deliberately ignores values below 1, as Metabase's own tests assert."
+    },
+    {
+      "id": "metabase-querying-154",
+      "name": "Fractional row limit 2.5 is silently changed to 2 when running the query",
+      "summary": "Fractional row limit 2.5 is silently changed to 2 when running the query.",
+      "expected": "Require a positive whole-number limit with validation instead of silently changing an entered fractional value.",
+      "actual": "Input displayed 2.5, but Visualize returned two rows and reopening Editor displayed 2. Whole-page multimodal assertion confirmed no message explaining the truncation.",
+      "reproSteps": [
+        "Create a fresh Sample Database > Products question, sort Price ascending and set row limit 5.",
+        "Visualize and save with a unique QA-RESULT name; reopen Editor.",
+        "Replace row limit with 2.5 and blur.",
+        "Click Visualize, then reopen Editor."
+      ],
+      "reason": "Works as intended: the row limit is converted to a whole number by design."
+    },
+    {
+      "id": "metabase-querying-081",
+      "name": "Undoing SQL deletion loses saved variable types and defaults",
+      "summary": "Undoing SQL deletion loses saved variable types and defaults.",
+      "expected": "Undo should restore the query's variable definitions and defaults together with the restored SQL text, preserving the query's ability to run.",
+      "actual": "SELECT {{value}} AS selected_value is restored verbatim, but Number changes to Text and default42 disappears. Running fails: Cannot run the query: missing required parameters: #{\"value\"}. Also reproduced with a saved custom dropdown: it reverts to Input box and loses custom values/defaultalpha.",
+      "reproSteps": [
+        "Choose New > SQL query > Sample Database and enter SELECT {{value}} AS selected_value.",
+        "Open Variables, set value's Variable type to Number and its default value to42. Run and confirm result42.",
+        "Save with a unique name. Reload the saved question from its clean question URL and confirm it still runs using default42.",
+        "Open Editor and Variables; verify Number and default42 are present.",
+        "Focus the SQL editor, press Ctrl+A, Backspace, then Ctrl+Z to undo the deletion.",
+        "Run the restored SQL. Observe missing-parameter error; Variables now shows Text with no default."
+      ],
+      "reason": "Deleting a SQL variable discards its settings; undo restores only the query text, so the recreated variable starting with default settings is expected."
+    },
+    {
+      "id": "metabase-querying-084",
+      "name": "Saved-question onboarding dialog fails to close",
+      "summary": "Saved-question onboarding dialog fails to close.",
+      "expected": "Start exploring dismisses the onboarding dialog and lets the user interact with the saved question.",
+      "actual": "After saving and reopening a question, clicking Start exploring twice left “It's okay to play around with saved questions” visible and blocking the editor. Escape also failed. Each dismissal attempted PUT /api/user/1/modal/qbnewb and received HTTP 500 with response “Internal server error.” A later full reload cleared the dialog.",
+      "reproSteps": [
+        "Sign in as eval@momentic.ai on a fresh fixture where the saved-question onboarding has not yet been acknowledged.",
+        "Open /question/notebook; select Sample Database > Orders.",
+        "Choose Count of rows under Summarize and Created At under grouping; click Visualize.",
+        "Save with a unique question name, then reload the saved question URL.",
+        "In “It's okay to play around with saved questions”, click Start exploring. Observe the dialog remains; repeat or press Escape to reproduce the failed dismissal."
+      ],
+      "reason": "Cannot reproduce on human review."
+    },
+    {
+      "id": "metabase-querying-082",
+      "name": "Notebook grouping and sort chips ignore advertised keyboard reorder controls",
+      "summary": "Notebook grouping and sort chips ignore advertised keyboard reorder controls.",
+      "expected": "With the second chip focused, Space should pick it up, ArrowLeft should move it before the first chip, and Space should drop it, as the accessible instructions specify.",
+      "actual": "Space does not activate dragging or update live status. ArrowLeft then Space leaves the order unchanged. Independently reproduced with grouping in two browser sessions and with two sort chips, including normal Tab navigation. Wrappers have role=button, tabindex=0, aria-disabled=false and aria-roledescription=sortable. The screen-reader instructions say 'To pick up a draggable item, press the space bar. While dragging, use the arrow keys to move the item...'.",
+      "reproSteps": [
+        "Open /question/notebook and choose Sample Database > Products.",
+        "Choose Count of rows as the summary, Category as the first grouping column, then add Vendor as the second grouping column.",
+        "Use Tab navigation until the Vendor grouping chip has keyboard focus.",
+        "Press Space, ArrowLeft, then Space.",
+        "Observe that the chip is never picked up and the grouping order remains Category, Vendor.",
+        "The same failure occurs after adding Sort Category followed by Vendor and focusing the Vendor sort wrapper (Tab past the first chip's Change direction button)."
+      ],
+      "reason": "Not a product bug for labeling: the missing keyboard reorder is an accessibility-only issue with no visible or pointer-driven defect."
+    },
+    {
+      "id": "metabase-querying-241",
+      "name": "Deleting a source question makes its owned dependent View-only, preventing source repair",
+      "summary": "Deleting a source question makes its owned dependent View-only, preventing source repair.",
+      "expected": "Missing source should produce an error but the question owner should retain Editor access to replace the deleted source and repair the dependent.",
+      "actual": "Dependent changes to View-only, displays 'Card 74 does not exist.', and removes Editor and other query-edit controls. Default multimodal assertion confirmed no Editor or source-change control exists anywhere on the page; owner cannot repair the saved query.",
+      "reproSteps": [
+        "Disposable source#74 QA-SOURCE-People-Delete-1021 is permanently deleted; dependent#75 QA-SOURCE-People-Child-1021 remains for inspection. Create fresh owned fixtures for independent reproduction.",
+        "Create an owned saved raw People question using Sample Database.",
+        "Create and save an owned dependent using that question as source, Count grouped by Source.",
+        "Move the source to trash, reload it, and Delete permanently with confirmation.",
+        "Open the dependent and expand error details."
+      ],
+      "reason": "Works as intended: permanently deleting a source question is documented to break questions built on it; the dependent stays editable through its notebook URL."
+    },
+    {
+      "id": "metabase-querying-231",
+      "name": "Saving query edits from a stale tab silently undoes a separately saved question rename",
+      "summary": "Saving query edits from a stale tab silently undoes a separately saved question rename.",
+      "expected": "Saving only the row-limit edit should retain the independently saved title, or warn that it will overwrite a newer saved rename.",
+      "actual": "Six rows are saved, but the title returns to SAVE Orders five save-as 1021, undoing the first tab's saved rename. A whole-page AI assertion confirmed the old title, six rows, and no conflict warning after save. Replace dialog had displayed the stale name; no title was edited in that tab.",
+      "reproSteps": [
+        "Create a Sample Database Orders question, add Row limit 5, Visualize and save with a unique SAVE-prefixed name.",
+        "Open the same saved question in a second browser tab using the same session.",
+        "In the second tab use Editor to change Row limit to 6, then Visualize without saving.",
+        "In the first tab rename the question inline to SAVE Orders renamed while editing 1021 and press Enter; the new title is shown.",
+        "Return to the second tab, click Save and keep Replace original question selected, then Save.",
+        "Reload the question and inspect title and row count."
+      ],
+      "reason": "Works as intended per human review."
+    },
+    {
+      "id": "metabase-querying-317",
+      "name": "Dragging custom columns to reorder the notebook leaves results in their old column order",
+      "summary": "Dragging custom columns to reorder the notebook leaves results in their old column order.",
+      "expected": "Reordering custom columns should make the generated results use the corresponding new order, or clearly indicate that result ordering is separate.",
+      "actual": "Notebook changed from Net Delta, Triple, Band, Upper Band to Upper Band, Triple, Band, Net Delta. After Visualize the results still showed Net Delta, Triple, Band, Upper Band. Values remained correct.",
+      "reproSteps": [
+        "Use fresh test-owned question. No chart settings were intentionally changed. Result values are correct; suspicion concerns only mismatch between notebook's reordered expression chips and result order, which may have a separate intended ordering model.",
+        "Using primary fixture identity, create a fresh Orders query in Sample Database.",
+        "Add [Total] - [Subtotal] named QACOL Net Delta; [QACOL Net Delta] * 3 named QACOL Triple; case([Quantity] > 3, \"Bulk\", \"Single\") named QACOL Band; upper([QACOL Band]) named QACOL Upper Band.",
+        "Visualize and save under a unique QACOL-prefixed name. Reload and open Editor.",
+        "Drag QACOL Upper Band chip onto QACOL Net Delta chip; observe notebook order Upper Band, Triple, Band, Net Delta.",
+        "Click Visualize and inspect custom column ordering in results."
+      ],
+      "reason": "Works as intended: table column order is a visualization setting, separate from the order of custom-expression chips in the notebook; values are unaffected."
+    },
+    {
+      "id": "metabase-querying-327",
+      "name": "A restored question is absent from its Saved in collection",
+      "summary": "A restored question is absent from its designated Saved in collection.",
+      "expected": "The restored question appears in the collection its Info panel lists.",
+      "actual": "Following the Saved in link to Harbor Admin's Personal Collection reveals the question is missing from the list, which ends alphabetically at QA-SUMMARY.",
+      "reproSteps": [
+        "Create and save a unique QA-UNDO Sample Database Orders question in Harbor Admin's Personal Collection.",
+        "Trash it, then click toast Undo while visible.",
+        "Refresh question: it remains restored and Orders query/results are intact.",
+        "Open More info and follow the Saved in Harbor Admin's Personal Collection link. Inspect the complete table and refresh it."
+      ],
+      "reason": "Cannot reproduce: restored questions stay listed in their collection; the original run likely overlapped other agents' changes in the shared sandbox."
+    },
+    {
+      "id": "metabase-querying-318",
+      "name": "New custom-column editor returns to saved results while entering the column name, discarding the draft",
+      "summary": "New custom-column editor returns to saved results while entering the column name, discarding the draft.",
+      "expected": "Entering a custom-column name should leave the editor open with the formula and name available to commit using Done.",
+      "actual": "After typing QACOL Discount Zero the page showed saved results rather than the custom-column editor. Reopening Editor showed only the previously saved columns; an assertion confirmed QACOL Discount Zero was not present.",
+      "reproSteps": [
+        "Create a fresh QACOL-prefixed copy of an Orders question with custom columns and save it.",
+        "Save an additional custom column, reload the saved question, then open Editor.",
+        "Click the plus beside the custom columns and enter coalesce([Discount], 0).",
+        "Enter QACOL Discount Zero in the column-name field without clicking Done.",
+        "Observe the page return to saved results; reopen Editor to inspect the draft."
+      ],
+      "reason": "Cannot reproduce on human review."
+    },
+    {
+      "id": "metabase-querying-324",
+      "name": "Reload silently drops rejected Number parameter and runs query without the filter",
+      "summary": "Reload silently drops rejected Number parameter and runs query without the filter.",
+      "expected": "Preserve the rejected filter value with validation feedback or display an explanation, rather than silently running the query with the filter omitted.",
+      "actual": "Refreshing the page clears the invalid 'oops' value from the Minimum parameter input back to its placeholder and displays count 3 from executing the query without the condition, with no error or explanation.",
+      "reproSteps": [
+        "Save a SQL question on Products that filters p.PRICE between 10.5 and 20.75 and has an optional Number parameter minimum ([[AND p.ID > {{minimum}}]]).",
+        "Enter oops in Minimum and run. The query reports For input string: \"oops\" and URL contains minimum=oops.",
+        "Refresh the browser page."
+      ],
+      "reason": "Works as intended per human review."
+    },
+    {
+      "id": "metabase-querying-326",
+      "name": "Trash toast Undo leaves the question in trash with editing disabled",
+      "summary": "Trash toast Undo leaves the question in trash with editing disabled.",
+      "expected": "Clicking Undo in the toast restores the question from trash. The banner goes away, and Filter, Summarize and Editor become available again.",
+      "actual": "The toast closes, but the question stays in trash. The banner remains and editing controls stay hidden. The only update request sent is the original move to trash; no restore request is sent. After a refresh, the breadcrumb shows Trash and the banner offers Restore, Move and Delete permanently.",
+      "reproSteps": [
+        "As an admin, save an Orders question in your personal collection and open it.",
+        "Click the ellipsis (…) in the question header, choose Move to trash, then click Move to trash in the dialog.",
+        "While the \"has been moved to the trash\" toast is visible at the bottom left, click its Undo button.",
+        "Look at the page: the red trash banner is still there and Filter, Summarize and Editor are missing. Refresh the page: the question is still in Trash."
+      ],
+      "reason": "Cannot reproduce on human review."
+    },
+    {
+      "id": "metabase-querying-367",
+      "name": "Relative date filter silently changes an entered 0-day interval to 1 day",
+      "summary": "Relative date filter silently changes an entered 0-day interval to 1 day.",
+      "expected": "Reject an unsupported zero interval with clear validation, or retain the entered interval rather than silently changing it.",
+      "actual": "Entering 0 in the relative date filter interval field is accepted with an enabled 'Update filter' button and no validation error. Applying the filter turns it into 'Created At is yesterday', and reopening the filter shows the interval field changed to 1 day.",
+      "reproSteps": [
+        "Create a Sample Database Orders question and choose Created At → Relative date range → Previous.",
+        "Enter 0 in Interval with days selected and Include today off.",
+        "Click Add/Update filter; reopen the filter.",
+        "Save as a separate QA-DATE question, reload and open Editor and the date filter."
+      ],
+      "reason": "Works as intended per human review."
+    },
+    {
+      "id": "metabase-querying-369",
+      "name": "Numeric multi-value Equal to filter returns No results despite selecting a price present in Products",
+      "summary": "Numeric multi-value Equal to filter returns No results despite selecting a price present in Products.",
+      "expected": "Equal to selections 20.5 or 25.1 should include the previously displayed product with Price 25.1.",
+      "actual": "The query displays No results! and Showing 0 rows, although the filter editor contains 25.1 and the preceding range results included that exact price.",
+      "reproSteps": [
+        "Choose Sample Database > Products in the notebook.",
+        "Add Price Between 20.5 and 30.5, then Visualize. Results show 24 rows, including Products ID 15 with Price 25.1.",
+        "Open the Price filter and change Between to Equal to.",
+        "Enter 25.1 in the number input, press Enter and click Update filter.",
+        "Reopen the resulting Price is equal to 2 selections chip; it contains 20.5 and 25.1 while results show No results."
+      ],
+      "reason": "Works as intended: the products are priced 25.09876…, displayed rounded to 25.1; exact-equality filters on the rounded value correctly match nothing."
+    },
+    {
+      "id": "metabase-querying-370",
+      "name": "Nonnumeric range minimum abc is silently discarded, changing Between into Less than or equal",
+      "summary": "Nonnumeric range minimum abc is silently discarded, changing Between into Less than or equal.",
+      "expected": "Nonnumeric minimum should be rejected with validation, not silently treated as an empty minimum and converted into a different filter.",
+      "actual": "abc is discarded and Between becomes ID is less than or equal to 3.",
+      "reproSteps": [
+        "Create Products question in Sample Database and filter ID Between 1 and 3.",
+        "Visualize; open ID filter.",
+        "Replace Min 1 with abc, leaving Max 3, then click Update filter.",
+        "Observe filter changes to ID is less than or equal to 3 and returns three rows."
+      ],
+      "reason": "Works as intended per human review."
+    },
+    {
+      "id": "metabase-querying-372",
+      "name": "Joining People to a saved state-count question fails with a session-timeout error",
+      "summary": "Joining People to a saved state-count question fails with a session-timeout error.",
+      "expected": "The supported saved-question join returns People rows with their corresponding state count, or null for unmatched states.",
+      "actual": "The query ends with 'There was a problem with your question'. Error details begin 'Statement was canceled or the session timed out; SQL statement:'. No joined results are returned.",
+      "reproSteps": [
+        "Create a fresh builder question from Sample Database Orders.",
+        "Join Products on Orders.Product ID = Products.ID (inner join), then People on Orders.User ID = People.ID (left join).",
+        "Filter Products.Category to Gizmo, summarize Count grouped by People.State, run and save with a unique QA-JOIN-State-Gizmo name. The source returns 48 state groups.",
+        "Create another new builder question using Sample Database People.",
+        "Add a left join, search for and select the newly saved state-count question.",
+        "Set People.State = the saved question's People - User → State; leave all joined fields selected.",
+        "Click Visualize and wait for completion, then open Show error details."
+      ],
+      "reason": "Works as intended: the join is built correctly, and the timeout comes from the H2 sample database re-evaluating the joined subquery for every row. That is a sample-data performance limit, not a product bug."
+    },
+    {
+      "id": "metabase-querying-360",
+      "name": "Previously working notebook deep link opens blank after replacing its builder question with SQL",
+      "summary": "Previously working notebook deep link opens blank after replacing its builder question with SQL.",
+      "expected": "The existing notebook deep link should redirect to or display the question's native SQL editor/results, or offer a usable way to open them.",
+      "actual": "Same question title loads with completely blank body. The normal saved-question URL still displays results.",
+      "reproSteps": [
+        "Create a Sample Database Orders notebook joined to Products on Product ID = ID, save with a QA-CONVERT prefix.",
+        "Open Editor on the saved question and retain its generated /question/<id>-<slug>/notebook URL.",
+        "View SQL, Convert this question to SQL, Save, and choose Replace original question.",
+        "Refresh normal saved question URL and verify SQL results load.",
+        "Open the original notebook URL that worked before conversion."
+      ],
+      "reason": "Works as intended: after a question becomes SQL it has no notebook view, so its old notebook URL no longer applies; the page still offers a way back to the results."
+    },
+    {
+      "id": "metabase-querying-363",
+      "name": "Reopening a saved Time grouping parameter prevents inspecting or changing its field mapping",
+      "summary": "Reopening a saved Time grouping parameter prevents inspecting or changing its field mapping.",
+      "expected": "The saved parameter should display its mapped field and clicking its mapping selector should offer table/field choices.",
+      "actual": "After reopening the saved question, the mapping selector displays Select… and clicking its text or arrow shows no usable menu. The existing query still returns yearly results.",
+      "reproSteps": [
+        "Create a Sample Database native SQL question: SELECT {{grouping}} AS period, COUNT(*) AS n FROM PEOPLE GROUP BY period ORDER BY period.",
+        "Set grouping type Time grouping, map to People > Created At and set default Year. Run and save as a fresh question.",
+        "Refresh or reopen saved question, click Open Editor and Variables.",
+        "Field to map to shows Select… instead of People / Created At. Click that selector, including its arrow.",
+        "No table or field choices appear, preventing remapping."
+      ],
+      "reason": "Cannot reproduce on human review."
+    },
+    {
+      "id": "metabase-querying-371",
+      "name": "Question-backed SQL parameter list falls back to text input and does not recover after source column is restored",
+      "summary": "Question-backed SQL parameter list falls back to text input and does not recover after source column is restored.",
+      "expected": "After restoring the original source column, the saved question-backed list should offer the four source categories again, or provide actionable dependency feedback.",
+      "actual": "After source restoration and a full consumer refresh, Category still opens an empty free-text input with disabled Add filter, not the four values. Opening selectable-value settings after the column change showed an empty source picker. No consumer changes were saved.",
+      "reproSteps": [
+        "Create own saved SQL source: SELECT DISTINCT CATEGORY FROM PRODUCTS ORDER BY CATEGORY.",
+        "Create a SQL consumer: SELECT ID, CATEGORY FROM PRODUCTS WHERE CATEGORY = {{category}} ORDER BY ID LIMIT 10. Configure Text category dropdown values from source question CATEGORY; save.",
+        "Reload consumer; observe four categories and execute Gizmo successfully.",
+        "Edit source to SELECT DISTINCT CATEGORY AS CHANGED_CATEGORY FROM PRODUCTS ORDER BY CATEGORY; run and replace saved source.",
+        "Open consumer parameter: it now shows a free-text input instead of selectable values.",
+        "Restore the source SQL to the original CATEGORY column; run and save. Reload the consumer and reopen Category."
+      ],
+      "reason": "Works as intended per human review."
+    },
+    {
+      "id": "metabase-querying-402",
+      "name": "Native SQL date parameter silently converts invalid February 29, 2023 to March 1, 2023",
+      "summary": "Native SQL date parameter silently converts invalid February 29, 2023 to March 1, 2023.",
+      "expected": "An impossible calendar date should be rejected with validation rather than silently used as a different day.",
+      "actual": "On leaving the input, 02/29/2023 changes to March 1, 2023. Updating and running uses March 1, 2023 in both filter chip and result.",
+      "reproSteps": [
+        "Using the primary fixture account, select New > SQL query and Sample Database.",
+        "Enter SELECT CAST({{day}} AS DATE) AS chosen_day; and set day variable type to Date.",
+        "Open Day filter, enter 02/29/2024, add filter and run; observe February 29, 2024.",
+        "Reopen Day filter, replace date with 02/29/2023 and leave the date input.",
+        "Click Update filter and run the query."
+      ],
+      "reason": "Works as intended per human review."
+    }
+  ]
+}

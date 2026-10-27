@@ -210,6 +210,36 @@
         "scope": "Missing indication in the collapsed results view; do not claim the selection is invisible inside the opened menu. A generic label after search has genuinely cleared the filter is not this defect.",
         "deduplication": "Separate Issues and Pull Requests product-area references for their independently observed collapsed controls. Neither matches the accepted assignee-search broadening references, where the filter itself is removed."
       }
+    },
+    {
+      "id": "gitea-bulk-open-bypasses-duplicate-pr-check",
+      "name": "Bulk Open bypasses the duplicate pull request check",
+      "summary": "Reopening a closed pull request from its own page is refused while an identical pull request is open, but selecting it in the Closed list and choosing bulk Open reopens it anyway, leaving two identical open pull requests.",
+      "expected": "Bulk Open refuses to reopen a pull request while another open, unmerged pull request has the same source and target branches, as the pull request's own Reopen button and pull request creation do.",
+      "actual": "The pull request's Reopen button shows \"You cannot perform a reopen operation because there is a pending pull request (#N) with identical properties.\" and keeps it closed. Bulk Open from the Closed list reopens it with no message, so both identical pull requests are open and mergeable. The API state change to open behaves the same.",
+      "reproSteps": [
+        "Sign in as the fixture account. In a repository, open a pull request from a branch into main, then close it.",
+        "Open a second pull request from the same branch into main.",
+        "On the closed pull request's page, choose Reopen and observe it is refused because an identical pull request is pending.",
+        "Open the repository's Pull Requests list, switch to Closed, tick the closed pull request, and choose Open from the bulk actions.",
+        "Observe it reopens, and both identical pull requests are now listed as Open with merge controls."
+      ],
+      "severity": 3
+    },
+    {
+      "id": "gitea-ignore-whitespace-conflicts-setting-has-no-effect",
+      "name": "Ignore Whitespace for Conflicts still blocks a whitespace-only pull request",
+      "summary": "The repository setting Ignore Whitespace for Conflicts saves and reloads as enabled, but conflict detection never uses it by default, so a pull request whose only difference from the base is whitespace is still marked conflicting and cannot be merged.",
+      "expected": "With Ignore Whitespace for Conflicts enabled, a pull request whose changes conflict with the base only in whitespace is mergeable.",
+      "actual": "With the setting saved and confirmed enabled, a fresh pull request where both branches changed the same line and differ only in the amount of whitespace shows 'This pull request has changes conflicting with the target branch', lists the file, and offers no merge button. The same pull request opened with the setting off looks identical. Comparing the branches with Ignore changes in amount of whitespace shows no differences.",
+      "reproSteps": [
+        "In a new repository, commit base.txt on main containing one line: 'Advance target branch for rebase merge QA.'",
+        "Create a branch and change that line to use two spaces after 'Advance'.",
+        "On main, change the same line to use three spaces after 'Advance'.",
+        "In Settings → Pull Requests, enable Ignore Whitespace for Conflicts, save, and reload to confirm it is checked.",
+        "Open a pull request from the branch into main and wait for the mergeability check. Observe it is marked conflicting on base.txt with no merge button."
+      ],
+      "severity": 3
     }
   ]
 }

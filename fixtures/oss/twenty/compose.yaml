@@ -1,0 +1,112 @@
+name: diy-mo-twenty
+
+x-twenty: &twenty
+  image: twentycrm/twenty:v2.26.1@sha256:be3c9ad14cb719235001d1c92e6b82912f48e81896a4364cee630e062b6dbae3
+  environment: &environment
+    NODE_PORT: 3000
+    PG_DATABASE_URL: postgres://postgres:postgres@db:5432/default
+    REDIS_URL: redis://redis:6379
+    SERVER_URL: ${FIXTURE_ORIGIN:?FIXTURE_ORIGIN must be the public preview origin}
+    APP_SECRET: momentic-diy-twenty-fixture-secret
+    STORAGE_TYPE: local
+    IS_MULTIWORKSPACE_ENABLED: "false"
+    TELEMETRY_ENABLED: "false"
+  volumes:
+    - server-local-data:/app/packages/twenty-server/.local-storage
+
+services:
+  server:
+    <<: *twenty
+    ports:
+      - "${FIXTURE_PORT:-5500}:3000"
+    depends_on:
+      migrate:
+        condition: service_completed_successfully
+      db:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+    healthcheck:
+      test: ["CMD", "curl", "--fail", "http://localhost:3000/healthz"]
+      interval: 5s
+      timeout: 5s
+      retries: 90
+
+  migrate:
+    <<: *twenty
+    entrypoint: ["/bin/sh", "/fixture/app/lib/initialize-database.sh"]
+    volumes:
+      - ../lib/initialize-database.sh:/fixture/app/lib/initialize-database.sh:ro
+      - ../data/init-db.sql:/fixture/app/data/init-db.sql:ro
+    depends_on:
+      db:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+
+  seed:
+    <<: *twenty
+    entrypoint: ["/bin/sh", "${FIXTURE_SEED_SCRIPT:-/fixture/app/seed.sh}"]
+    environment:
+      <<: *environment
+      DISABLE_DB_MIGRATIONS: "true"
+      DISABLE_CRON_JOBS_REGISTRATION: "true"
+    volumes:
+      - ..:/fixture/app:ro
+      - server-local-data:/app/packages/twenty-server/.local-storage
+    depends_on:
+      server:
+        condition: service_healthy
+    healthcheck:
+      test: ["CMD-SHELL", "test -f /tmp/setup-complete"]
+      interval: 2s
+      timeout: 2s
+      retries: 180
+
+  worker:
+    <<: *twenty
+    command: ["yarn", "worker:prod"]
+    environment:
+      <<: *environment
+      DISABLE_DB_MIGRATIONS: "true"
+      DISABLE_CRON_JOBS_REGISTRATION: "true"
+    depends_on:
+      seed:
+        condition: service_healthy
+
+  db:
+    image: postgres:16.10-alpine@sha256:ab8380566c3ea09690a9ecaa85a59d82bfc6eb86744151a2a54335866c83a3e9
+    environment:
+      POSTGRES_DB: default
+      POSTGRES_USER: postgres
+      POSTGRES_PASSWORD: postgres
+    volumes:
+      - db-data:/var/lib/postgresql/data
+    healthcheck:
+      test:
+        [
+          "CMD",
+          "pg_isready",
+          "-U",
+          "postgres",
+          "-h",
+          "localhost",
+          "-d",
+          "default",
+        ]
+      interval: 5s
+      timeout: 5s
+      retries: 30
+
+  redis:
+    image: redis:7.4.6-alpine@sha256:4912adf5f3be2530b117c7d7729330e457da2f5cfb1d99d38743141735ca1e9d
+    command: ["--maxmemory-policy", "noeviction"]
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 5s
+      timeout: 5s
+      retries: 30
+
+volumes:
+  db-data:
+  server-local-data:
