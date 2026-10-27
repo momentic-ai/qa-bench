@@ -1050,6 +1050,755 @@
           "Latest was inspected in source only."
         ]
       }
+    },
+    {
+      "id": "settings-data-model-pass2-73805d9d-type",
+      "name": "Sorting Skills by Type crashes AI settings",
+      "severity": 5,
+      "owningArea": "twenty/settings-data-model",
+      "summary": "Sorting the AI Skills list by Type throws a Boolean localeCompare error and replaces the settings page content with an error screen.",
+      "expected": "Clicking the supported Type sort header should reorder Skills while keeping the settings page usable.",
+      "actual": "Clicking Type replaces the AI settings tabs and Skills list with Sorry, something went wrong and a Reload button. The Settings sidebar remains visible. Reload restores the list, and clicking Type crashes it again. Saved Skill content remains intact.",
+      "reproSteps": [
+        "As a workspace administrator, open Settings > AI > Skills in a workspace containing multiple Skills.",
+        "If needed, create a uniquely named custom Skill alongside the seeded Skills and save it.",
+        "Click the Name sort header and confirm the list remains usable; correct Name ordering is not required for this control.",
+        "Click the Type sort header and observe the settings page content replaced by the error screen.",
+        "Use Reload, reopen Skills if necessary, and click Type again to reproduce the crash."
+      ],
+      "sourceCause": "The Skills Type column declares the Boolean isCustom field as string. The shared sorter calls localeCompare on its Boolean value without conversion, throwing during list rendering.",
+      "reviewEvidence": {
+        "basis": "Focused Mo reproduction, independent Codex and Claude browser/source verification, coordinator source checks, and explicit user acceptance.",
+        "userAccepted": true,
+        "sourceRevision": "35c645064f72bc4e3180a2c6c506cbbfee170007",
+        "severityReason": "The settings page content, including its tabs and Skills list, is replaced by the page error display; the surviving sidebar and reload recovery follow the existing severity-5 page-crash convention.",
+        "analysis": [
+          "Codex reproduced four completed Type-sort crashes across repeated loads and two widths; Claude reproduced twice. Each created one demonstration Skill and otherwise used seeded Skills in the same workspace.",
+          "Name sorting remained usable as a crash control. Reload recovered the list, and Codex verified its saved Skill name, description and instructions survived.",
+          "The stored/API isCustom value is Boolean, its column metadata says string, and the comparator calls localeCompare. A TypeScript assertion does not convert the value.",
+          "Upstream commit 08738e93c1c8d2d6617265ad210b662e630863a7 explicitly identifies this Skills crash. The inspected newer snapshot replaces Type/isCustom with string App labels; no newer-runtime test was performed.",
+          "The Indexes Unique crash shares the comparator mismatch but has different column metadata and a separate Data model entry point; this entry covers Skills Type only."
+        ],
+        "sourceReferences": [
+          "https://github.com/twentyhq/twenty/blob/35c645064f72bc4e3180a2c6c506cbbfee170007/packages/twenty-front/src/pages/settings/ai/constants/SettingsSkillTableMetadata.ts#L15-L19",
+          "https://github.com/twentyhq/twenty/blob/35c645064f72bc4e3180a2c6c506cbbfee170007/packages/twenty-front/src/modules/ui/layout/table/hooks/useSortedArray.ts#L29-L43",
+          "https://github.com/twentyhq/twenty/blob/a6372e288ade9ed14ac2af1a7e224dabb6cc6021/packages/twenty-front/src/pages/settings/ai/constants/SettingsSkillTableMetadata.ts#L16-L20",
+          "https://github.com/twentyhq/twenty/blob/35c645064f72bc4e3180a2c6c506cbbfee170007/packages/twenty-front/src/pages/settings/ai/constants/SettingsSkillTableMetadata.ts#L15-L20",
+          "https://github.com/twentyhq/twenty/blob/35c645064f72bc4e3180a2c6c506cbbfee170007/packages/twenty-front/src/pages/settings/ai/components/SettingsAgentSkillsTab.tsx#L43-L43",
+          "https://github.com/twentyhq/twenty/blob/a6372e288ade9ed14ac2af1a7e224dabb6cc6021/packages/twenty-front/src/pages/settings/ai/constants/SettingsSkillTableMetadata.ts#L6-L27",
+          "https://github.com/twentyhq/twenty/commit/08738e93c1c8d2d6617265ad210b662e630863a7"
+        ],
+        "limitations": [
+          "Repeated trials used one workspace, not multiple independent workspaces.",
+          "No saved-data loss or permanent outage was observed; the Settings sidebar remains and reload recovers.",
+          "Empty or single-Skill workspaces, other roles and broader platform behavior were not established.",
+          "Claude standalone screenshot files were unavailable; its recorded video and browser/console evidence were retained.",
+          "The inspected newer source was not run."
+        ]
+      }
+    },
+    {
+      "id": "settings-data-model-pass2-73805d9d-index",
+      "name": "Sorting Indexes by Unique crashes Data model settings",
+      "severity": 5,
+      "owningArea": "twenty/settings-data-model",
+      "summary": "Sorting the Companies Indexes table by Unique calls a string comparator on a Boolean and replaces Data model settings content with the page error display.",
+      "expected": "Sorting indexes by the supported Unique column should reorder the table while keeping Data model settings usable.",
+      "actual": "Clicking Unique replaces the breadcrumb, header, tabs and Indexes table with the page error display while the Settings sidebar remains visible. Reload restores the table. Type sorting works, and the same displayed index names and uniqueness flags remain after recovery.",
+      "reproSteps": [
+        "As an administrator, open Settings > Data model > Companies.",
+        "Enable Advanced and open the Indexes section with multiple indexes.",
+        "Sort by Type and confirm the table remains usable.",
+        "Click Unique to sort the indexes and observe the settings content replaced by the error screen.",
+        "Reload, reopen Indexes and repeat the Unique sort to reproduce the crash."
+      ],
+      "sourceCause": "Indexes metadata declares Boolean isUnique as string. The shared sorter calls localeCompare on the Boolean and throws during rendering.",
+      "matchingGuidance": {
+        "relatedReference": "settings-data-model-pass2-73805d9d-type",
+        "distinction": "This entry covers Settings > Data model > Indexes > Unique, using isUnique metadata. The related entry covers Settings > AI > Skills > Type, using isCustom metadata. Both reach the shared Boolean/string comparator mismatch through different table columns and entry points."
+      },
+      "reviewEvidence": {
+        "basis": "Dedicated Mo reproduction, focused continuations of both independent Codex and Claude reviewer sessions, coordinator source checks and user acceptance as a related entry.",
+        "userAccepted": true,
+        "sourceRevision": "35c645064f72bc4e3180a2c6c506cbbfee170007",
+        "severityReason": "The page breadcrumb, header, tabs and Indexes table are replaced by the error display; the sidebar remains and reload recovers.",
+        "analysis": [
+          "Both reviewers reproduced twice from clean Companies loads, with passing Type-sort controls before Unique failed. Claude also reproduced on People.",
+          "Both verified the same three displayed Companies indexes and uniqueness flags after recovery and restored Advanced off. No index or record mutation was performed.",
+          "The Boolean isUnique value is declared string in table metadata and reaches localeCompare without conversion. The newer inspected source retains this mismatch, without runtime verification.",
+          "Mo assigned its own LOW custom score; severity5 is the user-approved page-crash score independently recommended by both focused reviewers."
+        ],
+        "sourceReferences": [
+          "https://github.com/twentyhq/twenty/blob/35c645064f72bc4e3180a2c6c506cbbfee170007/packages/twenty-front/src/pages/settings/data-model/SettingsObjectIndexTable.tsx#L43-L79",
+          "https://github.com/twentyhq/twenty/blob/35c645064f72bc4e3180a2c6c506cbbfee170007/packages/twenty-front/src/pages/settings/data-model/types/SettingsObjectIndexesTableItem.ts#L1-L11",
+          "https://github.com/twentyhq/twenty/blob/35c645064f72bc4e3180a2c6c506cbbfee170007/packages/twenty-front/src/modules/ui/layout/table/hooks/useSortedArray.ts#L29-L43",
+          "https://github.com/twentyhq/twenty/blob/a6372e288ade9ed14ac2af1a7e224dabb6cc6021/packages/twenty-front/src/modules/settings/data-model/object-details/components/SettingsObjectIndexTable.tsx#L43-L48"
+        ],
+        "limitations": [
+          "No data loss or permanent unavailability was observed; the displayed-index comparison was not a separate database-ID audit.",
+          "Other roles, devices, empty/single-index tables and ascending Unique sort were not tested.",
+          "A brief sidebar-navigation recovery observation was uninvestigated and excluded.",
+          "Newer source was inspected but not run."
+        ]
+      }
+    },
+    {
+      "id": "settings-data-model-pass2-809cc706-server",
+      "name": "Workspace-logo replacement returns an error after saving the new image",
+      "severity": 3,
+      "owningArea": "twenty/settings-data-model",
+      "summary": "Replacing an existing logo repeatedly on the same General settings page can save the latest image but return an error and retain the previous preview.",
+      "expected": "A supported logo replacement should return success and show the saved image. Deleting the previous logo must use its current identity.",
+      "actual": "From a reload-verified working logo, the first replacement succeeds. A subsequent replacement on the same mounted page returns an error and retains the prior preview, although later workspace reads and reload reveal the latest image was committed.",
+      "reproSteps": [
+        "Save a small genuine workspace-logo image in Settings > General and reload to verify it persists.",
+        "Replace it with a distinct valid image and confirm success.",
+        "Without leaving General, replace it again with another distinct valid image.",
+        "Observe the generic error toast and retained previous preview.",
+        "Reload and observe the newest replacement, showing that it was saved despite the error response.",
+        "Controls: repeated replacements from an empty baseline work; saving another workspace setting between replacements prevents the tested failure."
+      ],
+      "sourceCause": "The upload saves a new logoFileId without invalidating cached workspaceEntity, then deletes the old ID from that cache. A later replacement commits before deletion of the already-deleted cached ID throws; the frontend does not install a failed request result.",
+      "matchingGuidance": {
+        "relatedReference": "settings-data-model-N01",
+        "distinction": "N01 covers a valid workspace logo disappearing on first reload. This entry requires replacing a reload-verified existing logo repeatedly on the same General page and receiving an error after the latest replacement committed."
+      },
+      "reviewEvidence": {
+        "basis": "Focused Mo reproduction, independently investigated server behavior from the original Codex/Claude review sessions, focused Codex valid-only follow-up, coordinator source checks and explicit related-entry acceptance.",
+        "userAccepted": true,
+        "sourceRevision": "35c645064f72bc4e3180a2c6c506cbbfee170007",
+        "severityReason": "Supported replacement returns an error after committing, leaving the displayed logo inconsistent with saved state.",
+        "analysis": [
+          "Codex reproduced two complete valid-only sequences; independent Claude investigation found the same stale-ID deletion mechanism. Focused Mo repeated the existing-logo sequence twice.",
+          "Error toasts were observed; the initial Claude no-feedback claim is excluded. The stale prior ID comes from the server workspace cache, not an established client-supplied old ID.",
+          "Empty-baseline consecutive uploads worked, and a workspace-setting save between replacements prevented failure. No universal second-upload failure or fixed cache-expiry duration is claimed.",
+          "The inspected newer source reads the previous ID under a row lock, binds the replacement transactionally and invalidates the cache; that runtime was not tested."
+        ],
+        "sourceReferences": [
+          "https://github.com/twentyhq/twenty/blob/35c645064f72bc4e3180a2c6c506cbbfee170007/packages/twenty-front/src/modules/settings/workspace/components/WorkspaceLogoUploader.tsx#L18-L36",
+          "https://github.com/twentyhq/twenty/blob/35c645064f72bc4e3180a2c6c506cbbfee170007/packages/twenty-front/src/modules/settings/workspace/components/NameField.tsx#L47-L92",
+          "https://github.com/twentyhq/twenty/blob/35c645064f72bc4e3180a2c6c506cbbfee170007/packages/twenty-server/src/engine/middlewares/middleware.service.ts#L118-L132",
+          "https://github.com/twentyhq/twenty/blob/35c645064f72bc4e3180a2c6c506cbbfee170007/packages/twenty-server/src/engine/core-modules/auth/token/services/access-token.service.ts#L184-L204",
+          "https://github.com/twentyhq/twenty/blob/35c645064f72bc4e3180a2c6c506cbbfee170007/packages/twenty-server/src/engine/core-modules/auth/strategies/jwt.auth.strategy.ts#L103-L112",
+          "https://github.com/twentyhq/twenty/blob/35c645064f72bc4e3180a2c6c506cbbfee170007/packages/twenty-server/src/engine/core-modules/workspace/services/workspace-entity-cache-provider.service.ts#L13-L29",
+          "https://github.com/twentyhq/twenty/blob/35c645064f72bc4e3180a2c6c506cbbfee170007/packages/twenty-server/src/engine/core-modules/workspace/utils/from-workspace-entity-to-flat.util.ts#L6-L10",
+          "https://github.com/twentyhq/twenty/blob/35c645064f72bc4e3180a2c6c506cbbfee170007/packages/twenty-server/src/engine/core-entity-cache/services/core-entity-cache.service.ts#L83-L160",
+          "https://github.com/twentyhq/twenty/blob/35c645064f72bc4e3180a2c6c506cbbfee170007/packages/twenty-server/src/engine/core-entity-cache/services/core-entity-cache.service.ts#L163-L218",
+          "https://github.com/twentyhq/twenty/blob/35c645064f72bc4e3180a2c6c506cbbfee170007/packages/twenty-server/src/engine/decorators/auth/auth-workspace.decorator.ts#L13-L26"
+        ],
+        "limitations": [
+          "Uses the already-completed independent original reviewer sessions; no additional standalone judge sessions are implied.",
+          "Cache expiry, concurrent uploads, other roles and onboarding were not browser-verified.",
+          "The tested files were small genuine images; oversized/invalid-file claims are outside this entry.",
+          "Newer runtime was not tested."
+        ]
+      }
+    },
+    {
+      "id": "settings-data-model-pass2-0f02eef9",
+      "name": "First profile-picture upload disables Abort while the request is pending",
+      "severity": 3,
+      "owningArea": "twenty/settings-data-model",
+      "summary": "With no existing profile picture, an oversized genuine PNG can leave an upload pending while its offered Abort action is disabled.",
+      "expected": "An offered Abort control should cancel an active first profile-picture upload regardless of whether a prior picture exists.",
+      "actual": "Approximately12.6MB genuine PNG uploads stayed pending for roughly96–130+seconds with Abort disabled when the profile had no picture. With an existing valid picture, Abort remained enabled and canceled the upload while retaining the old picture.",
+      "reproSteps": [
+        "Use a disposable administrator profile with no existing picture and open Settings > Profile.",
+        "Upload a genuine PNG of approximately12.6MB.",
+        "While the upload remains pending, observe that the offered Abort action is disabled and cannot cancel the request.",
+        "Recover by reloading or clicking the picture tile and selecting a small valid image.",
+        "Control: with an existing valid profile picture, start an oversized upload and click the enabled Abort action; it cancels and retains the previous picture."
+      ],
+      "sourceCause": "ImageInput disables Abort whenever pictureURI is empty, including an active upload before any first picture exists. The request cancellation handler exists but cannot be reached through the disabled control.",
+      "reviewEvidence": {
+        "basis": "Mo report, independent Codex/Claude browser and source verification, coordinator source checks and user acceptance of the narrowed cancellation defect.",
+        "userAccepted": true,
+        "sourceRevision": "35c645064f72bc4e3180a2c6c506cbbfee170007",
+        "severityReason": "The cancellation action cannot be used during a pending first upload.",
+        "analysis": [
+          "Each reviewer reproduced twice with fresh genuine approximately12.59MB PNGs, observing pending states beyond90seconds.",
+          "Small valid images succeed. Existing-picture Abort cancels and retains the old image. The picture tile can still select a small replacement and reload recovers.",
+          "The original complete-dead-end claim is excluded. Remove being disabled without a picture is expected and is not this defect.",
+          "Newer source removes the empty-picture Abort disabling condition and includes a first-upload Abort interaction check; newer runtime was not tested."
+        ],
+        "sourceReferences": [
+          "https://github.com/twentyhq/twenty/blob/35c645064f72bc4e3180a2c6c506cbbfee170007/packages/twenty-front/src/pages/settings/profile/SettingsProfile.tsx#L50-L55",
+          "https://github.com/twentyhq/twenty/blob/35c645064f72bc4e3180a2c6c506cbbfee170007/packages/twenty-front/src/modules/ui/input/components/ImageInput.tsx#L110-L111",
+          "https://github.com/twentyhq/twenty/blob/35c645064f72bc4e3180a2c6c506cbbfee170007/packages/twenty-front/src/modules/ui/input/components/ImageInput.tsx#L124-L127",
+          "https://github.com/twentyhq/twenty/blob/35c645064f72bc4e3180a2c6c506cbbfee170007/packages/twenty-front/src/modules/ui/input/components/ImageInput.tsx#L143-L181",
+          "https://github.com/twentyhq/twenty/blob/35c645064f72bc4e3180a2c6c506cbbfee170007/packages/twenty-front/src/modules/settings/workspace-member/components/WorkspaceMemberPictureUploader.tsx#L54-L107",
+          "https://github.com/twentyhq/twenty/blob/35c645064f72bc4e3180a2c6c506cbbfee170007/packages/twenty-front/src/modules/settings/workspace-member/components/WorkspaceMemberPictureUploader.tsx#L139-L162",
+          "https://github.com/twentyhq/twenty/blob/35c645064f72bc4e3180a2c6c506cbbfee170007/packages/twenty-front/src/modules/apollo/components/ApolloProvider.tsx#L13-L17",
+          "https://github.com/twentyhq/twenty/blob/35c645064f72bc4e3180a2c6c506cbbfee170007/packages/twenty-front/src/modules/apollo/services/apollo.factory.ts#L115-L117"
+        ],
+        "limitations": [
+          "Pending observations are bounded, not proof requests never settle or a universal file-size threshold.",
+          "The full fixture server/proxy cause of the delayed rejection was not traced; reduced dependency experiments do not establish it.",
+          "No saved-picture or record-data loss was observed.",
+          "Other roles, devices and all upload callers were not established; newer runtime was not tested."
+        ]
+      }
+    },
+    {
+      "id": "settings-data-model-pass2-f87492a0",
+      "name": "Saved Skill Instructions autosave remounts the editor and interrupts editing",
+      "severity": 3,
+      "owningArea": "twenty/settings-data-model",
+      "summary": "Autosaving changed Instructions in a saved Skill remounts its editor, closing fullscreen and formatting menus and losing focus.",
+      "expected": "Autosaving Instructions should preserve the active editor, fullscreen state, focus and offered formatting menu so editing can continue.",
+      "actual": "After editing expanded Instructions and pausing for autosave, the editor returns inline and loses focus. Continued typing without refocusing enters nothing. A slash-formatting menu also disappears after a changed value saves. Text entered before the remount persists through reload.",
+      "reproSteps": [
+        "Create and save a uniquely named Skill with Instructions, then reopen it.",
+        "Expand Instructions, edit its content, and pause for autosave.",
+        "Observe the expanded editor close without a close action and lose focus. Attempt ordinary continued typing without refocusing; it enters nothing.",
+        "Reload and verify the text entered before the reset persisted.",
+        "Formatting variation: in a saved Skill, change Instructions and open the slash-command menu. Let the changed content autosave before choosing an option; the editor remounts and the menu disappears.",
+        "Controls: open saved Instructions without editing, or edit Instructions in an unsaved new-Skill form; the editor stays expanded. Sustained typing delays the reset until the debounce fires."
+      ],
+      "sourceCause": "The frontend uses originalFormValues.content as the editor React key. Successful autosave updates that content and remounts the editor, resetting local fullscreen, focus and menu state.",
+      "reviewEvidence": {
+        "basis": "Mo evidence, independent Codex/Claude browser and source reviews, separately verified formatting-menu variation, coordinator source checks and user acceptance of the Skills scope.",
+        "userAccepted": true,
+        "sourceRevision": "35c645064f72bc4e3180a2c6c506cbbfee170007",
+        "severityReason": "Successful autosave interrupts supported editing by closing fullscreen, dropping focus and dismissing the formatting menu.",
+        "analysis": [
+          "Each reviewer reproduced on two fresh saved Skills. Separate independent reviewers confirmed the same remount dismisses the offered slash-formatting menu after changed content saves.",
+          "The backend stores entered content correctly. Later attempted characters never enter the unfocused editor; no erased saved instructions or persisted-keystroke loss is claimed.",
+          "Unsaved creation, unchanged saved content and no-change/arrow-key controls retain the editor. Identical-value edits skip saving and retain the menu.",
+          "Maintainer commit489118f25b44af148937450cc8678b5093200243 removes the autosave-dependent Skill editor key. Inspected newer source uses seeded content without that changing key; runtime correction was not tested.",
+          "Workspace Instructions also reproduced as a sibling, but this label covers the approved Skills entry point and its formatting-menu variation."
+        ],
+        "sourceReferences": [
+          "https://github.com/twentyhq/twenty/blob/35c645064f72bc4e3180a2c6c506cbbfee170007/packages/twenty-front/src/modules/app/components/SettingsRoutes.tsx#L767-L795",
+          "https://github.com/twentyhq/twenty/blob/35c645064f72bc4e3180a2c6c506cbbfee170007/packages/twenty-front/src/pages/settings/ai/SettingsSkillForm.tsx#L211-L259",
+          "https://github.com/twentyhq/twenty/blob/35c645064f72bc4e3180a2c6c506cbbfee170007/packages/twenty-front/src/pages/settings/ai/SettingsSkillForm.tsx#L489-L509",
+          "https://github.com/twentyhq/twenty/blob/35c645064f72bc4e3180a2c6c506cbbfee170007/packages/twenty-front/src/modules/object-record/record-field/ui/form-types/components/FormAdvancedTextFieldInput.tsx#L135-L185",
+          "https://github.com/twentyhq/twenty/blob/35c645064f72bc4e3180a2c6c506cbbfee170007/packages/twenty-front/src/modules/object-record/record-field/ui/form-types/components/FormAdvancedTextFieldInput.tsx#L206-L224",
+          "https://github.com/twentyhq/twenty/blob/35c645064f72bc4e3180a2c6c506cbbfee170007/packages/twenty-front/src/modules/ai/graphql/mutations/updateSkill.ts#L5-L12",
+          "https://github.com/twentyhq/twenty/blob/35c645064f72bc4e3180a2c6c506cbbfee170007/packages/twenty-server/src/engine/metadata-modules/skill/skill.resolver.ts#L54-L60",
+          "https://github.com/twentyhq/twenty/blob/35c645064f72bc4e3180a2c6c506cbbfee170007/packages/twenty-server/src/engine/metadata-modules/skill/skill.service.ts#L123-L182",
+          "https://github.com/twentyhq/twenty/blob/35c645064f72bc4e3180a2c6c506cbbfee170007/packages/twenty-server/src/engine/workspace-manager/workspace-migration/workspace-migration-runner/action-handlers/skill/services/update-skill-action-handler.service.ts#L46-L55",
+          "https://github.com/twentyhq/twenty/blob/35c645064f72bc4e3180a2c6c506cbbfee170007/packages/twenty-server/src/engine/metadata-modules/skill/entities/skill.entity.ts#L12-L38"
+        ],
+        "limitations": [
+          "No saved-instruction loss was observed.",
+          "Other roles and all rich-text callers were not established.",
+          "Exact Claude save timing in the original fullscreen review was inferred from debounce/source and persisted content; the separate formatting review captured a successful update response and remount.",
+          "Newer runtime was not tested."
+        ]
+      }
+    },
+    {
+      "id": "settings-data-model-pass2-b885d4d6",
+      "name": "Double-clicking Save creates two API keys for one completed creation form",
+      "severity": 3,
+      "owningArea": "twenty/settings-data-model",
+      "summary": "Rapid repeated submission of one valid API-key creation form creates multiple distinct persisted keys.",
+      "expected": "A rapid double-click submitting one creation form should create one key, or block the repeated submission while creation is in progress.",
+      "actual": "Rapid double-clicking Save creates two saved API-key records with separate IDs and detail URLs. Both remain after reload. Pressing Enter twice also reproduces.",
+      "reproSteps": [
+        "Open Settings → MCP & APIs → API and choose Create API key.",
+        "Enter a unique valid name, select a role and expiration.",
+        "Rapidly double-click Save once, then wait for creation to complete.",
+        "Return to the API-key list and reload. Observe two persisted records for the single completed form; open each detail page to confirm separate IDs.",
+        "Control: submit a fresh form with one click; exactly one key is created."
+      ],
+      "sourceCause": "The creation form has no in-flight guard or pending disabled/loading state. Save and Enter can reenter the asynchronous creation handler, and each invocation inserts a separate key.",
+      "reviewEvidence": {
+        "basis": "Mo evidence, independent Codex and Claude browser/source reviews, coordinator source verification and user approval.",
+        "userAccepted": true,
+        "sourceRevision": "35c645064f72bc4e3180a2c6c506cbbfee170007",
+        "severityReason": "One completed form unintentionally creates extra persisted API keys.",
+        "analysis": [
+          "Both reviewers reproduced multiple times. Separate record IDs and detail URLs persisted after reload, excluding transient duplicate rendering.",
+          "Codex tested Admin and a custom assigned role with different expiration settings. Claude also reproduced with Enter twice and captured two creation and two token-generation requests.",
+          "Single-click creation controls each created one key. Double-click regeneration confirmation and sibling Webhook creation controls did not duplicate records.",
+          "Duplicate names are allowed; this label concerns repeated UI submission, not a server-side name uniqueness or API idempotency requirement.",
+          "Inspected newer source retains the missing guard; newer runtime was not tested. A remote automation-branch proposal is unmerged and unvalidated and does not establish maintainer intent."
+        ],
+        "sourceReferences": [
+          "https://github.com/twentyhq/twenty/blob/35c645064f72bc4e3180a2c6c506cbbfee170007/packages/twenty-front/src/modules/app/components/SettingsRoutes.tsx#L899-L943",
+          "https://github.com/twentyhq/twenty/blob/35c645064f72bc4e3180a2c6c506cbbfee170007/packages/twenty-front/src/pages/settings/developers/api-keys/SettingsDevelopersApiKeysNew.tsx#L65-L127",
+          "https://github.com/twentyhq/twenty/blob/35c645064f72bc4e3180a2c6c506cbbfee170007/packages/twenty-front/src/pages/settings/developers/api-keys/SettingsDevelopersApiKeysNew.tsx#L152-L180",
+          "https://github.com/twentyhq/twenty/blob/35c645064f72bc4e3180a2c6c506cbbfee170007/packages/twenty-front/src/modules/settings/components/SaveAndCancelButtons/SaveAndCancelButtons.tsx#L40-L45",
+          "https://github.com/twentyhq/twenty/blob/35c645064f72bc4e3180a2c6c506cbbfee170007/packages/twenty-front/src/modules/settings/components/SaveAndCancelButtons/SaveButton.tsx#L21-L31",
+          "https://github.com/twentyhq/twenty/blob/35c645064f72bc4e3180a2c6c506cbbfee170007/packages/twenty-ui/src/input/Button/Button.tsx#L70-L106",
+          "https://github.com/twentyhq/twenty/blob/35c645064f72bc4e3180a2c6c506cbbfee170007/packages/twenty-front/src/modules/settings/developers/graphql/mutations/createApiKey.ts#L4-L10",
+          "https://github.com/twentyhq/twenty/blob/35c645064f72bc4e3180a2c6c506cbbfee170007/packages/twenty-server/src/engine/core-modules/api-key/api-key.resolver.ts#L74-L86",
+          "https://github.com/twentyhq/twenty/blob/35c645064f72bc4e3180a2c6c506cbbfee170007/packages/twenty-server/src/engine/core-modules/api-key/services/api-key.service.ts#L30-L55",
+          "https://github.com/twentyhq/twenty/blob/35c645064f72bc4e3180a2c6c506cbbfee170007/packages/twenty-server/src/engine/twenty-orm/workspace-scoped-repository/workspace-scoped-repository.ts#L239-L246"
+        ],
+        "limitations": [
+          "Credential exposure, actual token use and downstream integration effects were not established.",
+          "Other signed-in actor roles were not tested.",
+          "Newer runtime was not tested."
+        ]
+      }
+    },
+    {
+      "id": "settings-data-model-pass2-73805d9d",
+      "name": "Skills Name sorting does not alphabetize the displayed skill names",
+      "severity": 3,
+      "owningArea": "twenty/settings-data-model",
+      "summary": "Skills Name sorting orders hidden API names rather than the displayed Skill labels.",
+      "expected": "Ascending and descending Name sorting should alphabetize the displayed Skill names.",
+      "actual": "Built-in Word Documents and Excel & Spreadsheets sort by docx and xlsx. Changing only a custom Skill API name changes its visible sort position despite an unchanged display name.",
+      "reproSteps": [
+        "Open Settings → AI → Skills with the built-in Skills present.",
+        "Click Name to inspect ascending and descending order; compare Word Documents and Excel & Spreadsheets with the displayed labels around them.",
+        "Create two uniquely named Skills whose display names and API names initially sort in the same order. Confirm Name sorting orders them correctly.",
+        "Change only the alphabetically earlier Skill API name to one sorting after the second Skill. Observe its unchanged display name now sorts incorrectly in both directions, including after reload."
+      ],
+      "sourceCause": "The Name column displays label but configures the client sorter to use name, the hidden API identifier, overriding the server label ordering.",
+      "reviewEvidence": {
+        "basis": "Mo evidence, independent Codex and Claude browser/source reviews, checked maintainer correction and user approval.",
+        "userAccepted": true,
+        "sourceRevision": "35c645064f72bc4e3180a2c6c506cbbfee170007",
+        "severityReason": "The supported Name sorting function orders a different property from the names presented to users.",
+        "analysis": [
+          "Both reviewers reproduced the built-in docx/xlsx mismatch and independently created an affected Skill plus a passing control.",
+          "Codex changed only an API name and verified both directions, reload and two widths. Claude independently confirmed both directions and reload/search behavior.",
+          "Maintainer commit 08738e93c1c8d2d6617265ad210b662e630863a7 explicitly identifies the mismatch and changes sorting to label. Inspected newer source includes the correction and a displayed-label sorting test; newer runtime and tests were not run.",
+          "The accepted Skills Type crash uses Boolean values with an incorrect string comparator; this entry concerns the Name column selecting the wrong string property. Relations Type sorting is in a separate table with a separate metadata constant."
+        ],
+        "sourceReferences": [
+          "https://github.com/twentyhq/twenty/blob/35c645064f72bc4e3180a2c6c506cbbfee170007/packages/twenty-front/src/modules/app/components/SettingsRoutes.tsx#L767-L794",
+          "https://github.com/twentyhq/twenty/blob/35c645064f72bc4e3180a2c6c506cbbfee170007/packages/twenty-front/src/pages/settings/ai/SettingsAI.tsx#L143-L147",
+          "https://github.com/twentyhq/twenty/blob/35c645064f72bc4e3180a2c6c506cbbfee170007/packages/twenty-front/src/pages/settings/ai/components/SettingsAgentSkillsTab.tsx#L34-L63",
+          "https://github.com/twentyhq/twenty/blob/35c645064f72bc4e3180a2c6c506cbbfee170007/packages/twenty-front/src/pages/settings/ai/components/SettingsAgentSkillsTable.tsx#L48-L66",
+          "https://github.com/twentyhq/twenty/blob/35c645064f72bc4e3180a2c6c506cbbfee170007/packages/twenty-front/src/pages/settings/ai/constants/SettingsSkillTableMetadata.ts#L6-L26",
+          "https://github.com/twentyhq/twenty/blob/35c645064f72bc4e3180a2c6c506cbbfee170007/packages/twenty-front/src/pages/settings/ai/components/SettingsSkillTableRow.tsx#L40-L50",
+          "https://github.com/twentyhq/twenty/blob/35c645064f72bc4e3180a2c6c506cbbfee170007/packages/twenty-front/src/modules/ui/layout/table/components/SortableTableHeader.tsx#L48-L75",
+          "https://github.com/twentyhq/twenty/blob/35c645064f72bc4e3180a2c6c506cbbfee170007/packages/twenty-front/src/modules/ui/layout/table/hooks/useSortedArray.ts#L29-L43",
+          "https://github.com/twentyhq/twenty/blob/35c645064f72bc4e3180a2c6c506cbbfee170007/packages/twenty-front/src/modules/ai/graphql/queries/findManySkills.ts#L5-L12",
+          "https://github.com/twentyhq/twenty/blob/35c645064f72bc4e3180a2c6c506cbbfee170007/packages/twenty-front/src/modules/ai/graphql/fragments/skillFragment.ts#L4-L16",
+          "https://github.com/twentyhq/twenty/commit/08738e93c1c8d2d6617265ad210b662e630863a7"
+        ],
+        "limitations": [
+          "No crash or saved-data loss occurred in Name sorting.",
+          "Each reviewer created one affected Skill and a passing control, rather than two independently affected fresh setups.",
+          "Other roles and newer runtime were not tested."
+        ]
+      }
+    },
+    {
+      "id": "settings-data-model-pass2-a45ff89d",
+      "name": "Role object-rule wizard discards pending global restrictions after member assignment",
+      "severity": 3,
+      "owningArea": "twenty/settings-data-model",
+      "summary": "After same-session role assignment, entering the object-rule wizard overwrites pending global permission restrictions, so saving retains the old globals instead of the intended restrictions.",
+      "expected": "Opening an object-specific permission wizard should preserve pending global permission changes made in the same role edit session.",
+      "actual": "Assigning a member to a fresh role without reload, unchecking All Objects and entering Add rule → Companies resets four pending false globals before Finish. Saving an object-specific Edit denial persists only that denial while the old true global values remain.",
+      "reproSteps": [
+        "Create a fresh role and assign an existing member to it in the same session. Do not reload.",
+        "In Permissions, uncheck All Objects so the global permission restrictions are pending.",
+        "Open Add rule → Companies and observe the pending global restrictions revert before closing or finishing the wizard.",
+        "Deny Companies Edit, finish the wizard and save the role. Reload and observe that only the object denial persisted while the intended global restrictions did not.",
+        "Controls: repeat with a fresh unassigned role, or reload after member assignment before editing permissions; pending restrictions remain intact.",
+        "Restore any demonstration member to its original role after testing."
+      ],
+      "sourceCause": "Immediate assignment stores a different member representation in role state. Network-only GetRoles on wizard mounts sees a deep difference and overwrites the entire dirty draft, discarding pending global restrictions. The resets are observed; precise callback ordering is inferred.",
+      "reviewEvidence": {
+        "basis": "Mo candidate, independent Codex follow-up and Claude browser/source verification, coordinator checks and user acceptance.",
+        "userAccepted": true,
+        "sourceRevision": "35c645064f72bc4e3180a2c6c506cbbfee170007",
+        "severityReason": "Ordinary in-app configuration navigation discards pending permission restrictions and saves a configuration different from the intended changes.",
+        "analysis": [
+          "Each reviewer reproduced on two fresh roles after same-session member assignment. Fresh unassigned and assigned-then-reloaded controls preserved pending edits. Codex’s original passing result missed this prerequisite and was revised after independent follow-up.",
+          "No already-saved false global was observed becoming true. Save sent only the object denial after pending global restrictions were lost; existing true server globals remained.",
+          "No exercised member-operation escalation or authorization bypass was established. Borrowed demonstration members were restored to their original Member role and verified after reload.",
+          "Inspected newer source removes the query’s draft write and preserves unsaved fields while synchronizing assignment collections. This supports a source-level correction without a newer-runtime or full release-fix guarantee.",
+          "The separate assignment-after-dirty-edit Save-disappearance observation lacks a second independent review and is excluded."
+        ],
+        "sourceReferences": [
+          "https://github.com/twentyhq/twenty/blob/35c645064f72bc4e3180a2c6c506cbbfee170007/packages/twenty-front/src/modules/settings/roles/hooks/useUpdateWorkspaceMemberRole.ts#L57-L85",
+          "https://github.com/twentyhq/twenty/blob/35c645064f72bc4e3180a2c6c506cbbfee170007/packages/twenty-front/src/modules/workspace-member/graphql/fragments/partialWorkspaceMemberQueryFragment.ts#L4-L13",
+          "https://github.com/twentyhq/twenty/blob/35c645064f72bc4e3180a2c6c506cbbfee170007/packages/twenty-front/src/modules/settings/roles/components/SettingsRolesQueryEffect.tsx#L15-L46",
+          "https://github.com/twentyhq/twenty/blob/35c645064f72bc4e3180a2c6c506cbbfee170007/packages/twenty-front/src/pages/settings/members/roles/SettingsRoleAddObjectLevel.tsx#L83-L94",
+          "https://github.com/twentyhq/twenty/blob/35c645064f72bc4e3180a2c6c506cbbfee170007/packages/twenty-front/src/pages/settings/members/roles/SettingsRoleObjectLevel.tsx#L20-L26",
+          "https://github.com/twentyhq/twenty/blob/35c645064f72bc4e3180a2c6c506cbbfee170007/packages/twenty-front/src/modules/settings/roles/role-permissions/objects-permissions/components/SettingsRolePermissionsObjectsTableHeader.tsx#L52-L61",
+          "https://github.com/twentyhq/twenty/blob/35c645064f72bc4e3180a2c6c506cbbfee170007/packages/twenty-front/src/modules/settings/roles/role/hooks/useSaveDraftRoleToDB.ts#L182-L229",
+          "https://github.com/twentyhq/twenty/blob/35c645064f72bc4e3180a2c6c506cbbfee170007/packages/twenty-server/src/engine/metadata-modules/role/role.resolver.ts#L110-L160",
+          "https://github.com/twentyhq/twenty/blob/35c645064f72bc4e3180a2c6c506cbbfee170007/packages/twenty-server/src/engine/metadata-modules/role/role.resolver.ts#L209-L222",
+          "https://github.com/twentyhq/twenty/blob/35c645064f72bc4e3180a2c6c506cbbfee170007/packages/twenty-server/src/engine/metadata-modules/object-permission/object-permission.service.ts#L115-L253",
+          "https://github.com/twentyhq/twenty/blob/35c645064f72bc4e3180a2c6c506cbbfee170007/packages/twenty-server/src/engine/workspace-manager/workspace-migration/workspace-migration-runner/action-handlers/object-permission/services/create-object-permission-action-handler.service.ts#L47-L56",
+          "https://github.com/twentyhq/twenty/blob/35c645064f72bc4e3180a2c6c506cbbfee170007/packages/twenty-server/src/engine/workspace-manager/workspace-migration/workspace-migration-runner/interfaces/workspace-migration-runner-action-handler-service.interface.ts#L82-L99",
+          "https://github.com/twentyhq/twenty/commit/37e0770c9a7e415a1e3dd56df82bde9d47970684"
+        ],
+        "limitations": [
+          "No already-saved restriction reversal or actual authorization bypass was demonstrated.",
+          "Precise callback ordering is inferred.",
+          "Original Mo historical causal chain was not independently replayed.",
+          "Other query consumers and newer runtime were not established."
+        ]
+      }
+    },
+    {
+      "id": "settings-data-model-pass2-809cc706",
+      "name": "Valid workspace image leaves a blank preview after an invalid upload",
+      "severity": 1,
+      "owningArea": "twenty/settings-data-model",
+      "summary": "After an invalid workspace-image upload, a later supported image saves but its preview stays blank in the mounted upload control.",
+      "expected": "A successful valid image replacement should clear prior image-error state and display the newly saved workspace picture.",
+      "actual": "After an invalid upload and a later supported valid upload, the valid image saves successfully but the same mounted picture control displays a blank placeholder. Navigating away and reopening settings restores the client preview.",
+      "reproSteps": [
+        "Open Settings → General → Picture in a disposable workspace.",
+        "Upload an invalid image to put the preview into its error state.",
+        "Upload a supported genuine image and wait for the successful save.",
+        "Observe that the picture control still shows a blank placeholder despite the accepted valid replacement.",
+        "Navigate away and reopen settings to remount the control; observe the saved image preview recover. Do not rely on a first reload as the sole control because a separate workspace-cache issue can return stale references."
+      ],
+      "sourceCause": "An invalid image sets the shared ImageInput client error flag. The same mounted control does not clear that flag after a subsequent supported image saves, leaving the successful replacement hidden behind the placeholder.",
+      "matchingGuidance": {
+        "relatedReference": "settings-data-model-N33",
+        "distinction": "The existing reference covers profile-picture preview recovery after an invalid upload. This entry covers the workspace-logo entry point and successful later valid-image preview. Unsupported workspace-file acceptance and P2-8 server errors after replacement commit are distinct defects."
+      },
+      "reviewEvidence": {
+        "basis": "Mo evidence, independent Codex and Claude browser/source verification, coordinator checks and user acceptance of the narrowed client-preview related entry.",
+        "userAccepted": true,
+        "sourceRevision": "35c645064f72bc4e3180a2c6c506cbbfee170007",
+        "severityReason": "The supported valid image saves correctly while its preview remains blank. Codex and Claude both assign the narrowed preview defect severity 1; Claude’s overall severity 3 included a separately labeled server failure.",
+        "analysis": [
+          "Both reviewers independently observed a successfully accepted valid workspace image with a blank preview after an invalid upload. Navigation/remount recovers the client display.",
+          "No loss of the successfully saved image is claimed. A separate workspace cache defect can interfere with first-reload recovery and is excluded from this client label.",
+          "P2-8 already covers valid-only replacement errors after committing a new image when an existing cached prior-file ID is stale. Its cause and accepted severity are not merged into this preview entry.",
+          "Accepted profile preview N33 shares the error-flag cause but uses a different upload entry point. Unsupported-file workspace upload coverage concerns accepting invalid content, not later preview recovery.",
+          "Inspected newer source keys the preview by source. This is source-level repair evidence only; newer runtime was not tested."
+        ],
+        "sourceReferences": [
+          "https://github.com/twentyhq/twenty/blob/35c645064f72bc4e3180a2c6c506cbbfee170007/packages/twenty-front/src/modules/app/components/SettingsRoutes.tsx#L707-L714",
+          "https://github.com/twentyhq/twenty/blob/35c645064f72bc4e3180a2c6c506cbbfee170007/packages/twenty-front/src/pages/settings/general/SettingsGeneral.tsx#L60-L63",
+          "https://github.com/twentyhq/twenty/blob/35c645064f72bc4e3180a2c6c506cbbfee170007/packages/twenty-front/src/modules/settings/workspace/components/WorkspaceLogoUploader.tsx#L18-L36",
+          "https://github.com/twentyhq/twenty/blob/35c645064f72bc4e3180a2c6c506cbbfee170007/packages/twenty-front/src/modules/ui/input/components/ImageInput.tsx#L113-L139",
+          "https://github.com/twentyhq/twenty/blob/35c645064f72bc4e3180a2c6c506cbbfee170007/packages/twenty-front/src/modules/ui/input/components/ImageInput.tsx#L143-L179",
+          "https://github.com/twentyhq/twenty/blob/35c645064f72bc4e3180a2c6c506cbbfee170007/packages/twenty-front/src/modules/settings/workspace-member/components/WorkspaceMemberPictureUploader.tsx#L64-L104",
+          "https://github.com/twentyhq/twenty/blob/35c645064f72bc4e3180a2c6c506cbbfee170007/packages/twenty-server/src/engine/core-modules/file/file-core-picture/resolvers/file-core-picture.resolver.ts#L36-L76",
+          "https://github.com/twentyhq/twenty/blob/35c645064f72bc4e3180a2c6c506cbbfee170007/packages/twenty-server/src/engine/core-modules/file/file-core-picture/services/file-core-picture.service.ts#L69-L143",
+          "https://github.com/twentyhq/twenty/blob/35c645064f72bc4e3180a2c6c506cbbfee170007/packages/twenty-server/src/engine/core-modules/file/utils/extract-file-info-or-throw.utils.ts#L27-L81",
+          "https://github.com/twentyhq/twenty/blob/35c645064f72bc4e3180a2c6c506cbbfee170007/packages/twenty-server/src/engine/core-modules/file-storage/services/file-storage.service.ts#L196-L261",
+          "https://github.com/twentyhq/twenty/blob/35c645064f72bc4e3180a2c6c506cbbfee170007/packages/twenty-server/src/engine/core-modules/file-storage/drivers/local.driver.ts#L106-L116",
+          "https://github.com/twentyhq/twenty/blob/35c645064f72bc4e3180a2c6c506cbbfee170007/packages/twenty-server/src/engine/core-modules/file/file-url/file-url.service.ts#L56-L111",
+          "https://github.com/twentyhq/twenty/blob/35c645064f72bc4e3180a2c6c506cbbfee170007/packages/twenty-server/src/engine/core-modules/file/controllers/file.controller.ts#L186-L231",
+          "https://github.com/twentyhq/twenty/blob/35c645064f72bc4e3180a2c6c506cbbfee170007/packages/twenty-server/src/engine/core-modules/file/services/file.service.ts#L149-L228"
+        ],
+        "limitations": [
+          "No saved-image loss is claimed.",
+          "First-reload recovery is unreliable because of a separately established server cache defect.",
+          "Other roles and widths were not established by both reviewers.",
+          "Newer runtime was not tested."
+        ]
+      }
+    },
+    {
+      "id": "settings-data-model-pass2-a181b629",
+      "name": "Number format preview omits the requested trailing decimal zeros",
+      "severity": 1,
+      "owningArea": "twenty/settings-data-model",
+      "summary": "Plain Number fields omit trailing-zero padding despite their configured decimal count and explicit fixed-decimal helper example.",
+      "expected": "A Number field configured for two decimal places should display trailing zeros consistently with the helper example, such as 2,000.00 and 1,234.50.",
+      "actual": "The two-decimal preview displays 2,000 beside a helper example 1000.00. Saved records display 2000 as 2,000 and 1234.5 as 1,234.5. Fractional rounding still works: 1234.567 displays 1,234.57.",
+      "reproSteps": [
+        "Create a fresh custom object with a plain Number field.",
+        "Set Number of decimals to two using the supported integer setting and compare the fixed-decimal helper with the preview. Observe missing trailing .00.",
+        "Save and reopen settings to confirm the decimal setting persisted.",
+        "Create records with values 2000, 1234.5 and 1234.567. Observe missing zero padding for the first two but correct two-decimal rounding for the last.",
+        "Controls: zero-decimal preview agrees with its helper and Short formatting displays the shortened form as configured."
+      ],
+      "sourceCause": "The helper formats with toFixed, while the shared display formatter sets minimumFractionDigits to zero and uses the configured decimals only as maximumFractionDigits.",
+      "matchingGuidance": {
+        "relatedReference": "settings-data-model-N50",
+        "distinction": "The existing Percentage reference and mo-60m-twenty-9 Currency/TWD reference share trailing-zero suppression in the formatter but cover their own field-type entry points. This entry covers plain Number configuration, preview and record display; correct fractional rounding is not classified as broken."
+      },
+      "reviewEvidence": {
+        "basis": "Mo candidate, independent Codex and Claude browser/source verification, coordinator checks and user acceptance as a severity-1 related entry.",
+        "userAccepted": true,
+        "sourceRevision": "35c645064f72bc4e3180a2c6c506cbbfee170007",
+        "severityReason": "The numeric values and saved settings are correct, but the displayed padding contradicts the explicit helper example.",
+        "analysis": [
+          "Codex reproduced on two fresh custom objects with one, two and three decimals, typed and plus-button changes, saved/reopened settings and two widths. Claude reproduced two fields and input paths on one fresh object, including saved/reopened configuration.",
+          "Decimal precision is not wholly ignored: fractional values round correctly, zero-decimal and Short controls pass, and no stored values are lost.",
+          "The helper’s fixed-decimal example and display mismatch support the contract. Formatter history shows a change from matching minimum/maximum decimals to minimum zero, but the maintainer’s motive for record displays is not explicit.",
+          "Inspected newer source retains helper padding and zero minimum. Newer runtime was not tested.",
+          "Other billing, AI, aggregate and count callers sharing the formatter do not automatically have a fixed-padding requirement and are excluded."
+        ],
+        "sourceReferences": [
+          "https://github.com/twentyhq/twenty/blob/35c645064f72bc4e3180a2c6c506cbbfee170007/packages/twenty-front/src/modules/settings/data-model/fields/forms/number/components/SettingsDataModelFieldNumberForm.tsx#L40-L94",
+          "https://github.com/twentyhq/twenty/blob/35c645064f72bc4e3180a2c6c506cbbfee170007/packages/twenty-front/src/modules/settings/data-model/fields/forms/number/components/SettingsDataModelFieldNumberSettingsFormCard.tsx#L21-L40",
+          "https://github.com/twentyhq/twenty/blob/35c645064f72bc4e3180a2c6c506cbbfee170007/packages/twenty-front/src/modules/settings/data-model/constants/SettingsNonCompositeFieldTypeConfigs.ts#L74-L79",
+          "https://github.com/twentyhq/twenty/blob/35c645064f72bc4e3180a2c6c506cbbfee170007/packages/twenty-front/src/modules/settings/data-model/fields/preview/utils/getFieldPreviewValue.ts#L38-L45",
+          "https://github.com/twentyhq/twenty/blob/35c645064f72bc4e3180a2c6c506cbbfee170007/packages/twenty-front/src/modules/settings/data-model/fields/preview/components/SettingsDataModelFieldPreview.tsx#L76-L110",
+          "https://github.com/twentyhq/twenty/blob/35c645064f72bc4e3180a2c6c506cbbfee170007/packages/twenty-front/src/modules/object-record/record-field/ui/meta-types/display/components/NumberFieldDisplay.tsx#L7-L27",
+          "https://github.com/twentyhq/twenty/blob/35c645064f72bc4e3180a2c6c506cbbfee170007/packages/twenty-front/src/modules/localization/hooks/useNumberFormat.ts#L15-L24",
+          "https://github.com/twentyhq/twenty/blob/35c645064f72bc4e3180a2c6c506cbbfee170007/packages/twenty-front/src/utils/format/formatNumber.ts#L86-L89",
+          "https://github.com/twentyhq/twenty/blob/35c645064f72bc4e3180a2c6c506cbbfee170007/packages/twenty-front/src/modules/ui/field/display/components/CurrencyDisplay.tsx#L43-L82",
+          "https://github.com/twentyhq/twenty/blob/35c645064f72bc4e3180a2c6c506cbbfee170007/packages/twenty-front/src/pages/settings/data-model/new-field/SettingsObjectNewFieldConfigure.tsx#L103-L125",
+          "https://github.com/twentyhq/twenty/blob/35c645064f72bc4e3180a2c6c506cbbfee170007/packages/twenty-front/src/modules/object-metadata/utils/formatFieldMetadataItemInput.ts#L20-L29",
+          "https://github.com/twentyhq/twenty/blob/35c645064f72bc4e3180a2c6c506cbbfee170007/packages/twenty-front/src/modules/object-metadata/hooks/useCreateOneFieldMetadataItem.ts#L26-L56",
+          "https://github.com/twentyhq/twenty/blob/35c645064f72bc4e3180a2c6c506cbbfee170007/packages/twenty-server/src/engine/metadata-modules/field-metadata/field-metadata.resolver.ts#L135-L147",
+          "https://github.com/twentyhq/twenty/blob/35c645064f72bc4e3180a2c6c506cbbfee170007/packages/twenty-server/src/engine/metadata-modules/field-metadata/services/field-metadata.service.ts#L392-L463"
+        ],
+        "limitations": [
+          "No stored-value loss or failed field save occurred.",
+          "Claude used two fields on one fresh object rather than two independently saved objects.",
+          "Other roles and localization preferences were not established.",
+          "Newer runtime was not tested."
+        ]
+      }
+    },
+    {
+      "id": "settings-data-model-pass2-225029f1",
+      "name": "Pinned Export View action disappears from the saving browser header after Layout customization",
+      "severity": 1,
+      "owningArea": "twenty/settings-data-model",
+      "summary": "A completed Export View pin save can leave the saving browser displaying and persistently caching the unpinned default despite the correct saved override.",
+      "expected": "After successfully saving Export View as pinned, the saving browser should show the eligible header shortcut consistently with its stored customization.",
+      "actual": "The shortcut intermittently disappears after saving while the server still reports the pin. Normal reload can retain the missing shortcut. Export remains available through command-menu search and executes; clearing browser IndexedDB and reloading restores the saved pin.",
+      "reproSteps": [
+        "Open an eligible administrator index page and use Layout customization to pin Export View.",
+        "Save and allow the UI to settle. Observe whether the header shortcut disappears despite the completed saved pin. Labeled pins can reproduce; hiding the label is not required.",
+        "Reload and confirm the missing shortcut can persist while the server retains the pinned customization.",
+        "Search Export in the command menu and run it to confirm CSV export still works.",
+        "Clear this disposable browser’s IndexedDB and reload to fetch the effective saved pin and recover the shortcut."
+      ],
+      "sourceCause": "The specialized non-navigation command event publisher omits saved overrides. Pushed base isPinned:false replaces the effective pinned record in the frontend metadata store, and IndexedDB persists the stale representation. Exact event/optimistic-response ordering is inferred and accounts for variable outcomes.",
+      "matchingGuidance": {
+        "relatedReference": "settings-data-model-N52",
+        "distinction": "N52 concerns another browser retaining stale header pins after refresh. This entry covers the saving browser after its own completed Export View customization save. Similar cache symptoms do not establish an identical root cause for the older entry; resize/menu-measurement omissions are distinct."
+      },
+      "reviewEvidence": {
+        "basis": "Mo candidate, independent Codex and Claude browser/source reviews, neutral Codex single-writer follow-up, coordinator event/source checks and user acceptance as a related severity-1 entry.",
+        "userAccepted": true,
+        "sourceRevision": "35c645064f72bc4e3180a2c6c506cbbfee170007",
+        "severityReason": "The saved pin is correct and export executes, but the eligible header shortcut disappears and ordinary reload can retain the stale presentation.",
+        "analysis": [
+          "Both reviewers recommend severity 1. Their original contexts shared one workspace-wide standard Export action, so those were not independent action records.",
+          "A later single-writer follow-up reproduced missing shortcuts after the baseline pin and a labeled re-pin. Five own mutations yielded ten corresponding pushes with no unmatched or conflicting Export event captured. Absolute global fixture exclusivity was not established.",
+          "An intervening hidden-label save retained the icon, confirming intermittent behavior and that hidden labels are not necessary. No fixed disappearance delay or universal failure rate is claimed.",
+          "Menu search still exposes Export and Codex downloaded a CSV while the shortcut was absent. Both reviewers observed cache-clear recovery; no pin or record data was lost.",
+          "Captured events contain default pin values alongside correct saved overrides. Inspected newer delivery resolves non-translatable overrides, including the pin; its runtime and full hidden-label behavior were not tested."
+        ],
+        "sourceReferences": [
+          "https://github.com/twentyhq/twenty/blob/35c645064f72bc4e3180a2c6c506cbbfee170007/packages/twenty-server/src/engine/subscriptions/metadata-event/metadata-event-publisher.ts#L58-L61",
+          "https://github.com/twentyhq/twenty/blob/35c645064f72bc4e3180a2c6c506cbbfee170007/packages/twenty-server/src/engine/subscriptions/metadata-event/utils/enrich-command-menu-item-event-with-resolved-navigation.util.ts#L30-L32",
+          "https://github.com/twentyhq/twenty/blob/35c645064f72bc4e3180a2c6c506cbbfee170007/packages/twenty-front/src/modules/metadata-store/effect-components/MetadataStoreSSEEffect.tsx#L39-L64",
+          "https://github.com/twentyhq/twenty/blob/35c645064f72bc4e3180a2c6c506cbbfee170007/packages/twenty-front/src/modules/metadata-store/hooks/useUpdateMetadataStoreDraft.ts#L148-L156",
+          "https://github.com/twentyhq/twenty/blob/35c645064f72bc4e3180a2c6c506cbbfee170007/packages/twenty-front/src/modules/command-menu-item/display/components/PinnedCommandMenuItemButtons.tsx#L40-L46",
+          "https://github.com/twentyhq/twenty/blob/a6372e288ade9ed14ac2af1a7e224dabb6cc6021/packages/twenty-server/src/engine/subscriptions/metadata-event/utils/resolve-metadata-event-record.util.ts#L35-L53",
+          "https://github.com/twentyhq/twenty/blob/35c645064f72bc4e3180a2c6c506cbbfee170007/packages/twenty-server/src/engine/workspace-manager/twenty-standard-application/constants/standard-command-menu-item.constant.ts#L200-L216",
+          "https://github.com/twentyhq/twenty/blob/35c645064f72bc4e3180a2c6c506cbbfee170007/packages/twenty-server/src/engine/metadata-modules/flat-entity/constant/all-entity-properties-configuration-by-metadata-name.constant.ts#L1174-L1225",
+          "https://github.com/twentyhq/twenty/blob/35c645064f72bc4e3180a2c6c506cbbfee170007/packages/twenty-server/src/engine/metadata-modules/flat-command-menu-item/utils/from-update-command-menu-item-input-to-flat-command-menu-item-to-update-or-throw.util.ts#L51-L76",
+          "https://github.com/twentyhq/twenty/blob/35c645064f72bc4e3180a2c6c506cbbfee170007/packages/twenty-server/src/engine/subscriptions/metadata-event/metadata-event-publisher.ts#L47-L67",
+          "https://github.com/twentyhq/twenty/blob/35c645064f72bc4e3180a2c6c506cbbfee170007/packages/twenty-server/src/engine/subscriptions/metadata-event/metadata-event-publisher.ts#L121-L157",
+          "https://github.com/twentyhq/twenty/blob/35c645064f72bc4e3180a2c6c506cbbfee170007/packages/twenty-front/src/modules/metadata-store/effect-components/MetadataStoreSSEEffect.tsx#L36-L46",
+          "https://github.com/twentyhq/twenty/blob/35c645064f72bc4e3180a2c6c506cbbfee170007/packages/twenty-front/src/modules/command-menu-item/display/components/PinnedCommandMenuItemButtons.tsx#L42-L46",
+          "https://github.com/twentyhq/twenty/blob/35c645064f72bc4e3180a2c6c506cbbfee170007/packages/twenty-front/src/modules/command-menu-item/edit/components/SidePanelCommandMenuItemEditPage.tsx#L111-L144",
+          "https://github.com/twentyhq/twenty/commit/50e325f82219b37aa2693c4985c83f02fe0300dd"
+        ],
+        "limitations": [
+          "The failure is intermittent; no fixed timer or universal rate is established.",
+          "Original reviewer edits shared a workspace-wide action; the later captured single-writer stream addresses that observed interference without proving absolute global exclusivity.",
+          "Other users and full record-page headers were not tested.",
+          "Shared root cause with N52 is inferred, not established.",
+          "Newer runtime was not tested."
+        ]
+      }
+    },
+    {
+      "id": "settings-data-model-pass2-1750f9f1",
+      "name": "Percentage edit inputs expose floating-point noise when reopened",
+      "severity": 1,
+      "owningArea": "twenty/settings-data-model",
+      "summary": "Entering 0.12345 and reopening displays 0.12345000000000002, with or without reload.",
+      "expected": "Percentage table editors should reopen ordinary saved values without exposing binary conversion artifacts.",
+      "actual": "Entering 0.12345 and reopening displays 0.12345000000000002, with or without reload. Normal cell formatting remains correct and resaving does not add stored drift.",
+      "reproSteps": [
+        "Create a fresh Percentage field and a plain Number control on a custom object.",
+        "Enter 0.12345 in the Percentage table-cell editor and save.",
+        "Reopen the cell editor, with and without page reload, and observe conversion noise.",
+        "Compare normal formatted cell display and the plain Number control. Ordinary values such as 7, 14, 29 and 57 also reproduced; some others reopen cleanly."
+      ],
+      "sourceCause": "The editor multiplies a stored fractional percentage by 100 and stringifies it without precision cleanup; normal display uses a formatter.",
+      "reviewEvidence": {
+        "basis": "Independent Codex and Claude browser/source reviews, coordinator-checked evidence and explicit user batch approval of all seven remaining agreed-positive cases at severity 1.",
+        "userAccepted": true,
+        "sourceRevision": "35c645064f72bc4e3180a2c6c506cbbfee170007",
+        "severityReason": "User accepted the table’s severity 1 for the narrowed observed GUI/display scope.",
+        "analysis": [
+          "Both reviewers reproduced on two fresh records. Controls including plain Number and several other percentages reopen cleanly.",
+          "Maintainer a56e3badc72e71ad9ea45d503ee2b4072cb6c2a9 explicitly identifies the same examples; inspected newer source limits draft precision. Its runtime was not tested."
+        ],
+        "sourceReferences": [
+          "https://github.com/twentyhq/twenty/blob/35c645064f72bc4e3180a2c6c506cbbfee170007/packages/twenty-front/src/modules/settings/data-model/fields/forms/number/components/SettingsDataModelFieldNumberForm.tsx#L55-L94",
+          "https://github.com/twentyhq/twenty/blob/35c645064f72bc4e3180a2c6c506cbbfee170007/packages/twenty-front/src/modules/object-record/record-field/ui/meta-types/input/components/NumberFieldInput.tsx#L26-L59",
+          "https://github.com/twentyhq/twenty/blob/35c645064f72bc4e3180a2c6c506cbbfee170007/packages/twenty-front/src/modules/object-record/record-field/ui/meta-types/input/components/NumberFieldInput.tsx#L101-L114",
+          "https://github.com/twentyhq/twenty/blob/35c645064f72bc4e3180a2c6c506cbbfee170007/packages/twenty-front/src/modules/object-record/record-field/ui/utils/computeDraftValueFromFieldValue.ts#L83-L93",
+          "https://github.com/twentyhq/twenty/blob/35c645064f72bc4e3180a2c6c506cbbfee170007/packages/twenty-front/src/modules/object-record/record-field/ui/hooks/useInitDraftValue.ts#L28-L49",
+          "https://github.com/twentyhq/twenty/blob/35c645064f72bc4e3180a2c6c506cbbfee170007/packages/twenty-front/src/modules/object-record/record-inline-cell/hooks/useInlineCell.ts#L39-L45",
+          "https://github.com/twentyhq/twenty/blob/35c645064f72bc4e3180a2c6c506cbbfee170007/packages/twenty-front/src/modules/object-record/record-field-list/anchored-portal/components/RecordFieldListInputContextProvider.tsx#L67-L75",
+          "https://github.com/twentyhq/twenty/blob/35c645064f72bc4e3180a2c6c506cbbfee170007/packages/twenty-front/src/modules/object-record/record-field/ui/hooks/usePersistField.ts#L268-L283",
+          "https://github.com/twentyhq/twenty/blob/35c645064f72bc4e3180a2c6c506cbbfee170007/packages/twenty-front/src/modules/object-record/hooks/useUpdateOneRecord.ts#L153-L182",
+          "https://github.com/twentyhq/twenty/blob/35c645064f72bc4e3180a2c6c506cbbfee170007/packages/twenty-server/src/engine/api/graphql/workspace-resolver-builder/factories/update-one-resolver.factory.ts#L31-L57",
+          "https://github.com/twentyhq/twenty/blob/35c645064f72bc4e3180a2c6c506cbbfee170007/packages/twenty-server/src/engine/api/common/common-query-runners/common-update-one-query-runner.service.ts#L39-L86",
+          "https://github.com/twentyhq/twenty/blob/35c645064f72bc4e3180a2c6c506cbbfee170007/packages/twenty-server/src/engine/api/common/common-args-processors/data-arg-processor/data-arg-processor.service.ts#L173-L190",
+          "https://github.com/twentyhq/twenty/blob/35c645064f72bc4e3180a2c6c506cbbfee170007/packages/twenty-server/src/engine/api/common/common-args-processors/data-arg-processor/validator-utils/validate-number-field-or-throw.util.ts#L11-L31",
+          "https://github.com/twentyhq/twenty/blob/35c645064f72bc4e3180a2c6c506cbbfee170007/packages/twenty-server/src/engine/api/common/common-query-runners/common-update-many-query-runner.service.ts#L53-L74"
+        ],
+        "limitations": [
+          "Cosmetic edit-mode noise only; no numerical corruption, accumulated drift or lost data was observed.",
+          "Confirmed scope is table editors; full-record and side-panel exposure is source inference.",
+          "Newer runtime was not tested."
+        ]
+      }
+    },
+    {
+      "id": "settings-data-model-pass2-4d1f29f3",
+      "name": "Populated multi-destination record fields omit the hover pencil, leaving only the padding edit target",
+      "severity": 1,
+      "owningArea": "twenty/settings-data-model",
+      "summary": "The hover pencil is missing on full-record and side-panel populated multi-destination relation values.",
+      "expected": "Populated multi-destination relation details should expose a visible editing affordance consistently with single-destination relations and the table editor.",
+      "actual": "The hover pencil is missing on full-record and side-panel populated multi-destination relation values. The chip navigates; clicking surrounding padding still opens editing, and replacement or clearing persists.",
+      "reproSteps": [
+        "Create short-named custom objects with a multi-destination Belongs to one relation.",
+        "Populate that relation through the record UI and confirm it saves.",
+        "Hover the populated value on full-record and side-panel details; observe the missing pencil.",
+        "Click outside the navigation chip to edit or clear and confirm persistence after reload. Compare single-destination details and the same field in the table, which show pencils."
+      ],
+      "sourceCause": "The detail icon selector handles RELATION but omits MORPH_RELATION. Details render an edit button only when an icon exists; tables provide a pencil fallback. The outer detail container still opens the picker.",
+      "reviewEvidence": {
+        "basis": "Independent Codex and Claude browser/source reviews, coordinator-checked evidence and explicit user batch approval of all seven remaining agreed-positive cases at severity 1.",
+        "userAccepted": true,
+        "sourceRevision": "35c645064f72bc4e3180a2c6c506cbbfee170007",
+        "severityReason": "User accepted the table’s severity 1 for the narrowed observed GUI/display scope.",
+        "analysis": [
+          "Each reviewer tested two fresh populated relations. Both verified that editing and clearing through padding work, narrowing the original cannot-edit claim.",
+          "Long values can leave only a few pixels of non-chip editing target. Clicking the chip correctly navigates.",
+          "The affordance expectation is inferred from sibling controls rather than an explicit maintainer requirement."
+        ],
+        "sourceReferences": [
+          "https://github.com/twentyhq/twenty/blob/35c645064f72bc4e3180a2c6c506cbbfee170007/packages/twenty-front/src/modules/object-record/record-field/ui/utils/getFieldButtonIcon.ts#L23-L35",
+          "https://github.com/twentyhq/twenty/blob/35c645064f72bc4e3180a2c6c506cbbfee170007/packages/twenty-front/src/modules/object-record/record-field/ui/types/guards/isFieldRelation.ts#L9-L12",
+          "https://github.com/twentyhq/twenty/blob/35c645064f72bc4e3180a2c6c506cbbfee170007/packages/twenty-front/src/modules/object-record/record-inline-cell/components/RecordInlineCellDisplayMode.tsx#L79-L111",
+          "https://github.com/twentyhq/twenty/blob/35c645064f72bc4e3180a2c6c506cbbfee170007/packages/twenty-front/src/modules/object-record/record-field-list/anchored-portal/components/RecordFieldListCellHoveredPortalContent.tsx#L35-L71",
+          "https://github.com/twentyhq/twenty/blob/35c645064f72bc4e3180a2c6c506cbbfee170007/packages/twenty-front/src/modules/object-record/record-field/ui/meta-types/display/components/MorphRelationManyToOneFieldDisplay.tsx#L27-L36",
+          "https://github.com/twentyhq/twenty/blob/35c645064f72bc4e3180a2c6c506cbbfee170007/packages/twenty-ui/src/data-display/LinkChip/LinkChip.tsx#L53-L59",
+          "https://github.com/twentyhq/twenty/blob/35c645064f72bc4e3180a2c6c506cbbfee170007/packages/twenty-front/src/modules/object-record/record-field/ui/meta-types/input/components/MorphRelationManyToOneFieldInput.tsx#L35-L63",
+          "https://github.com/twentyhq/twenty/blob/35c645064f72bc4e3180a2c6c506cbbfee170007/packages/twenty-front/src/modules/object-record/record-field/ui/meta-types/input/utils/buildMorphRelationUpdateInput.ts#L25-L58",
+          "https://github.com/twentyhq/twenty/blob/35c645064f72bc4e3180a2c6c506cbbfee170007/packages/twenty-front/src/modules/object-record/hooks/useUpdateOneRecord.ts#L153-L174",
+          "https://github.com/twentyhq/twenty/blob/35c645064f72bc4e3180a2c6c506cbbfee170007/packages/twenty-server/src/engine/api/graphql/workspace-resolver-builder/factories/update-one-resolver.factory.ts#L31-L43",
+          "https://github.com/twentyhq/twenty/blob/35c645064f72bc4e3180a2c6c506cbbfee170007/packages/twenty-server/src/engine/api/common/common-query-runners/common-update-one-query-runner.service.ts#L39-L61",
+          "https://github.com/twentyhq/twenty/blob/35c645064f72bc4e3180a2c6c506cbbfee170007/packages/twenty-server/src/engine/api/common/common-query-runners/common-update-many-query-runner.service.ts#L53-L72",
+          "https://github.com/twentyhq/twenty/blob/35c645064f72bc4e3180a2c6c506cbbfee170007/packages/twenty-front/src/modules/object-record/record-table/record-table-cell/components/RecordTableCellEditButton.tsx#L17-L25",
+          "https://github.com/twentyhq/twenty/blob/a6372e288ade9ed14ac2af1a7e224dabb6cc6021/packages/twenty-front/src/modules/object-record/record-field/ui/utils/getFieldButtonIcon.ts#L23-L35"
+        ],
+        "limitations": [
+          "Supported replacement and clearing are not blocked and no data loss was observed.",
+          "Other roles/devices and all shared widgets were not established.",
+          "Newer runtime was not tested."
+        ]
+      }
+    },
+    {
+      "id": "settings-data-model-pass2-b5cf60c3",
+      "name": "Mobile Relations table collapses names under App badges",
+      "severity": 1,
+      "owningArea": "twenty/settings-data-model",
+      "summary": "At the tested 390px width, the Relations Name column collapses and relationship labels draw beneath Custom App badges.",
+      "expected": "Relationship names should remain readable and separate from App badges in the mobile Relations table.",
+      "actual": "At the tested 390px width, the Relations Name column collapses and relationship labels draw beneath Custom App badges. Wider layouts show the same names correctly; row clicks still open the correct field editor.",
+      "reproSteps": [
+        "Create two fresh short-named custom objects and a relation with a distinctive readable name.",
+        "Open the custom object Relations settings and resize to 390px with navigation collapsed.",
+        "Observe related and inverse relation names obscured beneath App badges.",
+        "Open a row to verify the correct relation editor and compare wider desktop layout, where the same labels are readable."
+      ],
+      "sourceCause": "The Relations grid consumes fixed width for other columns before allocating the Name column, leaving zero width at the tested viewport. Visible overflow draws labels under App badges.",
+      "reviewEvidence": {
+        "basis": "Independent Codex and Claude browser/source reviews, coordinator-checked evidence and explicit user batch approval of all seven remaining agreed-positive cases at severity 1.",
+        "userAccepted": true,
+        "sourceRevision": "35c645064f72bc4e3180a2c6c506cbbfee170007",
+        "severityReason": "User accepted the table’s severity 1 for the narrowed observed GUI/display scope.",
+        "analysis": [
+          "Both reviewers reproduced two fresh relation pairs, including inverse rows, and verified wider controls.",
+          "Existing Mobile Companies field rows coverage is the same symptom in the separate Fields-table component; its duplicate observation is excluded here."
+        ],
+        "sourceReferences": [
+          "https://github.com/twentyhq/twenty/blob/35c645064f72bc4e3180a2c6c506cbbfee170007/packages/twenty-front/src/modules/app/components/SettingsRoutes.tsx#L834-L848",
+          "https://github.com/twentyhq/twenty/blob/35c645064f72bc4e3180a2c6c506cbbfee170007/packages/twenty-front/src/pages/settings/data-model/SettingsObjectDetailPage.tsx#L46-L59",
+          "https://github.com/twentyhq/twenty/blob/35c645064f72bc4e3180a2c6c506cbbfee170007/packages/twenty-front/src/modules/settings/data-model/object-details/components/tabs/ObjectFields.tsx#L53-L93",
+          "https://github.com/twentyhq/twenty/blob/35c645064f72bc4e3180a2c6c506cbbfee170007/packages/twenty-front/src/modules/settings/data-model/object-details/components/SettingsObjectRelationItemTableRow.tsx#L36-L50",
+          "https://github.com/twentyhq/twenty/blob/35c645064f72bc4e3180a2c6c506cbbfee170007/packages/twenty-front/src/modules/settings/data-model/object-details/components/SettingsObjectRelationItemTableRow.tsx#L149-L219",
+          "https://github.com/twentyhq/twenty/blob/35c645064f72bc4e3180a2c6c506cbbfee170007/packages/twenty-front/src/modules/settings/data-model/object-details/components/SettingsObjectFieldItemTableRow.tsx#L45-L60",
+          "https://github.com/twentyhq/twenty/blob/35c645064f72bc4e3180a2c6c506cbbfee170007/packages/twenty-front/src/modules/settings/data-model/object-details/components/SettingsObjectRelationsTable.tsx#L232-L255",
+          "https://github.com/twentyhq/twenty/blob/35c645064f72bc4e3180a2c6c506cbbfee170007/packages/twenty-front/src/pages/settings/data-model/SettingsObjectFieldTable.tsx#L223-L254",
+          "https://github.com/twentyhq/twenty/blob/35c645064f72bc4e3180a2c6c506cbbfee170007/packages/twenty-front/src/modules/ui/layout/table/components/TableRow.tsx#L25-L35",
+          "https://github.com/twentyhq/twenty/blob/35c645064f72bc4e3180a2c6c506cbbfee170007/packages/twenty-front/src/modules/ui/layout/table/components/TableCell.tsx#L31-L37",
+          "https://github.com/twentyhq/twenty/blob/35c645064f72bc4e3180a2c6c506cbbfee170007/packages/twenty-front/src/modules/settings/components/SettingsPageContainer.tsx#L24-L47",
+          "https://github.com/twentyhq/twenty/blob/a6372e288ade9ed14ac2af1a7e224dabb6cc6021/packages/twenty-front/src/modules/settings/data-model/object-details/components/SettingsObjectRelationItemTableRow.tsx#L36-L50",
+          "https://github.com/twentyhq/twenty/blob/a6372e288ade9ed14ac2af1a7e224dabb6cc6021/packages/twenty-front/src/modules/settings/data-model/object-details/components/SettingsObjectFieldItemTableRow.tsx#L46-L61",
+          "https://github.com/twentyhq/twenty/blob/a6372e288ade9ed14ac2af1a7e224dabb6cc6021/packages/twenty-front/src/modules/ui/layout/table/components/TableRow.tsx#L25-L35"
+        ],
+        "limitations": [
+          "No data loss or blocked row editing was observed.",
+          "Width sweeps establish passing widths, not a universal exact threshold.",
+          "Newer runtime was not tested."
+        ]
+      },
+      "matchingGuidance": {
+        "relatedReference": "mo-30m-twenty-8",
+        "distinction": "This entry covers the Relations table and its grid constants. The existing entry covers the separate Fields table; duplicated Fields observations are excluded."
+      }
+    },
+    {
+      "id": "settings-data-model-pass2-94aedba6",
+      "name": "Multi-value field previews exceed the configured maximum count",
+      "severity": 1,
+      "owningArea": "twenty/settings-data-model",
+      "summary": "A saved Emails field configured for one address still previews four sample email chips, even though actual record entry enforces the limit.",
+      "expected": "The live Emails configuration preview should reflect the selected maximum item count rather than show more example values than that maximum.",
+      "actual": "Setting Maximum email addresses to one, saving and reopening leaves four example chips in the preview. The actual max-one record editor allows only one email.",
+      "reproSteps": [
+        "Create a fresh Emails field in a custom object through Data model settings.",
+        "Set Maximum email addresses to one, save and reopen the field settings.",
+        "Observe four example email chips in the preview despite the retained maximum of one.",
+        "Control: open a record using this field and confirm only one email can be entered. Default maximum ten with four preview chips is consistent."
+      ],
+      "sourceCause": "The preview receives the field metadata but its example values remain static; rendering displays every supplied sample item rather than limiting the sample to the configured maximum.",
+      "reviewEvidence": {
+        "basis": "Mo candidate, Claude browser/source verification, Codex source/contract rejection, coordinator checks and explicit user acceptance at severity 1.",
+        "userAccepted": true,
+        "sourceRevision": "35c645064f72bc4e3180a2c6c506cbbfee170007",
+        "severityReason": "The settings preview contradicts the selected maximum while real record entry correctly enforces it; no data-limit bypass or loss was demonstrated.",
+        "analysis": [
+          "Claude reproduced on two fresh saved Emails fields and confirmed the record-input limit works. Codex rejected at the source/contract bar and did not independently reproduce in the browser.",
+          "The feature documents limits on field values without an explicit preview-limit promise. Claude inferred a live-preview consistency requirement; the user explicitly accepted that UI scope.",
+          "Links, Array and Phones max-one previews also showed excess items before save, but their saved variants and Files were not verified. The required persisted reproduction is Emails.",
+          "Static sample implementation proves the behavior, not whether the preview should be considered acceptable. The user resolved that disagreement as severity 1.",
+          "Inspected newer source retains static preview paths; newer runtime was not tested."
+        ],
+        "sourceReferences": [
+          "https://github.com/twentyhq/twenty/blob/35c645064f72bc4e3180a2c6c506cbbfee170007/packages/twenty-front/src/modules/settings/data-model/fields/forms/components/SettingsDataModelFieldSettingsFormCard.tsx#L324-L353",
+          "https://github.com/twentyhq/twenty/blob/35c645064f72bc4e3180a2c6c506cbbfee170007/packages/twenty-front/src/modules/settings/data-model/fields/forms/components/SettingsDataModelFieldMaxValuesForm.tsx#L66-L99",
+          "https://github.com/twentyhq/twenty/blob/35c645064f72bc4e3180a2c6c506cbbfee170007/packages/twenty-front/src/modules/settings/data-model/fields/preview/components/SettingsDataModelFieldPreview.tsx#L78-L88",
+          "https://github.com/twentyhq/twenty/blob/35c645064f72bc4e3180a2c6c506cbbfee170007/packages/twenty-front/src/modules/settings/data-model/fields/preview/hooks/useFieldPreviewValue.ts#L54-L62",
+          "https://github.com/twentyhq/twenty/blob/35c645064f72bc4e3180a2c6c506cbbfee170007/packages/twenty-front/src/modules/settings/data-model/fields/preview/utils/getFieldPreviewValue.ts#L38-L46",
+          "https://github.com/twentyhq/twenty/blob/35c645064f72bc4e3180a2c6c506cbbfee170007/packages/twenty-front/src/modules/settings/data-model/fields/preview/utils/getPhonesFieldPreviewValue.ts#L41-L60",
+          "https://github.com/twentyhq/twenty/blob/35c645064f72bc4e3180a2c6c506cbbfee170007/packages/twenty-front/src/modules/settings/data-model/constants/SettingsCompositeFieldTypeConfigs.ts#L122-L130",
+          "https://github.com/twentyhq/twenty/blob/35c645064f72bc4e3180a2c6c506cbbfee170007/packages/twenty-front/src/modules/ui/field/display/components/EmailsDisplay.tsx#L34-L62",
+          "https://github.com/twentyhq/twenty/blob/35c645064f72bc4e3180a2c6c506cbbfee170007/packages/twenty-front/src/modules/object-record/record-field/ui/meta-types/input/components/MultiItemFieldInput.tsx#L146-L148",
+          "https://github.com/twentyhq/twenty/blob/35c645064f72bc4e3180a2c6c506cbbfee170007/packages/twenty-front/src/modules/object-record/record-field/ui/meta-types/input/components/MultiItemFieldInput.tsx#L184-L185",
+          "https://github.com/twentyhq/twenty/blob/35c645064f72bc4e3180a2c6c506cbbfee170007/packages/twenty-front/src/modules/object-record/record-field/ui/meta-types/input/components/MultiItemFieldInput.tsx#L367-L375",
+          "https://github.com/twentyhq/twenty/blob/a6372e288ade9ed14ac2af1a7e224dabb6cc6021/packages/twenty-front/src/modules/settings/data-model/fields/preview/utils/getFieldPreviewValue.ts#L42-L45",
+          "https://github.com/twentyhq/twenty/blob/a6372e288ade9ed14ac2af1a7e224dabb6cc6021/packages/twenty-front/src/modules/settings/data-model/fields/preview/hooks/useFieldPreviewValue.ts#L54-L57",
+          "https://github.com/twentyhq/twenty/blob/a6372e288ade9ed14ac2af1a7e224dabb6cc6021/packages/twenty-front/src/modules/settings/data-model/constants/SettingsCompositeFieldTypeConfigs.ts#L125-L133"
+        ],
+        "limitations": [
+          "Actual record entry enforces maximum one; no limit bypass or lost data occurred.",
+          "Codex performed source/contract review only, with no independent browser reproduction.",
+          "Saved sibling-field variants and Files remain unverified.",
+          "Newer runtime was not tested."
+        ]
+      }
     }
   ]
 }

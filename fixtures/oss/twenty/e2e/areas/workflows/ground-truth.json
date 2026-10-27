@@ -1300,6 +1300,983 @@
         "relatedReference": "workflows-recovered-13",
         "distinction": "Recovered-13 loses pending answers after opening the selected Company and returning with panel Back. This entry loses saved answers solely by crossing the desktop/mobile layout breakpoint, with no record navigation, and confirms empty submitted Form output."
       }
+    },
+    {
+      "id": "workflows-pass2-b67946f7",
+      "name": "A resumed terminal Delay completes the workflow while another branch is unfinished",
+      "severity": 3,
+      "owningArea": "twenty/workflows",
+      "summary": "A terminal Delay resumes and completes the entire run while parallel work remains, failing unfinished steps and omitting downstream actions.",
+      "expected": "Finishing one parallel branch should leave the workflow running until other selected branches finish.",
+      "actual": "A one-second terminal Delay completes the run while a parallel longer Delay is waiting. The longer step becomes Failed and its successor never starts, despite the overall Completed status.",
+      "reproSteps": [
+        "Create a manual workflow whose trigger fans out into two branches.",
+        "Make the first branch a one-second Delay with no successor.",
+        "Make the second branch an eight-second Delay followed by a one-second Delay. Save and test.",
+        "Observe that the run becomes Completed when the short branch finishes, the longer Delay becomes Failed and its successor remains unstarted.",
+        "Control: remove the short terminal branch and test again; the longer chain completes normally."
+      ],
+      "sourceCause": "After a Delay resumes successfully, the resume job ends the run Completed when that step has no next IDs, bypassing normal keep-running computation. Ending the run preserves Completed while failing unfinished steps.",
+      "reviewEvidence": {
+        "basis": "Mo evidence, independent Codex and Claude browser/source reviews, coordinator verification, explicit maintainer correction and user acceptance.",
+        "userAccepted": true,
+        "sourceRevision": "35c645064f72bc4e3180a2c6c506cbbfee170007",
+        "severityReason": "Workflow execution abandons selected unfinished work and falsely reports completion.",
+        "analysis": [
+          "Both reviewers independently reproduced with simple parallel nonzero Delays, excluding Iterator configuration and graph-disconnection assumptions. Both also reproduced the original Iterator/If-Else symptom on fresh workflows.",
+          "Claude observed the simple graph complete around 1.2 seconds; removing the short branch allowed the longer chain to complete in approximately nine seconds. Codex independently tested a five-second longer branch.",
+          "Maintainer commit dd161a56b88b3bb7a4e8b38388b898f9a3e1f0ea explicitly repairs terminal-Delay parallel completion by adding a keep-running guard. Inspected newer source includes that repair; newer runtime was not tested.",
+          "Accepted zero-duration Delay failure has a different waiting-state race and ends Failed. This case uses nonzero Delays and ends Completed despite unfinished work."
+        ],
+        "sourceReferences": [
+          "https://github.com/twentyhq/twenty/blob/35c645064f72bc4e3180a2c6c506cbbfee170007/packages/twenty-front/src/modules/command-menu-item/engine-command/record/single-record/workflow/components/TestWorkflowSingleRecordCommand.tsx#L25-L40",
+          "https://github.com/twentyhq/twenty/blob/35c645064f72bc4e3180a2c6c506cbbfee170007/packages/twenty-front/src/modules/workflow/hooks/useRunWorkflowVersion.tsx#L153-L165",
+          "https://github.com/twentyhq/twenty/blob/35c645064f72bc4e3180a2c6c506cbbfee170007/packages/twenty-server/src/engine/core-modules/workflow/resolvers/workflow-trigger.resolver.ts#L74-L122",
+          "https://github.com/twentyhq/twenty/blob/35c645064f72bc4e3180a2c6c506cbbfee170007/packages/twenty-server/src/modules/workflow/workflow-trigger/workspace-services/workflow-trigger.workspace-service.ts#L70-L95",
+          "https://github.com/twentyhq/twenty/blob/35c645064f72bc4e3180a2c6c506cbbfee170007/packages/twenty-server/src/modules/workflow/workflow-runner/workspace-services/workflow-runner.workspace-service.ts#L423-L455",
+          "https://github.com/twentyhq/twenty/blob/35c645064f72bc4e3180a2c6c506cbbfee170007/packages/twenty-server/src/modules/workflow/workflow-executor/workflow-actions/delay/delay.workflow-action.ts#L101-L116",
+          "https://github.com/twentyhq/twenty/blob/35c645064f72bc4e3180a2c6c506cbbfee170007/packages/twenty-server/src/modules/workflow/workflow-executor/workflow-actions/delay/jobs/resume-delayed-workflow.job.ts#L77-L97",
+          "https://github.com/twentyhq/twenty/blob/35c645064f72bc4e3180a2c6c506cbbfee170007/packages/twenty-server/src/modules/workflow/workflow-runner/jobs/run-workflow.job.ts#L197-L219",
+          "https://github.com/twentyhq/twenty/blob/35c645064f72bc4e3180a2c6c506cbbfee170007/packages/twenty-server/src/modules/workflow/workflow-executor/workspace-services/workflow-executor.workspace-service.ts#L304-L323",
+          "https://github.com/twentyhq/twenty/blob/35c645064f72bc4e3180a2c6c506cbbfee170007/packages/twenty-server/src/modules/workflow/workflow-executor/utils/workflow-should-keep-running.util.ts#L14-L18",
+          "https://github.com/twentyhq/twenty/commit/dd161a56b88b3bb7a4e8b38388b898f9a3e1f0ea"
+        ],
+        "limitations": [
+          "Exact worker scheduling was inferred from source and stored results; no worker trace was captured.",
+          "Related Form and twenty-step continuation callers were inspected in source but not browser-reproduced.",
+          "No email or other external action was executed.",
+          "Newer runtime was not tested."
+        ]
+      }
+    },
+    {
+      "id": "workflows-pass2-01f079fa",
+      "name": "Delete Record and Update Record show an ineffective Remove variable X",
+      "severity": 3,
+      "owningArea": "twenty/workflows",
+      "summary": "The advertised Remove variable control leaves saved record mappings unchanged in Delete Record and Update Record.",
+      "expected": "Clicking the mapped Record chip’s Remove variable X should clear the mapping and save the change.",
+      "actual": "The mapped Record chip remains after clicking its X, and no save request occurs. Delete Record and Update Record reproduce with Notes and Companies. Choosing No record from the dropdown clears the mapping.",
+      "reproSteps": [
+        "Create and save a workflow with a previous step that provides a record.",
+        "Configure Delete Record to use that previous-step record in its Record input, and wait for saving to finish.",
+        "Click the mapped chip’s Remove variable X and observe that the chip stays unchanged. Wait and reopen the saved configuration to confirm it remains mapped.",
+        "Repeat in Update Record.",
+        "Controls: choose No record from Delete Record’s dropdown to clear it, or use the equivalent Record ID removal X in Create or Update Record; these controls work."
+      ],
+      "sourceCause": "The enabled chip receives an onRemove wrapper, but its picker forwards removal only to optional onClear. Delete Record and Update Record omit onClear, whereas Create or Update Record supplies it.",
+      "reviewEvidence": {
+        "basis": "Mo evidence, independent Codex and Claude browser/source reviews, coordinator checks and user approval.",
+        "userAccepted": true,
+        "sourceRevision": "35c645064f72bc4e3180a2c6c506cbbfee170007",
+        "severityReason": "A supported mapping-removal action does not function, requiring a separate dropdown workaround.",
+        "analysis": [
+          "Each reviewer used two fresh saved workflows. Both confirmed no save on X, with Notes, Companies, Update Record and post-reload checks. Claude tested both locator and coordinate clicks.",
+          "The equivalent Create or Update Record removal control works. Choosing No record in the Delete dropdown also works. Codex additionally checked static replacement and a text-chip control.",
+          "Inspected newer source still omits the clearing callbacks; newer runtime was not tested. History supports a switch to optional onClear, but accidental regression intent is inferred rather than stated by maintainers.",
+          "The rejected refresh-before-autosave mapping report has a different trigger. This case begins with a persisted mapping, requires no refresh and issues no save request to wait for."
+        ],
+        "sourceReferences": [
+          "https://github.com/twentyhq/twenty/blob/35c645064f72bc4e3180a2c6c506cbbfee170007/packages/twenty-front/src/modules/object-record/record-field/ui/form-types/components/BaseChip.tsx#L129-L153",
+          "https://github.com/twentyhq/twenty/blob/35c645064f72bc4e3180a2c6c506cbbfee170007/packages/twenty-front/src/modules/object-record/record-field/ui/form-types/components/VariableChip.tsx#L37-L43",
+          "https://github.com/twentyhq/twenty/blob/35c645064f72bc4e3180a2c6c506cbbfee170007/packages/twenty-front/src/modules/object-record/record-field/ui/form-types/components/FormSingleRecordFieldChip.tsx#L59-L68",
+          "https://github.com/twentyhq/twenty/blob/35c645064f72bc4e3180a2c6c506cbbfee170007/packages/twenty-front/src/modules/object-record/record-field/ui/form-types/components/FormSingleRecordPicker.tsx#L141-L177",
+          "https://github.com/twentyhq/twenty/blob/35c645064f72bc4e3180a2c6c506cbbfee170007/packages/twenty-front/src/modules/workflow/workflow-steps/workflow-actions/components/WorkflowEditActionDeleteRecord.tsx#L143-L153",
+          "https://github.com/twentyhq/twenty/blob/35c645064f72bc4e3180a2c6c506cbbfee170007/packages/twenty-front/src/modules/workflow/workflow-steps/workflow-actions/components/WorkflowEditActionUpdateRecord.tsx#L185-L195",
+          "https://github.com/twentyhq/twenty/blob/35c645064f72bc4e3180a2c6c506cbbfee170007/packages/twenty-front/src/modules/workflow/workflow-steps/workflow-actions/components/WorkflowEditActionDeleteRecord.tsx#L65-L106",
+          "https://github.com/twentyhq/twenty/blob/35c645064f72bc4e3180a2c6c506cbbfee170007/packages/twenty-front/src/modules/side-panel/pages/workflow/step/edit/components/SidePanelWorkflowEditStepContent.tsx#L22-L36",
+          "https://github.com/twentyhq/twenty/blob/35c645064f72bc4e3180a2c6c506cbbfee170007/packages/twenty-front/src/modules/workflow/workflow-steps/hooks/useUpdateStep.ts#L10-L16",
+          "https://github.com/twentyhq/twenty/blob/35c645064f72bc4e3180a2c6c506cbbfee170007/packages/twenty-front/src/modules/workflow/workflow-steps/hooks/useUpdateWorkflowVersionStep.ts#L39-L77"
+        ],
+        "limitations": [
+          "No lost saved data or harmful workflow execution was established.",
+          "Wait durations were endpoint observations, not continuous twenty-five-second monitoring.",
+          "Additional source-only callers are excluded from runtime scope.",
+          "Newer runtime was not tested."
+        ]
+      }
+    },
+    {
+      "id": "workflows-pass2-3bc6d300",
+      "name": "Skipping a nested Iterator stalls the outer loop and leaves downstream actions unstarted",
+      "severity": 3,
+      "owningArea": "twenty/workflows",
+      "summary": "A Filter that skips a nested Iterator prevents its completion handoff to the outer loop, leaving the server run Running and later actions unstarted.",
+      "expected": "Skipping a nested loop after a nonmatching Filter should allow the outer loop to advance and eventually complete.",
+      "actual": "The Filter is Stopped, nested Iterator and body are Skipped, its completed-path action is Not started, and the outer Iterator and stored workflow run remain Running. Stalls persisted across reload and for multiple minutes.",
+      "reproSteps": [
+        "Create a manual workflow with an outer Iterator over three items.",
+        "Inside its loop, configure a Filter followed by a nested Iterator with valid loop-body and completed-path connections. Use ordinary nonzero Delays as harmless actions.",
+        "Configure the Filter so at least one outer item does not match, save and test.",
+        "Observe that the nonmatching Filter skips the nested Iterator but the outer loop does not advance; later actions remain unstarted and the server run remains Running after waiting and reloading.",
+        "Controls: remove the nested Iterator and confirm all outer items finish; alternatively let all items pass the Filter and confirm the nested iterations complete.",
+        "Variation: allow only the first outer item to pass; it completes, then execution stalls on the next nonmatch."
+      ],
+      "sourceCause": "The skipped Iterator returns loop-body IDs but omits completed-path children, preventing the handoff back to the outer loop. Keep-running logic retains Running because the outer Iterator remains active.",
+      "reviewEvidence": {
+        "basis": "Mo evidence, independent Codex and Claude browser/source verification, coordinator checks and user acceptance.",
+        "userAccepted": true,
+        "sourceRevision": "35c645064f72bc4e3180a2c6c506cbbfee170007",
+        "severityReason": "Valid conditional nested-loop execution stalls on the server and prevents later selected work from running.",
+        "analysis": [
+          "Each reviewer reproduced on two independently prepared workflows. Codex used a fresh workflow and a UI-copied/reconfigured second with final references verified; Claude built two fresh flows through the editor.",
+          "Codex verified a stall beyond one minute and after full-record reload. Claude observed approximately eight and over ten minutes. These are bounded observations, not proof of permanence.",
+          "Without the nested Iterator, all three outer items finish. With the nested Iterator and all items passing, three-by-three iterations complete. A first-item-only passing condition stalls on the later nonmatch.",
+          "Upstream commit 36666d014052fbf9533894d877931debd102b65c repairs terminal Iterator handoff within broader branch-convergence changes. Inspected newer source includes completed-path dispatch and tests, but its runtime was not tested.",
+          "Existing stale Home/Flow statuses have completed server runs. Existing invalid Iterator-return references and zero-duration Delay failures have different causes; these saved graphs pass the all-matching control."
+        ],
+        "sourceReferences": [
+          "https://github.com/twentyhq/twenty/blob/35c645064f72bc4e3180a2c6c506cbbfee170007/packages/twenty-front/src/modules/command-menu-item/engine-command/record/single-record/workflow/components/TestWorkflowSingleRecordCommand.tsx#L25-L40",
+          "https://github.com/twentyhq/twenty/blob/35c645064f72bc4e3180a2c6c506cbbfee170007/packages/twenty-front/src/modules/workflow/hooks/useRunWorkflowVersion.tsx#L153-L165",
+          "https://github.com/twentyhq/twenty/blob/35c645064f72bc4e3180a2c6c506cbbfee170007/packages/twenty-server/src/engine/core-modules/workflow/resolvers/workflow-trigger.resolver.ts#L74-L122",
+          "https://github.com/twentyhq/twenty/blob/35c645064f72bc4e3180a2c6c506cbbfee170007/packages/twenty-server/src/modules/workflow/workflow-trigger/workspace-services/workflow-trigger.workspace-service.ts#L70-L94",
+          "https://github.com/twentyhq/twenty/blob/35c645064f72bc4e3180a2c6c506cbbfee170007/packages/twenty-server/src/modules/workflow/workflow-runner/workspace-services/workflow-runner.workspace-service.ts#L423-L455",
+          "https://github.com/twentyhq/twenty/blob/35c645064f72bc4e3180a2c6c506cbbfee170007/packages/twenty-server/src/modules/workflow/workflow-runner/jobs/run-workflow.job.ts#L84-L138",
+          "https://github.com/twentyhq/twenty/blob/35c645064f72bc4e3180a2c6c506cbbfee170007/packages/twenty-server/src/modules/workflow/workflow-executor/workflow-actions/filter/filter.workflow-action.ts#L42-L52",
+          "https://github.com/twentyhq/twenty/blob/35c645064f72bc4e3180a2c6c506cbbfee170007/packages/twenty-server/src/modules/workflow/workflow-executor/workflow-actions/iterator/utils/get-next-step-ids-for-iterator.util.ts#L28-L33",
+          "https://github.com/twentyhq/twenty/blob/35c645064f72bc4e3180a2c6c506cbbfee170007/packages/twenty-server/src/modules/workflow/workflow-executor/workspace-services/workflow-executor.workspace-service.ts#L215-L272",
+          "https://github.com/twentyhq/twenty/blob/35c645064f72bc4e3180a2c6c506cbbfee170007/packages/twenty-server/src/modules/workflow/workflow-executor/workflow-actions/iterator/utils/should-skip-iterator-step-execution.util.ts#L33-L45",
+          "https://github.com/twentyhq/twenty/commit/36666d014052fbf9533894d877931debd102b65c"
+        ],
+        "limitations": [
+          "Literal permanence and exact worker ordering were not established.",
+          "A delayed Stop observation does not establish a separate permanent Stop defect.",
+          "Activation, other roles, fail-safe settings and If/Else sibling runtime scope were not tested.",
+          "Newer runtime was not tested."
+        ]
+      }
+    },
+    {
+      "id": "workflows-pass2-59b1e32e",
+      "name": "Inserting If/Else on an existing edge disconnects the downstream continuation",
+      "severity": 3,
+      "owningArea": "twenty/workflows",
+      "summary": "Edge insertion of If/Else fails to connect its new branches to the previously connected downstream actions, persisting an unusable continuation.",
+      "expected": "Inserting If/Else on an existing workflow connection should preserve the downstream continuation through the newly created branches.",
+      "actual": "The first downstream action loses its incoming execution connection. Saving and reloading retain the disconnection, and testing leaves the existing downstream actions Not started. Connections among later downstream nodes can remain intact.",
+      "reproSteps": [
+        "Create and save a manual workflow with a connected Trigger → Delay chain.",
+        "Use the plus control on the existing connection to insert If/Else.",
+        "Observe that the existing Delay no longer has an incoming connection from either new branch.",
+        "Configure a valid condition, let the workflow save, reload and confirm the continuation remains disconnected.",
+        "Test and observe that the original downstream Delay does not start.",
+        "Controls: insert a Delay on the same kind of edge to preserve the continuation, or add If/Else at the end without inserting into an existing connection."
+      ],
+      "sourceCause": "Generic insertion assigns the previous successor to the inserted node’s nextStepIds, but If/Else construction creates empty branch nodes without that continuation. Rendering and execution follow the branches rather than the generic successor.",
+      "matchingGuidance": {
+        "distinction": "This entry covers inserting a new If/Else on an existing connection. Accepted Else-if route deletion and action-type replacement entries have different triggers and mutation paths. The terminal-Delay premature-completion entry covers an independent runtime cause, not saved graph mutation."
+      },
+      "reviewEvidence": {
+        "basis": "Mo evidence, independent Codex and Claude browser/source reviews, coordinator checks and user approval.",
+        "userAccepted": true,
+        "sourceRevision": "35c645064f72bc4e3180a2c6c506cbbfee170007",
+        "severityReason": "Supported graph insertion disconnects and prevents execution of previously connected downstream work.",
+        "analysis": [
+          "Both reviewers reproduced on multiple separately prepared configurations, including ordinary non-loop workflows and Iterator loop-edge cases. Saved/reloaded disconnection and omitted downstream execution were independently observed.",
+          "Inserting Delay through the same edge preserves the chain. Claude also verified that If/Else added at the end without insertion completes normally.",
+          "Claude observed affected runs remain Running for approximately four minutes and one minute. These are bounded observations, not proof of indefinite stalling.",
+          "Upstream change e26f727806 / PR #25133 explicitly connects downstream continuations to newly inserted branches and includes insertion/Iterator tests. The correction is absent from pinned source and present in the inspected newer snapshot; newer runtime was not tested."
+        ],
+        "sourceReferences": [
+          "https://github.com/twentyhq/twenty/blob/35c645064f72bc4e3180a2c6c506cbbfee170007/packages/twenty-front/src/modules/workflow/workflow-diagram/workflow-edges/components/WorkflowDiagramDefaultEdgeEditable.tsx#L69-L77",
+          "https://github.com/twentyhq/twenty/blob/35c645064f72bc4e3180a2c6c506cbbfee170007/packages/twenty-front/src/modules/side-panel/pages/workflow/step/create/components/SidePanelWorkflowCreateStepContent.tsx#L66-L76",
+          "https://github.com/twentyhq/twenty/blob/35c645064f72bc4e3180a2c6c506cbbfee170007/packages/twenty-server/src/engine/core-modules/workflow/resolvers/workflow-version-step.resolver.ts#L79-L89",
+          "https://github.com/twentyhq/twenty/blob/35c645064f72bc4e3180a2c6c506cbbfee170007/packages/twenty-server/src/modules/workflow/workflow-builder/workflow-version-step/workflow-version-step-creation.workspace-service.ts#L55-L94",
+          "https://github.com/twentyhq/twenty/blob/35c645064f72bc4e3180a2c6c506cbbfee170007/packages/twenty-server/src/modules/workflow/workflow-builder/workflow-version-step/utils/insert-step.ts#L46-L54",
+          "https://github.com/twentyhq/twenty/blob/35c645064f72bc4e3180a2c6c506cbbfee170007/packages/twenty-server/src/modules/workflow/workflow-builder/workflow-version-step/workflow-version-step-operations.workspace-service.ts#L621-L660",
+          "https://github.com/twentyhq/twenty/blob/35c645064f72bc4e3180a2c6c506cbbfee170007/packages/twenty-front/src/modules/workflow/workflow-diagram/utils/generateNodesAndEdgesForIfElseNode.ts#L69-L99",
+          "https://github.com/twentyhq/twenty/blob/35c645064f72bc4e3180a2c6c506cbbfee170007/packages/twenty-server/src/modules/workflow/workflow-executor/workflow-actions/if-else/utils/get-next-step-ids-for-if-else.util.ts#L20-L35",
+          "https://github.com/twentyhq/twenty/blob/35c645064f72bc4e3180a2c6c506cbbfee170007/packages/twenty-server/src/modules/workflow/workflow-builder/workflow-version-step/workflow-version-step-helpers.workspace-service.ts#L35-L71",
+          "https://github.com/twentyhq/twenty/blob/35c645064f72bc4e3180a2c6c506cbbfee170007/packages/twenty-server/src/engine/core-modules/workflow/services/workflow-version-core-sync.service.ts#L149-L165",
+          "https://github.com/twentyhq/twenty/blob/a6372e288ade9ed14ac2af1a7e224dabb6cc6021/packages/twenty-server/src/modules/workflow/workflow-builder/workflow-version-step/utils/insert-step.ts#L48-L70",
+          "https://github.com/twentyhq/twenty/blob/a6372e288ade9ed14ac2af1a7e224dabb6cc6021/packages/twenty-server/src/engine/core-modules/workflow/services/core-workflow-version-mutation.workspace-service.ts#L92-L120"
+        ],
+        "limitations": [
+          "Only the first downstream node necessarily loses its incoming connection; later downstream connections can remain.",
+          "Other roles, devices, top-level Add a Node and AI-tool insertion were not browser-tested.",
+          "Exact worker scheduling and universal indefinite stalling were not established.",
+          "Newer runtime was not tested."
+        ]
+      }
+    },
+    {
+      "id": "workflows-pass2-44655eeb",
+      "name": "Rejected fractional schedule activation leaves a persisted Active version without a registered trigger",
+      "severity": 3,
+      "owningArea": "twenty/workflows",
+      "summary": "Activating a saved fractional schedule fails cron validation after persisting Active status, without registering a trigger; replacement can also remove a working prior trigger.",
+      "expected": "Invalid schedule activation should leave the version inactive and preserve any previously working active schedule, or reject invalid configuration before activation changes are committed.",
+      "actual": "After saving a 1.5-day interval, Activate shows a cron-pattern error but persists the version as Active with lastPublishedVersionId set and no registered automated trigger. Reload retains the invalid interval and Active state. Replacing a valid active version can archive it and remove its trigger before the new activation fails.",
+      "reproSteps": [
+        "Create a scheduled workflow with Days set to 1.5 and wait for the configuration save to complete.",
+        "Click Activate and observe the cron-pattern error.",
+        "Reload and observe that the invalid interval remains saved and the version still appears Active with Deactivate available, despite lacking a registered schedule trigger.",
+        "Control: activate a fresh workflow scheduled every two days and verify consistent Active status and a registered trigger.",
+        "Replacement variation: activate a valid two-day schedule, save a new version with a 1.5-day interval and activate it. Observe the prior valid version archived and its trigger removed while the invalid new version remains Active without a replacement trigger."
+      ],
+      "sourceCause": "The interval input accepts positive fractions but cron construction rejects them. Activation persists status changes before enabling the trigger, and the observed failure does not roll those writes back. Prior-version deactivation can occur before the new trigger registration fails.",
+      "reviewEvidence": {
+        "basis": "Mo evidence, independent Codex and Claude browser/source reviews, coordinator checks and user acceptance.",
+        "userAccepted": true,
+        "sourceRevision": "35c645064f72bc4e3180a2c6c506cbbfee170007",
+        "severityReason": "Failed activation persists a false Active version without a scheduled trigger and can remove a previously working schedule registration.",
+        "analysis": [
+          "Codex verified two fresh invalid workflows and a valid two-day control. Claude independently tested a fresh invalid workflow, replacement of an active two-day version with 1.5 days, and a 1.5-minute variant.",
+          "Successful configuration save, persisted ACTIVE status, publication reference and absent automated-trigger registration distinguish this from optimistic display state or unsaved invalid text.",
+          "The valid two-day control registers 0 0 */2 * * and activates consistently. Deactivate recovers affected configurations; another Activate can be refused because the version is no longer Draft.",
+          "The observed replacement removes a working trigger, but neither reviewer waited for a missed future execution. Future nonfiring is inferred from absent registration, not sampled as a scheduled-run outcome.",
+          "The inspected newer source rewrites activation. Similar ordering and fractional input acceptance do not establish equivalent rollback behavior; newer runtime was not tested."
+        ],
+        "sourceReferences": [
+          "https://github.com/twentyhq/twenty/blob/35c645064f72bc4e3180a2c6c506cbbfee170007/packages/twenty-front/src/modules/workflow/workflow-trigger/components/WorkflowEditTriggerCronForm.tsx#L100-L187",
+          "https://github.com/twentyhq/twenty/blob/35c645064f72bc4e3180a2c6c506cbbfee170007/packages/twenty-front/src/modules/workflow/workflow-trigger/components/WorkflowEditTriggerCronForm.tsx#L302-L450",
+          "https://github.com/twentyhq/twenty/blob/35c645064f72bc4e3180a2c6c506cbbfee170007/packages/twenty-front/src/modules/workflow/workflow-trigger/components/CronExpressionHelper.tsx#L103-L130",
+          "https://github.com/twentyhq/twenty/blob/35c645064f72bc4e3180a2c6c506cbbfee170007/packages/twenty-front/src/modules/workflow/workflow-trigger/hooks/useUpdateWorkflowVersionTrigger.ts#L53-L102",
+          "https://github.com/twentyhq/twenty/blob/35c645064f72bc4e3180a2c6c506cbbfee170007/packages/twenty-server/src/engine/core-modules/workflow/resolvers/workflow-version-step.resolver.ts#L104-L117",
+          "https://github.com/twentyhq/twenty/blob/35c645064f72bc4e3180a2c6c506cbbfee170007/packages/twenty-server/src/modules/workflow/workflow-builder/workflow-version-step/workflow-version-step.workspace-service.ts#L56-L80",
+          "https://github.com/twentyhq/twenty/blob/35c645064f72bc4e3180a2c6c506cbbfee170007/packages/twenty-server/src/modules/workflow/workflow-builder/workflow-version-step/workflow-version-step-helpers.workspace-service.ts#L35-L71",
+          "https://github.com/twentyhq/twenty/blob/35c645064f72bc4e3180a2c6c506cbbfee170007/packages/twenty-server/src/engine/core-modules/workflow/services/workflow-version-core-sync.service.ts#L112-L183",
+          "https://github.com/twentyhq/twenty/blob/35c645064f72bc4e3180a2c6c506cbbfee170007/packages/twenty-server/src/engine/core-modules/workflow/resolvers/workflow-trigger.resolver.ts#L33-L59",
+          "https://github.com/twentyhq/twenty/blob/35c645064f72bc4e3180a2c6c506cbbfee170007/packages/twenty-server/src/modules/workflow/workflow-trigger/utils/assert-version-can-be-activated.util.ts#L111-L238",
+          "https://github.com/twentyhq/twenty/blob/35c645064f72bc4e3180a2c6c506cbbfee170007/packages/twenty-server/src/modules/workflow/workflow-trigger/workspace-services/workflow-trigger.workspace-service.ts#L270-L387",
+          "https://github.com/twentyhq/twenty/blob/35c645064f72bc4e3180a2c6c506cbbfee170007/packages/twenty-server/src/engine/twenty-orm/repository/workspace.repository.ts#L584-L618"
+        ],
+        "limitations": [
+          "No expected future scheduled execution was observed being missed.",
+          "Exact transaction/ORM rollback failure is source-supported inference without live SQL or TypeORM tracing.",
+          "Other invalid strings and ranges are not generalized.",
+          "Toast placeholder formatting and unisolated action availability at one width are excluded.",
+          "Newer runtime was not tested."
+        ]
+      }
+    },
+    {
+      "id": "workflows-pass2-5fce5559",
+      "name": "Duplicate from a read-only active Delay inspector changes a hidden draft and reports an error",
+      "severity": 3,
+      "owningArea": "twenty/workflows",
+      "summary": "Duplicate node in a read-only active-version Delay inspector reports an error while persisting a duplicate into a hidden current or new draft.",
+      "expected": "A read-only active-version inspector should not expose mutation controls that silently alter a different draft; supported draft editing should transition coherently and report its actual outcome.",
+      "actual": "Options opens normally, but Duplicate node reports an applyDiff error while saving a duplicate in the current or newly created draft. The published active version remains unchanged. Claude additionally observed repeated duplication crash the content page after a draft existed, with another duplicate persisted; reload recovered.",
+      "reproSteps": [
+        "Create and activate a manual workflow containing a Delay.",
+        "Open the active version through Version history and inspect its Delay in the read-only view.",
+        "Open Options and choose Duplicate node. Observe the applyDiff error.",
+        "Inspect the current or newly created draft and confirm the duplicate was saved there; confirm the published active graph is unchanged.",
+        "Control: duplicate a Delay through the normal editable workflow view; duplication succeeds without this read-only error sequence."
+      ],
+      "sourceCause": "The pinned Delay inspector exposes its mutation footer despite read-only state. Duplication targets an updatable draft and then applies the returned diff to the displayed flow and a partially cached draft record lacking steps. Exact error/cache timing is source-supported inference rather than a complete live trace.",
+      "matchingGuidance": {
+        "relatedReference": "workflows-N47",
+        "distinction": "N47 covers Delay controls in completed runs or archived versions modifying the current draft. This entry covers read-only active Version history → Delay → Duplicate, its persisted hidden-draft change and error. The accepted codex-30m-twenty-3 instead begins with normal-editor Add a Node and covers its auto-draft error/retry crash."
+      },
+      "reviewEvidence": {
+        "basis": "Mo evidence, independent Codex and Claude browser/source reviews, coordinator verification and user acceptance as related coverage at the lower severity.",
+        "userAccepted": true,
+        "sourceRevision": "35c645064f72bc4e3180a2c6c506cbbfee170007",
+        "severityReason": "Both agents establish erroneous mutation of a hidden draft and a misleading failure. Codex scores 3, Claude 5; use the lower score 3.",
+        "analysis": [
+          "Each reviewer reproduced on two fresh workflows. Ordinary nonzero Delays reproduce; the failure does not require a zero-duration runtime bug. Opening Options alone passes, while Duplicate triggers the error.",
+          "Normal-editor duplication passes. The published active version is unchanged; current or newly created draft content is modified.",
+          "Claude independently repeated Duplicate after a draft existed on two workflows and observed a recoverable content-page crash with undefined.id errors and another persisted duplicate. Codex did not establish that crash extension.",
+          "Inspected newer source hides the read-only footer, removes the Apollo applyDiff path and moves the flow to the target draft first. These are source-level repairs; newer runtime was not tested.",
+          "Coverage overlaps historical Delay mutation and normal-editor auto-draft failures. Matching guidance distinguishes the approved active-version read-only trigger from those accepted entries."
+        ],
+        "sourceReferences": [
+          "https://github.com/twentyhq/twenty/blob/35c645064f72bc4e3180a2c6c506cbbfee170007/packages/twenty-front/src/modules/side-panel/pages/workflow/step/view/components/SidePanelWorkflowViewStepContent.tsx#L24-L31",
+          "https://github.com/twentyhq/twenty/blob/35c645064f72bc4e3180a2c6c506cbbfee170007/packages/twenty-front/src/modules/workflow/workflow-steps/components/WorkflowStepDetail.tsx#L268-L275",
+          "https://github.com/twentyhq/twenty/blob/35c645064f72bc4e3180a2c6c506cbbfee170007/packages/twenty-front/src/modules/workflow/workflow-steps/workflow-actions/delay-actions/components/WorkflowEditActionDelay.tsx#L169-L235",
+          "https://github.com/twentyhq/twenty/blob/35c645064f72bc4e3180a2c6c506cbbfee170007/packages/twenty-front/src/modules/workflow/workflow-steps/components/WorkflowStepFooter.tsx#L75-L78",
+          "https://github.com/twentyhq/twenty/blob/35c645064f72bc4e3180a2c6c506cbbfee170007/packages/twenty-front/src/modules/workflow/workflow-steps/hooks/useDuplicateStep.ts#L23-L50",
+          "https://github.com/twentyhq/twenty/blob/35c645064f72bc4e3180a2c6c506cbbfee170007/packages/twenty-front/src/modules/workflow/hooks/useGetUpdatableWorkflowVersionOrThrow.ts#L16-L34",
+          "https://github.com/twentyhq/twenty/blob/35c645064f72bc4e3180a2c6c506cbbfee170007/packages/twenty-front/src/modules/workflow/hooks/useCreateDraftFromWorkflowVersion.ts#L34-L50",
+          "https://github.com/twentyhq/twenty/blob/35c645064f72bc4e3180a2c6c506cbbfee170007/packages/twenty-front/src/modules/workflow/workflow-steps/hooks/useDuplicateWorkflowVersionStep.ts#L27-L45",
+          "https://github.com/twentyhq/twenty/blob/35c645064f72bc4e3180a2c6c506cbbfee170007/packages/twenty-front/src/modules/workflow/workflow-steps/hooks/useApplyWorkflowVersionStepChanges.ts#L44-L67",
+          "https://github.com/twentyhq/twenty/blob/35c645064f72bc4e3180a2c6c506cbbfee170007/packages/twenty-front/src/modules/object-record/cache/utils/getRecordFromCache.ts#L60-L73",
+          "https://github.com/twentyhq/twenty/blob/35c645064f72bc4e3180a2c6c506cbbfee170007/packages/twenty-shared/src/utils/applyDiff.ts#L29-L39",
+          "https://github.com/twentyhq/twenty/blob/35c645064f72bc4e3180a2c6c506cbbfee170007/packages/twenty-front/src/modules/error-handler/components/PromiseRejectionEffect.tsx#L33-L50"
+        ],
+        "limitations": [
+          "No published active-graph mutation or lost workflow execution was shown.",
+          "The precise repeated-crash sparse-array/cache mechanism is inferred.",
+          "Other draft/diff callers, roles and devices were not browser-established scope.",
+          "Newer runtime was not tested."
+        ]
+      }
+    },
+    {
+      "id": "workflows-pass2-7b30d0b9",
+      "name": "Delay variable selection or removal stays local and is lost after ordinary panel navigation",
+      "severity": 3,
+      "owningArea": "twenty/workflows",
+      "summary": "Selecting or removing a Delay duration variable updates local state without committing the change; ordinary panel navigation restores the previous saved value.",
+      "expected": "Choosing or removing a duration variable should save through ordinary editing without requiring an unrelated duration-input interaction.",
+      "actual": "Selecting Current Item Index in Seconds, waiting well beyond normal save latency and navigating away loses the chip and restores the previous literal. Days also reproduces. Removing an already-saved chip is likewise local and the chip returns after navigation or reload.",
+      "reproSteps": [
+        "Create a fresh saved workflow containing an Iterator and a Delay that can reference Current Item Index.",
+        "In Delay Seconds, select Current Item Index through the variable picker.",
+        "Wait at least ten seconds, then close the panel or select another node. Reopen the Delay and observe that the previous literal value returns. Reload confirms the mapping was not saved.",
+        "Repeat using Days. Removal variation: remove an already-persisted duration-variable chip, wait and navigate away; reopening restores the chip.",
+        "Controls: a typed literal duration saves on blur. Selecting a variable and then focusing and leaving another duration input commits the mapping, which survives reload."
+      ],
+      "sourceCause": "Duration onChange updates localDuration, while its commit path is the inner text input’s onBlur. Variable insertion and removal call onChange without ensuring that the changed duration is subsequently committed.",
+      "reviewEvidence": {
+        "basis": "Mo evidence, independent Codex and Claude browser/source verification, coordinator checks and user approval.",
+        "userAccepted": true,
+        "sourceRevision": "35c645064f72bc4e3180a2c6c506cbbfee170007",
+        "severityReason": "Supported variable editing is not saved and ordinary navigation discards it despite ample waiting.",
+        "analysis": [
+          "Codex reproduced on two fresh workflows and observed no step-update request after ten seconds. Claude independently confirmed an eighteen-second wait followed by canvas navigation and another fresh workflow using Days and panel close.",
+          "Both verified that typed literals save after blur and that focusing/leaving another duration field after variable selection commits the mapping. Claude also confirmed removal of an already-saved chip stays local.",
+          "These controls establish a missing commit path rather than reload interrupting an unfinished autosave or general inability to persist variables.",
+          "Inspected newer source retains the duration/input rules; newer runtime was not tested. History introduced the local-draft/blur design, but accidental regression intent is inferred rather than an explicit maintainer acknowledgement.",
+          "Accepted Iterator edit loss is debounce/unmount timing; earlier rejected Subject, Notes Title and Delete mapping cases refreshed before ordinary autosave. This picker change sends no save and fails without reload after ample waiting."
+        ],
+        "sourceReferences": [
+          "https://github.com/twentyhq/twenty/blob/35c645064f72bc4e3180a2c6c506cbbfee170007/packages/twenty-front/src/modules/workflow/workflow-steps/workflow-actions/delay-actions/components/WorkflowEditActionDelay.tsx#L133-L167",
+          "https://github.com/twentyhq/twenty/blob/35c645064f72bc4e3180a2c6c506cbbfee170007/packages/twenty-front/src/modules/workflow/workflow-steps/workflow-actions/delay-actions/components/WorkflowEditActionDelay.tsx#L195-L229",
+          "https://github.com/twentyhq/twenty/blob/35c645064f72bc4e3180a2c6c506cbbfee170007/packages/twenty-front/src/modules/object-record/record-field/ui/form-types/components/FormNumberFieldInput.tsx#L90-L135",
+          "https://github.com/twentyhq/twenty/blob/35c645064f72bc4e3180a2c6c506cbbfee170007/packages/twenty-front/src/modules/workflow/workflow-variables/components/WorkflowVariablesDropdown.tsx#L78-L82",
+          "https://github.com/twentyhq/twenty/blob/35c645064f72bc4e3180a2c6c506cbbfee170007/packages/twenty-front/src/modules/side-panel/pages/workflow/step/edit/components/SidePanelWorkflowEditStepContent.tsx#L22-L36",
+          "https://github.com/twentyhq/twenty/blob/35c645064f72bc4e3180a2c6c506cbbfee170007/packages/twenty-front/src/modules/workflow/workflow-steps/hooks/useUpdateStep.ts#L10-L16",
+          "https://github.com/twentyhq/twenty/blob/35c645064f72bc4e3180a2c6c506cbbfee170007/packages/twenty-front/src/modules/workflow/workflow-steps/hooks/useUpdateWorkflowVersionStep.ts#L39-L55",
+          "https://github.com/twentyhq/twenty/blob/35c645064f72bc4e3180a2c6c506cbbfee170007/packages/twenty-server/src/engine/core-modules/workflow/resolvers/workflow-version-step.resolver.ts#L91-L101",
+          "https://github.com/twentyhq/twenty/blob/35c645064f72bc4e3180a2c6c506cbbfee170007/packages/twenty-server/src/modules/workflow/workflow-builder/workflow-version-step/workflow-version-step.workspace-service.ts#L38-L53",
+          "https://github.com/twentyhq/twenty/blob/35c645064f72bc4e3180a2c6c506cbbfee170007/packages/twenty-server/src/modules/workflow/workflow-builder/workflow-version-step/workflow-version-step-update.workspace-service.ts#L23-L96",
+          "https://github.com/twentyhq/twenty/blob/35c645064f72bc4e3180a2c6c506cbbfee170007/packages/twenty-server/src/modules/workflow/workflow-builder/workflow-schema/workflow-schema.workspace-service.ts#L169-L185",
+          "https://github.com/twentyhq/twenty/blob/35c645064f72bc4e3180a2c6c506cbbfee170007/packages/twenty-server/src/modules/workflow/workflow-builder/workflow-version-step/workflow-version-step-helpers.workspace-service.ts#L35-L71"
+        ],
+        "limitations": [
+          "Seconds and Days were browser-confirmed; other duration fields share the source path but are not independently reproduced affected fields.",
+          "Exact focus event ordering was not instrumented.",
+          "No Test or Activate execution established downstream duration or branch harm.",
+          "The earlier discovery’s Iterator details mismatch was not causally attributed to this defect.",
+          "Newer runtime was not tested."
+        ]
+      }
+    },
+    {
+      "id": "workflows-pass2-9b054c75",
+      "name": "A final skipped iteration disables Output for earlier successful iterations",
+      "severity": 3,
+      "owningArea": "twenty/workflows",
+      "summary": "Run inspection gates Output on the latest step status, blocking stored results from successful earlier iterations when the final iteration was skipped.",
+      "expected": "Selecting a successful iteration should enable its Output tab even if a later iteration skipped the same step.",
+      "actual": "In a completed three-item run, a downstream Delay has successful earlier history but a final Skipped status. Selecting an earlier successful iteration leaves Output disabled. Stored successful results remain intact.",
+      "reproSteps": [
+        "Create a saved manual workflow with an Iterator over three items and a Filter before a nonzero Delay inside the loop.",
+        "Configure the Filter to permit only the first one or two items and test the workflow to completion.",
+        "Inspect the downstream Delay and select an earlier successful iteration. Observe that its Output tab is disabled despite the stored successful result.",
+        "Control: allow every item through the Filter and rerun; Output is accessible for each iteration.",
+        "Inspect Raw State JSON as a workaround to recover the stored successful result."
+      ],
+      "sourceCause": "Output-tab gating reads the step’s latest status while output content reads the selected iteration history. A latest Skipped status disables Output for successful earlier histories.",
+      "reviewEvidence": {
+        "basis": "Mo evidence, independent Codex and Claude browser/source verification, coordinator checks and explicit user acceptance at severity 3.",
+        "userAccepted": true,
+        "sourceRevision": "35c645064f72bc4e3180a2c6c506cbbfee170007",
+        "severityReason": "A supported per-iteration result-inspection function is disabled for successful iterations. The user selected severity 3 despite a raw-state workaround and correct execution.",
+        "analysis": [
+          "Both reviewers reproduced on two fresh workflows with only the first one or two of three iterations matching. Claude verified disabled Output for successful histories and stored SUCCESS results. Codex also confirmed a Search Records sibling.",
+          "All-matching controls expose Output for every iteration. Filter and outer completed-path Delay outputs remain available in affected runs.",
+          "Execution completes correctly and results remain stored; this is blocked inspection, not skipped execution or data loss. Raw State JSON remains a workaround.",
+          "Both formal agent verdicts are Accept severity 3. Claude also considered severity 1 defensible; the user explicitly chose 3.",
+          "Inspected newer source retains latest-status gating, but its runtime was not tested. History of the Skipped guard does not establish intent to hide earlier successful results."
+        ],
+        "sourceReferences": [
+          "https://github.com/twentyhq/twenty/blob/35c645064f72bc4e3180a2c6c506cbbfee170007/packages/twenty-front/src/modules/side-panel/pages/workflow/step/view-run/components/SidePanelWorkflowRunViewStepContent.tsx#L78-L109",
+          "https://github.com/twentyhq/twenty/blob/35c645064f72bc4e3180a2c6c506cbbfee170007/packages/twenty-front/src/modules/workflow/workflow-steps/utils/getWorkflowRunStepExecutionStatus.ts#L15-L21",
+          "https://github.com/twentyhq/twenty/blob/35c645064f72bc4e3180a2c6c506cbbfee170007/packages/twenty-front/src/modules/side-panel/pages/workflow/step/view-run/utils/getIsOutputTabDisabled.ts#L3-L12",
+          "https://github.com/twentyhq/twenty/blob/35c645064f72bc4e3180a2c6c506cbbfee170007/packages/twenty-front/src/modules/workflow/workflow-diagram/hooks/useSetInitialWorkflowRunSidePanelTab.ts#L35-L55",
+          "https://github.com/twentyhq/twenty/blob/35c645064f72bc4e3180a2c6c506cbbfee170007/packages/twenty-front/src/modules/workflow/workflow-steps/hooks/useWorkflowRunStepInfo.ts#L12-L27",
+          "https://github.com/twentyhq/twenty/blob/35c645064f72bc4e3180a2c6c506cbbfee170007/packages/twenty-front/src/modules/workflow/workflow-steps/components/WorkflowRunStepOutputDetail.tsx#L23-L31",
+          "https://github.com/twentyhq/twenty/blob/35c645064f72bc4e3180a2c6c506cbbfee170007/packages/twenty-front/src/modules/workflow/workflow-diagram/utils/generateWorkflowRunDiagram.ts#L74-L89",
+          "https://github.com/twentyhq/twenty/blob/35c645064f72bc4e3180a2c6c506cbbfee170007/packages/twenty-front/src/modules/workflow/workflow-diagram/workflow-nodes/utils/getNodeIterationCount.ts#L8-L14",
+          "https://github.com/twentyhq/twenty/blob/35c645064f72bc4e3180a2c6c506cbbfee170007/packages/twenty-server/src/modules/workflow/workflow-executor/workflow-actions/filter/filter.workflow-action.ts#L42-L52",
+          "https://github.com/twentyhq/twenty/blob/35c645064f72bc4e3180a2c6c506cbbfee170007/packages/twenty-server/src/modules/workflow/workflow-executor/workflow-actions/delay/jobs/resume-delayed-workflow.job.ts#L77-L96",
+          "https://github.com/twentyhq/twenty/blob/35c645064f72bc4e3180a2c6c506cbbfee170007/packages/twenty-server/src/modules/workflow/workflow-executor/workflow-actions/iterator/iterator.workflow-action.ts#L193-L207",
+          "https://github.com/twentyhq/twenty/blob/35c645064f72bc4e3180a2c6c506cbbfee170007/packages/twenty-server/src/modules/workflow/workflow-runner/workflow-run/workflow-run.workspace-service.ts#L259-L274"
+        ],
+        "limitations": [
+          "No result loss or execution failure occurred.",
+          "Grey node color and success-count presentation are not separately labeled defects.",
+          "Claude used the run-record side-panel path; shared editor post-Test scope is source inference.",
+          "Broader action types, roles and devices were not established.",
+          "Newer runtime was not tested."
+        ]
+      }
+    },
+    {
+      "id": "workflows-pass2-fa31d067",
+      "name": "Restoring a workflow resurrects previously discarded drafts and makes one current",
+      "severity": 3,
+      "owningArea": "twenty/workflows",
+      "summary": "Parent workflow restoration revives draft versions discarded before deletion and selects one as the current editable draft.",
+      "expected": "Restoring a deleted workflow should preserve prior draft-discard decisions, restoring versions deleted with the parent rather than unrelated previously discarded drafts.",
+      "actual": "After completed draft discards and refresh controls, deleting and restoring the parent returns discarded versions to live Draft state. A resurrected version becomes current; discarding it can expose another resurrected draft. History/current-draft changes persist after reload.",
+      "reproSteps": [
+        "Create and publish a workflow.",
+        "Create a draft with distinctive changes, choose Discard Draft, and reload to confirm it is absent from live history and no longer current.",
+        "Repeat with a second distinguishable draft and confirm its completed discard.",
+        "Delete the whole workflow, then restore it using its restoration control.",
+        "Reload and inspect version history and the editor. Observe the discarded drafts restored and one selected as current.",
+        "Discard the current resurrected draft and check whether another resurrected draft becomes current. Control: deleting/restoring a workflow without discarded drafts does not introduce such drafts."
+      ],
+      "sourceCause": "Discard soft-deletes versions. Parent restoration unconditionally undeletes child versions by workflowId and re-mirrors them, including drafts deleted earlier for an independent discard reason. Current-version selection then chooses a restored draft.",
+      "reviewEvidence": {
+        "basis": "Mo evidence, independent Codex and Claude browser/source verification, coordinator checks and user acceptance.",
+        "userAccepted": true,
+        "sourceRevision": "35c645064f72bc4e3180a2c6c506cbbfee170007",
+        "severityReason": "Restoration reverses completed discard decisions and reintroduces unwanted draft configuration as current editable state.",
+        "analysis": [
+          "Codex reproduced on two workflows with confirmed discarded drafts and published-version controls; restoration revived multiple drafts and selected them successively. Claude independently reproduced multiple-discard and single-discard variants and a passing no-discard control.",
+          "Claude used the application API for initial workflow/trigger/Code setup; draft creation, Discard, Delete and Restore were exercised through the UI.",
+          "Both established persistent history/current-draft changes rather than cache-only presentation. Version numbering differed across setups and is not essential to the trigger.",
+          "Active versions becoming Deactivated after parent restoration also occurs in controls and is intended, not part of this defect.",
+          "Inspected newer source removes legacy workflow restoration in change 8e210e55af / PR #27855. Entry-point removal does not establish repaired equivalent restoration; newer runtime was not tested."
+        ],
+        "sourceReferences": [
+          "https://github.com/twentyhq/twenty/blob/35c645064f72bc4e3180a2c6c506cbbfee170007/packages/twenty-docs/user-guide/workflows/capabilities/workflow-versions.mdx#L23-L25",
+          "https://github.com/twentyhq/twenty/blob/35c645064f72bc4e3180a2c6c506cbbfee170007/packages/twenty-front/src/modules/command-menu-item/engine-command/record/single-record/workflow/components/DiscardDraftWorkflowSingleRecordCommand.tsx#L20-L27",
+          "https://github.com/twentyhq/twenty/blob/35c645064f72bc4e3180a2c6c506cbbfee170007/packages/twenty-front/src/modules/workflow/hooks/useDeleteOneWorkflowVersion.ts#L96-L106",
+          "https://github.com/twentyhq/twenty/blob/35c645064f72bc4e3180a2c6c506cbbfee170007/packages/twenty-front/src/modules/object-record/hooks/useDeleteOneRecord.ts#L106-L111",
+          "https://github.com/twentyhq/twenty/blob/35c645064f72bc4e3180a2c6c506cbbfee170007/packages/twenty-front/src/modules/command-menu-item/engine-command/record/components/RestoreRecordsCommand.tsx#L65-L74",
+          "https://github.com/twentyhq/twenty/blob/35c645064f72bc4e3180a2c6c506cbbfee170007/packages/twenty-front/src/modules/information-banner/components/deleted-record/InformationBannerDeletedRecord.tsx#L23-L35",
+          "https://github.com/twentyhq/twenty/blob/35c645064f72bc4e3180a2c6c506cbbfee170007/packages/twenty-front/src/modules/object-record/hooks/useRestoreManyRecords.ts#L133-L138",
+          "https://github.com/twentyhq/twenty/blob/35c645064f72bc4e3180a2c6c506cbbfee170007/packages/twenty-server/src/engine/api/graphql/workspace-resolver-builder/factories/restore-many-resolver.factory.ts#L39-L44",
+          "https://github.com/twentyhq/twenty/blob/35c645064f72bc4e3180a2c6c506cbbfee170007/packages/twenty-server/src/engine/api/common/common-query-runners/common-restore-many-query-runner.service.ts#L53-L74",
+          "https://github.com/twentyhq/twenty/blob/35c645064f72bc4e3180a2c6c506cbbfee170007/packages/twenty-server/src/engine/api/common/common-query-runners/common-base-query-runner.service.ts#L258-L271",
+          "https://github.com/twentyhq/twenty/blob/35c645064f72bc4e3180a2c6c506cbbfee170007/packages/twenty-server/src/modules/workflow/common/query-hooks/workflow-restore-many.post-query.hook.ts#L30-L34",
+          "https://github.com/twentyhq/twenty/blob/35c645064f72bc4e3180a2c6c506cbbfee170007/packages/twenty-server/src/modules/workflow/common/workspace-services/workflow-common.workspace-service.ts#L343-L380"
+        ],
+        "limitations": [
+          "Discard is soft deletion; no physical-erasure or absence-of-audit-history claim is made.",
+          "Neither reviewer executed resurrected drafts.",
+          "Bulk restoration and separately deleted run/trigger restoration are source-inferred, not browser-established.",
+          "Codex tested two widths; other roles were not established and Claude did not test other widths.",
+          "Newer runtime was not tested."
+        ]
+      }
+    },
+    {
+      "id": "workflows-pass2-b4025165",
+      "name": "Closing or switching the Code panel before its debounce fires drops the visible array edit",
+      "severity": 1,
+      "owningArea": "twenty/workflows",
+      "summary": "Closing or switching away from the Code action panel within its 500 ms save delay cancels a pending array edit.",
+      "expected": "Ordinary panel navigation should flush pending array edits rather than silently canceling the queued save.",
+      "actual": "Deleting an array item and closing the panel within 500 ms sends no step update; the item returns on in-app reopening and reload. Adding an item followed by a quick node switch also loses the edit.",
+      "reproSteps": [
+        "Create a workflow with a Code action containing a saved array input and reload to establish its baseline.",
+        "Delete one array item, then close the configuration panel with X or switch to another node within 500 ms.",
+        "Reopen the Code panel and observe the deleted item restored. Reload confirms the previous array remains saved.",
+        "Variation: add an item and quickly switch nodes; the addition disappears.",
+        "Controls: wait at least 1.2 seconds before closing to preserve the edit. One Escape that closes only the item menu does not reproduce unless the panel is subsequently closed."
+      ],
+      "sourceCause": "The Code action holds local edits behind an unflushed 500 ms debounced callback. Unmounting the owner causes the pending callback to return without saving; unlike the passing sibling editor, cleanup does not flush the edit.",
+      "matchingGuidance": {
+        "relatedReference": "workflows-N05",
+        "distinction": "The existing Iterator entry covers pending settings edits lost on quick panel navigation with approximately a one-second delay. This entry covers Code-array insertion/removal lost when the Code panel closes or switches within its 500 ms debounce."
+      },
+      "reviewEvidence": {
+        "basis": "Mo evidence, independent Codex and Claude browser/source reviews, coordinator checks and user acceptance at severity 1 as related coverage.",
+        "userAccepted": true,
+        "sourceRevision": "35c645064f72bc4e3180a2c6c506cbbfee170007",
+        "severityReason": "The user chose severity 1 for the narrowly timed panel-edit loss; both agents formally recommended severity 3. No acknowledged save loss or downstream execution harm was established.",
+        "analysis": [
+          "Each reviewer reproduced on two fresh saved/reloaded Code-action baselines. Measured failing closures ranged from approximately 35 to 304 ms; Claude also lost an addition after switching nodes at 164 ms.",
+          "Waiting 1.2–1.5 seconds before closing saves and preserves the reduced array. A single Escape closes only the item menu and lets saving complete. The label requires actual panel closure or node switching.",
+          "The Create Record sibling flushed and saved an edit despite closure at 189 ms, supporting the ordinary-navigation expectation.",
+          "No update request was sent for the canceled Code edits. This is loss of an uncommitted local edit, not loss of an acknowledged server save.",
+          "Both lockfiles identify use-debounce 10.0.5. Its installed implementation and version-tag primary source support the unmounted callback guard and available flush. Inspected newer Code source retains the local unflushed debounce; newer runtime was not tested."
+        ],
+        "sourceReferences": [
+          "https://github.com/twentyhq/twenty/blob/35c645064f72bc4e3180a2c6c506cbbfee170007/packages/twenty-front/src/modules/object-record/record-field/ui/meta-types/input/components/MultiItemFieldMenuItem.tsx#L57-L60",
+          "https://github.com/twentyhq/twenty/blob/35c645064f72bc4e3180a2c6c506cbbfee170007/packages/twenty-front/src/modules/object-record/record-field/ui/form-types/components/FormArrayFieldInput.tsx#L177-L194",
+          "https://github.com/twentyhq/twenty/blob/35c645064f72bc4e3180a2c6c506cbbfee170007/packages/twenty-front/src/modules/workflow/workflow-steps/workflow-actions/code-action/components/WorkflowEditActionCodeFields.tsx#L82-L91",
+          "https://github.com/twentyhq/twenty/blob/35c645064f72bc4e3180a2c6c506cbbfee170007/packages/twenty-front/src/modules/workflow/workflow-steps/workflow-actions/code-action/components/WorkflowEditActionCodeFieldLeaf.tsx#L94-L106",
+          "https://github.com/twentyhq/twenty/blob/35c645064f72bc4e3180a2c6c506cbbfee170007/packages/twenty-front/src/modules/workflow/workflow-steps/workflow-actions/code-action/components/WorkflowEditActionCode.tsx#L192-L206",
+          "https://github.com/twentyhq/twenty/blob/35c645064f72bc4e3180a2c6c506cbbfee170007/packages/twenty-front/src/modules/workflow/workflow-steps/workflow-actions/code-action/components/WorkflowEditActionCode.tsx#L260-L272",
+          "https://github.com/twentyhq/twenty/blob/35c645064f72bc4e3180a2c6c506cbbfee170007/packages/twenty-front/src/modules/side-panel/components/SidePanelForDesktop.tsx#L79-L90",
+          "https://github.com/twentyhq/twenty/blob/35c645064f72bc4e3180a2c6c506cbbfee170007/packages/twenty-front/src/modules/side-panel/hooks/useSidePanelMenu.ts#L34-L57",
+          "https://github.com/twentyhq/twenty/blob/35c645064f72bc4e3180a2c6c506cbbfee170007/packages/twenty-front/src/modules/side-panel/pages/workflow/step/edit/components/SidePanelWorkflowEditStepContent.tsx#L29-L37",
+          "https://github.com/twentyhq/twenty/blob/35c645064f72bc4e3180a2c6c506cbbfee170007/packages/twenty-front/src/modules/workflow/workflow-steps/hooks/useUpdateStep.ts#L10-L20",
+          "https://github.com/twentyhq/twenty/blob/35c645064f72bc4e3180a2c6c506cbbfee170007/packages/twenty-front/src/modules/workflow/workflow-steps/hooks/useUpdateWorkflowVersionStep.ts#L46-L106",
+          "https://github.com/twentyhq/twenty/blob/35c645064f72bc4e3180a2c6c506cbbfee170007/packages/twenty-front/src/modules/workflow/graphql/mutations/updateWorkflowVersionStep.ts#L3-L17",
+          "https://github.com/twentyhq/twenty/blob/35c645064f72bc4e3180a2c6c506cbbfee170007/packages/twenty-server/src/engine/core-modules/workflow/resolvers/workflow-version-step.resolver.ts#L91-L102",
+          "https://github.com/twentyhq/twenty/blob/35c645064f72bc4e3180a2c6c506cbbfee170007/packages/twenty-server/src/modules/workflow/workflow-builder/workflow-version-step/workflow-version-step.workspace-service.ts#L38-L54"
+        ],
+        "limitations": [
+          "The short sub-500 ms timing window is required; normal waited edits save correctly.",
+          "Other Code fields, Logic Function callers and execution effects were not browser-established.",
+          "Exact panel-unmount timing is inferred from source and absent requests.",
+          "Installed library source was not proven byte-identical to the deployed bundle.",
+          "Newer runtime was not tested."
+        ]
+      }
+    },
+    {
+      "id": "workflows-pass2-2d6af11b",
+      "name": "Typed Code number-array inputs save ordinary numeric members as strings",
+      "severity": 3,
+      "owningArea": "twenty/workflows",
+      "summary": "The Code input editor stores ordinary numeric array members as strings despite retaining a number-array input schema.",
+      "expected": "Values entered for a number-array input should retain numeric JSON types in saved configuration, consistent with its declared item schema.",
+      "actual": "Entering 5 and 1.5 through the array editor saves string members such as [\"5\", \"1.5\"]. Reload retains those strings while the schema still declares items.type:number. Scalar numeric controls remain JSON numbers.",
+      "reproSteps": [
+        "Create a fresh workflow with a Code action whose input schema includes a number-array field, a scalar number and a text-array control.",
+        "Enter ordinary numeric literals such as 5 and 1.5 using Enter or Add item in the number-array editor.",
+        "Let the configuration save, reopen or reload it and inspect the stored values and schema. Observe string array members despite the numeric item declaration.",
+        "Controls: enter 7 in the scalar numeric field and confirm it saves as a JSON number; text-array values remain strings and invalid scalar numeric text displays validation feedback."
+      ],
+      "sourceCause": "The typed function parser preserves numeric item schema, but the generic array renderer drops the item schema and commits string values. The inspected payload path does not decode literal numeric strings back to numbers.",
+      "reviewEvidence": {
+        "basis": "Mo candidate, independent Codex follow-up and Claude browser/source verification, coordinator checks and user approval of the narrowed saved-input-type defect.",
+        "userAccepted": true,
+        "sourceRevision": "35c645064f72bc4e3180a2c6c506cbbfee170007",
+        "severityReason": "Supported numeric inputs are persisted with types inconsistent with their declared schema. The accepted scope is saved configuration rather than demonstrated execution damage.",
+        "analysis": [
+          "Each reviewer reproduced on two fresh workflows using ordinary supported numeric values. The saved schema retained numeric array items while stored members were strings.",
+          "Scalar count 7 stayed a JSON number, text arrays stayed strings, and invalid scalar numeric text displayed Invalid number. These controls distinguish supported-value type corruption from the weaker original missing-validation-only claim.",
+          "Codex revised its original rejection after independently reproducing ordinary numeric values saved as strings.",
+          "Execution was blocked by disabled transpilation and incomplete output-schema generation. A captured step remained valid:false and a workflow Code step was Not started; no completed handler execution or arithmetic outcome was established.",
+          "Coordinator source tracing supports forwarding the string values without numeric decoding, but this is not live execution evidence. Inspected newer source retains the integration; newer runtime was not tested.",
+          "The numeric-type contract is inferred from the retained schema and same-feature controls, not an explicit maintainer acknowledgement. Existing literal-null condition coverage has a different adapter and cause."
+        ],
+        "sourceReferences": [
+          "https://github.com/twentyhq/twenty/blob/35c645064f72bc4e3180a2c6c506cbbfee170007/packages/twenty-shared/src/logic-function/get-function-input-schema.ts#L41-L73",
+          "https://github.com/twentyhq/twenty/blob/35c645064f72bc4e3180a2c6c506cbbfee170007/packages/twenty-shared/src/logic-function/json-schema-to-input-schema.ts#L15-L26",
+          "https://github.com/twentyhq/twenty/blob/35c645064f72bc4e3180a2c6c506cbbfee170007/packages/twenty-front/src/modules/workflow/workflow-steps/workflow-actions/code-action/utils/getWorkflowCodeFieldsLeafKind.ts#L41-L43",
+          "https://github.com/twentyhq/twenty/blob/35c645064f72bc4e3180a2c6c506cbbfee170007/packages/twenty-front/src/modules/workflow/workflow-steps/workflow-actions/code-action/components/WorkflowEditActionCodeFieldLeaf.tsx#L93-L106",
+          "https://github.com/twentyhq/twenty/blob/35c645064f72bc4e3180a2c6c506cbbfee170007/packages/twenty-front/src/modules/object-record/record-field/ui/types/FieldMetadata.ts#L330-L330",
+          "https://github.com/twentyhq/twenty/blob/35c645064f72bc4e3180a2c6c506cbbfee170007/packages/twenty-front/src/modules/object-record/record-field/ui/form-types/components/FormArrayFieldInput.tsx#L148-L158",
+          "https://github.com/twentyhq/twenty/blob/35c645064f72bc4e3180a2c6c506cbbfee170007/packages/twenty-front/src/modules/object-record/record-field/ui/form-types/components/FormArrayFieldInput.tsx#L231-L262",
+          "https://github.com/twentyhq/twenty/blob/35c645064f72bc4e3180a2c6c506cbbfee170007/packages/twenty-front/src/modules/workflow/workflow-steps/workflow-actions/code-action/components/WorkflowEditActionCode.tsx#L192-L210",
+          "https://github.com/twentyhq/twenty/blob/35c645064f72bc4e3180a2c6c506cbbfee170007/packages/twenty-server/src/modules/workflow/workflow-builder/workflow-version-step/workflow-version-step-update.workspace-service.ts#L31-L99",
+          "https://github.com/twentyhq/twenty/blob/35c645064f72bc4e3180a2c6c506cbbfee170007/packages/twenty-server/src/modules/workflow/workflow-builder/workflow-schema/workflow-schema.workspace-service.ts#L169-L204",
+          "https://github.com/twentyhq/twenty/blob/35c645064f72bc4e3180a2c6c506cbbfee170007/packages/twenty-server/src/modules/workflow/workflow-builder/workflow-version-step/workflow-version-step-helpers.workspace-service.ts#L35-L73",
+          "https://github.com/twentyhq/twenty/blob/35c645064f72bc4e3180a2c6c506cbbfee170007/packages/twenty-server/src/engine/core-modules/workflow/services/workflow-version-core-sync.service.ts#L149-L166",
+          "https://github.com/twentyhq/twenty/blob/35c645064f72bc4e3180a2c6c506cbbfee170007/packages/twenty-server/src/engine/core-modules/workflow/entities/workflow-version.entity.ts#L44-L45",
+          "https://github.com/twentyhq/twenty/blob/35c645064f72bc4e3180a2c6c506cbbfee170007/packages/twenty-shared/src/workflow/schemas/code-action-settings-schema.ts#L13-L17"
+        ],
+        "limitations": [
+          "No arithmetic error, string concatenation, completed code execution or downstream damage was observed.",
+          "Persistence does not establish a fully valid or runnable Code step.",
+          "Other Logic Function and boolean-array surfaces are source-inferred, not browser-established.",
+          "Newer runtime was not tested."
+        ]
+      }
+    },
+    {
+      "id": "workflows-pass2-b2513b29",
+      "name": "Skipping a malformed placeholder-created Iterator suppresses the selected sibling and falsely completes the run",
+      "severity": 3,
+      "owningArea": "twenty/workflows",
+      "summary": "Creating an Iterator directly from a non-taken branch placeholder saves a broken loop return that prevents the selected sibling from executing while the run reports Completed.",
+      "expected": "A skipped nonmatching branch should not prevent the selected valid branch from executing or make the run report completion before that selected work occurs.",
+      "actual": "With a true If leading to a saved two-second Delay and a placeholder-created Iterator on Else, Test reports Completed in roughly 0.11–0.13 seconds. The selected Delay stays Not started, while the non-taken Iterator and its body are Skipped.",
+      "reproSteps": [
+        "Create a saved manual workflow with an If/Else whose If condition is true and leads to a two-second Delay.",
+        "On the non-taken Else branch, choose Iterator directly on its Add an Action placeholder rather than inserting it through a plus after another action.",
+        "Configure two Iterator items and wait for saving to complete.",
+        "Test and inspect the stored run: the If matches but its Delay remains Not started, while the overall run reports Completed almost immediately.",
+        "Control: construct the Else Iterator through a plus after an existing Else Delay. Confirm the valid return references and that the selected two-second If Delay executes successfully."
+      ],
+      "sourceCause": "Placeholder type-change construction creates a loop return for a fresh transient ID before overriding only the Iterator ID, leaving an absent return target. Runtime skip processing reaches this malformed non-taken branch before selected-branch execution; completion accounting can then falsely complete the run with selected work unstarted. Intermediate failure/status ordering is source-derived, not worker-traced.",
+      "matchingGuidance": {
+        "relatedReference": "workflows-N51",
+        "distinction": "The existing entry covers a selected placeholder-created Iterator failing after its first item. This entry shares that malformed-return construction but covers an unselected Iterator suppressing its valid selected sibling and falsely reporting Completed. Valid-graph nested-Iterator stalls and terminal-Delay premature completion are different causes."
+      },
+      "reviewEvidence": {
+        "basis": "Mo candidate, independent Codex follow-up and Claude browser/source verification, coordinator graph/run/source checks and user acceptance as related coverage.",
+        "userAccepted": true,
+        "sourceRevision": "35c645064f72bc4e3180a2c6c506cbbfee170007",
+        "severityReason": "A supported UI construction silently saves malformed links, skips selected valid work and falsely reports successful completion.",
+        "analysis": [
+          "Each reviewer reproduced on two fresh workflows after independently testing direct placeholder-to-Iterator construction. Codex revised its earlier passing verdict for differently constructed graphs after its own follow-up.",
+          "The saved If condition matches, selected Delay stays Not started and the final run reports Completed. A valid-return control built through plus insertion executes the selected two-second Delay correctly.",
+          "Original matching-predicate and route-edit history is unnecessary. The original Mo graph provenance was not independently recovered, so the label uses the precise newly isolated construction.",
+          "Type-change construction and saved graph references support the malformed-return cause. Intermediate Failed/Step not found then Completed ordering is inferred from source rather than captured in a worker trace.",
+          "Upstream commit 561ccb2999d03c43d6d49cce93db905bbed6d88a repairs construction; inspected newer source also changes keep-running accounting. Equivalent newer runtime failure or complete correction was not tested."
+        ],
+        "sourceReferences": [
+          "https://github.com/twentyhq/twenty/blob/35c645064f72bc4e3180a2c6c506cbbfee170007/packages/twenty-server/src/modules/workflow/workflow-builder/workflow-version-step/workflow-version-step-update.workspace-service.ts#L120-L148",
+          "https://github.com/twentyhq/twenty/blob/35c645064f72bc4e3180a2c6c506cbbfee170007/packages/twenty-server/src/modules/workflow/workflow-builder/workflow-version-step/workflow-version-step-operations.workspace-service.ts#L596-L623",
+          "https://github.com/twentyhq/twenty/blob/35c645064f72bc4e3180a2c6c506cbbfee170007/packages/twenty-server/src/modules/workflow/workflow-builder/workflow-version-step/workflow-version-step-operations.workspace-service.ts#L939-L971",
+          "https://github.com/twentyhq/twenty/blob/35c645064f72bc4e3180a2c6c506cbbfee170007/packages/twenty-server/src/modules/workflow/workflow-executor/workspace-services/workflow-executor.workspace-service.ts#L215-L239",
+          "https://github.com/twentyhq/twenty/blob/35c645064f72bc4e3180a2c6c506cbbfee170007/packages/twenty-server/src/modules/workflow/workflow-executor/workspace-services/workflow-executor.workspace-service.ts#L114-L123",
+          "https://github.com/twentyhq/twenty/blob/35c645064f72bc4e3180a2c6c506cbbfee170007/packages/twenty-server/src/modules/workflow/workflow-executor/utils/should-execute-step.util.ts#L22-L24",
+          "https://github.com/twentyhq/twenty/blob/35c645064f72bc4e3180a2c6c506cbbfee170007/packages/twenty-server/src/modules/workflow/workflow-executor/utils/workflow-should-keep-running.util.ts#L14-L48",
+          "https://github.com/twentyhq/twenty/blob/35c645064f72bc4e3180a2c6c506cbbfee170007/packages/twenty-server/src/modules/workflow/workflow-executor/workspace-services/workflow-executor.workspace-service.ts#L275-L323",
+          "https://github.com/twentyhq/twenty/blob/35c645064f72bc4e3180a2c6c506cbbfee170007/packages/twenty-server/src/modules/workflow/workflow-runner/workflow-run/workflow-run.workspace-service.ts#L185-L219",
+          "https://github.com/twentyhq/twenty/blob/a6372e288ade9ed14ac2af1a7e224dabb6cc6021/packages/twenty-server/src/engine/core-modules/workflow/services/core-workflow-version-mutation.workspace-service.ts#L702-L735",
+          "https://github.com/twentyhq/twenty/blob/a6372e288ade9ed14ac2af1a7e224dabb6cc6021/packages/twenty-server/src/modules/workflow/workflow-executor/utils/workflow-should-keep-running.util.ts#L12-L59",
+          "https://github.com/twentyhq/twenty/blob/35c645064f72bc4e3180a2c6c506cbbfee170007/packages/twenty-server/src/modules/workflow/workflow-builder/workflow-version-step/workflow-version-step-update.workspace-service.ts#L99-L141",
+          "https://github.com/twentyhq/twenty/blob/35c645064f72bc4e3180a2c6c506cbbfee170007/packages/twenty-server/src/modules/workflow/workflow-builder/workflow-version-step/workflow-version-step-operations.workspace-service.ts#L194-L199",
+          "https://github.com/twentyhq/twenty/blob/35c645064f72bc4e3180a2c6c506cbbfee170007/packages/twenty-server/src/modules/workflow/workflow-builder/workflow-version-step/workflow-version-step-operations.workspace-service.ts#L596-L619",
+          "https://github.com/twentyhq/twenty/commit/561ccb2999d03c43d6d49cce93db905bbed6d88a"
+        ],
+        "limitations": [
+          "Exact intermediate worker/status ordering was not traced.",
+          "Original historical Mo graph and multimodal assertion were not independently recovered.",
+          "Activated or automatic launches, other roles, other action types and continuation boundaries were not tested.",
+          "Newer runtime was not tested."
+        ]
+      }
+    },
+    {
+      "id": "workflows-pass2-733a99d6",
+      "name": "Fullscreen Code parameter saves while the side-panel input stays stale",
+      "severity": 1,
+      "owningArea": "twenty/workflows",
+      "summary": "Editing a Code action text parameter in fullscreen saves correctly but leaves its still-mounted sidebar input displaying the previous text.",
+      "expected": "Closing fullscreen after a saved text-parameter edit should display that saved value in the sidebar input.",
+      "actual": "The fullscreen text value persists, but the sidebar continues to show its prior text. Reopening the panel or reloading displays the correct saved value. Numeric inputs update correctly.",
+      "reproSteps": [
+        "Create a fresh saved workflow with a Code action exposing a text input parameter.",
+        "Set and save an initial text value, then open the fullscreen parameter editor while the sidebar remains mounted.",
+        "Change the text and wait for saving to complete, then close fullscreen.",
+        "Observe the previous text still displayed in the sidebar. Reopen the panel or reload to confirm the changed fullscreen text actually saved.",
+        "Controls: edit the text directly in the sidebar, or change a numeric parameter through fullscreen; those inputs display the updated values correctly."
+      ],
+      "sourceCause": "Fullscreen and sidebar render separate field instances. The shared text-input hook initializes content from defaultValue once without synchronizing later default-value changes in the mounted sidebar instance.",
+      "matchingGuidance": {
+        "relatedReference": "workflows-fresh-19dfdd26",
+        "distinction": "The existing If/Else entry covers operator changes concealing a cleared comparison and wrong-branch execution. Webhook stale-JSON coverage concerns HTTP-method reselection. This entry shares the input hook but covers saved Code text-parameter changes from fullscreen leaving the sidebar display stale, without claiming corroborated data loss."
+      },
+      "reviewEvidence": {
+        "basis": "Mo candidate, independent Codex and Claude browser/source verification, coordinator checks and user acceptance of the narrowed GUI-only related entry.",
+        "userAccepted": true,
+        "sourceRevision": "35c645064f72bc4e3180a2c6c506cbbfee170007",
+        "severityReason": "The saved value is correct but its sidebar display is stale until panel reopening or reload. Both agents and the user selected severity 1.",
+        "analysis": [
+          "Each reviewer reproduced on two fresh workflows. Fullscreen text edits saved but the mounted sidebar retained old text.",
+          "Reopening or reloading displayed the saved value. Numeric inputs synchronized correctly and sidebar-only text editing passed.",
+          "Claude also observed an overwrite after editing the stale sidebar, but Codex did not test that extension. It is excluded from the primary accepted GUI scope.",
+          "The same text-input hook underlies accepted If/Else and webhook JSON entries; this approved entry has the distinct Code fullscreen trigger.",
+          "Inspected newer source retains the integration; newer runtime was not tested. Other value types use different implementations and are not generalized."
+        ],
+        "sourceReferences": [
+          "https://github.com/twentyhq/twenty/blob/35c645064f72bc4e3180a2c6c506cbbfee170007/packages/twenty-front/src/modules/workflow/workflow-steps/workflow-actions/code-action/components/WorkflowEditActionCode.tsx#L136-L207",
+          "https://github.com/twentyhq/twenty/blob/35c645064f72bc4e3180a2c6c506cbbfee170007/packages/twenty-front/src/modules/workflow/workflow-steps/workflow-actions/code-action/components/WorkflowEditActionCode.tsx#L326-L420",
+          "https://github.com/twentyhq/twenty/blob/35c645064f72bc4e3180a2c6c506cbbfee170007/packages/twenty-front/src/modules/workflow/workflow-steps/workflow-actions/code-action/components/WorkflowEditActionCodeFields.tsx#L45-L91",
+          "https://github.com/twentyhq/twenty/blob/35c645064f72bc4e3180a2c6c506cbbfee170007/packages/twenty-front/src/modules/workflow/workflow-steps/workflow-actions/code-action/components/WorkflowEditActionCodeFieldLeaf.tsx#L126-L172",
+          "https://github.com/twentyhq/twenty/blob/35c645064f72bc4e3180a2c6c506cbbfee170007/packages/twenty-front/src/modules/object-record/record-field/ui/form-types/components/FormTextFieldInput.tsx#L41-L52",
+          "https://github.com/twentyhq/twenty/blob/35c645064f72bc4e3180a2c6c506cbbfee170007/packages/twenty-front/src/modules/object-record/record-field/ui/form-types/hooks/useTextVariableEditor.ts#L43-L139",
+          "https://github.com/twentyhq/twenty/blob/35c645064f72bc4e3180a2c6c506cbbfee170007/packages/twenty-front/src/modules/object-record/record-field/ui/form-types/components/FormNumberFieldInput.tsx#L59-L118",
+          "https://github.com/twentyhq/twenty/blob/35c645064f72bc4e3180a2c6c506cbbfee170007/packages/twenty-front/src/modules/workflow/workflow-steps/hooks/useUpdateStep.ts#L10-L19",
+          "https://github.com/twentyhq/twenty/blob/35c645064f72bc4e3180a2c6c506cbbfee170007/packages/twenty-front/src/modules/workflow/workflow-steps/hooks/useUpdateWorkflowVersionStep.ts#L39-L105",
+          "https://github.com/twentyhq/twenty/blob/35c645064f72bc4e3180a2c6c506cbbfee170007/packages/twenty-server/src/engine/core-modules/workflow/resolvers/workflow-version-step.resolver.ts#L91-L101",
+          "https://github.com/twentyhq/twenty/blob/35c645064f72bc4e3180a2c6c506cbbfee170007/packages/twenty-server/src/modules/workflow/workflow-builder/workflow-version-step/workflow-version-step.workspace-service.ts#L38-L53",
+          "https://github.com/twentyhq/twenty/blob/35c645064f72bc4e3180a2c6c506cbbfee170007/packages/twenty-server/src/modules/workflow/workflow-builder/workflow-version-step/workflow-version-step-update.workspace-service.ts#L23-L96",
+          "https://github.com/twentyhq/twenty/blob/35c645064f72bc4e3180a2c6c506cbbfee170007/packages/twenty-server/src/modules/workflow/workflow-builder/workflow-schema/workflow-schema.workspace-service.ts#L169-L184",
+          "https://github.com/twentyhq/twenty/blob/35c645064f72bc4e3180a2c6c506cbbfee170007/packages/twenty-server/src/modules/workflow/workflow-builder/workflow-version-step/workflow-version-step-helpers.workspace-service.ts#L35-L71"
+        ],
+        "limitations": [
+          "No independently corroborated saved-data loss, destructive overwrite or execution failure is claimed.",
+          "Other parameter types, nested strings, roles and other hook callers are not browser-established scope.",
+          "Newer runtime was not tested."
+        ]
+      }
+    },
+    {
+      "id": "workflows-pass2-43d5799d",
+      "name": "Adding Else-if routes overlaps live branch labels and nodes despite correct saved positions",
+      "severity": 1,
+      "owningArea": "twenty/workflows",
+      "summary": "Additional routes leave existing branch heads at their old live positions while new heads use recomputed positions, causing overlap.",
+      "expected": "Adding supported Else-if routes should re-space the live workflow diagram without overlapping labels or action cards.",
+      "actual": "Additional routes leave existing branch heads at their old live positions while new heads use recomputed positions, causing overlap. Reload or Tidy up recovers separated positions; saved positions are correct.",
+      "reproSteps": [
+        "Create a saved manual workflow with If/Else and a Delay or empty action on its initial branches.",
+        "Add multiple Else-if routes and inspect the live canvas.",
+        "Observe existing and new branch labels or cards overlap.",
+        "Reload or choose Tidy up and confirm separated positions. Initial layout and the first added route can pass."
+      ],
+      "sourceCause": "Route insertion computes and saves updated branch positions, but same-version mergeWorkflowDiagrams restores old positions for existing nodes. Only new nodes retain the newly computed placement.",
+      "reviewEvidence": {
+        "basis": "Independent Codex and Claude browser/source reviews, coordinator-checked evidence and explicit user batch approval of all seven remaining agreed-positive cases at severity 1.",
+        "userAccepted": true,
+        "sourceRevision": "35c645064f72bc4e3180a2c6c506cbbfee170007",
+        "severityReason": "User accepted the table’s severity 1 for the narrowed observed GUI/display scope.",
+        "analysis": [
+          "Both reviewers reproduced on two fresh workflows; initial layout and first-route controls passed.",
+          "Claude saw later additions cover an Else action card; both verified correct saved/reloaded positions.",
+          "Newer source adds an updatedAt preservation gate, so retained merge code does not prove equivalent newer failure."
+        ],
+        "sourceReferences": [
+          "https://github.com/twentyhq/twenty/blob/35c645064f72bc4e3180a2c6c506cbbfee170007/packages/twenty-front/src/modules/workflow/workflow-steps/workflow-actions/if-else-action/components/WorkflowEditActionIfElseBody.tsx#L165-L242",
+          "https://github.com/twentyhq/twenty/blob/35c645064f72bc4e3180a2c6c506cbbfee170007/packages/twenty-front/src/modules/workflow/workflow-steps/workflow-actions/if-else-action/utils/calculateExistingBranchPositions.ts#L16-L40",
+          "https://github.com/twentyhq/twenty/blob/35c645064f72bc4e3180a2c6c506cbbfee170007/packages/twenty-front/src/modules/workflow/workflow-steps/workflow-actions/if-else-action/utils/calculateElseIfBranchPosition.ts#L3-L29",
+          "https://github.com/twentyhq/twenty/blob/35c645064f72bc4e3180a2c6c506cbbfee170007/packages/twenty-front/src/modules/workflow/workflow-version/hooks/useTidyUpWorkflowVersion.ts#L42-L78",
+          "https://github.com/twentyhq/twenty/blob/35c645064f72bc4e3180a2c6c506cbbfee170007/packages/twenty-front/src/modules/workflow/workflow-diagram/components/WorkflowDiagramEffect.tsx#L147-L160",
+          "https://github.com/twentyhq/twenty/blob/35c645064f72bc4e3180a2c6c506cbbfee170007/packages/twenty-front/src/modules/workflow/workflow-diagram/utils/mergeWorkflowDiagrams.ts#L17-L40",
+          "https://github.com/twentyhq/twenty/blob/35c645064f72bc4e3180a2c6c506cbbfee170007/packages/twenty-front/src/modules/workflow/workflow-diagram/utils/generateNodesAndEdgesForIfElseNode.ts#L70-L115",
+          "https://github.com/twentyhq/twenty/blob/35c645064f72bc4e3180a2c6c506cbbfee170007/packages/twenty-front/src/modules/workflow/workflow-diagram/workflow-edges/utils/getEdgePath.ts#L64-L82",
+          "https://github.com/twentyhq/twenty/blob/35c645064f72bc4e3180a2c6c506cbbfee170007/packages/twenty-server/src/engine/core-modules/workflow/resolvers/workflow-version.resolver.ts#L89-L101",
+          "https://github.com/twentyhq/twenty/blob/35c645064f72bc4e3180a2c6c506cbbfee170007/packages/twenty-server/src/modules/workflow/workflow-builder/workflow-version/workflow-version.workspace-service.ts#L380-L452",
+          "https://github.com/twentyhq/twenty/blob/35c645064f72bc4e3180a2c6c506cbbfee170007/packages/twenty-server/src/engine/core-modules/workflow/resolvers/workflow-version-step.resolver.ts#L79-L101",
+          "https://github.com/twentyhq/twenty/blob/35c645064f72bc4e3180a2c6c506cbbfee170007/packages/twenty-server/src/modules/workflow/workflow-builder/workflow-version-step/workflow-version-step-creation.workspace-service.ts#L26-L113",
+          "https://github.com/twentyhq/twenty/blob/35c645064f72bc4e3180a2c6c506cbbfee170007/packages/twenty-server/src/modules/workflow/workflow-builder/workflow-version-step/workflow-version-step-update.workspace-service.ts#L26-L111",
+          "https://github.com/twentyhq/twenty/blob/35c645064f72bc4e3180a2c6c506cbbfee170007/packages/twenty-server/src/modules/workflow/workflow-builder/workflow-version-step/workflow-version-step-helpers.workspace-service.ts#L40-L73"
+        ],
+        "limitations": [
+          "No saved graph loss, wrong-branch execution or persistent saved-layout corruption is claimed.",
+          "Neither reviewer executed the workflow to establish runtime damage.",
+          "Newer runtime was not tested."
+        ]
+      }
+    },
+    {
+      "id": "workflows-pass2-94943a2c",
+      "name": "Schedule validation messages display literal newMinute, newHour and newDay placeholders",
+      "severity": 1,
+      "owningArea": "twenty/workflows",
+      "summary": "Schedule minute/hour/day validation displays literal {newMinute}, {newHour} or {newDay} in the error text instead of the entered value..",
+      "expected": "Validation messages should interpolate the invalid numeric value rather than display template tokens.",
+      "actual": "Schedule minute/hour/day validation displays literal {newMinute}, {newHour} or {newDay} in the error text instead of the entered value.",
+      "reproSteps": [
+        "Create a fresh On a schedule workflow and choose Hours.",
+        "Enter an invalid Trigger at minute value such as 60 and blur.",
+        "Observe literal {newMinute} in the validation sentence.",
+        "Repeat the corresponding hour/day invalid-value paths. Compare valid schedule previews and ordinary bounds feedback that render readable text."
+      ],
+      "sourceCause": "Single quotes around interpolation variables escape ICU placeholders into literal text in compiled translation catalogs.",
+      "reviewEvidence": {
+        "basis": "Independent Codex and Claude browser/source reviews, coordinator-checked evidence and explicit user batch approval of all seven remaining agreed-positive cases at severity 1.",
+        "userAccepted": true,
+        "sourceRevision": "35c645064f72bc4e3180a2c6c506cbbfee170007",
+        "severityReason": "User accepted the table’s severity 1 for the narrowed observed GUI/display scope.",
+        "analysis": [
+          "Each reviewer reproduced the minute token twice on fresh workflows, with hour/day variations and passing controls. Claude exercised six form locations using five distinct English strings.",
+          "Explicit upstream fix 3274fd9771bdaf62288863cb0fb48fd4972d4d76 replaces escaping quotes and compiled literal text with interpolation slots."
+        ],
+        "sourceReferences": [
+          "https://github.com/twentyhq/twenty/blob/35c645064f72bc4e3180a2c6c506cbbfee170007/packages/twenty-front/src/modules/workflow/workflow-trigger/components/WorkflowEditTriggerCronForm.tsx#L49-L60",
+          "https://github.com/twentyhq/twenty/blob/35c645064f72bc4e3180a2c6c506cbbfee170007/packages/twenty-front/src/modules/workflow/workflow-trigger/components/WorkflowEditTriggerCronForm.tsx#L351-L396",
+          "https://github.com/twentyhq/twenty/blob/35c645064f72bc4e3180a2c6c506cbbfee170007/packages/twenty-front/src/modules/workflow/workflow-trigger/components/WorkflowEditTriggerCronForm.tsx#L143-L431",
+          "https://github.com/twentyhq/twenty/blob/35c645064f72bc4e3180a2c6c506cbbfee170007/packages/twenty-front/src/locales/en.po#L10062-L10081",
+          "https://github.com/twentyhq/twenty/blob/35c645064f72bc4e3180a2c6c506cbbfee170007/packages/twenty-front/src/locales/generated/en.ts#L1-L1",
+          "https://github.com/twentyhq/twenty/blob/35c645064f72bc4e3180a2c6c506cbbfee170007/packages/twenty-front/src/modules/object-record/record-field/ui/form-types/components/FormNumberFieldInput.tsx#L71-L87",
+          "https://github.com/twentyhq/twenty/blob/35c645064f72bc4e3180a2c6c506cbbfee170007/packages/twenty-front/src/modules/object-record/record-field/ui/form-types/components/FormNumberFieldInput.tsx#L98-L140",
+          "https://github.com/twentyhq/twenty/blob/35c645064f72bc4e3180a2c6c506cbbfee170007/packages/twenty-front/src/modules/workflow/workflow-steps/components/WorkflowStepDetail.tsx#L94-L100",
+          "https://github.com/twentyhq/twenty/blob/35c645064f72bc4e3180a2c6c506cbbfee170007/packages/twenty-front/src/modules/workflow/workflow-steps/components/WorkflowRunStepNodeDetail.tsx#L90-L98",
+          "https://github.com/twentyhq/twenty/blob/35c645064f72bc4e3180a2c6c506cbbfee170007/packages/twenty-front/src/modules/workflow/workflow-trigger/hooks/useUpdateWorkflowVersionTrigger.ts#L53-L66",
+          "https://github.com/twentyhq/twenty/blob/35c645064f72bc4e3180a2c6c506cbbfee170007/packages/twenty-server/src/engine/core-modules/workflow/resolvers/workflow-version-step.resolver.ts#L104-L116",
+          "https://github.com/twentyhq/twenty/blob/35c645064f72bc4e3180a2c6c506cbbfee170007/packages/twenty-server/src/modules/workflow/workflow-builder/workflow-version-step/workflow-version-step.workspace-service.ts#L56-L80",
+          "https://github.com/twentyhq/twenty/blob/35c645064f72bc4e3180a2c6c506cbbfee170007/packages/twenty-server/src/modules/workflow/workflow-builder/workflow-version-step/workflow-version-step-helpers.workspace-service.ts#L35-L71",
+          "https://github.com/twentyhq/twenty/blob/35c645064f72bc4e3180a2c6c506cbbfee170007/packages/twenty-server/src/engine/core-modules/workflow/services/workflow-version-core-sync.service.ts#L149-L170"
+        ],
+        "limitations": [
+          "The label covers mangled validation copy, not correctness of every schedule validation path.",
+          "German catalog confirmation is source-only, not non-English browser reproduction.",
+          "Newer runtime was not tested."
+        ]
+      }
+    },
+    {
+      "id": "workflows-pass2-a8855594",
+      "name": "Days schedule preview contradicts Days between triggers at calendar boundaries",
+      "severity": 1,
+      "owningArea": "twenty/workflows",
+      "summary": "A saved three-day schedule preview crosses a month boundary with a one-day gap despite its every three days summary.",
+      "expected": "The ordinary Days between triggers form and its every N days summary should agree with successive preview intervals across calendar boundaries.",
+      "actual": "A saved three-day schedule preview crosses a month boundary with a one-day gap despite its every three days summary. A saved 31-day variant previews 30-day and 31-day gaps.",
+      "reproSteps": [
+        "Create a saved On a schedule workflow with Days interval and an ordinary positive integer Days between triggers value such as 3.",
+        "Use a late UTC time and inspect upcoming executions across a month boundary.",
+        "Observe a shorter boundary interval than the every N days form summary, then save/reload to confirm the retained configuration.",
+        "Control: Days 1 agrees with daily previews. A Days 31 setup provides another calendar-boundary mismatch when the visible dates expose it."
+      ],
+      "sourceCause": "The ordinary Days form produces a day-of-month */N cron expression, which restarts each month rather than representing elapsed N-day intervals. Preview and backend conversion share this rule.",
+      "reviewEvidence": {
+        "basis": "Independent Codex and Claude browser/source reviews, coordinator-checked evidence and explicit user batch approval of all seven remaining agreed-positive cases at severity 1.",
+        "userAccepted": true,
+        "sourceRevision": "35c645064f72bc4e3180a2c6c506cbbfee170007",
+        "severityReason": "User accepted the table’s severity 1 for the narrowed observed GUI/display scope.",
+        "analysis": [
+          "Each reviewer reproduced three-day month-end previews on two fresh workflows. Codex additionally verified a fresh 31-day setup.",
+          "Codex scored 1 and Claude 3; user accepted the proposed lower severity 1 for observed preview contradiction.",
+          "Backend effects are plausible from shared conversion source, but neither reviewer activated these workflows or observed future scheduled executions."
+        ],
+        "sourceReferences": [
+          "https://github.com/twentyhq/twenty/blob/35c645064f72bc4e3180a2c6c506cbbfee170007/packages/twenty-front/src/modules/workflow/workflow-trigger/components/WorkflowEditTriggerCronForm.tsx#L141-L189",
+          "https://github.com/twentyhq/twenty/blob/35c645064f72bc4e3180a2c6c506cbbfee170007/packages/twenty-front/src/modules/workflow/workflow-trigger/components/WorkflowEditTriggerCronForm.tsx#L292-L299",
+          "https://github.com/twentyhq/twenty/blob/35c645064f72bc4e3180a2c6c506cbbfee170007/packages/twenty-front/src/modules/workflow/workflow-trigger/utils/cron-to-human/utils/convertScheduleToCronExpression.ts#L6-L14",
+          "https://github.com/twentyhq/twenty/blob/35c645064f72bc4e3180a2c6c506cbbfee170007/packages/twenty-front/src/modules/workflow/workflow-trigger/components/CronExpressionHelper.tsx#L16-L39",
+          "https://github.com/twentyhq/twenty/blob/35c645064f72bc4e3180a2c6c506cbbfee170007/packages/twenty-front/src/modules/workflow/workflow-trigger/components/CronExpressionHelper.tsx#L134-L157",
+          "https://github.com/twentyhq/twenty/blob/35c645064f72bc4e3180a2c6c506cbbfee170007/packages/twenty-front/src/modules/workflow/workflow-trigger/utils/cron-to-human/descriptors/getDayOfMonthDescription.ts#L39-L49",
+          "https://github.com/twentyhq/twenty/blob/35c645064f72bc4e3180a2c6c506cbbfee170007/packages/twenty-server/src/modules/workflow/workflow-trigger/utils/compute-cron-pattern-from-schedule.ts#L24-L38",
+          "https://github.com/twentyhq/twenty/blob/35c645064f72bc4e3180a2c6c506cbbfee170007/packages/twenty-server/src/modules/workflow/workflow-trigger/workspace-services/workflow-trigger.workspace-service.ts#L609-L629",
+          "https://github.com/twentyhq/twenty/blob/35c645064f72bc4e3180a2c6c506cbbfee170007/packages/twenty-server/src/engine/core-modules/workflow/utils/compute-automated-trigger-from-workflow-version.util.ts#L25-L30",
+          "https://github.com/twentyhq/twenty/blob/35c645064f72bc4e3180a2c6c506cbbfee170007/packages/twenty-server/src/modules/workflow/workflow-trigger/utils/__tests__/compute-cron-pattern-from-schedule.spec.ts#L56-L67",
+          "https://github.com/twentyhq/twenty/blob/a6372e288ade9ed14ac2af1a7e224dabb6cc6021/packages/twenty-front/src/modules/workflow/workflow-trigger/utils/convertScheduleToCronExpression.ts#L6-L14",
+          "https://github.com/twentyhq/twenty/blob/a6372e288ade9ed14ac2af1a7e224dabb6cc6021/packages/twenty-front/src/modules/workflow/workflow-trigger/components/CronExpressionHelper.tsx#L17-L40",
+          "https://github.com/twentyhq/twenty/blob/a6372e288ade9ed14ac2af1a7e224dabb6cc6021/packages/twenty-front/src/utils/cron-to-human/descriptors/getDayOfMonthDescription.ts#L38-L48",
+          "https://github.com/twentyhq/twenty/blob/a6372e288ade9ed14ac2af1a7e224dabb6cc6021/packages/twenty-server/src/modules/workflow/workflow-trigger/utils/compute-cron-pattern-from-schedule.ts#L24-L38"
+        ],
+        "limitations": [
+          "No missed or early actual scheduled execution was observed.",
+          "Not every current date necessarily exposes a mismatch within three preview rows.",
+          "Newer runtime was not tested."
+        ]
+      },
+      "matchingGuidance": {
+        "relatedReference": "workflows-N36",
+        "distinction": "This entry covers the Days interval form at calendar boundaries; the existing entry covers Hours 25 conversion."
+      }
+    },
+    {
+      "id": "workflows-pass2-19037f9f",
+      "name": "Returning to cached Workflow Runs omits runs created in another tab",
+      "severity": 1,
+      "owningArea": "twenty/workflows",
+      "summary": "After leaving a filtered See Runs table and creating another completed run in a second tab, returning shows count two but only the first row, without loading through bounded checks up to 15 seconds.",
+      "expected": "Returning to a Workflow’s run list should show newly completed matching runs consistently with the refreshed total count.",
+      "actual": "After leaving a filtered See Runs table and creating another completed run in a second tab, returning shows count two but only the first row, without loading through bounded checks up to 15 seconds. Reload and reapplying the same temporary filter reveals both.",
+      "reproSteps": [
+        "Create a fresh workflow and complete a run. Open its filtered See Runs list and confirm the row.",
+        "Navigate elsewhere in the same app so the table unmounts.",
+        "In another tab complete a second run of the same workflow.",
+        "Return to the original See Runs list with the same filter and observe its increased header count but missing second row after ordinary waiting.",
+        "Reload and reapply the identical temporary See Runs filter to recover both rows. Control: own-tab creation/navigation shows matching list membership."
+      ],
+      "sourceCause": "The header count refreshes with cache-and-network while the settled table uses cache-first. Re-registering the unmounted subscription supplies no snapshot of newly added records.",
+      "reviewEvidence": {
+        "basis": "Independent Codex and Claude browser/source reviews, coordinator-checked evidence and explicit user batch approval of all seven remaining agreed-positive cases at severity 1.",
+        "userAccepted": true,
+        "sourceRevision": "35c645064f72bc4e3180a2c6c506cbbfee170007",
+        "severityReason": "User accepted the table’s severity 1 for the narrowed observed GUI/display scope.",
+        "analysis": [
+          "Codex reproduced on two fresh workflows and captured AggregateWorkflowRuns returning two without a FindManyWorkflowRuns request through 15 seconds. Claude independently reproduced a filtered two-versus-one state.",
+          "Codex scored 1 and Claude 3; user accepted lower severity 1 for display omission with correct stored runs.",
+          "The original unfiltered nine-versus-two observation is not independently explained by this narrower filtered case."
+        ],
+        "sourceReferences": [
+          "https://github.com/twentyhq/twenty/blob/35c645064f72bc4e3180a2c6c506cbbfee170007/packages/twenty-front/src/modules/views/hooks/internal/useGetRecordIndexTotalCount.ts#L59-L69",
+          "https://github.com/twentyhq/twenty/blob/35c645064f72bc4e3180a2c6c506cbbfee170007/packages/twenty-front/src/modules/object-record/hooks/useAggregateRecords.ts#L48-L57",
+          "https://github.com/twentyhq/twenty/blob/35c645064f72bc4e3180a2c6c506cbbfee170007/packages/twenty-front/src/modules/apollo/hooks/useApolloFactory.ts#L49-L64",
+          "https://github.com/twentyhq/twenty/blob/35c645064f72bc4e3180a2c6c506cbbfee170007/packages/twenty-front/src/modules/object-record/record-index/hooks/useRecordIndexTableLazyQuery.ts#L17-L21",
+          "https://github.com/twentyhq/twenty/blob/35c645064f72bc4e3180a2c6c506cbbfee170007/packages/twenty-front/src/modules/object-record/hooks/useLazyFindManyRecords.ts#L26-L32",
+          "https://github.com/twentyhq/twenty/blob/35c645064f72bc4e3180a2c6c506cbbfee170007/packages/twenty-front/src/modules/object-record/hooks/useLazyFindManyRecords.ts#L72-L76",
+          "https://github.com/twentyhq/twenty/blob/35c645064f72bc4e3180a2c6c506cbbfee170007/packages/twenty-front/src/modules/object-record/record-table/virtualization/hooks/useTriggerInitialRecordTableDataLoad.ts#L180-L199",
+          "https://github.com/twentyhq/twenty/blob/35c645064f72bc4e3180a2c6c506cbbfee170007/packages/twenty-front/src/modules/object-record/record-table/virtualization/hooks/useTriggerInitialRecordTableDataLoad.ts#L220-L223",
+          "https://github.com/twentyhq/twenty/blob/35c645064f72bc4e3180a2c6c506cbbfee170007/packages/twenty-front/src/modules/sse-db-event/hooks/useListenToEventsForQuery.ts#L29-L39",
+          "https://github.com/twentyhq/twenty/blob/35c645064f72bc4e3180a2c6c506cbbfee170007/packages/twenty-front/src/modules/object-record/record-table/virtualization/components/RecordTableVirtualizedSSESubscribeEffect.tsx#L29-L33",
+          "https://github.com/twentyhq/twenty/blob/35c645064f72bc4e3180a2c6c506cbbfee170007/packages/twenty-front/src/modules/object-record/record-table/virtualization/components/RecordTableVirtualizedSSESubscribeEffect.tsx#L81-L85",
+          "https://github.com/twentyhq/twenty/blob/35c645064f72bc4e3180a2c6c506cbbfee170007/packages/twenty-server/src/engine/subscriptions/event-stream.service.ts#L189-L229",
+          "https://github.com/twentyhq/twenty/blob/35c645064f72bc4e3180a2c6c506cbbfee170007/packages/twenty-server/src/engine/api/common/common-query-runners/common-find-many-query-runner.service.ts#L70-L87",
+          "https://github.com/twentyhq/twenty/blob/35c645064f72bc4e3180a2c6c506cbbfee170007/packages/twenty-server/src/engine/api/common/common-query-runners/common-find-many-query-runner.service.ts#L181-L201"
+        ],
+        "limitations": [
+          "No execution failure, run loss or literal indefinite omission is claimed.",
+          "Reload clears temporary See Runs filtering, so recovery must reapply the identical filter before comparing.",
+          "Other objects, roles and widgets are source-inferred only.",
+          "Newer runtime was not tested."
+        ]
+      }
+    },
+    {
+      "id": "workflows-pass2-62712bdf",
+      "name": "Workflow version pickers show indistinguishable generated v1 labels",
+      "severity": 1,
+      "owningArea": "twenty/workflows",
+      "summary": "Workflow-version grouping options from different parent workflows display indistinguishable v1 names without parent context.",
+      "expected": "The workflow-version picker should provide enough visible context to identify the intended version among identical per-workflow version names.",
+      "actual": "Different workflows produce v1 options with no distinguishing parent label or hover context. Parent-name search returns no results; searching the displayed v1 label works but retains ambiguous options. Selecting the correct underlying ID groups the correct runs.",
+      "reproSteps": [
+        "Create two fresh uniquely named workflows and save their first versions, both named v1.",
+        "Open the Workflow Runs group picker and select grouping by Workflow version.",
+        "Observe multiple v1 options without visible parent-workflow context. Search a parent workflow name and observe no match; search v1 and observe the ambiguous options.",
+        "Control: group by Workflow instead and search the parent name to identify it."
+      ],
+      "sourceCause": "Versions have generated per-workflow names, version search uses their name rather than parent context, and generic option rendering exposes only that label.",
+      "reviewEvidence": {
+        "basis": "Independent Codex and Claude browser/source reviews, coordinator checks and explicit user acceptance resolving the UI-contract disagreement.",
+        "userAccepted": true,
+        "sourceRevision": "35c645064f72bc4e3180a2c6c506cbbfee170007",
+        "severityReason": "Version identity is ambiguous in the GUI although stored IDs, grouping and execution remain correct.",
+        "analysis": [
+          "Both reviewers reproduced on two fresh workflows and verified that grouping by Workflow provides parent-name context while displayed-label v1 search works.",
+          "Codex recommends Accept 1 because users cannot identify the intended version; Claude rejects because no explicit parent-context product requirement was found. The user accepted the narrowed identity-ambiguity case.",
+          "Codex diagnostically identified version IDs and confirmed correct grouping and runs when selecting them. No wrong execution or data loss was observed.",
+          "The accepted scope is indistinguishable GUI identities, not an independent promise that parent names must be searchable. Displayed-name search failures in other references have different triggers.",
+          "Newer generic components retain relevant ingredients, but a workflow rewrite prevents assuming this exact entry point remains unchanged. Newer runtime was not tested."
+        ],
+        "sourceReferences": [
+          "https://github.com/twentyhq/twenty/blob/35c645064f72bc4e3180a2c6c506cbbfee170007/packages/twenty-server/src/modules/workflow/common/query-hooks/workflow-create-one.post-query.hook.ts#L38-L61",
+          "https://github.com/twentyhq/twenty/blob/35c645064f72bc4e3180a2c6c506cbbfee170007/packages/twenty-server/src/engine/workspace-manager/twenty-standard-application/utils/object-metadata/create-standard-flat-object-metadata.util.ts#L789-L818",
+          "https://github.com/twentyhq/twenty/blob/35c645064f72bc4e3180a2c6c506cbbfee170007/packages/twenty-server/src/engine/workspace-manager/twenty-standard-application/constants/search-fields-by-standard-object-name.constant.ts#L51-L54",
+          "https://github.com/twentyhq/twenty/blob/35c645064f72bc4e3180a2c6c506cbbfee170007/packages/twenty-server/src/engine/workspace-manager/utils/get-ts-vector-column-expression.util.ts#L20-L31",
+          "https://github.com/twentyhq/twenty/blob/35c645064f72bc4e3180a2c6c506cbbfee170007/packages/twenty-server/src/engine/workspace-manager/workspace-migration/workspace-migration-runner/utils/generate-column-definitions.util.ts#L100-L114",
+          "https://github.com/twentyhq/twenty/blob/35c645064f72bc4e3180a2c6c506cbbfee170007/packages/twenty-server/src/engine/core-modules/search/search.resolver.ts#L34-L85",
+          "https://github.com/twentyhq/twenty/blob/35c645064f72bc4e3180a2c6c506cbbfee170007/packages/twenty-server/src/engine/core-modules/search/services/search.service.ts#L294-L350",
+          "https://github.com/twentyhq/twenty/blob/35c645064f72bc4e3180a2c6c506cbbfee170007/packages/twenty-server/src/engine/core-modules/search/services/search.service.ts#L519-L562",
+          "https://github.com/twentyhq/twenty/blob/35c645064f72bc4e3180a2c6c506cbbfee170007/packages/twenty-front/src/modules/object-record/object-options-dropdown/components/ObjectOptionsDropdownAddRecordGroupContent.tsx#L38-L85",
+          "https://github.com/twentyhq/twenty/blob/35c645064f72bc4e3180a2c6c506cbbfee170007/packages/twenty-front/src/modules/object-record/record-picker/single-record-picker/hooks/useSingleRecordPickerPerformSearch.ts#L82-L108",
+          "https://github.com/twentyhq/twenty/blob/35c645064f72bc4e3180a2c6c506cbbfee170007/packages/twenty-front/src/modules/object-record/record-picker/single-record-picker/components/SingleRecordPickerMenuItem.tsx#L73-L103",
+          "https://github.com/twentyhq/twenty/blob/35c645064f72bc4e3180a2c6c506cbbfee170007/packages/twenty-ui/src/navigation/MenuItemSelectAvatar/MenuItemSelectAvatar.tsx#L52-L63",
+          "https://github.com/twentyhq/twenty/blob/35c645064f72bc4e3180a2c6c506cbbfee170007/packages/twenty-front/src/modules/object-record/record-group/hooks/useAddRecordGroup.ts#L47-L75",
+          "https://github.com/twentyhq/twenty/blob/35c645064f72bc4e3180a2c6c506cbbfee170007/packages/twenty-front/src/modules/object-record/select/utils/getObjectFilterFields.ts#L1-L6"
+        ],
+        "limitations": [
+          "No execution failure, wrong version IDs or data loss was established.",
+          "An explicit maintainer requirement for parent context was not found.",
+          "Newer runtime and exact rewritten entry-point availability were not tested."
+        ]
+      }
+    },
+    {
+      "id": "workflows-pass2-accab3f9",
+      "name": "Local named TypeScript types remove Code-step configurable inputs without warning",
+      "severity": 1,
+      "owningArea": "twenty/workflows",
+      "summary": "Using a same-file named type or interface for Code handler parameters removes configurable fields and saves an empty input, while equivalent inline annotations restore them.",
+      "expected": "Equivalent supported same-file parameter type declarations should expose equivalent configurable inputs, or the editor should explain unsupported schema inference.",
+      "actual": "Replacing inline input annotations with a local alias or interface removes the input fields without warning and retains empty input configuration after reload. Replacing the declaration with an equivalent inline annotation restores the fields.",
+      "reproSteps": [
+        "Create a fresh saved workflow with a Code action and a main handler whose inline parameter type has fields such as userName, amount and active. Confirm those configuration inputs appear.",
+        "Move that same parameter shape into a local same-file type alias or interface and annotate the main parameter with the named type.",
+        "Save and observe that configurable inputs disappear without explanation and empty input configuration persists after reload.",
+        "Control: restore the equivalent inline parameter annotation and observe the expected input fields return."
+      ],
+      "sourceCause": "Input-schema inference resolves a small set of built-in named types but does not look up local type/interface declarations, falling back to an empty schema for the reference.",
+      "reviewEvidence": {
+        "basis": "Independent Codex and Claude browser/source reviews, coordinator checks and explicit user acceptance at severity 1 resolving the disputed support contract.",
+        "userAccepted": true,
+        "sourceRevision": "35c645064f72bc4e3180a2c6c506cbbfee170007",
+        "severityReason": "The user selected severity 1 for unavailable configuration fields without warning. Execution effects were not established; inline annotations provide a workaround.",
+        "analysis": [
+          "Both reviewers reproduced local alias/interface behavior on two fresh workflows. Equivalent inline annotations restored the input fields, while named types retained empty input after reload.",
+          "Claude recommended Accept 3 based on equivalent valid syntax and inference documentation. Codex rejected at the contract bar because the explicit documentation concerns SDK/reusable functions rather than a clear inline-editor local-alias promise. The user accepted the narrowed case at severity 1.",
+          "The unresolved imported-alias fallback test establishes deliberate empty fallback but does not establish intentional non-support of valid same-file declarations. No explicit maintainer local-alias decision was found.",
+          "Inline annotations are a demonstrated workaround. SDK explicit schema override was not demonstrated as an inline-editor workaround.",
+          "A helper-arrow-before-main observation has a different parser mechanism and is excluded. Broader SDK/Settings exposure is source-only.",
+          "Inspected newer parser retains the same behavior, but newer runtime was not tested."
+        ],
+        "sourceReferences": [
+          "https://github.com/twentyhq/twenty/blob/35c645064f72bc4e3180a2c6c506cbbfee170007/packages/twenty-docs/user-guide/workflows/capabilities/workflow-actions.mdx#L207-L217",
+          "https://github.com/twentyhq/twenty/blob/35c645064f72bc4e3180a2c6c506cbbfee170007/packages/twenty-sdk/docs/logic-function-inputs.md#L3-L19",
+          "https://github.com/twentyhq/twenty/blob/35c645064f72bc4e3180a2c6c506cbbfee170007/packages/twenty-shared/src/logic-function/get-function-input-schema.ts#L49-L100",
+          "https://github.com/twentyhq/twenty/blob/35c645064f72bc4e3180a2c6c506cbbfee170007/packages/twenty-shared/src/logic-function/get-function-input-schema.ts#L170-L194",
+          "https://github.com/twentyhq/twenty/blob/35c645064f72bc4e3180a2c6c506cbbfee170007/packages/twenty-shared/src/logic-function/get-input-schema-from-source-code.ts#L7-L23",
+          "https://github.com/twentyhq/twenty/blob/35c645064f72bc4e3180a2c6c506cbbfee170007/packages/twenty-shared/src/logic-function/__tests__/get-input-schema-from-source-code.test.ts#L21-L25",
+          "https://github.com/twentyhq/twenty/blob/35c645064f72bc4e3180a2c6c506cbbfee170007/packages/twenty-front/src/modules/logic-functions/hooks/useLogicFunctionForm.ts#L32-L60",
+          "https://github.com/twentyhq/twenty/blob/35c645064f72bc4e3180a2c6c506cbbfee170007/packages/twenty-front/src/modules/workflow/workflow-steps/workflow-actions/code-action/components/WorkflowEditActionCode.tsx#L141-L189",
+          "https://github.com/twentyhq/twenty/blob/35c645064f72bc4e3180a2c6c506cbbfee170007/packages/twenty-front/src/modules/workflow/workflow-steps/workflow-actions/code-action/utils/mergeDefaultFunctionInputAndFunctionInput.ts#L11-L31",
+          "https://github.com/twentyhq/twenty/blob/35c645064f72bc4e3180a2c6c506cbbfee170007/packages/twenty-front/src/modules/workflow/workflow-steps/workflow-actions/code-action/components/WorkflowEditActionCodeFields.tsx#L43-L94",
+          "https://github.com/twentyhq/twenty/blob/35c645064f72bc4e3180a2c6c506cbbfee170007/packages/twenty-front/src/modules/workflow/workflow-steps/workflow-actions/code-action/utils/getWrongExportedFunctionMarkers.ts#L21-L58",
+          "https://github.com/twentyhq/twenty/blob/35c645064f72bc4e3180a2c6c506cbbfee170007/packages/twenty-server/src/engine/metadata-modules/logic-function/logic-function.resolver.ts#L205-L220",
+          "https://github.com/twentyhq/twenty/blob/35c645064f72bc4e3180a2c6c506cbbfee170007/packages/twenty-server/src/engine/metadata-modules/logic-function/services/logic-function-from-source.service.ts#L204-L240",
+          "https://github.com/twentyhq/twenty/blob/35c645064f72bc4e3180a2c6c506cbbfee170007/packages/twenty-server/src/engine/core-modules/logic-function/logic-function-resource/logic-function-resource.service.ts#L125-L140"
+        ],
+        "limitations": [
+          "Code execution is disabled in the fixture; actual missing runtime arguments or downstream damage were not established.",
+          "The support contract was disputed and is resolved by the user label rather than an explicit maintainer promise.",
+          "The separate helper-before-main parser lead is excluded.",
+          "Newer runtime was not tested."
+        ]
+      }
     }
   ]
 }

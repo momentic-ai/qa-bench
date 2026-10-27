@@ -352,6 +352,54 @@
           "Latest was source-inspected only."
         ]
       }
+    },
+    {
+      "id": "settings-data-model-pass2-2fe63dd6",
+      "name": "Data model Records column reports zero for an object with saved records",
+      "owningArea": "twenty/settings-data-model",
+      "summary": "The Settings Data model Records column can report zero or a stale count because it intentionally uses PostgreSQL planner estimates rather than exact record scans.",
+      "expected": "The Data model Records estimate may differ from an exact record list or diagram count; a never-analyzed table is deliberately clamped to zero.",
+      "actual": "Fresh custom objects can show zero in Data model despite saved accessible records and correct exact counts in See records or Visualize. Larger estimates can update later and remain stale after additional records.",
+      "reproSteps": [
+        "Create a fresh custom object and save one or more records.",
+        "Return to Settings → Data model and compare its Records value with See records and Visualize.",
+        "Observe that the estimate may remain zero while exact views show the saved records. Deactivation/reactivation is unnecessary."
+      ],
+      "reason": "Rejected explicitly by the user because this counting behavior is intended. Maintainer commit 082400f751aaf1414bb8b98d80281bb686befd45 deliberately replaced exact scans with pg_class.reltuples estimates and clamps never-analyzed tables to zero. A discrepancy in this estimate alone is not an accepted bug, even though the ordinary Records label lacks an approximation marker. This rejection does not cover lost/inaccessible records or separately broken exact-count queries.",
+      "reviewedBy": "hnhaefliger",
+      "reviewedAt": "2026-10-27T22:26:38.879860+00:00",
+      "reviewEvidence": {
+        "basis": "Both browser/source reviews, coordinator-verified maintainer intent and explicit user rejection: since it is intended, reject it.",
+        "sourceRevision": "35c645064f72bc4e3180a2c6c506cbbfee170007",
+        "analysis": [
+          "Claude recommended severity-1 acceptance because the estimate is unmarked; Codex rejected because the approximation and zero clamp are deliberately implemented. The user resolved this contract disagreement in favor of intended approximation.",
+          "Both confirmed the actual discrepancy and accessible saved records. Codex reproduced on two fresh objects and verified the separate exact diagram count.",
+          "Larger-object observations were separated checks, not continuous monitoring; PostgreSQL settings, analysis thresholds and actual ANALYZE timing were not inspected.",
+          "Inspected newer source retains estimates and zero clamping; newer runtime was not tested."
+        ],
+        "sourceReferences": [
+          "https://github.com/twentyhq/twenty/blob/35c645064f72bc4e3180a2c6c506cbbfee170007/packages/twenty-front/src/pages/settings/data-model/constants/SettingsObjectTableMetadata.ts#L27-L31",
+          "https://github.com/twentyhq/twenty/blob/35c645064f72bc4e3180a2c6c506cbbfee170007/packages/twenty-front/src/pages/settings/data-model/SettingsObjectTable.tsx#L89-L113",
+          "https://github.com/twentyhq/twenty/blob/35c645064f72bc4e3180a2c6c506cbbfee170007/packages/twenty-front/src/modules/settings/data-model/object-details/components/SettingsObjectItemTableRow.tsx#L80-L87",
+          "https://github.com/twentyhq/twenty/blob/35c645064f72bc4e3180a2c6c506cbbfee170007/packages/twenty-front/src/modules/object-record/multiple-objects/hooks/useCombinedGetTotalCount.ts#L13-L24",
+          "https://github.com/twentyhq/twenty/blob/35c645064f72bc4e3180a2c6c506cbbfee170007/packages/twenty-front/src/modules/object-metadata/graphql/queries.ts#L23-L30",
+          "https://github.com/twentyhq/twenty/blob/35c645064f72bc4e3180a2c6c506cbbfee170007/packages/twenty-server/src/engine/api/graphql/metadata.module-factory.ts#L73-L76",
+          "https://github.com/twentyhq/twenty/blob/35c645064f72bc4e3180a2c6c506cbbfee170007/packages/twenty-server/src/engine/metadata-modules/object-metadata/object-metadata.resolver.ts#L64-L70",
+          "https://github.com/twentyhq/twenty/blob/35c645064f72bc4e3180a2c6c506cbbfee170007/packages/twenty-server/src/engine/metadata-modules/object-metadata/object-record-count.service.ts#L18-L49",
+          "https://github.com/twentyhq/twenty/blob/35c645064f72bc4e3180a2c6c506cbbfee170007/packages/twenty-server/src/engine/metadata-modules/object-metadata/object-record-count.service.ts#L52-L72",
+          "https://github.com/twentyhq/twenty/blob/35c645064f72bc4e3180a2c6c506cbbfee170007/packages/twenty-server/src/engine/twenty-orm/global-workspace-datasource/global-workspace-orm.manager.ts#L62-L64",
+          "https://github.com/twentyhq/twenty/blob/35c645064f72bc4e3180a2c6c506cbbfee170007/packages/twenty-server/src/engine/twenty-orm/global-workspace-datasource/global-workspace-datasource.ts#L233-L249",
+          "https://github.com/twentyhq/twenty/blob/35c645064f72bc4e3180a2c6c506cbbfee170007/packages/twenty-server/src/engine/metadata-modules/object-metadata/mostly-empty-fields.service.ts#L45-L57",
+          "https://github.com/twentyhq/twenty/blob/35c645064f72bc4e3180a2c6c506cbbfee170007/packages/twenty-front/src/modules/settings/data-model/graph-overview/components/SettingsDataModelOverviewObject.tsx#L116-L118",
+          "https://github.com/twentyhq/twenty/blob/a6372e288ade9ed14ac2af1a7e224dabb6cc6021/packages/twenty-front/src/pages/settings/data-model/SettingsObjectTable.tsx#L85-L109",
+          "https://github.com/twentyhq/twenty/commit/082400f751aaf1414bb8b98d80281bb686befd45"
+        ],
+        "limitations": [
+          "No record loss or inaccessible saved data was observed.",
+          "The actual PostgreSQL ANALYZE event and timing were not measured.",
+          "Newer runtime was not tested."
+        ]
+      }
     }
   ]
 }
