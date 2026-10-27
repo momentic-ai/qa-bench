@@ -1516,11 +1516,11 @@
     },
     {
       "id": "metabase-admin-472",
-      "name": "Saved log-level reset duration of 2 Hours reopens as 60 Minutes",
+      "name": "Customize log levels dialog reopens with hardcoded defaults instead of the active settings",
       "severity": 3,
-      "summary": "Saved log-level reset duration of 2 Hours reopens as 60 Minutes.",
-      "expected": "Reopened duration represents saved 2 Hours (or equivalent 120 Minutes), allowing administrators to inspect the configured reset interval.",
-      "actual": "After saving 2 Hours and reopening, duration shows 60 Minutes, not 2 Hours. No runtime timeout behavior was inferred.",
+      "summary": "The Customize log levels dialog always reopens on its first preset and a 60-minute duration, not the log levels and reset duration that are actually active.",
+      "expected": "Reopening Customize log levels shows the logger levels and reset duration currently in effect (for example, a saved 2-hour duration or a reset to defaults).",
+      "actual": "After saving a 2-hour duration, the dialog reopens at 60 minutes; after Reset to defaults, it still lists the first preset's debug loggers. Saving the dialog untouched then overwrites the active settings with those defaults.",
       "reproSteps": [
         "As primary fixture admin, open Tools > Logs > Customize log levels.",
         "For a fresh equivalent run, record original JSON and duration; no reused custom record needed. Leave JSON at existing configuration.",
@@ -1567,7 +1567,6 @@
       "actual": "Initial success showed email failure and Temporary Password.",
       "reproSteps": [
         "As Admin open People and choose Invite someone.",
-        "Create a user with a unique @example.test email and submit. The fixture has no email server, so the invitation email can't be sent.",
         "Observe success initially says “We couldn’t send them an email invitation” and provides a generated Temporary Password.",
         "Refresh while the success dialog is open.",
         "Observe the same user's success dialog now says “We sent an invite ... with instructions to set their password.”"
@@ -1628,6 +1627,48 @@
         "Create a QA-MAPS States custom map using https://raw.githubusercontent.com/PublicaMundi/MappingAPI/master/data/geojson/us-states.json, with name identifier and name display property.",
         "Open that saved map and observe its US states preview, then Cancel.",
         "Click Add a map."
+      ]
+    },
+    {
+      "id": "metabase-admin-567",
+      "name": "Negative cron minute bypasses inline validation and gives a generic save error",
+      "severity": 1,
+      "summary": "Negative cron minute bypasses inline validation and gives a generic save error.",
+      "expected": "Entering a negative minute value like '-1 3 * * ?' should display inline validation indicating an invalid cron expression or permitted range.",
+      "actual": "Inline validation disappears upon entering '-1 3 * * ?', and blurring the input displays a generic 'An error occurred' toast with no inline validation message.",
+      "reproSteps": [
+        "As primary Admin open Admin > Performance > Model persistence; record original enabled state and schedule.",
+        "Enable persistence if needed and choose Custom from Refresh models every.",
+        "Enter 60 3 * * ? and blur: observe permitted minute range feedback.",
+        "Replace it with -1 3 * * ? and blur.",
+        "Observe the generic error toast and absence of inline feedback."
+      ]
+    },
+    {
+      "id": "metabase-admin-572",
+      "name": "Athena connection string omits catalog and S3 output location",
+      "severity": 3,
+      "summary": "Athena connection string omits catalog and S3 output location.",
+      "expected": "The supplied JDBC parameters populate the corresponding fields, including S3 staging directory s3://mo-qa/results and Catalog QaCatalog.",
+      "actual": "Region eu-west-1 and Workgroup qa-workgroup populate, while S3 staging directory and Catalog remain empty (placeholders s3://your_bucket and AwsDataCatalog). Full-page assertion confirmed both fields empty.",
+      "reproSteps": [
+        "Open Admin Databases, Add database and select Amazon Athena.",
+        "Enter jdbc:athena://WorkGroup=qa-workgroup;Region=eu-west-1;S3OutputLocation=s3://mo-qa/results;Catalog=QaCatalog; in Connection string (optional).",
+        "Click Display name and inspect Region, Workgroup, S3 staging directory and Catalog."
+      ]
+    },
+    {
+      "id": "metabase-admin-571",
+      "name": "Long segment name submission provides no feedback",
+      "severity": 3,
+      "summary": "Long segment name submission provides no feedback.",
+      "expected": "Save successfully or show actionable validation explaining which input needs correction.",
+      "actual": "Editor remains open with submitted fields and enabled Save changes. A whole-page multimodal assertion confirmed there was no error or success message.",
+      "reproSteps": [
+        "As Admin, create your own disposable Orders segment with Quantity equals 1 and a normal description; save and reopen it.",
+        "Replace the name with Mo-QA- followed by 250 lowercase n characters (256 total).",
+        "Replace description with QA-description- followed by 1010 lowercase d characters (1025 total).",
+        "Enter a revision reason and click Save changes; wait for the settled editor."
       ]
     }
   ]

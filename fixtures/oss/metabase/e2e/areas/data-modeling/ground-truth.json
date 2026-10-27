@@ -1333,7 +1333,7 @@
         "Open an owned Orders metric with Count formula.",
         "Add Discount Not empty filter and save.",
         "Change formula via Custom Expression to Average([Discount]); Update and Save changes.",
-        "Observe $5.20; refresh the metric and observe 5.2."
+        "Observe $5.20; refresh the metric and observe5.2."
       ]
     },
     {
@@ -1370,7 +1370,6 @@
       "expected": "Either Save stays disabled for a whitespace-only reason, or the server's validation error is shown to the user.",
       "actual": "Save changes is enabled. Clicking it returns a 400 validation error that the UI never shows. The page stays unchanged, with no message, for more than 13 seconds.",
       "reproSteps": [
-        "As an admin, open Admin > Table Metadata > Segments, create a segment on Orders with the filter Created At is in the previous 7 days, save it, then reopen it.",
         "Click the 'Created At is in the previous 7 days' filter pill, change 7 to 14, and click Update filter.",
         "Type three spaces in Reason for changes, then blur the field. Save changes becomes enabled.",
         "Click Save changes. The editor stays open with no feedback. In the network log, the segment update request returned 400 with the error 'revision_message must be a non-blank string'."
@@ -1396,25 +1395,26 @@
       "severity": 3,
       "summary": "Navigating to segment reference detail page displays an unhandled 'table_id' error.",
       "expected": "The segment reference page should display segment details or an appropriate user-facing message instead of an unhandled runtime exception.",
-      "actual": "Opening the segment's reference detail page displays \"Cannot read properties of undefined (reading 'table_id')\" in the main content area.",
+      "actual": "Opening /reference/segments/4 displays \"Cannot read properties of undefined (reading 'table_id')\" in the main content area.",
       "reproSteps": [
-        "As an admin, create an active segment on Sample Database > Products with Category = Gadget and note its ID. Keep it active.",
-        "Sign in as the member maya@example.test and open Databases > Learn about our data > Segments.",
+        "Admin coordinator explicitly reported active segment ID4 ready and held unchanged for these checks. Maya can read Products table and create models/metrics based on it. Admin creation not in this agent video. Segment visibility may be a permission boundary; independent verification should check active setup and intended member segment visibility. No admin fixture was modified by Maya.",
+        "As admin, create an active segment on Sample Database Products with Category = Gadget, named Maya-Admin-Segment-Read-0035 and description Admin-owned Products Gadget segment for Maya. Keep active during member checks.",
+        "As Maya Chen member, open Databases > Learn about our data > Segments.",
         "Refresh Segments list.",
-        "Open the segment's detail page directly at /reference/segments/<id>."
+        "Open the admin-supplied detail URL /reference/segments/4."
       ]
     },
     {
       "id": "metabase-data-modeling-560",
-      "name": "Single-result search link says “View and filter all 1 results”",
+      "name": "Single-result search link uses plural “View and filter all 1 results”",
       "severity": 1,
-      "summary": "When a global search returns exactly one item of any type (dashboard, model, question and so on), the results link reads “View and filter all 1 results”.",
-      "expected": "With one result the link uses the singular, for example “View and filter 1 result”.",
-      "actual": "The link reads “View and filter all 1 results” above a single result, for dashboards and models alike.",
+      "summary": "Single-result search link uses plural “View and filter all 1 results”.",
+      "expected": "Use singular “1 result” when one result is returned.",
+      "actual": "The link reads “View and filter all 1 results” above a single result.",
       "reproSteps": [
         "Open global Search.",
-        "Search for a name that matches exactly one item, such as a uniquely named dashboard or the Orders + People model.",
-        "Read the results-header link."
+        "Search exact model name Orders + People.",
+        "Read the results-header link when one match is returned."
       ]
     },
     {
@@ -1431,6 +1431,64 @@
         "Edit description in Info Overview and blur to save; refresh. In History revert to the rename revision, restoring the original description.",
         "Reopen Info > History and click revert icon for You created this.",
         "Observe restored original title in header/Overview while sidebar bookmark retains Renamed."
+      ]
+    },
+    {
+      "id": "metabase-data-modeling-584",
+      "name": "Returning from source table loses model column display names",
+      "severity": 3,
+      "summary": "Returning from source table loses model column display names.",
+      "expected": "Returning to the saved model shows its saved QA Unit price display name.",
+      "actual": "The returned model shows source-table column name Price, despite QA Unit price being saved and visible after refresh before visiting source table. Multimodal assertion confirmed model header is Price on return.",
+      "reproSteps": [
+        "As Maya member, create a Products model in personal collection.",
+        "Open model menu > Edit metadata; select Price and change Display name to QA Unit price.",
+        "Save changes and refresh; verify QA Unit price in model table.",
+        "Open More info > Overview > Based on Products.",
+        "Use browser Back to return to model."
+      ]
+    },
+    {
+      "id": "metabase-data-modeling-585",
+      "name": "Browser-back discard retains unsaved model metadata",
+      "severity": 3,
+      "summary": "Browser-back discard retains unsaved model metadata.",
+      "expected": "Clicking 'Discard changes' should discard unsaved modifications and navigate away from the metadata editor.",
+      "actual": "Clicking 'Discard changes' reloads into the metadata editor with 'Save changes' enabled and Customer Email still set to URL.",
+      "reproSteps": [
+        "Open own QA-MM model and save Customer Email column type Email.",
+        "Reopen Edit metadata, switch from Settings to Columns and change Customer Email type to URL without saving.",
+        "Use browser Back to Settings, Forward to Columns, then Back twice to leave metadata.",
+        "Confirm Discard changes.",
+        "Select Customer Email in the returned Columns editor."
+      ]
+    },
+    {
+      "id": "metabase-data-modeling-586",
+      "name": "Latitude formatting differs between metadata preview and record details",
+      "severity": 1,
+      "summary": "Latitude formatting differs between metadata preview and record details.",
+      "expected": "The saved model formatting shown in the metadata preview matches the same field in record details.",
+      "actual": "Record 3 shows “QA 6.41667921° N units” in details, but metadata preview shows “6.41667921° N”.",
+      "reproSteps": [
+        "Duplicate Orders + People into a disposable model and edit metadata.",
+        "Select Discount, open Formatting, set prefix to “QA ” and suffix to “ units”, save.",
+        "Reopen metadata, change Discount column type to Latitude and save.",
+        "Refresh and open the third record (Order ID 3); inspect Discount.",
+        "Reopen metadata and inspect Discount in the table preview."
+      ]
+    },
+    {
+      "id": "metabase-data-modeling-596",
+      "name": "Unique customers per month reference card opens quarterly results",
+      "severity": 1,
+      "summary": "Unique customers per month reference card opens quarterly results.",
+      "expected": "The advertised monthly customer question displays customer counts grouped by month.",
+      "actual": "The title remains “Unique customers per month,” but the result is 715 for Q3 2026, comparing the previous quarter (564), and the grouping is Quarter.",
+      "reproSteps": [
+        "Open Sample Database reference and select Orders.",
+        "Open Questions about this table and scroll to Unique customers per month.",
+        "Open the question and inspect the displayed period and grouping."
       ]
     }
   ]

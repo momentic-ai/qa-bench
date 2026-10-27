@@ -1285,11 +1285,11 @@
     },
     {
       "id": "metabase-querying-511",
-      "name": "Changing a self-join's right condition field silently deletes its existing joined-ID filter",
+      "name": "Editing a join condition silently drops later steps that use the join",
       "severity": 3,
-      "summary": "Changing a self-join's right condition field silently deletes its existing joined-ID filter.",
-      "expected": "Changing the join comparison field on the same Products table should retain the independently configured joined Products ID=200 filter, which is still a valid field.",
-      "actual": "The Products ID is 200 filter remains after changing the left field to Title, but disappears entirely upon selecting Title on the right.",
+      "summary": "Changing a join's condition (a condition field, an added condition, or an equivalent expression) replaces the join under a new name and silently deletes later filters, custom columns or groupings that reference the joined columns.",
+      "expected": "Editing a join condition keeps every later filter, custom column, grouping and other clause that uses the joined table's columns, since those columns still exist.",
+      "actual": "The dependent clause disappears with no warning: e.g. a joined Products ID = 200 filter, a Margin custom column using Products → Price, or a grouping by the joined State. Results change accordingly (e.g. grouped counts collapse to one total).",
       "reproSteps": [
         "Create a fresh QA-JOIN question using Sample Database > Products. Join Products again using Right outer join and source ID <= joined ID; add AND source ID=joined ID.",
         "Add a filter on the joined Products ID equal to 200. Save under a fresh QA-JOIN name, run and reopen the editor (one result).",
@@ -1477,11 +1477,11 @@
       "name": "Fixed On date filter on a saved timezone-aware timestamp question fails with a TIMESTAMP WITH TIME ZONE parse error",
       "severity": 3,
       "summary": "Fixed On date filter on a saved timezone-aware timestamp question fails with a TIMESTAMP WITH TIME ZONE parse error.",
-      "expected": "The offered fixed date filter executes successfully and returns the rows whose EVENT_AT falls on November 1, 2026, instead of a query error.",
+      "expected": "The offered fixed date filter executes successfully and returns the five displayed November 1 timestamp rows.",
       "actual": "The builder shows 'There was a problem with your question' instead of results. Error details begin: Cannot parse \"TIMESTAMP WITH TIME ZONE\" constant \"America/Los_Angeles\".",
       "reproSteps": [
         "Create a fresh SQL question on Sample Database with: SELECT row_id, event_utc AT TIME ZONE 'America/Los_Angeles' AS event_at, CAST(event_utc AT TIME ZONE 'America/Los_Angeles' AS VARCHAR) AS local_with_offset, CAST(event_utc AS DATE) AS utc_date, EXTRACT(HOUR FROM event_utc) AS utc_hour FROM (VALUES (1, TIMESTAMP WITH TIME ZONE '2026-11-01 06:59:59+00'), (2, TIMESTAMP WITH TIME ZONE '2026-11-01 07:00:00+00'), (3, TIMESTAMP WITH TIME ZONE '2026-11-01 08:30:00+00'), (4, TIMESTAMP WITH TIME ZONE '2026-11-01 09:30:00+00'), (5, TIMESTAMP WITH TIME ZONE '2026-11-01 10:00:00+00')) AS t(row_id,event_utc)",
-        "Run and verify five rows, then save with a unique date_filters-prefixed name.",
+        "Run and verify five rows with EVENT_AT displayed on November 1, 2026, then save with a unique date_filters-prefixed name.",
         "Choose Explore results. Click EVENT_AT header, Filter by this column, Fixed date range, On. Enter November 1, 2026 and apply Add filter.",
         "Open Show error details."
       ]
@@ -1576,23 +1576,6 @@
       ]
     },
     {
-      "id": "metabase-querying-523",
-      "name": "Editing a compound join condition silently deletes a custom column",
-      "severity": 3,
-      "summary": "Editing a compound join condition silently deletes a custom column.",
-      "expected": "Editing the join condition to an equivalent expression should retain the custom column and its results.",
-      "actual": "The Margin custom column immediately disappears from the notebook, and it is absent from results after rerunning, without warning. Reproduced twice.",
-      "reproSteps": [
-        "Open /question/notebook and choose Sample Database > Orders.",
-        "Join Products using the automatically selected Orders.Product ID = Products.ID condition, and choose Inner join.",
-        "Add a custom column named Margin using [Total] - [Products → Price].",
-        "Add a second condition to the join: Orders.Total > Products.Price.",
-        "Visualize and confirm Margin is present (the first value is 14.62), then return to Editor.",
-        "On the first join condition, open the left column selector > Custom Expression, change [Product ID] to [Product ID] + 0, and click Update.",
-        "Observe Margin has disappeared. Visualize again and confirm the Margin result column is also missing."
-      ]
-    },
-    {
       "id": "metabase-querying-551",
       "name": "Joined Reviews row's View details shows a different review: selecting review 1 displays review 8",
       "severity": 3,
@@ -1635,6 +1618,81 @@
         "Keep first column ID and second Ean; click Add column to include Title.",
         "Click Separated by (space). In the first Separator input enter two characters: double quote followed by backslash. In the second Separator input enter ::.",
         "Click the helper's Done button. Name the generated expression QAEXG mixed escaped and inspect validation."
+      ]
+    },
+    {
+      "id": "metabase-querying-588",
+      "name": "Browser Back discard leaves edited SQL and results on screen",
+      "severity": 3,
+      "summary": "Browser Back discard leaves edited SQL and results on screen.",
+      "expected": "Selecting 'Discard changes' discards the unsaved changes and navigates away or returns to the prior saved question state.",
+      "actual": "After 'Discard changes' is confirmed, the UI remains on 'New question' with 'Started from QA-SAVE resume final 1027', the SQL query ending in LIMIT 6, and 6 rows displayed.",
+      "reproSteps": [
+        "Create a fresh native SQL question on Sample Database using SELECT ID, TITLE FROM PRODUCTS ORDER BY ID LIMIT 5; run and save with a unique QA-SAVE name.",
+        "Open the question from its collection. Open Editor and change LIMIT 5 to LIMIT 9 without running. Use browser Back, Cancel, then Back and Discard changes to return to the collection.",
+        "Use browser Forward to reopen the saved question; confirm LIMIT 5 and five rows.",
+        "Change SQL to SELECT ID, TITLE FROM PRODUCTS ORDER BY ID LIMIT 6 and run using Ctrl+Enter.",
+        "Use browser Back and choose Discard changes in the warning. Inspect header, SQL and results."
+      ]
+    },
+    {
+      "id": "metabase-querying-591",
+      "name": "Row-count popover covers Download on saved question results",
+      "severity": 3,
+      "summary": "Row-count popover covers Download on saved question results.",
+      "expected": "Opening Download results should dismiss Row count or otherwise keep download controls accessible.",
+      "actual": "On saved questions44 and49, Row count remains above Download results. Its Pick a limit input overlays and intercepts clicks on Download, preventing download. Fresh unsaved query results did not block the action. Reproduced on a newly saved Orders query with limit5 and hard reload at2560×1440. Snapshot page-2026-10-27T21-07-34-952Z.yml; prior screenshot page-2026-10-27T21-03-53-128Z.png. Click attempt explicitly identifies Pick a limit as intercepting pointer events.",
+      "reproSteps": [
+        "Sign in as eval@momentic.ai, open /question/notebook, and choose Sample Database > Orders.",
+        "Click Visualize, then click Showing first 2,000 rows (Row count), enter5 in Pick a limit, and press Enter.",
+        "Save the question with a unique name in Our analytics, then reload its saved question URL.",
+        "At the bottom right, click Showing5rows (Row count).",
+        "Without closing Row count, click Download results beside it.",
+        "Observe both popovers remain open, with Pick a limit covering Download. Attempt to click Download; it cannot be clicked."
+      ]
+    },
+    {
+      "id": "metabase-querying-594",
+      "name": "Started from link discards unsaved SQL without confirmation",
+      "severity": 3,
+      "summary": "Started from link discards unsaved SQL without confirmation.",
+      "expected": "A confirmation prompt should warn that unsaved edits will be discarded before navigating away.",
+      "actual": "Clicking the 'Started from' breadcrumb link navigates directly without any warning, discarding the edits and reverting to the original saved query.",
+      "reproSteps": [
+        "Own observed fixture is question 91 QA-SQL Editor-Resume-2055, currently intact with LIMIT 3. Create independent fixture rather than modifying it.",
+        "As Harbor, create a new SQL query using Sample Database: SELECT ID FROM ORDERS ORDER BY ID LIMIT 3. Run it and save with a unique QA-SQL name.",
+        "Open its editor and replace SQL with SELECT ID FROM ORDERS ORDER BY ID LIMIT 4 without running or saving.",
+        "Optional comparison: click the home logo; observe Discard your changes? and click Cancel to retain LIMIT 4.",
+        "Click the saved question name beside Started from in the top breadcrumb.",
+        "Reopen the editor and inspect the SQL."
+      ]
+    },
+    {
+      "id": "metabase-querying-598",
+      "name": "Removing the last grouping hides an active downstream summary",
+      "severity": 3,
+      "summary": "Removing the last grouping hides an active downstream summary.",
+      "expected": "Any downstream summary still affecting query results remains visible and editable in the notebook; if removed, its effect is removed too.",
+      "actual": "Notebook shows only three first-stage metrics without grouping. The second Sum of QA sum fours stage is absent, while results still show only that second-stage value 9564. A whole-page multimodal assertion confirmed the second stage/chip is absent.",
+      "reproSteps": [
+        "Create a fresh own QA-SUMMARY question using Sample Database Orders.",
+        "Add custom summaries SumIf([Quantity], [Quantity] = 4) named QA sum fours, Share([Quantity] = 3) named QA share threes, and Sum([Quantity]) / Count() named QA overall mean.",
+        "Group by Created At: Minute. Add a second Summarize stage with Sum of QA sum fours. Visualize returns 9564.",
+        "Return to Editor and remove Created At: Minute using the grouping chip's x.",
+        "Observe that only the first summary stage remains visible. Visualize still returns only Sum of QA sum fours = 9564, rather than the three first-stage metrics.",
+        "Return to Editor: the second stage remains absent."
+      ]
+    },
+    {
+      "id": "metabase-querying-597",
+      "name": "Minute-level date drill returns no orders for a nonempty group",
+      "severity": 3,
+      "summary": "Minute-level date drill returns no orders for a nonempty group.",
+      "expected": "Drilling down via 'See this Order' shows the order matching the selected minute group.",
+      "actual": "A 'Created At: Minute is Feb 11, 2028' filter without time is applied, resulting in 'No results!' and 0 rows.",
+      "reproSteps": [
+        "Click Created At header → Distribution, then Switch to data.",
+        "Click that row's Count1, then See this Order."
       ]
     }
   ]
