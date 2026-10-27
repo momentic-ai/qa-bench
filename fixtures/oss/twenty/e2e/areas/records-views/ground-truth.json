@@ -700,6 +700,325 @@
           "No crash or saved-data loss was observed. Latest was inspected in source only."
         ]
       }
+    },
+    {
+      "id": "records-views-pass2-41907c24",
+      "name": "Group by None saves successfully but leaves Opportunities and Tasks grouped until reload",
+      "severity": 3,
+      "owningArea": "twenty/records-views",
+      "summary": "Removing table grouping persists successfully but leaves the previous operational grouping and field selection active until reload.",
+      "expected": "Choosing Group by None should immediately show a flat table and mark None selected.",
+      "actual": "None closes the menu and successfully saves null grouping metadata, but group sections and the previous field checkmark remain. Reload displays the saved flat table. A relation-grouped variant can retain only the old displayed subset while the total count increases.",
+      "reproSteps": [
+        "Create a fresh Opportunities Table view and group by Stage.",
+        "Choose Options → Group → Group by → None and wait for saving to finish.",
+        "Observe that Stage sections remain. Reopen Group by and observe the old field still checked.",
+        "Reload and confirm the table becomes flat.",
+        "Repeat with Tasks grouped by Status. Controls: switching between grouping fields works; selecting None in a fresh ungrouped table keeps it flat."
+      ],
+      "sourceCause": "The reset persists null grouping metadata without reloading record-index/group state. Rendering retains old group IDs and the same-view initialization does not reset them.",
+      "matchingGuidance": {
+        "relatedReference": "mo-60m-twenty-5",
+        "distinction": "The existing entry covers None in a custom Workflow Versions view. This entry covers removal of grouping in Opportunities and Tasks tables, including stale relation-group subsets after None."
+      },
+      "reviewEvidence": {
+        "basis": "Mo evidence, independent Codex and Claude browser/source reviews, coordinator verification and user acceptance as a related entry.",
+        "userAccepted": true,
+        "sourceRevision": "35c645064f72bc4e3180a2c6c506cbbfee170007",
+        "severityReason": "The saved grouping change does not take effect in the active table until reload and can leave a stale subset displayed.",
+        "analysis": [
+          "Each reviewer reproduced twice on fresh Stage-grouped Opportunities views and also on a Status-grouped Tasks table. Successful responses stored null grouping and no groups.",
+          "Codex additionally reproduced with a second account and two widths. Claude confirmed the Point of Contact relation variant after None; intended initial relation-group configuration is not classified as defective.",
+          "Field-to-field grouping changes and fresh ungrouped controls passed. Claude also confirmed that changing Layout from Kanban to Table removes grouping immediately.",
+          "Maintainer fix 5effee7754 / PR #23619 explicitly repairs the None reset. Inspected newer source retains reset and returned-group synchronization corrections; newer runtime was not tested."
+        ],
+        "sourceReferences": [
+          "https://github.com/twentyhq/twenty/blob/35c645064f72bc4e3180a2c6c506cbbfee170007/packages/twenty-front/src/modules/object-record/object-options-dropdown/components/ObjectOptionsDropdownRecordGroupFieldsContent.tsx#L85-L145",
+          "https://github.com/twentyhq/twenty/blob/35c645064f72bc4e3180a2c6c506cbbfee170007/packages/twenty-front/src/modules/object-record/record-index/hooks/useHandleRecordGroupField.ts#L58-L121",
+          "https://github.com/twentyhq/twenty/blob/35c645064f72bc4e3180a2c6c506cbbfee170007/packages/twenty-front/src/modules/object-record/record-index/hooks/useHandleRecordGroupField.ts#L134-L162",
+          "https://github.com/twentyhq/twenty/blob/35c645064f72bc4e3180a2c6c506cbbfee170007/packages/twenty-front/src/modules/views/hooks/internal/usePerformViewAPIUpdate.ts#L29-L55",
+          "https://github.com/twentyhq/twenty/blob/35c645064f72bc4e3180a2c6c506cbbfee170007/packages/twenty-front/src/modules/views/states/selectors/viewsSelector.ts#L28-L103",
+          "https://github.com/twentyhq/twenty/blob/35c645064f72bc4e3180a2c6c506cbbfee170007/packages/twenty-front/src/modules/object-record/record-index/components/RecordIndexLoadBaseOnContextStoreEffect.tsx#L21-L44",
+          "https://github.com/twentyhq/twenty/blob/35c645064f72bc4e3180a2c6c506cbbfee170007/packages/twenty-front/src/modules/object-record/record-group/hooks/useSetRecordGroups.ts#L47-L101",
+          "https://github.com/twentyhq/twenty/blob/35c645064f72bc4e3180a2c6c506cbbfee170007/packages/twenty-front/src/modules/object-record/record-table/components/RecordTableContent.tsx#L160-L165",
+          "https://github.com/twentyhq/twenty/blob/35c645064f72bc4e3180a2c6c506cbbfee170007/packages/twenty-server/src/engine/metadata-modules/view/resolvers/view.resolver.ts#L174-L187",
+          "https://github.com/twentyhq/twenty/blob/35c645064f72bc4e3180a2c6c506cbbfee170007/packages/twenty-server/src/engine/metadata-modules/view/services/view.service.ts#L132-L218"
+        ],
+        "limitations": [
+          "No records were lost.",
+          "A second None click produced no mutation in one trial; the precise early-return cause was inferred rather than instrumented.",
+          "Claude did not test other roles or widths.",
+          "Newer runtime and all timing variants were not tested."
+        ]
+      }
+    },
+    {
+      "id": "records-views-pass2-e5d0cd2a",
+      "name": "Changing a saved Name filter to a relative date rule fails because its old field is retained",
+      "severity": 3,
+      "owningArea": "twenty/records-views",
+      "summary": "Changing the field of an already-saved advanced rule omits its new field ID from the update, causing valid incompatible-type rules to fail validation against the old field.",
+      "expected": "Saving a changed advanced-filter field should persist that field together with its valid operator and value.",
+      "actual": "Changing a saved Name rule to Creation date Is relative This day sends the new operand/value without the new field ID. The server rejects the date operator against the retained Name field with “Filter operand is not supported for this field type.” Reload restores the original rule.",
+      "reproSteps": [
+        "Create a fresh People view, add an advanced Name filter and save the view.",
+        "Edit that saved rule by changing its field to Creation date and choosing Is relative → This day.",
+        "Save the updated view and observe the unsupported-operand error.",
+        "Reload and observe that the original Name filter remains saved.",
+        "Control: create a new Creation date Is relative This day rule directly; save and reload to confirm it persists."
+      ],
+      "sourceCause": "The update payload includes changed operand/value but omits fieldMetadataId, although field-change detection recognizes the edit and the server update DTO accepts that field. Validation checks the retained old field and correctly rejects an incompatible operand.",
+      "matchingGuidance": {
+        "relatedReference": "records-views-N46",
+        "distinction": "N46 covers compatible-operator field changes that save new values silently under the old field. This entry covers incompatible field/operator changes that are blocked with an explicit validation error."
+      },
+      "reviewEvidence": {
+        "basis": "Mo evidence, independent Codex and Claude browser/source verification, coordinator checks and user approval as a related entry.",
+        "userAccepted": true,
+        "sourceRevision": "35c645064f72bc4e3180a2c6c506cbbfee170007",
+        "severityReason": "A supported edit from one valid saved filter to another cannot be saved because the request retains the wrong field.",
+        "analysis": [
+          "Codex reproduced Name to Creation date on two fresh People views and a teammate Last Update variation. Claude reproduced Name to Creation date and the reverse direction on separate views.",
+          "Both verified that a newly created, never-saved date rule saves and survives reload. The defect requires editing the field of an already-saved rule.",
+          "Requests omit the changed field ID while changing operand/value; server validation rejects IS_RELATIVE against FULL_NAME or CONTAINS against DATE_TIME.",
+          "The inspected newer source retains the update-payload omission. Newer runtime was not tested, and the focused history search is not exhaustive proof of fix status."
+        ],
+        "sourceReferences": [
+          "https://github.com/twentyhq/twenty/blob/35c645064f72bc4e3180a2c6c506cbbfee170007/packages/twenty-front/src/modules/object-record/advanced-filter/hooks/useApplyAdvancedFilterSourceField.ts#L55-L104",
+          "https://github.com/twentyhq/twenty/blob/35c645064f72bc4e3180a2c6c506cbbfee170007/packages/twenty-front/src/modules/object-record/advanced-filter/utils/getDefaultAdvancedFilterOperand.ts#L19-L25",
+          "https://github.com/twentyhq/twenty/blob/35c645064f72bc4e3180a2c6c506cbbfee170007/packages/twenty-front/src/modules/views/components/UpdateViewButtonGroup.tsx#L76-L79",
+          "https://github.com/twentyhq/twenty/blob/35c645064f72bc4e3180a2c6c506cbbfee170007/packages/twenty-front/src/modules/views/hooks/useSaveRecordFiltersAndGroupFiltersToViewFiltersAndGroupFilters.ts#L130-L162",
+          "https://github.com/twentyhq/twenty/blob/35c645064f72bc4e3180a2c6c506cbbfee170007/packages/twenty-front/src/modules/views/hooks/internal/usePerformViewFilterAPIPersist.ts#L65-L85",
+          "https://github.com/twentyhq/twenty/blob/35c645064f72bc4e3180a2c6c506cbbfee170007/packages/twenty-server/src/engine/metadata-modules/view-filter/resolvers/view-filter.resolver.ts#L62-L71",
+          "https://github.com/twentyhq/twenty/blob/35c645064f72bc4e3180a2c6c506cbbfee170007/packages/twenty-server/src/engine/metadata-modules/view-filter/dtos/inputs/update-view-filter.input.ts#L20-L24",
+          "https://github.com/twentyhq/twenty/blob/35c645064f72bc4e3180a2c6c506cbbfee170007/packages/twenty-server/src/engine/metadata-modules/flat-view-filter/utils/from-update-view-filter-input-to-flat-view-filter-to-update-or-throw.util.ts#L51-L74",
+          "https://github.com/twentyhq/twenty/blob/35c645064f72bc4e3180a2c6c506cbbfee170007/packages/twenty-server/src/engine/metadata-modules/view-filter/services/view-filter.service.ts#L139-L168",
+          "https://github.com/twentyhq/twenty/blob/35c645064f72bc4e3180a2c6c506cbbfee170007/packages/twenty-server/src/engine/workspace-manager/workspace-migration/workspace-migration-builder/validators/services/flat-view-filter-validator.service.ts#L229-L273"
+        ],
+        "limitations": [
+          "The failure is explicitly reported, not silent loss of an acknowledged save.",
+          "No saved-filter or record corruption was established for these rejected incompatible updates.",
+          "Claude did not test other roles, widths or side panels. Not every filter combination is claimed to fail.",
+          "Newer runtime was not tested."
+        ]
+      }
+    },
+    {
+      "id": "records-views-pass2-8e69f74f",
+      "name": "Reloading an index URL without viewId overwrites the remembered saved view",
+      "severity": 3,
+      "owningArea": "twenty/records-views",
+      "summary": "Returning through a record breadcrumb to an index without viewId displays the saved view, but reload selects the default and replaces the remembered view ID.",
+      "expected": "Reloading an index without an explicit viewId should preserve its remembered saved-view selection and corresponding filtered layout.",
+      "actual": "A Company breadcrumb initially returns to the saved filtered Calendar at /objects/companies without a query. Reload selects All Companies, widens results and overwrites the remembered ID in local storage. The saved view and its filters remain intact and can be reselected.",
+      "reproSteps": [
+        "Create a uniquely named Companies Calendar view with a filter matching a small subset and select it.",
+        "Open a Company in the side panel, then use Open to reach its full record without a viewId query parameter.",
+        "Click the Companies breadcrumb to return to the filtered calendar. Confirm the index URL has no viewId.",
+        "Reload and observe All Companies selected instead of the remembered calendar, with the broader results.",
+        "Reselect the saved calendar to confirm its configuration remains intact. Control: reload the saved view using an explicit viewId URL; its selection is preserved."
+      ],
+      "sourceCause": "The no-viewId initialization and persisted last-visited-view synchronization can select a fallback and write it over the remembered saved-view ID. Storage replacement is directly observed; exact hydration, subscription and effect ordering is inferred from source.",
+      "reviewEvidence": {
+        "basis": "Mo evidence, independent Codex and Claude browser/source verification including Codex follow-up, coordinator source and storage checks and user acceptance.",
+        "userAccepted": true,
+        "sourceRevision": "35c645064f72bc4e3180a2c6c506cbbfee170007",
+        "severityReason": "Ordinary reload loses remembered saved-view selection and unexpectedly widens displayed results.",
+        "analysis": [
+          "Each reviewer reproduced on two fresh saved Calendar views. Both confirmed the saved calendar first returns correctly without viewId and reload replaces its remembered selection with All Companies.",
+          "Codex revised its original rejection after its own follow-up established that its prior passing controls included viewId. Explicit-ID reloads, sidebar links and record/breadcrumb paths carrying the ID pass.",
+          "Claude additionally observed direct no-query loading after a Company Table view and on People. These broader variants were not independently reproduced by both reviewers.",
+          "The coordinator verified raw before/after storage observations and locked Jotai 2.17.1 initialization semantics. The precise live effect ordering remains inferred.",
+          "Inspected newer source changes fallback ordering, blocks INDEX writes in the setter and limits effects to the main surface. Continued newer failure or complete correction is not established without runtime testing."
+        ],
+        "sourceReferences": [
+          "https://github.com/twentyhq/twenty/blob/35c645064f72bc4e3180a2c6c506cbbfee170007/packages/twenty-front/src/modules/command-menu-item/components/RecordShowSidePanelOpenRecordButton.tsx#L95-L109",
+          "https://github.com/twentyhq/twenty/blob/35c645064f72bc4e3180a2c6c506cbbfee170007/packages/twenty-front/src/modules/object-record/record-show/components/ObjectRecordShowPageBreadcrumb.tsx#L115-L120",
+          "https://github.com/twentyhq/twenty/blob/35c645064f72bc4e3180a2c6c506cbbfee170007/packages/twenty-front/src/modules/object-record/record-show/hooks/useRecordShowPagePagination.ts#L25-L27",
+          "https://github.com/twentyhq/twenty/blob/35c645064f72bc4e3180a2c6c506cbbfee170007/packages/twenty-front/src/modules/object-record/record-show/hooks/useRecordShowPagePagination.ts#L198-L204",
+          "https://github.com/twentyhq/twenty/blob/35c645064f72bc4e3180a2c6c506cbbfee170007/packages/twenty-shared/src/utils/navigation/getAppPath.ts#L17-L25",
+          "https://github.com/twentyhq/twenty/blob/35c645064f72bc4e3180a2c6c506cbbfee170007/packages/twenty-front/src/modules/context-store/components/MainContextStoreProvider.tsx#L15-L35",
+          "https://github.com/twentyhq/twenty/blob/35c645064f72bc4e3180a2c6c506cbbfee170007/packages/twenty-front/src/modules/context-store/components/MainContextStoreProvider.tsx#L78-L116",
+          "https://github.com/twentyhq/twenty/blob/35c645064f72bc4e3180a2c6c506cbbfee170007/packages/twenty-front/src/modules/navigation/states/lastVisitedViewPerObjectMetadataItemState.ts#L3-L10",
+          "https://github.com/twentyhq/twenty/blob/35c645064f72bc4e3180a2c6c506cbbfee170007/packages/twenty-front/src/modules/ui/utilities/state/jotai/utils/createAtomState.ts#L88-L97",
+          "https://github.com/twentyhq/twenty/blob/35c645064f72bc4e3180a2c6c506cbbfee170007/packages/twenty-front/src/modules/context-store/components/MainContextStoreProviderEffect.tsx#L69-L93",
+          "https://github.com/twentyhq/twenty/blob/35c645064f72bc4e3180a2c6c506cbbfee170007/packages/twenty-front/src/modules/navigation/hooks/useSetLastVisitedViewForObjectMetadataNamePlural.ts#L19-L48",
+          "https://github.com/twentyhq/twenty/blob/a6372e288ade9ed14ac2af1a7e224dabb6cc6021/packages/twenty-front/src/modules/context-store/components/RouteContextStoreProvider.tsx#L18-L45",
+          "https://github.com/twentyhq/twenty/blob/a6372e288ade9ed14ac2af1a7e224dabb6cc6021/packages/twenty-front/src/modules/context-store/components/RouteContextStoreProvider.tsx#L106-L137",
+          "https://github.com/twentyhq/twenty/blob/a6372e288ade9ed14ac2af1a7e224dabb6cc6021/packages/twenty-front/src/modules/navigation/states/lastVisitedViewPerObjectMetadataItemState.ts#L3-L10"
+        ],
+        "limitations": [
+          "Saved views, filters and records are not deleted; the defect is selection reset.",
+          "Both independently establish desktop Companies Calendar coverage, not all objects, layouts or roles.",
+          "A running-build SHA was not independently measured by reviewers.",
+          "Exact runtime effect ordering and newer runtime behavior were not established."
+        ]
+      }
+    },
+    {
+      "id": "records-views-pass2-da4a97c8",
+      "name": "Reselecting a saved sort from the Sort menu creates a duplicate and fails Update view",
+      "severity": 3,
+      "owningArea": "twenty/records-views",
+      "summary": "Choosing an already-saved sort field again without removing its chip creates a replacement ID that conflicts with the retained saved sort, blocking Update view.",
+      "expected": "Reselecting an existing sort field should preserve or update its saved identity so Update view can persist the requested direction.",
+      "actual": "After saving Title ascending and reloading, choosing Title again through Sort without removing the chip makes same-direction and descending saves fail. Retrying fails, and reload retains the original ascending sort.",
+      "reproSteps": [
+        "Create a fresh Tasks Table view, add Title ascending sorting, save and reload.",
+        "Keep the existing Title sort chip. Open Sort and select Title again without removing it.",
+        "Choose descending and click Update view. Observe the migration error.",
+        "Retry and reload; the original ascending sort remains. Same-direction reselect can also fail.",
+        "Controls: initial sort creation succeeds, and toggling direction through the existing chip updates its original ID and saves correctly."
+      ],
+      "sourceCause": "The Sort menu generates a fresh client ID and replaces the local sort identity. Persistence attempts creation before destruction of the saved sort, causing a duplicate conflict; same-direction comparison can omit destruction altogether.",
+      "matchingGuidance": {
+        "relatedReference": "records-views-N29",
+        "distinction": "The existing reference removes and re-adds a saved sort chip. This entry retains the chip throughout and reselects its field through the Sort menu, producing the related replacement-ID/create conflict."
+      },
+      "reviewEvidence": {
+        "basis": "Mo candidate plus independently isolated reselect reproduction, Codex follow-up and Claude browser/source verification, coordinator checks and user acceptance as related coverage.",
+        "userAccepted": true,
+        "sourceRevision": "35c645064f72bc4e3180a2c6c506cbbfee170007",
+        "severityReason": "An offered existing-sort selection makes Update view repeatedly fail and prevents the requested direction from persisting.",
+        "analysis": [
+          "Both reviewers independently reproduced no-removal reselect on two fresh Table views. Codex follow-up recorded eight failed saves across directions and retries; Claude recorded three failures.",
+          "Direct existing-chip direction toggling saves correctly, as does normal initial sort creation. Prior Kanban or Calendar history is unnecessary.",
+          "The literal initial-add report passed. Original Mo prerequisite history is unknown; the accepted scope is the independently isolated saved-sort reselect sequence.",
+          "Source and observed request IDs establish creation with a new ID before removing the old saved sort. Server duplicate rejection is appropriate; the UI creates the conflict from an offered selection.",
+          "Upstream change fc8d6084e4846adf48320f4ca864df234788fa9e repairs validation and ordering within a combined migration. Its test does not exercise the separate create-first UI requests, and continued newer failure is source inference rather than runtime verification."
+        ],
+        "sourceReferences": [
+          "https://github.com/twentyhq/twenty/blob/35c645064f72bc4e3180a2c6c506cbbfee170007/packages/twenty-front/src/modules/object-record/object-sort-dropdown/components/ObjectSortDropdownButton.tsx#L119-L129",
+          "https://github.com/twentyhq/twenty/blob/35c645064f72bc4e3180a2c6c506cbbfee170007/packages/twenty-front/src/modules/object-record/record-sort/hooks/useUpsertRecordSort.ts#L18-L43",
+          "https://github.com/twentyhq/twenty/blob/a6372e288ade9ed14ac2af1a7e224dabb6cc6021/packages/twenty-front/src/modules/object-record/record-sort/hooks/useUpsertRecordSort.ts#L18-L43",
+          "https://github.com/twentyhq/twenty/blob/35c645064f72bc4e3180a2c6c506cbbfee170007/packages/twenty-front/src/modules/views/utils/getViewSortsToCreate.ts#L9-L19",
+          "https://github.com/twentyhq/twenty/blob/a6372e288ade9ed14ac2af1a7e224dabb6cc6021/packages/twenty-front/src/modules/views/utils/getViewSortsToCreate.ts#L9-L19",
+          "https://github.com/twentyhq/twenty/blob/35c645064f72bc4e3180a2c6c506cbbfee170007/packages/twenty-front/src/modules/views/utils/getViewSortsToUpdate.ts#L10-L25",
+          "https://github.com/twentyhq/twenty/blob/a6372e288ade9ed14ac2af1a7e224dabb6cc6021/packages/twenty-front/src/modules/views/utils/getViewSortsToUpdate.ts#L10-L25",
+          "https://github.com/twentyhq/twenty/blob/35c645064f72bc4e3180a2c6c506cbbfee170007/packages/twenty-front/src/modules/views/utils/getViewSortsToDelete.ts#L4-L20",
+          "https://github.com/twentyhq/twenty/blob/a6372e288ade9ed14ac2af1a7e224dabb6cc6021/packages/twenty-front/src/modules/views/utils/getViewSortsToDelete.ts#L4-L20",
+          "https://github.com/twentyhq/twenty/blob/35c645064f72bc4e3180a2c6c506cbbfee170007/packages/twenty-front/src/modules/views/hooks/useSaveRecordSortsToViewSorts.ts#L35-L94",
+          "https://github.com/twentyhq/twenty/blob/35c645064f72bc4e3180a2c6c506cbbfee170007/packages/twenty-front/src/modules/views/editable-chip/components/EditableSortChip.tsx#L37-L48",
+          "https://github.com/twentyhq/twenty/blob/35c645064f72bc4e3180a2c6c506cbbfee170007/packages/twenty-front/src/modules/object-record/record-index/hooks/useHandleToggleColumnSort.ts#L44-L61",
+          "https://github.com/twentyhq/twenty/commit/fc8d6084e4846adf48320f4ca864df234788fa9e"
+        ],
+        "limitations": [
+          "No task-data loss, crash or partial persistence of unrelated changes was established.",
+          "Other roles, objects and layouts are source-inferred only.",
+          "Original Mo reselect prerequisites are unknown.",
+          "Running-build SHA was not independently measured; newer runtime was not tested."
+        ]
+      }
+    },
+    {
+      "id": "records-views-pass2-a60508f6",
+      "name": "A newly created nonmatching Company leaves a stale row in a populated filtered group",
+      "severity": 1,
+      "owningArea": "twenty/records-views",
+      "summary": "Creating a Company through the top New action in a populated filtered group can leave a stale unselectable row after the committed name no longer matches the filter.",
+      "expected": "After a newly created Company is committed with a nonmatching name, the filtered grouped table should remove its row consistently with the saved filter and count.",
+      "actual": "A residual row remains until reload even though the persisted name no longer matches and Count all is correct. The stale row can ignore group collapse and cannot be selected. No saved-record corruption was observed.",
+      "reproSteps": [
+        "Create and save a Companies Table view with a Name filter and grouping, retaining at least one matching Company in the target group.",
+        "Use the top New Company action, not the group’s bottom Add new control.",
+        "Commit a name that no longer matches the filter, allow saving to finish and close the panel.",
+        "Observe a residual row despite the correct saved name and total count. Try collapsing the group or selecting the stale row, then reload to remove it.",
+        "Controls: perform ungrouped creation/rename, rename an already-loaded grouped record, create into an empty group or use bottom Add new; these avoid the persistent residual row."
+      ],
+      "sourceCause": "Query synchronization first inserts the created record into group IDs, then createNewIndexRecord independently prepends the same ID. Duplicate React keys support the residual-DOM explanation; exact reconciliation ordering was not instrumented.",
+      "reviewEvidence": {
+        "basis": "Mo candidate, independent Codex and Claude browser/source verification, coordinator checks and user acceptance at the lower severity 1.",
+        "userAccepted": true,
+        "sourceRevision": "35c645064f72bc4e3180a2c6c506cbbfee170007",
+        "severityReason": "The saved record and count are correct but a stale unselectable row remains until reload. Codex scored 3 and Claude 1; the user accepted severity 1.",
+        "analysis": [
+          "Codex confirmed two fresh Companies, another account and width, plus a Tasks Status variant. Claude independently reproduced three Company rows in a group already containing a matching Company.",
+          "Claude observed duplicate row elements after creation and a leftover row that ignores group collapse and cannot be selected.",
+          "Ungrouped creation/rename, already-loaded grouped renaming, empty-group creation and bottom Add new controls avoid the persistent stale row. Brief duplication in passing controls is not included as the failure.",
+          "Both verified saved grouped-view configuration. Persisted names and Count all remain correct; no server-filter mismatch or stored-data corruption is claimed.",
+          "Maintainer change 670f7ae2a9 / PR #27291 and inspected newer source deduplicate before insertion. This supports source-level repair, without newer-runtime verification.",
+          "Existing relation-metadata duplicate-row and grouped-calculation defects use different mechanisms; no exact shared-cause reference was found."
+        ],
+        "sourceReferences": [
+          "https://github.com/twentyhq/twenty/blob/35c645064f72bc4e3180a2c6c506cbbfee170007/packages/twenty-front/src/modules/command-menu-item/engine-command/record/no-selection/components/CreateNewIndexRecordNoSelectionRecordCommand.tsx#L15-L22",
+          "https://github.com/twentyhq/twenty/blob/35c645064f72bc4e3180a2c6c506cbbfee170007/packages/twenty-front/src/modules/object-record/record-table/hooks/useCreateNewIndexRecord.ts#L77-L157",
+          "https://github.com/twentyhq/twenty/blob/35c645064f72bc4e3180a2c6c506cbbfee170007/packages/twenty-front/src/modules/object-record/hooks/useCreateOneRecord.ts#L108-L191",
+          "https://github.com/twentyhq/twenty/blob/35c645064f72bc4e3180a2c6c506cbbfee170007/packages/twenty-front/src/modules/apollo/optimistic-effect/utils/triggerCreateRecordsOptimisticEffect.ts#L123-L183",
+          "https://github.com/twentyhq/twenty/blob/35c645064f72bc4e3180a2c6c506cbbfee170007/packages/twenty-front/src/modules/object-record/record-table/record-table-body/components/RecordTableRecordGroupBodyEffect.tsx#L47-L64",
+          "https://github.com/twentyhq/twenty/blob/35c645064f72bc4e3180a2c6c506cbbfee170007/packages/twenty-front/src/modules/object-record/record-table/hooks/internal/useSetRecordTableData.ts#L99-L125",
+          "https://github.com/twentyhq/twenty/blob/35c645064f72bc4e3180a2c6c506cbbfee170007/packages/twenty-front/src/modules/object-record/record-table/components/RecordTableRecordGroupRows.tsx#L56-L71",
+          "https://github.com/twentyhq/twenty/blob/35c645064f72bc4e3180a2c6c506cbbfee170007/packages/twenty-front/src/modules/object-record/record-title-cell/components/RecordTitleCell.tsx#L59-L67",
+          "https://github.com/twentyhq/twenty/blob/35c645064f72bc4e3180a2c6c506cbbfee170007/packages/twenty-front/src/modules/object-record/hooks/useUpdateOneRecord.ts#L122-L192",
+          "https://github.com/twentyhq/twenty/blob/35c645064f72bc4e3180a2c6c506cbbfee170007/packages/twenty-front/src/modules/apollo/optimistic-effect/utils/triggerUpdateRecordOptimisticEffect.ts#L78-L134",
+          "https://github.com/twentyhq/twenty/blob/35c645064f72bc4e3180a2c6c506cbbfee170007/packages/twenty-shared/src/utils/filter/turnRecordFilterIntoGqlOperationFilter.ts#L209-L217",
+          "https://github.com/twentyhq/twenty/blob/35c645064f72bc4e3180a2c6c506cbbfee170007/packages/twenty-shared/src/utils/filter/utils/isMatchingStringFilter.ts#L37-L42",
+          "https://github.com/twentyhq/twenty/blob/35c645064f72bc4e3180a2c6c506cbbfee170007/packages/twenty-server/src/engine/api/graphql/workspace-resolver-builder/factories/create-one-resolver.factory.ts#L31-L57",
+          "https://github.com/twentyhq/twenty/blob/35c645064f72bc4e3180a2c6c506cbbfee170007/packages/twenty-server/src/engine/api/common/common-query-runners/common-create-many-query-runner/common-create-many-query-runner.service.ts#L221-L230"
+        ],
+        "limitations": [
+          "Requires top New in a populated matching group; passing empty-group and bottom Add paths are excluded.",
+          "Precise duplicate-key reconciliation ordering is inferred.",
+          "Historical discovery group contents were not independently recovered.",
+          "Kanban, Calendar and additional object variants are not established scope.",
+          "Newer runtime was not tested."
+        ]
+      }
+    },
+    {
+      "id": "records-views-pass2-e58e2f7a",
+      "name": "Opportunities Kanban group order resets from Alphabetical to Manual on reload",
+      "severity": 1,
+      "owningArea": "twenty/records-views",
+      "summary": "Alphabetical or Reverse Alphabetical Stage ordering applies in an Opportunities Kanban view but resets to Manual after full reload.",
+      "expected": "The selected supported group order should persist with the saved view across reload, consistently with other saved view settings.",
+      "actual": "Choosing Alphabetical or Reverse Alphabetical immediately reorders Stage columns. Full reload restores Manual/default order, while neighboring visibility settings persist. In-app object navigation can preserve the choice until reload.",
+      "reproSteps": [
+        "Create and save a fresh Opportunities Kanban view grouped by Stage.",
+        "Choose Alphabetical or Reverse Alphabetical group ordering and observe the changed Stage column order.",
+        "Allow normal saving time, then reload the page.",
+        "Observe the order reset to Manual/default rather than the selected order.",
+        "Control: change a neighboring visibility setting and verify that setting persists after reload."
+      ],
+      "sourceCause": "The group-order menu updates an in-memory component state defaulting to Manual. Column ordering reads it, but view persistence and loading omit that setting. Neighboring visibility settings use stored view fields.",
+      "matchingGuidance": {
+        "relatedReference": "workflows-N25",
+        "distinction": "The existing reference covers Workflow Runs Table Status group order, including its Reverse Alphabetical/Update view sequence. This entry shares the menu/state cause but covers Opportunities Kanban Stage columns and their Alphabetical/Reverse Alphabetical selection."
+      },
+      "reviewEvidence": {
+        "basis": "Mo candidate, independent Codex and Claude browser/source verification, coordinator checks and user approval as related coverage despite substantial existing overlap.",
+        "userAccepted": true,
+        "sourceRevision": "35c645064f72bc4e3180a2c6c506cbbfee170007",
+        "severityReason": "Only group presentation order resets; records, columns and saved record values remain intact. Both reviewers recommend severity 1.",
+        "analysis": [
+          "Each reviewer reproduced on two fresh Opportunities Kanban views. Codex additionally verified another account and normal completed-save waits; no tight reload timing is required.",
+          "Claude observed in-app object navigation preserve the choice while full reload lost it. Both confirmed neighboring visibility settings persist.",
+          "Claude’s unreliable network capture does not establish a no-request browser observation; source inspection establishes omitted persistence. Its explicit Update view control was not established in this session.",
+          "Accepted workflows-N25 has the same shared cause and a different object/layout. Claude called this essentially duplicate coverage; the user explicitly accepted a separate related entry.",
+          "Inspected newer source retains the local-state handler, but newer runtime was not tested and the focused history search is not proof against every indirect correction."
+        ],
+        "sourceReferences": [
+          "https://github.com/twentyhq/twenty/blob/35c645064f72bc4e3180a2c6c506cbbfee170007/packages/twenty-front/src/modules/app/hooks/useCreateWorkspaceAppRouter.tsx#L163-L169",
+          "https://github.com/twentyhq/twenty/blob/35c645064f72bc4e3180a2c6c506cbbfee170007/packages/twenty-front/src/modules/object-record/record-index/components/RecordIndexContainerGater.tsx#L85-L119",
+          "https://github.com/twentyhq/twenty/blob/35c645064f72bc4e3180a2c6c506cbbfee170007/packages/twenty-front/src/modules/object-record/object-options-dropdown/components/ObjectOptionsDropdownContent.tsx#L35-L40",
+          "https://github.com/twentyhq/twenty/blob/35c645064f72bc4e3180a2c6c506cbbfee170007/packages/twenty-front/src/modules/object-record/object-options-dropdown/components/ObjectOptionsDropdownRecordGroupSortContent.tsx#L37-L50",
+          "https://github.com/twentyhq/twenty/blob/35c645064f72bc4e3180a2c6c506cbbfee170007/packages/twenty-front/src/modules/object-record/record-index/states/recordIndexRecordGroupSortComponentState.ts#L5-L10",
+          "https://github.com/twentyhq/twenty/blob/35c645064f72bc4e3180a2c6c506cbbfee170007/packages/twenty-front/src/modules/ui/utilities/state/jotai/utils/createAtomComponentState.ts#L22-L42",
+          "https://github.com/twentyhq/twenty/blob/35c645064f72bc4e3180a2c6c506cbbfee170007/packages/twenty-front/src/modules/object-record/record-group/states/selectors/visibleRecordGroupIdsComponentFamilySelector.ts#L36-L78",
+          "https://github.com/twentyhq/twenty/blob/35c645064f72bc4e3180a2c6c506cbbfee170007/packages/twenty-front/src/modules/object-record/record-index/hooks/useLoadRecordIndexStates.ts#L366-L407",
+          "https://github.com/twentyhq/twenty/blob/35c645064f72bc4e3180a2c6c506cbbfee170007/packages/twenty-front/src/modules/views/utils/mapViewGroupsToRecordGroupDefinitions.ts#L29-L39",
+          "https://github.com/twentyhq/twenty/blob/35c645064f72bc4e3180a2c6c506cbbfee170007/packages/twenty-front/src/modules/views/components/UpdateViewButtonGroup.tsx#L95-L104",
+          "https://github.com/twentyhq/twenty/blob/35c645064f72bc4e3180a2c6c506cbbfee170007/packages/twenty-front/src/modules/views/hooks/useSaveCurrentViewFiltersAndSorts.ts#L13-L17",
+          "https://github.com/twentyhq/twenty/blob/35c645064f72bc4e3180a2c6c506cbbfee170007/packages/twenty-front/src/modules/object-record/record-group/hooks/useRecordGroupVisibility.ts#L23-L44",
+          "https://github.com/twentyhq/twenty/blob/35c645064f72bc4e3180a2c6c506cbbfee170007/packages/twenty-front/src/modules/object-record/record-group/hooks/useReorderRecordGroups.ts#L69-L101",
+          "https://github.com/twentyhq/twenty/blob/35c645064f72bc4e3180a2c6c506cbbfee170007/packages/twenty-front/src/modules/views/hooks/useSaveCurrentViewGroups.ts#L70-L81"
+        ],
+        "limitations": [
+          "No columns, records or saved record values disappear.",
+          "Other objects and grouped Tables share source but are not newly established runtime scope.",
+          "Relation groups offering only Manual are not classified as defective.",
+          "Newer runtime and exhaustive fix status were not established."
+        ]
+      }
     }
   ]
 }

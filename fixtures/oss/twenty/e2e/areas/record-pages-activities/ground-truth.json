@@ -180,7 +180,8 @@
         "Return to the original tab and type additional text in the stale main editor without refreshing or switching record tabs.",
         "Allow that edit to save, then reload. Observe Original body plus the added text, with the completed Updated body change overwritten.",
         "Repeat with a fresh Task. As a control, save a popup edit and reload without editing the stale main editor; the popup’s new body persists."
-      ]
+      ],
+      "id": "record-pages-activities-stale-main-editor-overwrites-body-save"
     },
     {
       "id": "codex-30m-twenty-2",
@@ -496,6 +497,376 @@
           "Latest was inspected in source, not launched. Untested object types are inferred from shared command callers.",
           "Scope requires a record-page context with a resolvable view ID; behavior on a record page without one is not established.",
           "Saved records remain intact. The observed loss is in CSV output; PDF export uses a separate path."
+        ]
+      }
+    },
+    {
+      "id": "record-pages-activities-pass2-acc9e1c9",
+      "name": "Company side-panel activity context redirects main-page Note and Task creation",
+      "severity": 3,
+      "owningArea": "twenty/record-pages-activities",
+      "summary": "Opening another company’s Notes or Tasks in the side panel overwrites the main company’s activity header and makes its New action create records linked only to the side-panel company.",
+      "expected": "The main company’s activity header and New action remain scoped to that company while another company is open in the side panel.",
+      "actual": "Company B’s side-panel Notes or Tasks overwrite Company A’s main activity header state. New on A’s main header creates a Note or Task linked only to B, persisting after reload. Equal counts can conceal the targeting failure.",
+      "reproSteps": [
+        "Create uniquely named Companies A and B with distinguishable activity counts.",
+        "Open A on its full record page and select Notes.",
+        "Open B in the side panel and select Notes.",
+        "Click New in A’s main Notes header, save a uniquely named note, reload and inspect its company relation: it links only to B.",
+        "Repeat with Tasks on both records; New from A’s main Tasks header also targets B.",
+        "Control: creating from A without a side panel, or with B’s side panel on Home, targets A correctly."
+      ],
+      "sourceCause": "Header state keyed by object-level pageLayoutId and widget.id is shared across main/side-panel records and stores both count and a publisher-bound creation callback. B replaces A’s callback.",
+      "reviewEvidence": {
+        "basis": "Mo reproduction, independent Codex/Claude browser and source checks, focused Claude follow-up, coordinator source verification and user acceptance.",
+        "userAccepted": true,
+        "sourceRevision": "35c645064f72bc4e3180a2c6c506cbbfee170007",
+        "severityReason": "Creates Notes and Tasks persistently linked to the wrong company.",
+        "analysis": [
+          "Both judges independently confirmed wrong counts/header state and persistent wrong-target creation for Notes and Tasks.",
+          "Claude confirmed two fresh sets for each activity type and raised its initial GUI-only severity1 recommendation to3.",
+          "Single-company and side-panel Home controls pass. Equal counts may look correct while creation still targets the wrong company.",
+          "Newer inspected source separates the layout surface and derives actions locally; runtime correction was not tested."
+        ],
+        "sourceReferences": [
+          "https://github.com/twentyhq/twenty/blob/35c645064f72bc4e3180a2c6c506cbbfee170007/packages/twenty-front/src/modules/page-layout/hooks/usePageLayoutIdForRecord.ts#L27-L44",
+          "https://github.com/twentyhq/twenty/blob/35c645064f72bc4e3180a2c6c506cbbfee170007/packages/twenty-front/src/modules/page-layout/components/PageLayoutRenderer.tsx#L19-L35",
+          "https://github.com/twentyhq/twenty/blob/35c645064f72bc4e3180a2c6c506cbbfee170007/packages/twenty-front/src/modules/page-layout/widgets/components/WidgetCardShell.tsx#L79-L103",
+          "https://github.com/twentyhq/twenty/blob/35c645064f72bc4e3180a2c6c506cbbfee170007/packages/twenty-front/src/modules/page-layout/widgets/states/widgetHeaderInfoComponentFamilyState.ts#L5-L10",
+          "https://github.com/twentyhq/twenty/blob/35c645064f72bc4e3180a2c6c506cbbfee170007/packages/twenty-front/src/modules/ui/utilities/state/jotai/utils/createAtomComponentFamilyState.ts#L29-L47",
+          "https://github.com/twentyhq/twenty/blob/35c645064f72bc4e3180a2c6c506cbbfee170007/packages/twenty-front/src/modules/page-layout/widgets/hooks/usePublishWidgetHeaderInfo.ts#L24-L38",
+          "https://github.com/twentyhq/twenty/blob/35c645064f72bc4e3180a2c6c506cbbfee170007/packages/twenty-front/src/modules/page-layout/widgets/hooks/usePublishWidgetHeaderInfo.ts#L47-L76",
+          "https://github.com/twentyhq/twenty/blob/35c645064f72bc4e3180a2c6c506cbbfee170007/packages/twenty-front/src/modules/page-layout/widgets/hooks/usePublishWidgetHeaderInfo.ts#L88-L96",
+          "https://github.com/twentyhq/twenty/blob/35c645064f72bc4e3180a2c6c506cbbfee170007/packages/twenty-front/src/modules/page-layout/widgets/widget-card/components/WidgetCardHeader.tsx#L108-L139",
+          "https://github.com/twentyhq/twenty/blob/35c645064f72bc4e3180a2c6c506cbbfee170007/packages/twenty-front/src/modules/page-layout/widgets/hooks/useWidgetRendererState.ts#L61-L81"
+        ],
+        "limitations": [
+          "Files, Emails, Calendar, other record objects and other roles were not verified.",
+          "No newer-runtime fix was established.",
+          "Older deletion-trigger stale totals and hidden-assignee entries have different triggers; a shared cause was not established."
+        ]
+      }
+    },
+    {
+      "id": "record-pages-activities-pass2-0a4a83c3",
+      "name": "Editing a stale Body-field popover overwrites the main note's recently saved paragraph",
+      "severity": 3,
+      "owningArea": "twenty/record-pages-activities",
+      "summary": "An already-open Body-field popover retains an old document and overwrites completed main-editor saves when edited.",
+      "expected": "An untouched Body popover should reflect completed main-editor saves before a subsequent edit, preserving already-saved content.",
+      "actual": "The main editor saves new text successfully, but an already-open Body popover remains stale. Editing that popover saves its older document and removes the main-editor additions; reload confirms persisted loss.",
+      "reproSteps": [
+        "Create a fresh Note with an initial body and let it save.",
+        "Open its Body-field popover and keep it mounted.",
+        "Add distinctive text through the main body editor and wait for saving to finish. Confirm the new body through a separate tab or account.",
+        "Edit the still-open stale Body popover and allow its save to complete.",
+        "Reload the record and confirm the previously saved main-editor additions are gone.",
+        "Repeat with a Task. Control: open the popover only after the main-editor save; subsequent editing preserves both changes."
+      ],
+      "sourceCause": "Each mounted rich-text editor initializes its document once and does not reseed when the stored record changes. A subsequent edit serializes and saves the entire stale document.",
+      "matchingGuidance": {
+        "relatedReference": "record-pages-activities-stale-main-editor-overwrites-body-save",
+        "distinction": "The existing entry covers a stale main editor overwriting a completed Body-popover save. This entry covers the reverse direction: an already-open stale Body popover overwrites a completed main-editor save."
+      },
+      "reviewEvidence": {
+        "basis": "Mo evidence, independent Codex and Claude browser/source verification, coordinator checks and user approval as a related entry.",
+        "userAccepted": true,
+        "sourceRevision": "35c645064f72bc4e3180a2c6c506cbbfee170007",
+        "severityReason": "Ordinary editing overwrites content already confirmed persisted on the server.",
+        "analysis": [
+          "Each reviewer completed reproductions on two fresh Notes and a Task. Codex confirmed persistence through a second account/tab; Claude read the stored body through GraphQL after an eleven-second wait before overwriting it.",
+          "Main-only saves and popovers freshly opened after a main-editor save preserved the expected content. Interrupted and incomplete-save attempts are excluded.",
+          "Inspected newer source adds pristine-draft resynchronization. Newer runtime was not tested; dirty-draft conflicts remain last-write-wins, and no universal collaborative-merge promise is asserted."
+        ],
+        "sourceReferences": [
+          "https://github.com/twentyhq/twenty/blob/35c645064f72bc4e3180a2c6c506cbbfee170007/packages/twenty-front/src/modules/app/hooks/useCreateWorkspaceAppRouter.tsx#L171-L178",
+          "https://github.com/twentyhq/twenty/blob/35c645064f72bc4e3180a2c6c506cbbfee170007/packages/twenty-front/src/pages/object-record/RecordShowPage.tsx#L25-L33",
+          "https://github.com/twentyhq/twenty/blob/35c645064f72bc4e3180a2c6c506cbbfee170007/packages/twenty-front/src/pages/object-record/RecordShowPage.tsx#L68-L78",
+          "https://github.com/twentyhq/twenty/blob/35c645064f72bc4e3180a2c6c506cbbfee170007/packages/twenty-front/src/modules/page-layout/widgets/fields/components/FieldsWidgetCellEditModePortal.tsx#L43-L60",
+          "https://github.com/twentyhq/twenty/blob/35c645064f72bc4e3180a2c6c506cbbfee170007/packages/twenty-front/src/modules/object-record/record-field/ui/components/FieldInput.tsx#L97-L98",
+          "https://github.com/twentyhq/twenty/blob/35c645064f72bc4e3180a2c6c506cbbfee170007/packages/twenty-front/src/modules/object-record/record-field/ui/meta-types/input/components/RichTextFieldInput.tsx#L115-L130",
+          "https://github.com/twentyhq/twenty/blob/35c645064f72bc4e3180a2c6c506cbbfee170007/packages/twenty-front/src/modules/ui/layout/show-page/components/FieldRichTextCard.tsx#L49-L74",
+          "https://github.com/twentyhq/twenty/blob/35c645064f72bc4e3180a2c6c506cbbfee170007/packages/twenty-front/src/modules/object-record/record-field/ui/meta-types/input/components/RichTextFieldEditor.tsx#L189-L233",
+          "https://github.com/twentyhq/twenty/blob/35c645064f72bc4e3180a2c6c506cbbfee170007/packages/twenty-front/src/modules/object-record/record-field/ui/meta-types/input/components/RichTextFieldEditor.tsx#L112-L186",
+          "https://github.com/twentyhq/twenty/blob/35c645064f72bc4e3180a2c6c506cbbfee170007/packages/twenty-front/src/modules/activities/components/ActivityRichTextEditor.tsx#L67-L83"
+        ],
+        "limitations": [
+          "Some reproduced insertions were within existing text rather than a final paragraph; confirmed saved-text loss does not depend on insertion position.",
+          "Other rich-text hosts and arbitrary user roles are not generalized.",
+          "Newer runtime was not tested."
+        ]
+      }
+    },
+    {
+      "id": "record-pages-activities-pass2-7535b3ee",
+      "name": "Resizing an open TXT or PDF attachment preview across the mobile breakpoint blanks its content",
+      "severity": 1,
+      "owningArea": "twenty/record-pages-activities",
+      "summary": "Crossing the 768px layout breakpoint blanks an already-rendered TXT or PDF attachment preview until it is closed and reopened.",
+      "expected": "An open attachment preview should retain its rendered content when the viewport crosses the mobile breakpoint.",
+      "actual": "TXT or PDF content disappears after crossing the breakpoint while filename, Download and Close remain available. Returning to the original width does not restore it; closing and reopening does. Downloads retain the original bytes.",
+      "reproSteps": [
+        "Attach a genuine TXT or PDF file to a fresh Note or Company and open its preview. Wait until content renders.",
+        "Resize the viewport across the 768px mobile breakpoint.",
+        "Observe that attachment content becomes blank while the dialog controls remain. Resize back and observe that content does not recover.",
+        "Close and reopen the preview to recover its rendered content.",
+        "Controls: resize within the same layout or freshly open the preview at either width; verify its content renders. Download and compare the file to confirm it remains intact."
+      ],
+      "sourceCause": "Twenty allocates new documents/config props on render. The document-viewer library resets currentDocument to an unloaded prop object while its loader effect depends only on renderer/file index, leaving the renderer without fileData. Mobile subscriptions support the resize-trigger explanation, but the complete ancestor scheduling sequence was not traced.",
+      "reviewEvidence": {
+        "basis": "Mo TXT/PDF reports consolidated after shared-cause review, independent Codex and Claude browser/source verification, served and published dependency checks, coordinator checks and user acceptance at severity 1.",
+        "userAccepted": true,
+        "sourceRevision": "35c645064f72bc4e3180a2c6c506cbbfee170007",
+        "severityReason": "Preview content is hidden with a straightforward close/reopen workaround and intact file storage. Codex scored 3 and Claude 1; the user accepted the lower score 1.",
+        "analysis": [
+          "Codex reproduced TXT on two fresh Notes plus Task/teammate variants and independently confirmed Company PDF in a preserved separate review. Claude tested two TXT files, Company PDFs in both resize directions and PNG as supporting same-viewer scope.",
+          "The primary label consolidates TXT/PDF discovery reports. PNG supports the shared mechanism but is not a separate candidate.",
+          "Same-layout resize and fresh-open controls passed. Manual downloads and storage reads confirmed original bytes, rather than assuming preview blanking was file loss.",
+          "Claude observed occasional no-resize tablet blanking and one mobile dialog closure of unknown cause. Resize is a confirmed trigger but not established as exclusive, and no fixed spontaneous-blanking timer is asserted.",
+          "The coordinator checked the exact served dependency asset, published react-doc-viewer 1.17.1 and its primary source. Newer source retains inline props and that library version but rewrites the wrapper; newer runtime susceptibility or complete fix is not established."
+        ],
+        "sourceReferences": [
+          "https://github.com/twentyhq/twenty/blob/35c645064f72bc4e3180a2c6c506cbbfee170007/packages/twenty-front/src/modules/activities/files/const/previewable-extensions.const.ts#L1-L22",
+          "https://github.com/twentyhq/twenty/blob/35c645064f72bc4e3180a2c6c506cbbfee170007/packages/twenty-front/src/modules/activities/files/components/DocumentViewer.tsx#L190-L190",
+          "https://github.com/twentyhq/twenty/blob/35c645064f72bc4e3180a2c6c506cbbfee170007/packages/twenty-front/src/modules/activities/files/components/DocumentViewer.tsx#L308-L344",
+          "https://github.com/twentyhq/twenty/blob/35c645064f72bc4e3180a2c6c506cbbfee170007/packages/twenty-front/src/modules/activities/files/components/AttachmentList.tsx#L131-L145",
+          "https://github.com/twentyhq/twenty/blob/35c645064f72bc4e3180a2c6c506cbbfee170007/packages/twenty-front/src/modules/activities/files/components/AttachmentList.tsx#L176-L230",
+          "https://github.com/twentyhq/twenty/blob/35c645064f72bc4e3180a2c6c506cbbfee170007/packages/twenty-front/src/modules/ui/layout/modal/components/ModalStatefulWrapper.tsx#L35-L35",
+          "https://github.com/twentyhq/twenty/blob/35c645064f72bc4e3180a2c6c506cbbfee170007/packages/twenty-front/src/modules/ui/layout/modal/components/ModalStatefulWrapper.tsx#L74-L94",
+          "https://github.com/twentyhq/twenty/blob/35c645064f72bc4e3180a2c6c506cbbfee170007/packages/twenty-front/src/modules/ui/utilities/responsive/hooks/useIsMobile.ts#L1-L5",
+          "https://github.com/twentyhq/twenty/blob/35c645064f72bc4e3180a2c6c506cbbfee170007/packages/twenty-front/src/modules/ui/field/display/components/GlobalFilePreviewModal.tsx#L102-L145",
+          "https://github.com/twentyhq/twenty/blob/35c645064f72bc4e3180a2c6c506cbbfee170007/packages/twenty-front/src/modules/activities/files/hooks/useUploadAttachmentFile.tsx#L37-L61",
+          "https://github.com/twentyhq/twenty/blob/35c645064f72bc4e3180a2c6c506cbbfee170007/packages/twenty-front/src/modules/file/hooks/useDirectFileUpload.ts#L25-L66",
+          "https://github.com/twentyhq/twenty/blob/35c645064f72bc4e3180a2c6c506cbbfee170007/packages/twenty-server/src/engine/core-modules/file/file-upload/services/file-upload.service.ts#L120-L176",
+          "https://github.com/twentyhq/twenty/blob/35c645064f72bc4e3180a2c6c506cbbfee170007/packages/twenty-server/src/engine/core-modules/file/file-upload/services/file-upload.service.ts#L190-L274",
+          "https://github.com/twentyhq/twenty/blob/35c645064f72bc4e3180a2c6c506cbbfee170007/packages/twenty-server/src/engine/core-modules/file/file-upload/services/file-upload.service.ts#L328-L378",
+          "https://github.com/twentyhq/twenty/blob/35c645064f72bc4e3180a2c6c506cbbfee170007/packages/twenty-server/src/engine/core-modules/file/controllers/file.controller.ts#L186-L245",
+          "https://github.com/twentyhq/twenty/blob/35c645064f72bc4e3180a2c6c506cbbfee170007/packages/twenty-server/src/engine/core-modules/file/services/file.service.ts#L152-L242"
+        ],
+        "limitations": [
+          "No stored-file loss occurred; downloads remain intact.",
+          "Resize is not proven to be the only trigger.",
+          "Complete ancestor rerender ordering was inferred, not traced render by render.",
+          "Broader file formats are not generalized beyond the observed supporting PNG variation.",
+          "Newer runtime was not tested."
+        ]
+      }
+    },
+    {
+      "id": "record-pages-activities-pass2-9771461e",
+      "name": "Ctrl+K in selected Note or Task text opens both link editing and the global command menu",
+      "severity": 1,
+      "owningArea": "twenty/record-pages-activities",
+      "summary": "The advertised rich-text link shortcut also triggers the global command menu, overlapping editing controls or closing an existing Task side panel.",
+      "expected": "Ctrl+K with editor text selected should open link editing without also opening the global command menu or closing the active record panel.",
+      "actual": "Desktop Ctrl+K opens Edit URL and the command panel together; at tablet width formatting controls overlap the fullscreen command menu. An already-open Task side panel can close. No saved-body loss was established.",
+      "reproSteps": [
+        "Create a fresh Note or Task with saved body text and select a word in its editor.",
+        "Press Ctrl+K, the advertised link shortcut.",
+        "At desktop width observe link editing and the global command panel together. At tablet width observe editor formatting controls overlapping the global menu.",
+        "Repeat in an already-open Task side panel and observe that the global toggle can close that panel.",
+        "Controls: use Ctrl+B to format without opening the menu, or click the desktop link-toolbar button to open link editing alone. Ctrl+K outside the editor opens the ordinary global menu."
+      ],
+      "sourceCause": "The rich-text link listener prevents the browser default but does not stop propagation. Focused editor configuration permits global modifier shortcuts, allowing the global Ctrl+K handler to toggle the command side panel too.",
+      "reviewEvidence": {
+        "basis": "Mo candidate, independent Codex and Claude browser/source reviews, checked published editor dependency and history, coordinator checks and user acceptance with final severity correction to 1.",
+        "userAccepted": true,
+        "sourceRevision": "35c645064f72bc4e3180a2c6c506cbbfee170007",
+        "severityReason": "The shortcut produces overlapping or interrupted editing UI without established saved-body loss. Codex scored 1 and Claude 3; the user ultimately selected 1.",
+        "analysis": [
+          "Codex reproduced on two fresh Notes and a Task plus a second account. Claude repeated a fresh Note and a side-panel Task. Both observed desktop dual UI, tablet overlap and Task side-panel closure.",
+          "Claude successfully linked a desktop word despite the open global menu. Codex did not test URL saving, so no general inability to save links is asserted.",
+          "Tablet Edit URL invisibility also occurred with the toolbar button without Ctrl+K; it is excluded as a shortcut-caused symptom. Physical macOS Meta+K and unrelated editor hosts were not browser-tested.",
+          "Published BlockNote 0.51.4 source and the served handler confirm event propagation. Maintainer d2a47f9bab62dc0eff75cfe42e06d55203bfb532 explicitly fixed the conflict by disabling global modifiers; a later focus change re-enabled them without establishing intent to reintroduce this collision.",
+          "Inspected newer source replaces BlockNote with TipTap and retains global Ctrl+K. A complete runtime fix or continued failure is not established. Existing command-menu typing into body has a different input-redirection trigger and handler."
+        ],
+        "sourceReferences": [
+          "https://github.com/twentyhq/twenty/blob/35c645064f72bc4e3180a2c6c506cbbfee170007/packages/twenty-front/src/modules/blocknote-editor/constants/BlockEditorGlobalHotkeysConfig.ts#L1-L4",
+          "https://github.com/twentyhq/twenty/blob/35c645064f72bc4e3180a2c6c506cbbfee170007/packages/twenty-front/src/modules/activities/components/ActivityRichTextEditor.tsx#L95-L129",
+          "https://github.com/twentyhq/twenty/blob/35c645064f72bc4e3180a2c6c506cbbfee170007/packages/twenty-front/src/modules/object-record/record-field/ui/meta-types/input/components/RichTextFieldEditor.tsx#L207-L215",
+          "https://github.com/twentyhq/twenty/blob/35c645064f72bc4e3180a2c6c506cbbfee170007/packages/twenty-front/src/modules/object-record/record-field/ui/meta-types/input/components/RichTextFieldEditor.tsx#L244-L276",
+          "https://github.com/twentyhq/twenty/blob/35c645064f72bc4e3180a2c6c506cbbfee170007/packages/twenty-front/src/modules/blocknote-editor/components/BlockEditor.tsx#L209-L233",
+          "https://github.com/twentyhq/twenty/blob/35c645064f72bc4e3180a2c6c506cbbfee170007/packages/twenty-front/src/modules/ui/utilities/hotkey/hooks/useGlobalHotkeys.ts#L33-L79",
+          "https://github.com/twentyhq/twenty/blob/35c645064f72bc4e3180a2c6c506cbbfee170007/packages/twenty-front/src/modules/ui/utilities/hotkey/hooks/useGlobalHotkeysCallback.ts#L33-L81",
+          "https://github.com/twentyhq/twenty/blob/35c645064f72bc4e3180a2c6c506cbbfee170007/packages/twenty-front/src/modules/command-menu/hooks/useCommandMenuHotKeys.ts#L23-L31",
+          "https://github.com/twentyhq/twenty/blob/35c645064f72bc4e3180a2c6c506cbbfee170007/packages/twenty-front/src/modules/side-panel/hooks/useSidePanelMenu.ts#L65-L118",
+          "https://github.com/twentyhq/twenty/blob/35c645064f72bc4e3180a2c6c506cbbfee170007/packages/twenty-front/src/modules/ui/layout/page/components/MainAppLayoutWithSidePanel.tsx#L129-L140",
+          "https://github.com/twentyhq/twenty/blob/35c645064f72bc4e3180a2c6c506cbbfee170007/packages/twenty-front/src/modules/command-menu/components/CommandMenuOpenContainer.tsx#L27-L52",
+          "https://github.com/twentyhq/twenty/blob/35c645064f72bc4e3180a2c6c506cbbfee170007/packages/twenty-front/src/modules/activities/components/ActivityRichTextEditor.tsx#L67-L83",
+          "https://github.com/twentyhq/twenty/blob/35c645064f72bc4e3180a2c6c506cbbfee170007/packages/twenty-front/src/modules/activities/hooks/useUpsertActivity.ts#L42-L66",
+          "https://github.com/twentyhq/twenty/blob/35c645064f72bc4e3180a2c6c506cbbfee170007/packages/twenty-front/src/modules/object-record/hooks/useUpdateOneRecord.ts#L150-L174",
+          "https://github.com/twentyhq/twenty/blob/35c645064f72bc4e3180a2c6c506cbbfee170007/packages/twenty-server/src/engine/api/graphql/workspace-resolver-builder/factories/update-one-resolver.factory.ts#L31-L43",
+          "https://github.com/twentyhq/twenty/blob/35c645064f72bc4e3180a2c6c506cbbfee170007/packages/twenty-server/src/engine/api/common/common-query-runners/common-update-one-query-runner.service.ts#L39-L61"
+        ],
+        "limitations": [
+          "No saved-body loss was established.",
+          "Tablet link-editor invisibility is excluded from this shortcut-collision label.",
+          "Physical macOS Meta+K and other rich-text hosts were not browser-tested.",
+          "Newer runtime was not tested."
+        ]
+      }
+    },
+    {
+      "id": "record-pages-activities-pass2-7c27a4b1",
+      "name": "Renaming a favorited record leaves its sidebar label and tooltip stale across reloads",
+      "severity": 1,
+      "owningArea": "twenty/record-pages-activities",
+      "summary": "A completed record rename does not refresh the favorite’s cached sidebar label or tooltip, including after ordinary reload.",
+      "expected": "A favorite should display the current saved record name after renaming and reload, while continuing to navigate to that record.",
+      "actual": "Record header, breadcrumb and index display the saved new name, but the expanded sidebar favorite and collapsed tooltip retain the old name across reloads. Clicking the favorite still opens the correct record.",
+      "reproSteps": [
+        "Create a fresh Task with a distinctive title and add it to Favorites.",
+        "Rename the Task and wait for saving to complete. Confirm its header, breadcrumb and index show the new title.",
+        "Compare the favorite’s expanded sidebar label and collapsed-sidebar tooltip; both still show the old title.",
+        "Reload and observe the stale favorite name persists while the record title remains correctly saved.",
+        "Controls: favorite a record only after renaming to get the correct label; remove and re-add the affected favorite or clear the disposable browser metadata cache and reload to recover."
+      ],
+      "sourceCause": "Sidebar labels read cached targetRecordIdentifier. Server queries resolve current record names, but record renames do not refresh that navigation metadata path; hash-gated persistent metadata loading can preserve the stale identifier across ordinary reload.",
+      "reviewEvidence": {
+        "basis": "Mo candidate, independent Codex and Claude browser/source verification, coordinator checks and user acceptance at severity 1.",
+        "userAccepted": true,
+        "sourceRevision": "35c645064f72bc4e3180a2c6c506cbbfee170007",
+        "severityReason": "Only the displayed favorite identifier is stale; saved titles and navigation remain correct.",
+        "analysis": [
+          "Each reviewer reproduced on two fresh Tasks. Codex additionally confirmed a Note and Claude a Company.",
+          "Both verified saved-title updates and functioning favorite navigation. Claude waited after the rename and repeated reloads, distinguishing this from interrupting unfinished autosave.",
+          "Favoriting after a completed rename uses the correct title. Codex fresh-browser/remove-and-readd controls and Claude metadata-cache clearing recover the label. Adding another favorite does not necessarily refresh an existing one.",
+          "Claude’s explicit navigation query returned the new server-computed title while IndexedDB retained the old label, supporting the persistent cache mechanism.",
+          "Inspected newer source retains relevant cached-label and metadata refetch/enrichment design, but newer runtime was not tested. Other fix titles without diff inspection do not support an exhaustive no-fix claim."
+        ],
+        "sourceReferences": [
+          "https://github.com/twentyhq/twenty/blob/35c645064f72bc4e3180a2c6c506cbbfee170007/packages/twenty-front/src/modules/object-record/record-show/components/ObjectRecordShowPageBreadcrumb.tsx#L128-L155",
+          "https://github.com/twentyhq/twenty/blob/35c645064f72bc4e3180a2c6c506cbbfee170007/packages/twenty-front/src/modules/object-record/record-title-cell/components/RecordTitleCell.tsx#L59-L67",
+          "https://github.com/twentyhq/twenty/blob/35c645064f72bc4e3180a2c6c506cbbfee170007/packages/twenty-front/src/modules/object-record/record-field/ui/hooks/usePersistFieldFromFieldInputContext.ts#L19-L28",
+          "https://github.com/twentyhq/twenty/blob/35c645064f72bc4e3180a2c6c506cbbfee170007/packages/twenty-front/src/modules/object-record/record-field/ui/hooks/usePersistField.ts#L268-L283",
+          "https://github.com/twentyhq/twenty/blob/35c645064f72bc4e3180a2c6c506cbbfee170007/packages/twenty-front/src/modules/object-record/hooks/useUpdateOneRecord.ts#L168-L194",
+          "https://github.com/twentyhq/twenty/blob/35c645064f72bc4e3180a2c6c506cbbfee170007/packages/twenty-server/src/engine/api/graphql/workspace-resolver-builder/factories/update-one-resolver.factory.ts#L31-L57",
+          "https://github.com/twentyhq/twenty/blob/35c645064f72bc4e3180a2c6c506cbbfee170007/packages/twenty-server/src/engine/api/common/common-query-runners/common-update-one-query-runner.service.ts#L39-L61",
+          "https://github.com/twentyhq/twenty/blob/35c645064f72bc4e3180a2c6c506cbbfee170007/packages/twenty-server/src/engine/api/common/common-query-runners/common-update-many-query-runner.service.ts#L53-L74",
+          "https://github.com/twentyhq/twenty/blob/35c645064f72bc4e3180a2c6c506cbbfee170007/packages/twenty-front/src/modules/command-menu-item/engine-command/record/single-record/components/AddToFavoritesSingleRecordCommand.tsx#L38-L47",
+          "https://github.com/twentyhq/twenty/blob/35c645064f72bc4e3180a2c6c506cbbfee170007/packages/twenty-front/src/modules/navigation-menu-item/common/hooks/useCreateManyNavigationMenuItems.ts#L59-L68",
+          "https://github.com/twentyhq/twenty/blob/35c645064f72bc4e3180a2c6c506cbbfee170007/packages/twenty-server/src/engine/metadata-modules/navigation-menu-item/navigation-menu-item.resolver.ts#L184-L203",
+          "https://github.com/twentyhq/twenty/blob/35c645064f72bc4e3180a2c6c506cbbfee170007/packages/twenty-server/src/engine/metadata-modules/navigation-menu-item/navigation-menu-item.service.ts#L624-L643",
+          "https://github.com/twentyhq/twenty/blob/35c645064f72bc4e3180a2c6c506cbbfee170007/packages/twenty-server/src/engine/metadata-modules/navigation-menu-item/services/navigation-menu-item-record-identifier.service.ts#L83-L124",
+          "https://github.com/twentyhq/twenty/blob/35c645064f72bc4e3180a2c6c506cbbfee170007/packages/twenty-server/src/engine/metadata-modules/navigation-menu-item/entities/navigation-menu-item.entity.ts#L66-L100"
+        ],
+        "limitations": [
+          "No saved-title loss or broken navigation occurred.",
+          "Other objects, renaming by another user and literal indefinite persistence are not generalized.",
+          "Newer runtime and exhaustive fix status were not established."
+        ]
+      }
+    },
+    {
+      "id": "record-pages-activities-pass2-c2629c39",
+      "name": "A narrow Company Timeline hides the related Task or Note identity beside a long timestamp",
+      "severity": 1,
+      "owningArea": "twenty/record-pages-activities",
+      "summary": "Long timestamps in narrow Company side-panel Timeline rows can collapse the related Task or Note name to zero width and clip its activity type.",
+      "expected": "A saved related-activity event should retain a readable Task or Note identity in the supported Company side-panel layout.",
+      "actual": "The creation event can show only “You created a related…” while the Task or Note name has zero rendered width. Shorter timestamps or wider/full-page layouts reveal the title. The saved activity and title remain intact.",
+      "reproSteps": [
+        "Create a fresh Company and a distinctly named related Task or Note.",
+        "Open the Company Timeline in a narrow side panel and inspect the related-activity creation event.",
+        "When the timestamp is long, such as less than a minute ago, observe the related title collapse and activity description clip.",
+        "Compare the same event in a wider panel or full Company page to confirm the title is saved and readable there.",
+        "Control: compare a short now timestamp, which leaves more space for the related title."
+      ],
+      "sourceCause": "Single-line overflow-hidden row content and the timestamp compete for limited width. Observed geometry shows the linked activity identity collapsing first, followed by clipping of the activity-type text. Exact flex/min-content interaction is inferred from styles and measurements rather than a complete layout trace.",
+      "matchingGuidance": {
+        "relatedReference": "mo-60m-twenty-3",
+        "distinction": "The older entry covers Opportunity Timeline descriptions at mobile width. This entry covers Company side-panel Task/Note creation-event identity collapse beside a long timestamp, including desktop side panels. Similar symptoms do not establish an identical root cause."
+      },
+      "reviewEvidence": {
+        "basis": "Mo candidate, independent Codex and Claude browser/source verification, coordinator layout checks and user acceptance as related severity-1 coverage.",
+        "userAccepted": true,
+        "sourceRevision": "35c645064f72bc4e3180a2c6c506cbbfee170007",
+        "severityReason": "The related activity identity becomes unreadable in a narrow Timeline row while saved data remain intact and wider viewing reveals it.",
+        "analysis": [
+          "Codex reproduced zero-width related identifiers in narrow Company side panels using three Tasks and a Note plus a second account. Claude independently created three Companies/Tasks and a Note and measured the same collapse in a desktop side panel.",
+          "Claude measured progressively less title space with longer timestamps, reaching zero for less than a minute ago. These exact widths are fixture observations rather than universal geometry guarantees.",
+          "Wider panels, full-page viewing and shorter timestamps are passing controls. The same saved event displays a readable title on the full page.",
+          "The title remains in the DOM. Click and tooltip reveal of its zero-width link were not fully tested, so navigation impossibility or absence of every possible reveal is not claimed.",
+          "Inspected newer source changes rendering and styling while retaining relevant layout ingredients. Source similarity does not establish exact newer runtime failure; newer runtime was not tested."
+        ],
+        "sourceReferences": [
+          "https://github.com/twentyhq/twenty/blob/35c645064f72bc4e3180a2c6c506cbbfee170007/packages/twenty-front/src/modules/activities/timeline-activities/rows/activity/components/EventRowActivity.tsx#L48-L94",
+          "https://github.com/twentyhq/twenty/blob/35c645064f72bc4e3180a2c6c506cbbfee170007/packages/twenty-front/src/modules/activities/timeline-activities/rows/components/EventRowStyles.tsx#L5-L35",
+          "https://github.com/twentyhq/twenty/blob/35c645064f72bc4e3180a2c6c506cbbfee170007/packages/twenty-front/src/modules/activities/timeline-activities/rows/components/EventRowItem.tsx#L11-L35",
+          "https://github.com/twentyhq/twenty/blob/35c645064f72bc4e3180a2c6c506cbbfee170007/packages/twenty-front/src/modules/activities/timeline-activities/components/EventRow.tsx#L23-L79",
+          "https://github.com/twentyhq/twenty/blob/35c645064f72bc4e3180a2c6c506cbbfee170007/packages/twenty-front/src/modules/side-panel/constants/SidePanelConstraints.ts#L3-L7",
+          "https://github.com/twentyhq/twenty/blob/35c645064f72bc4e3180a2c6c506cbbfee170007/packages/twenty-front/src/utils/date-utils.ts#L91-L111",
+          "https://github.com/twentyhq/twenty/blob/35c645064f72bc4e3180a2c6c506cbbfee170007/packages/twenty-front/src/modules/activities/timeline-activities/hooks/useTimelineActivities.ts#L71-L130",
+          "https://github.com/twentyhq/twenty/blob/35c645064f72bc4e3180a2c6c506cbbfee170007/packages/twenty-front/src/modules/activities/hooks/useOpenCreateActivityDrawer.ts#L68-L132",
+          "https://github.com/twentyhq/twenty/blob/35c645064f72bc4e3180a2c6c506cbbfee170007/packages/twenty-front/src/modules/object-record/hooks/useCreateOneRecord.ts#L136-L162",
+          "https://github.com/twentyhq/twenty/blob/35c645064f72bc4e3180a2c6c506cbbfee170007/packages/twenty-server/src/engine/api/graphql/workspace-resolver-builder/factories/create-one-resolver.factory.ts#L31-L57",
+          "https://github.com/twentyhq/twenty/blob/35c645064f72bc4e3180a2c6c506cbbfee170007/packages/twenty-server/src/engine/api/common/common-query-runners/common-create-many-query-runner/common-create-many-query-runner.service.ts#L202-L230",
+          "https://github.com/twentyhq/twenty/blob/35c645064f72bc4e3180a2c6c506cbbfee170007/packages/twenty-server/src/engine/twenty-orm/repository/workspace-insert-query-builder.ts#L222-L264",
+          "https://github.com/twentyhq/twenty/blob/35c645064f72bc4e3180a2c6c506cbbfee170007/packages/twenty-server/src/engine/api/graphql/workspace-query-runner/listeners/entity-events-to-db.listener.ts#L110-L125",
+          "https://github.com/twentyhq/twenty/blob/35c645064f72bc4e3180a2c6c506cbbfee170007/packages/twenty-server/src/modules/timeline/jobs/upsert-timeline-activity-from-internal-event.job.ts#L39-L69"
+        ],
+        "limitations": [
+          "No saved activity or title loss occurred.",
+          "Click/tooltip recovery was not fully tested; no navigation dead-end is claimed.",
+          "Broader locale, mobile and role scope and historical related-event failure are not generalized.",
+          "Exact shared cause with the older Opportunity entry is unproven.",
+          "Newer runtime was not tested."
+        ]
+      }
+    },
+    {
+      "id": "record-pages-activities-pass2-7de91897",
+      "name": "Invalid saved Domain edits stay open without any validation explanation",
+      "severity": 1,
+      "owningArea": "twenty/record-pages-activities",
+      "summary": "Explicitly saving an invalid edit to a saved Company Domain is refused without a validation explanation, toast or inline message.",
+      "expected": "When Enter or the checkmark refuses an invalid Domain edit, the editor should explain the validation problem. A particular red-outline styling is not required.",
+      "actual": "Replacing a saved valid URL with invalid text and pressing Enter/checkmark leaves the editor open with no explanation, toast or red outline. Correcting to a valid URL saves and closes it. Escape or reload preserves the previous saved URL.",
+      "reproSteps": [
+        "Create a fresh Company and save a valid Domain URL.",
+        "Edit that saved value to invalid text and press Enter or the checkmark.",
+        "Observe that the editor stays open without an explanatory inline message or toast.",
+        "Correct to a valid URL and confirm the editor saves and closes. Alternatively use Escape/reload to recover the previous saved URL."
+      ],
+      "sourceCause": "Validation uses an empty errorMessage and omits the explanatory error prop; outer red error state is also suppressed when saved items exist. The missing text is source-confirmed, while the requirement to explain refused edits is the human-approved UI contract.",
+      "matchingGuidance": {
+        "distinctFromNegativeReference": "record-pages-activities-invalid-domain-email-outline-only",
+        "distinction": "The older negative concerns a required red outline specifically. This positive covers absence of any explanation after explicit invalid Domain save. A report proving missing explanatory feedback matches this positive even when it also mentions the outline. Intended invalid-value rejection, blocked invalid persistence and outline-only presentation are not themselves accepted defects."
+      },
+      "reviewEvidence": {
+        "basis": "Independent Codex follow-up and Claude browser/source verification, coordinator checks and explicit user acceptance resolving the contract disagreement.",
+        "userAccepted": true,
+        "sourceRevision": "35c645064f72bc4e3180a2c6c506cbbfee170007",
+        "severityReason": "Missing explanatory validation feedback is accepted as severity 1; saved valid data and the refusal of invalid values remain correct.",
+        "analysis": [
+          "Both reviewers reproduced on two fresh Companies. Invalid explicit saves remain open without explanation; valid corrections save/close and Escape/reload preserves the saved URL.",
+          "Codex recommends Accept 1 based on consistency with accepted Profile feedback; Claude rejects because invalid input is refused and the open editor is an implicit cue. The user explicitly accepted missing feedback.",
+          "No Domain-specific maintainer promise was found. Implemented omissions establish behavior, not acceptable intent; lack of a discovered fix is not evidence that the missing explanation is intended.",
+          "The Profile autosave comparison differs because this URL editor visibly closes after a valid explicit save. That distinction was presented before approval.",
+          "The older outline-only negative retains its original decision and receives explicit exclusion/matching guidance for this newly approved explanation scope.",
+          "Inspected newer source refactors input/accessibility handling but still lacks explanatory text; newer runtime and styling were not tested."
+        ],
+        "sourceReferences": [
+          "https://github.com/twentyhq/twenty/blob/35c645064f72bc4e3180a2c6c506cbbfee170007/packages/twenty-front/src/modules/object-record/record-field/ui/meta-types/input/components/LinksFieldInput.tsx#L64-L65",
+          "https://github.com/twentyhq/twenty/blob/35c645064f72bc4e3180a2c6c506cbbfee170007/packages/twenty-front/src/modules/object-record/record-field/ui/meta-types/input/components/LinksFieldInput.tsx#L96-L100",
+          "https://github.com/twentyhq/twenty/blob/35c645064f72bc4e3180a2c6c506cbbfee170007/packages/twenty-front/src/modules/object-record/record-field/ui/meta-types/input/components/MultiItemFieldInput.tsx#L221-L234",
+          "https://github.com/twentyhq/twenty/blob/35c645064f72bc4e3180a2c6c506cbbfee170007/packages/twenty-front/src/modules/object-record/record-field/ui/meta-types/input/components/MultiItemFieldInput.tsx#L246-L259",
+          "https://github.com/twentyhq/twenty/blob/35c645064f72bc4e3180a2c6c506cbbfee170007/packages/twenty-front/src/modules/object-record/record-field/ui/meta-types/input/components/MultiItemFieldInput.tsx#L343-L367",
+          "https://github.com/twentyhq/twenty/blob/35c645064f72bc4e3180a2c6c506cbbfee170007/packages/twenty-front/src/modules/object-record/record-field/ui/meta-types/input/components/MultiItemBaseInput.tsx#L21-L27",
+          "https://github.com/twentyhq/twenty/blob/35c645064f72bc4e3180a2c6c506cbbfee170007/packages/twenty-front/src/modules/object-record/record-field/ui/meta-types/input/components/MultiItemBaseInput.tsx#L122-L123",
+          "https://github.com/twentyhq/twenty/blob/35c645064f72bc4e3180a2c6c506cbbfee170007/packages/twenty-front/src/modules/object-record/record-field/ui/meta-types/input/components/MultiItemBaseInput.tsx#L172-L172",
+          "https://github.com/twentyhq/twenty/blob/35c645064f72bc4e3180a2c6c506cbbfee170007/packages/twenty-front/src/modules/object-record/record-inline-cell/components/RecordInlineCellEditMode.tsx#L67-L69",
+          "https://github.com/twentyhq/twenty/blob/35c645064f72bc4e3180a2c6c506cbbfee170007/packages/twenty-front/src/modules/object-record/record-inline-cell/components/RecordInlineCellEditMode.tsx#L98-L105",
+          "https://github.com/twentyhq/twenty/blob/a6372e288ade9ed14ac2af1a7e224dabb6cc6021/packages/twenty-front/src/modules/object-record/record-field/ui/meta-types/input/utils/validateLinkInput.ts#L3-L14",
+          "https://github.com/twentyhq/twenty/blob/a6372e288ade9ed14ac2af1a7e224dabb6cc6021/packages/twenty-front/src/modules/object-record/record-field/ui/meta-types/input/hooks/useMultiItemInput.ts#L78-L90",
+          "https://github.com/twentyhq/twenty/blob/a6372e288ade9ed14ac2af1a7e224dabb6cc6021/packages/twenty-front/src/modules/object-record/record-field/ui/meta-types/input/components/LinksFieldInput.tsx#L143-L181",
+          "https://github.com/twentyhq/twenty/blob/a6372e288ade9ed14ac2af1a7e224dabb6cc6021/packages/twenty-front/src/modules/object-record/record-field/ui/meta-types/input/components/MultiItemFieldTextInput.tsx#L55-L76"
+        ],
+        "limitations": [
+          "No valid-save failure, invalid value saved or erased data was observed.",
+          "The still-open editor is an implicit failure cue; the accepted defect is missing explanation.",
+          "Other multi-item fields and duplicate-domain refusal are uninvestigated.",
+          "Newer runtime was not tested."
         ]
       }
     }
