@@ -555,16 +555,16 @@
     },
     {
       "id": "metabase-admin-102",
-      "name": "Localization currency settings report saved but reset after refresh",
-      "summary": "Localization currency settings report saved but reset after refresh.",
-      "expected": "A currency setting changed in Admin > Settings > Localization, such as Unit of currency or Currency label style, stays saved after a page refresh.",
-      "actual": "Selecting Euro as the Unit of currency (or Code as the Currency label style) shows Changes saved, but after a refresh the setting is back to US Dollar (or Symbol).",
+      "name": "Localization formatting settings report saved but show defaults after refresh",
+      "summary": "Localization formatting settings (date style, abbreviation, currency and similar) report saved, but after a refresh the form can show the defaults instead of the saved values.",
+      "expected": "A formatting setting changed in Admin > Settings > Localization, such as Date style, Abbreviate days and months, Unit of currency or Currency label style, still shows the saved value after a page refresh.",
+      "actual": "The change shows Changes saved, but after a refresh the form intermittently shows the default (for example January 31, 2018 or US Dollar) even though the server kept the saved value. Editing any field on that stale form saves the defaults over the real values.",
       "reproSteps": [
         "As an admin, open Admin > Settings > Localization.",
-        "Scroll to Currency and change Unit of currency from US Dollar to Euro.",
+        "Change Date style to 31 January, 2018 (or Unit of currency to Euro).",
         "Observe the Changes saved confirmation.",
-        "Refresh the page and scroll back to Currency.",
-        "Observe Unit of currency shows US Dollar again."
+        "Refresh the page, repeating if needed.",
+        "Observe the setting shows its default again."
       ],
       "severity": 3
     },
@@ -819,17 +819,17 @@
     },
     {
       "id": "metabase-data-modeling-144",
-      "name": "Retiring a referenced segment replaces its name with [Unknown Segment] in an existing dependent segment editor",
+      "name": "Retiring a referenced segment shows [Unknown Segment] in place of its name in a dependent segment",
       "severity": 3,
-      "summary": "Retiring a referenced segment replaces its name with [Unknown Segment] in an existing dependent segment editor.",
+      "summary": "After a segment is retired, a segment that filters on it shows [Unknown Segment] instead of the retired segment's name, in the dependent segment's editor or its Preview filter chip.",
       "expected": "An existing saved definition should retain an identifiable reference to its known retired segment, rather than calling it unknown; retirement can hide it from new selections without obscuring existing rules.",
-      "actual": "The dependent segment's filter label changes from SEG-QA-People-20261019-v2 to [Unknown Segment]. The preview still shows 90 rows. Users cannot identify the existing rule from the editor even though it was a known saved segment.",
+      "actual": "The dependent segment's filter label in the editor, or its Preview filter chip, reads [Unknown Segment] instead of the retired segment's name. The preview still returns the same 90 rows, so the rule works but users can't tell which saved segment it uses.",
       "reproSteps": [
         "Create a unique SEG-QA People segment with State is CA, a name and description.",
         "Create a second SEG-QA segment on People; use the first segment as its filter and save.",
         "Reopen second segment: its filter names the first segment and preview count is 90 rows.",
         "Return to segment list; use Actions > Retire Segment on the first segment and confirm Retire.",
-        "Refresh list and reopen the second segment."
+        "Refresh the list, reopen the second segment, and click Preview. Check the filter label in the editor and the filter chip in the preview."
       ]
     },
     {
@@ -1261,6 +1261,301 @@
         "Set mapped value1 to QA User <b>one</b> & Ω and Save.",
         "Verify literal label in Table and Detail; refresh and reopen Preview to confirm saved label.",
         "Open Edit mapping."
+      ]
+    },
+    {
+      "id": "metabase-admin-418",
+      "name": "Use original value leaves custom field labels in Filtering preview",
+      "severity": 1,
+      "summary": "Use original value leaves custom field labels in Filtering preview.",
+      "expected": "Choosing Use original value should display original values consistently in table/detail/filtering previews, including after reload.",
+      "actual": "After mapping Rating 4 to 'qa-meta FOUR', saving, then choosing Use original value, Table preview displays 4 but Filtering preview still offers checkbox 'qa-meta FOUR'. Reloading the field page does not fix it.",
+      "reproSteps": [
+        "Sign in as admin; open Table Metadata > Sample Database > Feedback > Rating.",
+        "Under Display values choose Custom mapping.",
+        "Change the label for original value 4 to qa-meta FOUR and click Save.",
+        "Change Display values to Use original value.",
+        "In Preview, select Table and confirm original rating 4 is displayed.",
+        "Switch Preview to Filtering; observe qa-meta FOUR remains in the checkbox list.",
+        "Reload this field page and open Filtering preview again; the custom label remains."
+      ]
+    },
+    {
+      "id": "metabase-admin-419",
+      "name": "Field link preview drops values from other columns",
+      "severity": 3,
+      "summary": "Field link preview drops values from other columns.",
+      "expected": "With Link URL https://example.test/?feedback={{ID}}, a preview record with ID 1 should link to https://example.test/?feedback=1, consistent with the tooltip's any-column contract.",
+      "actual": "Both previews produce https://example.test/?feedback= with the ID omitted. Detail visibly shows ID=1. Reload reproduces the failure, while {{BODY}} correctly substitutes the current field.",
+      "reproSteps": [
+        "Sign in as eval@momentic.ai and open Admin > Table Metadata > Sample Database > Feedback > Body (/admin/datamodel/database/1/schema/1:PUBLIC/table/5/field/28).",
+        "Set Display as to Link. Set Link text to qa-meta link and Link URL to https://example.test/?feedback={{ID}}. Blur the inputs to save.",
+        "Open the Link URL information tooltip and note its instruction that the value of any column can be used as {{COLUMN}}.",
+        "Click Preview and select Table; inspect a qa-meta link's destination.",
+        "Select Detail. Observe ID=1 and the Body link's destination, which ends in feedback= without 1.",
+        "Reload the field page, reopen Preview, and repeat Table/Detail to see the persisted failure."
+      ]
+    },
+    {
+      "id": "metabase-admin-420",
+      "name": "Editing successive field formatting inputs silently loses a change",
+      "severity": 3,
+      "summary": "Editing successive field formatting inputs silently loses a change.",
+      "expected": "All three formatting edits should persist, and 120 multiplied by 0.5 with two decimals and suffix QA should preview as 60.00 QA.",
+      "actual": "Decimal places 2 and suffix QA persist, but Multiply by a number becomes blank and the first preview value is 120.00 QA. Reload preserves the loss.",
+      "reproSteps": [
+        "Sign in as admin and open Admin > Table Metadata > Release operations > Release Requests > Amount (/admin/datamodel/database/2/schema/2:public/table/9/field/76).",
+        "Start with Style Normal and blank Number of decimal places, Multiply by a number, and Add a suffix overrides.",
+        "In quick succession, enter 2 in Number of decimal places, move to Multiply by a number and enter 0.5, then move to Add a suffix and enter QA. Tab out to save; do not pause between these edits.",
+        "Observe that Multiply by a number has become blank while the other two edits remain.",
+        "Reload the field page, click Preview, and observe 120.00 QA rather than 60.00 QA for the first value.",
+        "As a control, enter 0.5 in Multiply by a number alone and blur; preview now correctly changes to 60.00 QA."
+      ]
+    },
+    {
+      "id": "metabase-admin-425",
+      "name": "Invalid day-of-month in custom model refresh schedule incorrectly reports a day-of-week error",
+      "severity": 1,
+      "summary": "Invalid day-of-month in custom model refresh schedule incorrectly reports a day-of-week error.",
+      "expected": "The five-field expression has invalid day-of-month 32, so validation should identify day-of-month range 1–31, not tell the user to fix day-of-week.",
+      "actual": "The input is rejected with 'Day-of-Week values must be SUN, MON, TUE, WED, THU, FRI, SAT OR between 1 and 7...' even though the day-of-week field is ? and the invalid value 32 is day-of-month.",
+      "reproSteps": [
+        "Open Admin > Performance > Model persistence as an administrator.",
+        "Enable model persistence and select Custom from Refresh models every.",
+        "Enter 0 9 32 * ? in the cron field and blur it."
+      ]
+    },
+    {
+      "id": "metabase-admin-428",
+      "name": "Athena advanced options example LogLevel=6 is rejected as an invalid log level",
+      "severity": 3,
+      "summary": "Athena advanced options example LogLevel=6 is rejected as an invalid log level.",
+      "expected": "The numeric log level shown in the product's own example should be accepted as an option value, or the example should show a supported log level.",
+      "actual": "The form reports “Could not connect: Invalid connection parameter(s): Invalid log level: '6';” for the log level recommended by its placeholder.",
+      "reproSteps": [
+        "Fresh unsaved connection only. No valid AWS credentials required: validation rejects the shown log level before connection. Values used: Region us-east-1, Workgroup primary, S3 staging directory not-an-s3-url, Access key MO_QA_INVALID, Secret key qa-invalid-secret, Full hostname localhost. Observer turned off Include User ID and query hash.",
+        "Open Add database and choose Amazon Athena.",
+        "Fill display name and required connection fields with disposable invalid local connection values.",
+        "Expand Show advanced options. The additional options placeholder suggests UseResultsetStreaming=0;LogLevel=6.",
+        "Enter LogLevel=6;UseResultsetStreaming=0 and Save."
+      ]
+    },
+    {
+      "id": "metabase-admin-429",
+      "name": "Redshift connection-string prefill omits user=qa_user and leaves Username empty",
+      "severity": 3,
+      "summary": "Redshift connection-string prefill omits user=qa_user and leaves Username empty.",
+      "expected": "The supplied JDBC connection string should prefill its username along with host, port, and database fields.",
+      "actual": "Host localhost, port 5439, and database qa_db are populated, but the Username field remains empty with its placeholder despite user=qa_user being present in the connection string.",
+      "reproSteps": [
+        "Open Add database and choose Amazon Redshift.",
+        "Enter jdbc:redshift://localhost:5439/qa_db?user=qa_user&password=qa_invalid in Connection string (optional), then blur.",
+        "Inspect the populated Host, Port, Database name and Username fields."
+      ]
+    },
+    {
+      "id": "metabase-admin-430",
+      "name": "Databricks JDBC prefill produces duplicate uid parameters when saving a personal-access-token connection",
+      "severity": 3,
+      "summary": "Databricks JDBC prefill produces duplicate uid parameters when saving a personal-access-token connection.",
+      "expected": "The supported connection-string prefill should produce usable connection parameters without duplicating the UID credential.",
+      "actual": "Save fails before connecting with “Multiple entries with same key: uid=token and uid=token”. The prefilled additional options contain AuthMech=3;UID=token.",
+      "reproSteps": [
+        "As an admin open Databases and Add database; choose Databricks.",
+        "Enter jdbc:databricks://localhost:443;httpPath=/sql/1.0/warehouses/qa;AuthMech=3;UID=token;PWD=qa_invalid in Connection string and blur.",
+        "Set a fresh display name. Turn M2M authentication off; enter qa_invalid as Personal Access Token.",
+        "Enable multiple catalogs; enter qa_catalog as Default Catalog. Expand advanced options and leave prefilled AuthMech=3;UID=token unchanged.",
+        "Click Save and observe the duplicate-uid error."
+      ]
+    },
+    {
+      "id": "metabase-admin-442",
+      "name": "SQLite connection failure recommends SSL certificates although SQLite form has no SSL option",
+      "severity": 1,
+      "summary": "SQLite connection failure recommends SSL certificates although SQLite form has no SSL option.",
+      "expected": "Troubleshooting for an SQLite connection failure should not instruct users to use SSL or configure SSL certificates when SQLite has no SSL options.",
+      "actual": "After connection failure (':memory: (No such file or directory)'), the troubleshooting guidance advises 'Try using a secure connection (SSL)' and 'You'll need an SSL certificate to do this', even though the SQLite form contains no SSL toggles or certificate inputs.",
+      "reproSteps": [
+        "As primary Admin, open Databases and Add database.",
+        "Choose SQLite, enter a fresh display name and filename :memory:.",
+        "Expand advanced options and click Save.",
+        "Read troubleshooting advice below the file-not-found connection error."
+      ]
+    },
+    {
+      "id": "metabase-admin-443",
+      "name": "Point GeoJSON load displays raw JavaScript error in custom map preview",
+      "severity": 3,
+      "summary": "Point GeoJSON load displays raw JavaScript error in custom map preview.",
+      "expected": "If Point geometry cannot be used for region maps, show an understandable unsupported-geometry validation message rather than an internal runtime error.",
+      "actual": "Preview shows \"Cannot read properties of undefined (reading 'lat')\"; property selectors remain unselected and Add map is disabled.",
+      "reproSteps": [
+        "As Admin, open Settings > Maps and Add a map.",
+        "Enter a new name and URL https://httpbingo.org/base64/eyJ0eXBlIjoiRmVhdHVyZUNvbGxlY3Rpb24iLCJmZWF0dXJlcyI6W3sidHlwZSI6IkZlYXR1cmUiLCJwcm9wZXJ0aWVzIjp7ImlkIjoiQSIsIm5hbWUiOiJBbHBoYSJ9LCJnZW9tZXRyeSI6eyJ0eXBlIjoiUG9pbnQiLCJjb29yZGluYXRlcyI6WzAsMF19fV19 . This serves a FeatureCollection containing one Point at [0,0].",
+        "Click Load (shown as Refresh after previously loading another map). Inspect the preview."
+      ]
+    },
+    {
+      "id": "metabase-admin-445",
+      "name": "MySQL connection-string prefill omits the user parameter from Username",
+      "severity": 3,
+      "summary": "MySQL connection-string prefill omits the user parameter from Username.",
+      "expected": "The connection string should prefill Username as qa_user along with its other supplied connection details, as the field's help text promises.",
+      "actual": "Host, port and database are prefilled, but Username stays empty; user=qa_user is moved into the additional connection options instead.",
+      "reproSteps": [
+        "/admin/databases",
+        "Use only an unsaved new connection with invented values; cancel afterwards.",
+        "As Admin open Databases, Add database, and choose MySQL.",
+        "Enter jdbc:mysql://invalid.example.test:3306/qa_db?user=qa_user&password=qa_password in Connection string (optional), then blur.",
+        "Inspect the prefilled Username field and the additional options."
+      ]
+    },
+    {
+      "id": "metabase-admin-446",
+      "name": "Snowflake connection-string prefill omits the user parameter from Username",
+      "severity": 3,
+      "summary": "Snowflake connection-string prefill omits the user parameter from Username.",
+      "expected": "The connection string should prefill Username as qa_user along with its other supplied connection details, as the field's help text promises.",
+      "actual": "Host, port and database are prefilled, but Username stays empty; user=qa_user is moved into the additional connection options instead.",
+      "reproSteps": [
+        "/admin/databases",
+        "Use only an unsaved new connection with invented values; cancel afterwards.",
+        "As Admin open Databases, Add database, and choose Snowflake.",
+        "Enter jdbc:snowflake://qa-acct.snowflakecomputing.com/?user=qa_user&password=qa_password&db=qa_db in Connection string (optional), then blur.",
+        "Inspect the prefilled Username field and the additional options."
+      ]
+    },
+    {
+      "id": "metabase-admin-447",
+      "name": "Presto connection-string prefill omits the user parameter from Username",
+      "severity": 3,
+      "summary": "Presto connection-string prefill omits the user parameter from Username.",
+      "expected": "The connection string should prefill Username as qa_user along with its other supplied connection details, as the field's help text promises.",
+      "actual": "Host, port and database are prefilled, but Username stays empty; user=qa_user is moved into the additional connection options instead.",
+      "reproSteps": [
+        "/admin/databases",
+        "Use only an unsaved new connection with invented values; cancel afterwards.",
+        "As Admin open Databases, Add database, and choose Presto.",
+        "Enter jdbc:presto://invalid.example.test:8080/qa_catalog/qa_schema?user=qa_user&password=qa_password in Connection string (optional), then blur.",
+        "Inspect the prefilled Username field and the additional options."
+      ]
+    },
+    {
+      "id": "metabase-admin-449",
+      "name": "Spark SQL connection-string prefill omits the user parameter from Username",
+      "severity": 3,
+      "summary": "Spark SQL connection-string prefill omits the user parameter from Username.",
+      "expected": "The connection string should prefill Username as qa_user along with its other supplied connection details, as the field's help text promises.",
+      "actual": "Host, port and database are prefilled, but Username stays empty; user=qa_user is moved into the additional connection options instead.",
+      "reproSteps": [
+        "/admin/databases",
+        "Use only an unsaved new connection with invented values; cancel afterwards.",
+        "As Admin open Databases, Add database, and choose Spark SQL.",
+        "Enter jdbc:hive2://invalid.example.test:10000/default;user=qa_user;password=qa_password in Connection string (optional), then blur.",
+        "Inspect the prefilled Username field and the additional options."
+      ]
+    },
+    {
+      "id": "metabase-admin-475",
+      "name": "Clearing a saved schema inclusion list silently restores its old value after Save changes",
+      "severity": 3,
+      "summary": "Clearing a saved schema inclusion list silently restores its old value after Save changes.",
+      "expected": "Saving a cleared schema list should retain the cleared value, or reject it with validation rather than silently keeping the previous value.",
+      "actual": "After saving Only these... with public, clearing the schema names textarea and clicking Save changes returns to database details. Reopening the editor shows public again.",
+      "reproSteps": [
+        "As admin, open Release operations from database list and Edit connection details.",
+        "Set Schemas to Only these..., enter public in schema names, and Save changes.",
+        "Reopen connection details and confirm public.",
+        "Clear the schema names textarea and click Save changes.",
+        "Reopen editor and inspect schema names: public has returned."
+      ]
+    },
+    {
+      "id": "metabase-admin-478",
+      "name": "State Contains '%' matches all 2500 People instead of states containing a percent sign",
+      "severity": 3,
+      "summary": "State Contains '%' matches all 2500 People instead of states containing a percent sign.",
+      "expected": "Contains '%' matches State text containing a literal percent sign; the two-letter State values do not contain it, so zero rows should match.",
+      "actual": "The filter chip reads 'State contains %' but count broadens from 90 to all 2500 rows.",
+      "reproSteps": [
+        "As Admin open Table Metadata → Segments and create an own-prefixed segment on Sample Database → People.",
+        "Add State is CA, enter name and description, save and reopen (90 rows).",
+        "Edit the State filter, change Is to Contains, replace CA with the literal '%' and click Update filter."
+      ]
+    },
+    {
+      "id": "metabase-admin-479",
+      "name": "User ID filtering preview ignores custom mapping labels and displays foreign-key names instead",
+      "severity": 3,
+      "summary": "User ID filtering preview ignores custom mapping labels and displays foreign-key names instead.",
+      "expected": "Filtering preview displays and searches the custom mapped values consistently with the Table preview (such as 'QA User One').",
+      "actual": "Table preview displays 'QA User One', but Filtering preview displays foreign-key names (starting with 'Hudson Borer'), and searching for custom labels like 'QA User One' or 'QA User One Revised' returns 'Didn't find anything'.",
+      "reproSteps": [
+        "Orders User ID original setup: FK People→ID, display Use foreign key→Name, Filtering Plain input box. Restore these after checking. No FK target changes needed. This differs from stale Table-preview bug: Table is correct after reload but Filtering still uses original Hudson Borer name.",
+        "Open Admin Sample Database Orders User ID field.",
+        "Set Filtering A list of all values and Display values Custom mapping.",
+        "In custom mapping save original value 1 as QA User One Revised.",
+        "Reload page and open Preview Table; confirm QA User One Revised renders for rows with ID 1.",
+        "Switch preview to Filtering: first checkbox still says Hudson Borer.",
+        "Search list for QA User One Revised; observe Didn't find anything."
+      ]
+    },
+    {
+      "id": "metabase-admin-471",
+      "name": "Saving a new Orders segment leaves the creation form unchanged without feedback",
+      "severity": 3,
+      "summary": "Saving a new Orders segment leaves the creation form unchanged without feedback.",
+      "expected": "The valid segment is saved and appears in the segments list, or an actionable validation/error explains why saving failed.",
+      "actual": "After clicking Save changes the creation form stays unchanged with the entered name, description, and filter.",
+      "reproSteps": [
+        "As primary fixture admin, open Table Metadata > Segments and click New segment.",
+        "Create a fresh uniquely named segment (observed MO-SEG-ALPHA-0720). Select Sample Database > Orders and enter a description.",
+        "Add Subtotal filter with Greater than operator and value 100; click Add filter. Definition shows Subtotal is greater than 100 and 5244 rows.",
+        "Click Save changes."
+      ]
+    },
+    {
+      "id": "metabase-admin-472",
+      "name": "Saved log-level reset duration of 2 Hours reopens as 60 Minutes",
+      "severity": 3,
+      "summary": "Saved log-level reset duration of 2 Hours reopens as 60 Minutes.",
+      "expected": "Reopened duration represents saved 2 Hours (or equivalent 120 Minutes), allowing administrators to inspect the configured reset interval.",
+      "actual": "After saving 2 Hours and reopening, duration shows 60 Minutes, not 2 Hours. No runtime timeout behavior was inferred.",
+      "reproSteps": [
+        "As primary fixture admin, open Tools > Logs > Customize log levels.",
+        "For a fresh equivalent run, record original JSON and duration; no reused custom record needed. Leave JSON at existing configuration.",
+        "Choose Hours in Unit dropdown and set Reset to defaults after to 2. Verify Save enabled.",
+        "Click Save; modal closes.",
+        "Reopen Customize log levels and read Reset to defaults after."
+      ]
+    },
+    {
+      "id": "metabase-admin-474",
+      "name": "Clicking Link text label after editing reverts input to old value while preview updates to new value",
+      "severity": 3,
+      "summary": "Clicking Link text label after editing reverts input to old value while preview updates to new value.",
+      "expected": "The Link text input should retain the entered value (QA Draft label 1024), matching the preview.",
+      "actual": "The Link text input reverts to Review QA 1024 while the preview updates to QA Draft label 1024 and the 'Formatting of Body updated' toast appears.",
+      "reproSteps": [
+        "As an admin, open Admin > Table Metadata > Sample Database > Reviews > Body.",
+        "Open Preview and scroll formatting settings; choose Display as Link.",
+        "Set Link URL to the Reviews metadata URL and Link text to Review QA 1024. Leave each input by clicking Display as heading so it saves.",
+        "Replace Link text with QA Draft label 1024, then click the Link text label above that same input.",
+        "Observe input and preview after formatting update."
+      ]
+    },
+    {
+      "id": "metabase-admin-477",
+      "name": "Numeric Between initial value accepts not-a-number and silently changes preview to a lone 50",
+      "severity": 3,
+      "summary": "Numeric Between initial value accepts not-a-number and silently changes preview to a lone 50.",
+      "expected": "The Number Between control rejects nonnumeric input with understandable validation and does not silently apply a different numeric filter.",
+      "actual": "Popover closes without validation. Left initial-value control says '2 selections', but preview filter shows '50' and chart shows 'No results!'.",
+      "reproSteps": [
+        "Prepare own dashboard with Orders table and Number Between parameter mapped to Total.",
+        "Admin Embedding → New embed → Dashboard → select own dashboard → Next.",
+        "Set Number parameter Editable and initial range 40 to 50; verify resulting Total rows are within range.",
+        "Reopen numeric initial-value popover, replace lower bound with 'not-a-number', retain upper bound 50 and click Update filter."
       ]
     }
   ]

@@ -382,6 +382,131 @@
         "Run the same search on the repository's Issues tab and observe 2 Open."
       ],
       "severity": 1
+    },
+    {
+      "id": "gitea-comment-after-lock-raw-json-error",
+      "name": "Commenting on an issue that was just locked shows a raw JSON SyntaxError",
+      "summary": "If another user locks an issue while a non-collaborator has a comment draft open, clicking Comment shows a 'Network error SyntaxError … is not valid JSON' toast instead of saying the conversation is locked.",
+      "expected": "Submitting the stale comment explains that the conversation was locked, and the draft is kept.",
+      "actual": "Clicking Comment showed the toast: Network error SyntaxError: Unexpected token '<', \"<!DOCTYPE \"... is not valid JSON. The comment was not saved and the draft stayed; reloading removed the comment box.",
+      "reproSteps": [
+        "As a repository owner, create a public repository and an issue; use a second user who is not a collaborator.",
+        "As the second user, open the issue and type a comment without submitting.",
+        "As the owner, in another session, lock the conversation on that issue.",
+        "Without reloading, click Comment as the second user."
+      ],
+      "severity": 1
+    },
+    {
+      "id": "gitea-issues-dashboard-search-drops-author",
+      "name": "Global Issues search drops the selected Author filter",
+      "summary": "On the top-level Issues dashboard, submitting a text search clears the selected Author filter, so issues by other authors appear in the results.",
+      "expected": "Submitting a search on the Issues dashboard keeps the selected Author filter.",
+      "actual": "With Author set to alex and a search showing no results, changing the search text and pressing Enter cleared the Author filter, and issues authored by eval appeared.",
+      "reproSteps": [
+        "Open the top-level Issues dashboard.",
+        "Choose an Author in the Author filter.",
+        "Type a search term matching another user's issue and press Enter.",
+        "Check whether the Author filter is still selected and whether other authors' issues appear."
+      ],
+      "severity": 3,
+      "matchingGuidance": {
+        "relatedReference": {
+          "name": "Issues dashboard search clears assignee filter and includes unassigned issue",
+          "distinction": "Same Issues dashboard search form. That entry is the Assignee filter being dropped; this entry is the Author filter being dropped."
+        }
+      }
+    },
+    {
+      "id": "gitea-external-tracker-accepts-invalid-regex",
+      "name": "External issue tracker saves an invalid regular expression and reports success",
+      "summary": "In repository Settings, the External Issue Tracker's Regular Expression Pattern accepts a malformed pattern such as '[' and shows 'The repository settings have been updated.' Issue references then stop linking.",
+      "expected": "Saving an invalid regular expression is rejected with a validation message instead of a success message.",
+      "actual": "With Regular Expression mode and pattern '[', Update Settings showed 'The repository settings have been updated.' and the pattern was still saved after refresh. Malformed patterns such as '[', '(' or '[z-a]' make issue references like ISSUE-42, and even cross-repository PR references, render as plain text. A valid pattern links them.",
+      "reproSteps": [
+        "In a repository's Settings > Advanced Settings, choose Use External Issue Tracker and fill in the tracker URL and URL format.",
+        "Select the Regular Expression number format and enter '[' as the pattern.",
+        "Click Update Settings, read the message, and refresh to check the saved pattern."
+      ],
+      "severity": 3
+    },
+    {
+      "id": "gitea-issue-due-date-five-digit-year-deletes",
+      "name": "Entering a due date with a five-digit year silently removes the issue's due date",
+      "summary": "Editing an issue's due date to a date with a five-digit year (for example 10000-01-01, or a typo like 20270-01-15) saves without an error but deletes the existing due date, and the timeline records it as removed.",
+      "expected": "The issue keeps its existing due date and shows a validation error for an unsupported date, rather than silently removing it.",
+      "actual": "With the due date December 31, 9999, entering 01/01/10000 and saving changed the sidebar to 'No due date set' and added 'removed the due date December 31, 9999' to the timeline, with no error. The deletion persisted after refresh. Milestones reject the same input.",
+      "reproSteps": [
+        "Open an issue with a due date set.",
+        "Click the due-date pencil, enter 10000-01-01 and save.",
+        "Check the due date and the timeline, then refresh."
+      ],
+      "severity": 1
+    },
+    {
+      "id": "gitea-locked-issue-quote-reply-js-error",
+      "name": "Quote Reply stays available on a locked issue for users who can't comment, and throws an error",
+      "summary": "On a locked issue or pull request, a user without write access has no comment box, but the ⋯ menu on the description and comments still offers Quote Reply. Clicking it does nothing visible except a JavaScript error.",
+      "expected": "Quote Reply is hidden or disabled for users who can't comment on the locked conversation.",
+      "actual": "A non-collaborator opening a locked issue saw no comment box, but the description's ⋯ menu offered Quote Reply. Clicking it did nothing and raised TypeError: Cannot read properties of null (reading 'value'), shown as an error banner. The same happened on an existing comment and after a full reload.",
+      "reproSteps": [
+        "As the repository owner, lock the conversation on an issue.",
+        "As a user without write access, open the issue and open the ⋯ menu on the description or a comment.",
+        "Click Quote Reply."
+      ],
+      "severity": 1,
+      "matchingGuidance": {
+        "relatedReference": {
+          "id": "gitea-comment-after-lock-raw-json-error",
+          "distinction": "Both involve a locked issue and a user who can't comment. That entry is submitting a stale comment after the lock (raw JSON error toast); this entry is the Quote Reply menu item staying available and throwing a script error."
+        }
+      }
+    },
+    {
+      "id": "gitea-attachment-copy-link-unescaped-bracket",
+      "name": "Attachment Copy link produces broken Markdown when the file name has an unmatched bracket",
+      "summary": "For an attachment whose file name contains an unmatched square bracket (such as 'UP ] image.png' or 'y [ z.png'), the upload's Copy link inserts the name into the Markdown label without escaping, so the pasted text renders as literal Markdown instead of an image or link. Ordinary names and balanced brackets work.",
+      "expected": "Copy link produces Markdown that renders the image or link for any valid file name, as it does for ordinary names.",
+      "actual": "Copy link for 'UP ] image.png' gave ![UP ] image.png](/attachments/…), which Preview and the posted comment showed as literal text with no image. 'y [ z.png' and the non-image 'x ] doc.txt' broke the same way, while 'plain image.png' and 'a [b] c.png' rendered correctly.",
+      "reproSteps": [
+        "In an issue comment box, upload an image named 'UP ] image.png'.",
+        "Click Copy link under the upload and paste it into the comment.",
+        "Click Preview."
+      ],
+      "severity": 1
+    },
+    {
+      "id": "gitea-edited-mention-missing-from-mentioning-you",
+      "name": "Mentions added by editing a comment or description don't appear under Mentioning you",
+      "summary": "When an @mention is added to an issue by editing an existing comment or the issue description, the mentioned user's issue list filter 'Mentioning you' doesn't include that issue. A mention in a newly posted comment is included.",
+      "expected": "An issue where the user is @mentioned by an edited comment or description appears under that user's 'Mentioning you' filter, as it does for a new comment.",
+      "actual": "Another user edited a plain comment to '@eval … edited ping'; eval's 'Mentioning you' showed 0 open issues for it. Posting a new comment '@eval … fresh ping' included the issue immediately. Editing an issue description to add @eval was likewise omitted.",
+      "reproSteps": [
+        "As one user, post a comment without mentions on an issue, then edit it to add @<other user>.",
+        "As the mentioned user, open Issues and choose the 'Mentioning you' filter.",
+        "Compare with posting a new comment that mentions them."
+      ],
+      "severity": 3
+    },
+    {
+      "id": "gitea-hidden-invalid-tracker-url-blocks-settings-save",
+      "name": "An invalid URL left in the inactive external tracker field silently blocks saving repository settings",
+      "summary": "In repository Settings, if an invalid value is typed into the External Issue Tracker URL and the tracker is switched back to Built-In, the hidden, inactive URL field still fails browser validation. Update Settings then does nothing, so valid changes such as Time Tracking are never saved, with no visible message.",
+      "expected": "Fields for an inactive option don't block saving, or the form shows which field is invalid; valid changes are saved.",
+      "actual": "After entering 'bad-url' as the External Issue Tracker URL, switching back to Use Built-In Issue Tracker and unchecking Enable Time Tracking, Update Settings showed no success and saved nothing; Time Tracking stayed enabled. The hidden URL field still carried the browser's 'Please enter a URL.' validation error.",
+      "reproSteps": [
+        "In a repository's Settings, choose Use External Issue Tracker and enter 'bad-url' as its URL.",
+        "Switch back to Use Built-In Issue Tracker.",
+        "Uncheck Enable Time Tracking and click Update Settings.",
+        "Reload Settings and check Time Tracking."
+      ],
+      "severity": 1,
+      "matchingGuidance": {
+        "relatedReference": {
+          "id": "gitea-external-tracker-accepts-invalid-regex",
+          "distinction": "Both involve External Issue Tracker settings. That entry is an invalid regex being accepted and saved; this entry is an invalid URL in the inactive, hidden field blocking every save."
+        }
+      }
     }
   ]
 }

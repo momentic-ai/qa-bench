@@ -958,6 +958,348 @@
           "This acceptance covers the initial preview only, not persisted expression truncation or a confirmed backend scheduling error."
         ]
       }
+    },
+    {
+      "id": "workflows-fresh-45c0e8e0",
+      "name": "Clearing a numeric workflow condition inserts and saves literal null text",
+      "severity": 3,
+      "owningArea": "twenty/workflows",
+      "summary": "Clearing an If/Else or Filter numeric condition produces the literal string null, so typing a replacement appends to invalid text instead of starting from an empty input.",
+      "expected": "Clearing a numeric condition leaves an empty editable value so a replacement number can be entered without text being inserted by the application.",
+      "actual": "On two fresh workflows per judge, clearing a numeric Total Count condition inserted null immediately. Typing 1 produced null1 and Invalid number. The null string was saved and survived reload, while null1 was rejected. The sibling Filter action reproduced. Direct selected replacement and Search Records Limit/Offset clear-and-retype controls worked.",
+      "reproSteps": [
+        "Create a fresh manual workflow with a Search Records action and an If/Else condition using Search Records > Total Count, operator Is, and value 0. Allow the configuration to save.",
+        "Focus the numeric condition, select all, and press Backspace. Observe that the input inserts the literal text null instead of staying empty.",
+        "Type 1 without selecting the inserted text. Observe null1 and Invalid number.",
+        "Reopen or reload the saved condition and observe that null remains the stored value; do not require invalid null1 to save.",
+        "Replace the selected contents directly with a valid number, without first passing through an empty input, and confirm it works without the error.",
+        "As a control, clear and retype a Search Records Limit or Offset value and observe a normal empty intermediate state. Repeat the failing condition in a second fresh workflow or the sibling Filter action."
+      ],
+      "sourceCause": "FormNumberFieldInput emits real null for an empty numeric input. WorkflowStepFilterValueInput converts non-string primitive values with String(value), turning null into the four-character string null and saving it as the condition value.",
+      "reviewEvidence": {
+        "basis": "Mo report plus independent Claude Code and Codex browser reproductions and source audits, coordinator citation checks, and user acceptance.",
+        "userAccepted": true,
+        "sourceRevision": "35c645064f72bc4e3180a2c6c506cbbfee170007",
+        "severityReason": "Observed broken functionality; controls using the same saved data work.",
+        "analysis": [
+          "Claude and Codex independently reproduced twice on fresh workflows, including persisted null after reload, a sibling Filter variation and successful direct-replacement controls.",
+          "Ordinary digit-by-digit deletion also triggers the insertion. The later null1 validation is correctly rejecting nonnumeric text the editor itself introduced.",
+          "The coordinator checked each cited source location and the composite callback path. The same number component works under Search Records callbacks that do not stringify null.",
+          "Rejected Maximum values counter behavior restores a valid minimum; this adapter manufactures nonnumeric text. Rejected out-of-range schedule input and optional-value concatenation have different contracts and triggers.",
+          "Latest retains the adapter conversion despite newer numeric-input synchronization. Continued runtime exposure is inferred from source, not a live latest run."
+        ],
+        "sourceReferences": [
+          "https://github.com/twentyhq/twenty/blob/35c645064f72bc4e3180a2c6c506cbbfee170007/packages/twenty-front/src/utils/cast-as-number-or-null.ts#L28-L40",
+          "https://github.com/twentyhq/twenty/blob/35c645064f72bc4e3180a2c6c506cbbfee170007/packages/twenty-front/src/utils/cast-as-number-or-null.ts#L63-L67",
+          "https://github.com/twentyhq/twenty/blob/35c645064f72bc4e3180a2c6c506cbbfee170007/packages/twenty-front/src/modules/object-record/record-field/ui/form-types/components/FormNumberFieldInput.tsx#L58-L87",
+          "https://github.com/twentyhq/twenty/blob/35c645064f72bc4e3180a2c6c506cbbfee170007/packages/twenty-front/src/modules/workflow/workflow-steps/filters/components/WorkflowStepFilterValueInput.tsx#L81-L103",
+          "https://github.com/twentyhq/twenty/blob/35c645064f72bc4e3180a2c6c506cbbfee170007/packages/twenty-front/src/modules/workflow/workflow-steps/filters/components/WorkflowStepFilterValueInput.tsx#L255-L287",
+          "https://github.com/twentyhq/twenty/blob/35c645064f72bc4e3180a2c6c506cbbfee170007/packages/twenty-front/src/modules/workflow/workflow-steps/filters/hooks/useUpsertStepFilterSettings.ts#L49-L65",
+          "https://github.com/twentyhq/twenty/blob/a6372e288ade9ed14ac2af1a7e224dabb6cc6021/packages/twenty-front/src/modules/workflow/workflow-steps/filters/components/WorkflowStepFilterValueInput.tsx#L81-L103",
+          "https://github.com/twentyhq/twenty/blob/a6372e288ade9ed14ac2af1a7e224dabb6cc6021/packages/twenty-front/src/modules/object-record/record-field/ui/form-types/components/FormNumberFieldInput.tsx#L70-L103"
+        ],
+        "limitations": [
+          "No workflow execution or activation consequence was browser-tested. Numeric comparisons against NaN are source-only inference and are not an observed impact claim.",
+          "Invalid null1 is rejected and was not observed to persist; the stored invalid value demonstrated is the inserted null string.",
+          "Other roles, currency/phone fields, database-event conditions, nested groups and broader numeric callers were not browser-verified.",
+          "Latest was inspected in source, not launched. No crash or saved-record loss was observed."
+        ]
+      }
+    },
+    {
+      "id": "workflows-fresh-19dfdd26",
+      "name": "Changing a workflow condition operator conceals its cleared value and executes a different comparison",
+      "severity": 3,
+      "owningArea": "twenty/workflows",
+      "summary": "Changing a string comparison operator clears the saved value while the If/Else or Filter input continues to display the previous value, concealing the configuration used by execution.",
+      "expected": "The visible workflow comparison represents the condition actually saved and executed. If changing an operator resets its value, the input reflects that reset.",
+      "actual": "Both judges reproduced on two fresh workflows: changing Is to Is not saved an empty string but retained the old text onscreen; reopening revealed the empty field. With the triggering member’s actual ID still displayed, tests took the branch for comparison against an empty value rather than the displayed ID. Re-entering the value restored correct routing. A completed-save, long-wait trial also failed.",
+      "reproSteps": [
+        "Create a fresh manual workflow with an If/Else action comparing trigger metadata Workspace Member Id to the current member’s actual ID using Is. Connect safe observable actions such as Delay or Filter to its branches.",
+        "Allow the condition to save, close and reopen its panel, and confirm the value remains. Test to establish the expected branch for that ID.",
+        "Change Is to Is not without editing the value. Wait for saving to complete. Observe that the input still displays the member ID.",
+        "Test the workflow and inspect its branch result. Observe that If executes despite the visible Is not comparison against the triggering member’s own ID.",
+        "Close and reopen the condition panel. Observe the value is empty; the operator change already cleared it before Test or any later navigation.",
+        "Re-enter the member ID without changing the operator, allow saving to finish, and test again. Observe the correct Else branch.",
+        "Repeat with a fresh workflow. The same string-value display mismatch can be checked in the sibling Filter action."
+      ],
+      "sourceCause": "WorkflowStepFilterOperandSelect explicitly saves an empty value when the operator changes. The string value editor remains mounted under the same condition key, and useTextVariableEditor initializes its content from defaultValue without synchronizing later default changes.",
+      "reviewEvidence": {
+        "basis": "Mo report plus independent Claude Code and Codex browser reproductions and source audits, coordinator citation checks, and user acceptance.",
+        "userAccepted": true,
+        "sourceRevision": "35c645064f72bc4e3180a2c6c506cbbfee170007",
+        "severityReason": "Observed broken functionality; controls using the same saved data work.",
+        "analysis": [
+          "Claude and Codex independently reproduced the concealed reset and incorrect execution on fresh workflows with valid actual member IDs. Re-entering the value without another operator change corrected routing.",
+          "The reset happens on operator selection before Test, Add route or panel navigation. Codex confirmed a completed empty-value mutation and a roughly 25-second wait before execution, distinguishing this from unfinished-autosave races.",
+          "Ordinary unchanged comparisons persisted. The sibling Filter string editor also reproduced; other value types and nested/database-trigger cases remain unverified.",
+          "The coordinator checked all numbered citations and expanded shortened paths. Claude’s inferred extension to FormNumberFieldInput was excluded because that component derives its value from current props.",
+          "Latest retains the string-editor integration despite workflow save and storage rewrites. Continued latest runtime exposure is inferred from source, not browser-tested."
+        ],
+        "sourceReferences": [
+          "https://github.com/twentyhq/twenty/blob/35c645064f72bc4e3180a2c6c506cbbfee170007/packages/twenty-front/src/modules/workflow/workflow-steps/filters/components/WorkflowStepFilterOperandSelect.tsx#L38-L60",
+          "https://github.com/twentyhq/twenty/blob/35c645064f72bc4e3180a2c6c506cbbfee170007/packages/twenty-front/src/modules/workflow/workflow-steps/filters/components/WorkflowStepFilterGroupChildren.tsx#L51",
+          "https://github.com/twentyhq/twenty/blob/35c645064f72bc4e3180a2c6c506cbbfee170007/packages/twenty-front/src/modules/workflow/workflow-steps/filters/components/WorkflowStepFilterValueInput.tsx#L175-L183",
+          "https://github.com/twentyhq/twenty/blob/35c645064f72bc4e3180a2c6c506cbbfee170007/packages/twenty-front/src/modules/object-record/record-field/ui/form-types/hooks/useTextVariableEditor.ts#L43-L67",
+          "https://github.com/twentyhq/twenty/blob/35c645064f72bc4e3180a2c6c506cbbfee170007/packages/twenty-front/src/modules/object-record/record-field/ui/form-types/hooks/useTextVariableEditor.ts#L130-L139",
+          "https://github.com/twentyhq/twenty/blob/35c645064f72bc4e3180a2c6c506cbbfee170007/packages/twenty-front/src/modules/workflow/workflow-steps/filters/hooks/useUpsertStepFilterSettings.ts#L49-L65",
+          "https://github.com/twentyhq/twenty/blob/35c645064f72bc4e3180a2c6c506cbbfee170007/packages/twenty-server/src/modules/workflow/workflow-executor/workflow-actions/filter/utils/evaluate-filter-conditions.util.ts#L461-L475",
+          "https://github.com/twentyhq/twenty/blob/a6372e288ade9ed14ac2af1a7e224dabb6cc6021/packages/twenty-front/src/modules/workflow/workflow-steps/filters/components/WorkflowStepFilterOperandSelect.tsx#L38-L60",
+          "https://github.com/twentyhq/twenty/blob/a6372e288ade9ed14ac2af1a7e224dabb6cc6021/packages/twenty-front/src/modules/object-record/record-field/ui/form-types/hooks/useTextVariableEditor.ts#L70-L75",
+          "https://github.com/twentyhq/twenty/blob/a6372e288ade9ed14ac2af1a7e224dabb6cc6021/packages/twenty-front/src/modules/object-record/record-field/ui/form-types/hooks/useTextVariableEditor.ts#L153-L162"
+        ],
+        "limitations": [
+          "Browser verification covers string comparisons in If/Else and Filter; other field types, nested/Else-if and database-trigger callers were source-inspected only.",
+          "The workspace-member account could not access editable workflows. Administrator reproductions establish this scope.",
+          "Latest was inspected in source, not launched. The original Mo video was not independently reviewed by the judges."
+        ]
+      },
+      "matchingGuidance": {
+        "relatedReference": "workflows-N13",
+        "distinction": "This entry covers If/Else and Filter string-comparison operator changes, where the saved value is cleared but stale text remains and tests can execute a different branch. workflows-N13 covers re-selecting POST in a webhook trigger and a reset Expected Body concealed by stale JSON. They share useTextVariableEditor through different input components and entry points; match the reported selector and concealed value."
+      }
+    },
+    {
+      "id": "workflows-fresh-57ec05ae",
+      "name": "Workflow test Flow panel stays Running after the run completes",
+      "severity": 1,
+      "owningArea": "twenty/workflows",
+      "summary": "A completed short workflow test can leave its Flow panel displaying Running until refetched.",
+      "expected": "The Flow run-status indicator reflects the completed state of that same execution.",
+      "actual": "Both judges repeatedly observed fresh completed runs with Flow still Running for 40–60 seconds or more while the full run page showed Completed. Switching tabs or reopening a fresh completed-run panel recovered. Execution and stored results were correct.",
+      "reproSteps": [
+        "Create and save a fresh manual workflow with Search Records and an If/Else branch containing only safe actions, then Test it.",
+        "Keep the newly opened run panel on Flow while the short run finishes.",
+        "In an affected trial, wait at least 40 seconds and observe Running remains despite completed steps and the same run’s detail showing Completed.",
+        "Open the full run detail or switch Home to Flow and confirm Completed is displayed after refetch.",
+        "Repeat with fresh run IDs; the defect is intermittent. A short workflow without If/Else can also reproduce."
+      ],
+      "sourceCause": "Two independently captured races can freeze the same Flow status: live-listener registration after a short run finishes, or an older RUNNING query response overwriting a newer terminal live update in the cache.",
+      "reviewEvidence": {
+        "basis": "Mo report plus independent Claude Code and Codex browser reproductions and source audits, coordinator citation checks, and user acceptance.",
+        "userAccepted": true,
+        "sourceRevision": "35c645064f72bc4e3180a2c6c506cbbfee170007",
+        "severityReason": "GUI-only: the demonstrated display or navigation state is wrong; no failed supported operation or saved-data loss was established.",
+        "analysis": [
+          "Both judges recommend P/1. Codex captured a listener registration starting 1.291 seconds after its diagnostic run completed; Claude captured newer COMPLETED live events followed by older RUNNING fetch responses. Do not attribute every affected run to one cause.",
+          "Passing event/query order and fresh-panel controls distinguish the intermittent display failure from failed execution.",
+          "The coordinator checked every cited source location and the separate upstream fixes for immediate listener registration and stale-response protection. Latest runtime was not tested.",
+          "N73 accepts Home during a long Delay and explicitly excludes the then-unconfirmed Flow variant. This approved related entry confirms Flow independently; shared root cause with that older Home observation is not established."
+        ],
+        "sourceReferences": [
+          "https://github.com/twentyhq/twenty/blob/35c645064f72bc4e3180a2c6c506cbbfee170007/packages/twenty-front/src/modules/sse-db-event/components/SSEQuerySubscribeEffect.tsx#L181-L223",
+          "https://github.com/twentyhq/twenty/blob/35c645064f72bc4e3180a2c6c506cbbfee170007/packages/twenty-front/src/modules/workflow/hooks/useRunWorkflowVersion.tsx#L143-L165",
+          "https://github.com/twentyhq/twenty/blob/35c645064f72bc4e3180a2c6c506cbbfee170007/packages/twenty-front/src/modules/workflow/hooks/useWorkflowRun.ts#L9-L47",
+          "https://github.com/twentyhq/twenty/blob/35c645064f72bc4e3180a2c6c506cbbfee170007/packages/twenty-front/src/modules/workflow/workflow-diagram/components/WorkflowRunVisualizer.tsx#L12-L24",
+          "https://github.com/twentyhq/twenty/blob/35c645064f72bc4e3180a2c6c506cbbfee170007/packages/twenty-front/src/modules/sse-db-event/hooks/useTriggerOptimisticEffectFromSseUpdateEvents.ts#L111-L120",
+          "https://github.com/twentyhq/twenty/blob/a6372e288ade9ed14ac2af1a7e224dabb6cc6021/packages/twenty-front/src/modules/sse-db-event/components/SSEQuerySubscribeEffect.tsx#L206-L267",
+          "https://github.com/twentyhq/twenty/blob/a6372e288ade9ed14ac2af1a7e224dabb6cc6021/packages/twenty-front/src/modules/workflow/utils/workflowRunStaleResponseLink.ts#L23-L77"
+        ],
+        "limitations": [
+          "No execution failure, lost output or blocked workflow operation was observed.",
+          "Original Mo recording and selected tab were unavailable to the judges; independent Flow reproductions establish this scope.",
+          "Other subscription callers and roles were not browser-verified. Latest was source-inspected only."
+        ]
+      },
+      "matchingGuidance": {
+        "relatedReference": "workflows-N73",
+        "distinction": "This entry covers a short run’s Flow status remaining Running after completion, independently confirmed through delayed-listener or stale-query races. N73 covers leaving Home open during a long Delay and explicitly excluded unconfirmed Flow behavior. Match the tab and trigger; no shared root cause with N73 is assumed."
+      }
+    },
+    {
+      "id": "workflows-fresh-5e370825",
+      "name": "Creation-page refresh opens an empty workflow name editor that erases its saved name on commit",
+      "severity": 3,
+      "owningArea": "twenty/workflows",
+      "summary": "Reloading a freshly created workflow’s landing page opens an empty title draft; an ordinary canvas click or Tab then overwrites its saved name.",
+      "expected": "Refreshing a named workflow does not reopen an empty name draft that ordinary unrelated interaction saves over the completed name.",
+      "actual": "Both judges reproduced fresh workflows with saved names: refresh opened an empty Name editor while the saved name remained recoverable, then a canvas click or Tab made the workflow persistently Untitled. Escape and list-reopen controls preserved names. Configured active workflows and an unconfigured draft were affected.",
+      "reproSteps": [
+        "Create a fresh workflow, enter a unique name and press Enter to commit it. Allow the name to save and confirm it is displayed.",
+        "Without first leaving the creation landing page, reload it. Observe an empty focused Name editor while the browser title still retains the saved name.",
+        "Click the workflow canvas or press Tab. Observe the empty draft being committed and the breadcrumb changing to Untitled.",
+        "Reopen the Workflows list and reload to confirm the stored name is now empty.",
+        "As controls on fresh workflows, press Escape after the creation-page reload to preserve the saved name, or open the workflow from the list before reloading and confirm no empty editor appears."
+      ],
+      "sourceCause": "The new-record router-history flag survives reload and repeatedly opens the title editor. Its separate draft is seeded before saved record data is available, and normal click/Tab commit handlers persist that empty value.",
+      "reviewEvidence": {
+        "basis": "Mo report plus independent Claude Code and Codex browser reproductions and source audits, coordinator citation checks, and user acceptance.",
+        "userAccepted": true,
+        "sourceRevision": "35c645064f72bc4e3180a2c6c506cbbfee170007",
+        "severityReason": "Observed broken functionality or unintended loss of saved configuration.",
+        "analysis": [
+          "Both judges recommend P/3 for refresh followed by a normal commit, not refresh alone. No activation or workflow-step setup is required.",
+          "The coordinator traced creation state, editor draft, commit handlers and backend persistence, and read the upstream fix explicitly identifying refresh-triggered editor reopening as defective.",
+          "Latest replaces retained history-state consumption with a matching one-shot pending title request that is cleared after use; latest runtime was not tested.",
+          "The accepted Notes/Tasks creation-page title-loss entry shares this cause but is name-only in the current dataset. Related guidance uses its exact name and location without inventing an ID. Rejected N71 concerns an unfinished programmatic blur, not erasing a completed name through this automatically reopened editor."
+        ],
+        "sourceReferences": [
+          "https://github.com/twentyhq/twenty/blob/35c645064f72bc4e3180a2c6c506cbbfee170007/packages/twenty-front/src/modules/object-record/record-table/hooks/useCreateNewIndexRecord.ts#L89-L119",
+          "https://github.com/twentyhq/twenty/blob/35c645064f72bc4e3180a2c6c506cbbfee170007/packages/twenty-front/src/modules/app/effect-components/PageChangeEffect.tsx#L208-L237",
+          "https://github.com/twentyhq/twenty/blob/35c645064f72bc4e3180a2c6c506cbbfee170007/packages/twenty-front/src/modules/object-record/record-title-cell/hooks/useOpenNewRecordTitleCell.ts#L35-L49",
+          "https://github.com/twentyhq/twenty/blob/35c645064f72bc4e3180a2c6c506cbbfee170007/packages/twenty-front/src/modules/object-record/record-title-cell/components/RecordTitleCell.tsx#L62-L99",
+          "https://github.com/twentyhq/twenty/blob/35c645064f72bc4e3180a2c6c506cbbfee170007/packages/twenty-front/src/modules/object-record/record-field/ui/hooks/usePersistField.ts#L268-L283",
+          "https://github.com/twentyhq/twenty/blob/a6372e288ade9ed14ac2af1a7e224dabb6cc6021/packages/twenty-front/src/modules/app/effect-components/PageChangeEffect.tsx#L241-L255"
+        ],
+        "limitations": [
+          "Refresh alone leaves the stored name intact until an ordinary commit of the empty editor. Escape recovers it.",
+          "The original Mo post-refresh action was not established; the proposed reproduction explicitly includes the later click or Tab.",
+          "Precise cold-record-store timing is inferred. No step configuration or workflow execution loss was demonstrated.",
+          "Other creation callers and member-role behavior were not independently verified. Latest was source-inspected only."
+        ]
+      },
+      "matchingGuidance": {
+        "relatedReference": {
+          "name": "Refreshing newly created Notes or Tasks opens an empty title editor that can erase their saved names",
+          "location": "twenty/record-pages-activities/ground-truth.json"
+        },
+        "distinction": "The existing name-only entry covers Notes and Tasks after creation-page reload. This entry covers Workflows and its editor breadcrumb, with the same retained creation-state and empty-draft commit mechanism. Do not invent an ID for the older reference; match the object and entry point."
+      }
+    },
+    {
+      "id": "workflows-fresh-a4320e8f",
+      "name": "Default zero-duration Delay fails execution before later workflow steps run",
+      "severity": 3,
+      "owningArea": "twenty/workflows",
+      "summary": "A standalone Delay left at its default all-zero duration fails the workflow with an internal pending-state error instead of completing immediately.",
+      "expected": "A Delay using its valid default zero duration should complete immediately or receive clear configuration validation rather than fail the workflow with an internal state error.",
+      "actual": "Two fresh manual workflows per judge failed on the zero-duration Delay with “Workflow has been ended before this step was completed”; stored run error was “Step is not pending”. Later steps did not start. Changing Seconds to 1 completed; an activated manual launch also failed with zero.",
+      "reproSteps": [
+        "Create a fresh workflow with Launch manually and a Delay action.",
+        "Leave Days, Hours, Minutes and Seconds at their default 0 values. Allow saving to complete; reopening the saved workflow also reproduces.",
+        "Run Test Workflow and inspect Delay output and run status. Observe Failed and the ended-before-completion message.",
+        "Optionally add a following harmless Delay and observe it remains not started after the zero-duration step fails.",
+        "As a control, change only Seconds to 1, allow saving to complete, and test again. Observe successful completion."
+      ],
+      "sourceCause": "The Delay action queues an immediately runnable resume job before the executor persists PENDING. The resume worker treats a non-PENDING step as fatal and ends the run; termination supplies the displayed step error.",
+      "reviewEvidence": {
+        "basis": "Mo report plus independent Claude Code and Codex browser reproductions and source audits, coordinator citation checks, and user acceptance.",
+        "userAccepted": true,
+        "sourceRevision": "35c645064f72bc4e3180a2c6c506cbbfee170007",
+        "severityReason": "Observed broken functionality; controls using the same saved data work.",
+        "analysis": [
+          "Both judges independently reproduced on two fresh standalone workflows with passing one-second controls. Claude repeated the zero version through the API five times, all failing, and confirmed the next step remained NOT_STARTED. Codex additionally reproduced an activated manual launch.",
+          "The builder seeds all duration components to zero and the schema permits zero; no unfinished edit or Iterator is needed.",
+          "The exact worker ordering is inferred from source and stored errors, not captured in a worker trace. All sampled zero-duration runs failed, without establishing a universal frequency.",
+          "Accepted Iterator malformed-loop-return and editor-Delay failures have different causes. Latest uses TIME waits and retries premature wake-ups; a source-level fix is plausible, but latest runtime was not tested."
+        ],
+        "sourceReferences": [
+          "https://github.com/twentyhq/twenty/blob/35c645064f72bc4e3180a2c6c506cbbfee170007/packages/twenty-server/src/modules/workflow/workflow-builder/workflow-version-step/workflow-version-step-operations.workspace-service.ts#L663-L682",
+          "https://github.com/twentyhq/twenty/blob/35c645064f72bc4e3180a2c6c506cbbfee170007/packages/twenty-shared/src/workflow/schemas/workflow-delay-action-settings-schema.ts#L4-L18",
+          "https://github.com/twentyhq/twenty/blob/35c645064f72bc4e3180a2c6c506cbbfee170007/packages/twenty-server/src/modules/workflow/workflow-executor/workflow-actions/delay/delay.workflow-action.ts#L74-L116",
+          "https://github.com/twentyhq/twenty/blob/35c645064f72bc4e3180a2c6c506cbbfee170007/packages/twenty-server/src/modules/workflow/workflow-executor/workspace-services/workflow-executor.workspace-service.ts#L364-L429",
+          "https://github.com/twentyhq/twenty/blob/35c645064f72bc4e3180a2c6c506cbbfee170007/packages/twenty-server/src/modules/workflow/workflow-executor/workflow-actions/delay/jobs/resume-delayed-workflow.job.ts#L47-L110",
+          "https://github.com/twentyhq/twenty/blob/35c645064f72bc4e3180a2c6c506cbbfee170007/packages/twenty-server/src/modules/workflow/workflow-runner/workflow-run/workflow-run.workspace-service.ts#L477-L500",
+          "https://github.com/twentyhq/twenty/blob/a6372e288ade9ed14ac2af1a7e224dabb6cc6021/packages/twenty-server/src/modules/workflow/workflow-executor/workflow-actions/delay/delay.workflow-action.ts#L63-L84",
+          "https://github.com/twentyhq/twenty/blob/a6372e288ade9ed14ac2af1a7e224dabb6cc6021/packages/twenty-server/src/modules/workflow/workflow-runner/workspace-services/workflow-waiting-step.workspace-service.ts#L83-L108"
+        ],
+        "limitations": [
+          "Concurrent worker ordering is inferred; no worker-level trace was collected.",
+          "Other roles, automated triggers, scheduled-date mode, fractional durations and Iterator placement were not browser-tested.",
+          "Latest was source-inspected only."
+        ]
+      }
+    },
+    {
+      "id": "workflows-fresh-b4cded10",
+      "name": "Changing trigger Record Type retains an incompatible condition that prevents runs",
+      "severity": 3,
+      "owningArea": "twenty/workflows",
+      "summary": "Changing a Record-updated trigger from Notes to Companies retains the old Title condition after reload; it displays Select a field and the active workflow does not run on Company updates.",
+      "expected": "After changing the trigger object, incompatible object-specific conditions should be reset or clearly identified as invalid so a retained old-object condition does not silently prevent execution.",
+      "actual": "Notes Title Contains a nonempty value survives switching to Companies as a saved trigger.properties.after.title reference. The field displays Select a field, activation succeeds, and Company updates produce no run. Selecting a valid Company Name condition restores normal execution.",
+      "reproSteps": [
+        "Create a fresh workflow with Record is updated > Notes. Add a Title Contains condition with a unique nonempty value.",
+        "Change Record Type to Companies, directly or through Tasks. Observe Select a field while Contains and the previous value remain.",
+        "Add a harmless valid action, allow saving to finish, and activate. Reload and confirm the unresolved field remains.",
+        "Update an owned Company and observe no run for the stale condition.",
+        "As a control, explicitly select Company Name in that condition and use a value matching the Company. Save and activate, update the Company again, and observe a completed run."
+      ],
+      "sourceCause": "The Record Type handler changes eventName while preserving the previous filter. The field selector cannot resolve Title in the Company schema and displays a placeholder; activation does not validate filter compatibility, and event evaluation retains the missing-field predicate.",
+      "reviewEvidence": {
+        "basis": "Mo report plus independent Claude Code and Codex browser/source reviews, official Claude clarification, coordinator citation checks, and user acceptance after reviewing the P/F disagreement.",
+        "userAccepted": true,
+        "sourceRevision": "35c645064f72bc4e3180a2c6c506cbbfee170007",
+        "severityReason": "Observed broken functionality; controls using the same saved data work.",
+        "analysis": [
+          "Both judges reproduced the persisted unresolved condition on two fresh workflows. Valid Company Name controls completed, and Codex repaired the affected condition and verified subsequent execution.",
+          "Claude accepts at severity 3; Codex rejects because the field placeholder visibly indicates incomplete configuration and no explicit product contract requires automatic clearing or activation rejection. The user accepted a related entry at severity 3 after reviewing the disagreement.",
+          "Claude withdrew claims that the full stale row and empty control looked identical, that empty-condition pass-through establishes a contract, and that upstream b109ddbe7e addresses this precise defect. Only the field placeholder matches; operator/value differ.",
+          "Acceptance rests on consistency with sibling workflow object pickers that reset object-specific settings and accepted N17, rather than documented maintainer intent. Rejected N64 is a meaningful counterprecedent because it also has a visibly unresolved mapping.",
+          "A stale Title predicate is not expected to match Company Name. No-run observations establish the retained configuration effect, not that any Company name should satisfy that predicate. Latest retains the handler; latest runtime was not tested."
+        ],
+        "sourceReferences": [
+          "https://github.com/twentyhq/twenty/blob/35c645064f72bc4e3180a2c6c506cbbfee170007/packages/twenty-front/src/modules/workflow/workflow-trigger/components/WorkflowEditTriggerDatabaseEventForm.tsx#L155-L168",
+          "https://github.com/twentyhq/twenty/blob/35c645064f72bc4e3180a2c6c506cbbfee170007/packages/twenty-front/src/modules/workflow/workflow-steps/filters/components/WorkflowStepFilterFieldSelect.tsx#L66-L99",
+          "https://github.com/twentyhq/twenty/blob/35c645064f72bc4e3180a2c6c506cbbfee170007/packages/twenty-server/src/modules/workflow/workflow-trigger/utils/assert-version-can-be-activated.util.ts#L253-L263",
+          "https://github.com/twentyhq/twenty/blob/35c645064f72bc4e3180a2c6c506cbbfee170007/packages/twenty-server/src/modules/workflow/workflow-trigger/automated-trigger/listeners/workflow-database-event-trigger.listener.ts#L428-L453",
+          "https://github.com/twentyhq/twenty/blob/35c645064f72bc4e3180a2c6c506cbbfee170007/packages/twenty-server/src/modules/workflow/workflow-executor/workflow-actions/filter/utils/evaluate-filter-conditions.util.ts#L139-L190",
+          "https://github.com/twentyhq/twenty/blob/35c645064f72bc4e3180a2c6c506cbbfee170007/packages/twenty-front/src/modules/workflow/workflow-steps/workflow-actions/find-records-action/components/WorkflowEditActionFindRecords.tsx#L174-L188",
+          "https://github.com/twentyhq/twenty/blob/a6372e288ade9ed14ac2af1a7e224dabb6cc6021/packages/twenty-front/src/modules/workflow/workflow-trigger/components/WorkflowEditTriggerDatabaseEventForm.tsx#L51-L63",
+          "https://github.com/twentyhq/twenty/blob/a6372e288ade9ed14ac2af1a7e224dabb6cc6021/packages/twenty-front/src/modules/workflow/workflow-steps/filters/components/WorkflowStepFilterFieldSelect.tsx#L128-L143"
+        ],
+        "limitations": [
+          "The field placeholder visibly signals an unset field; this is not concealed valid-looking comparison text. Automatic reset or explicit invalid-condition feedback is an inferred consistency contract approved by the user.",
+          "The precise listener cause of absent runs was inferred from source, not traced live. No HTTP Request was executed; harmless actions were used.",
+          "An additional displayed-versus-saved operand discrepancy is uninvestigated and excluded.",
+          "Latest was source-inspected only; the later malformed-template warning is a different cause."
+        ]
+      },
+      "matchingGuidance": {
+        "relatedReference": "workflows-N17",
+        "distinction": "N17 covers stale current-object picker options after Record Type changes, recoverable by reopening the panel. This entry covers a saved old-object condition whose field remains unresolved after reopening/reload and prevents matching runs; explicit reselection repairs it."
+      }
+    },
+    {
+      "id": "workflows-fresh-e7933534",
+      "name": "Resizing the workflow Test form clears saved answers and submits empty output",
+      "severity": 3,
+      "owningArea": "twenty/workflows",
+      "summary": "Crossing the mobile breakpoint with a desktop workflow-editor Test form open clears already-saved Text, Number and Company Record answers; Submit can complete with an empty result.",
+      "expected": "Changing the viewport layout of the same pending Form should retain its saved answers and submit those answers.",
+      "actual": "After valid answers had autosaved, crossing 769 to 768 pixels cleared all three fields without warning. Returning to desktop left them blank, and Submit completed with {}. No-resize controls submitted populated results; the full Workflow Run page retained saved valid answers across resizing.",
+      "reproSteps": [
+        "Create a fresh manual workflow with a Form containing Text, Number and a Company Record field.",
+        "At desktop width, run Test from the workflow editor so the pending form opens in the side panel.",
+        "Enter a unique Text answer, a valid Number and a selected Company. Wait several seconds for autosave.",
+        "Narrow the window from above 768 CSS pixels to 768 or less without navigation. Observe every answer reset without a warning; returning to desktop does not restore them.",
+        "Click Submit and inspect Form output. Observe successful completion with an empty object instead of the earlier answers.",
+        "As controls, submit populated answers without crossing the breakpoint, resize within the same layout, or open the full Workflow Run record page and resize after saving valid answers."
+      ],
+      "sourceCause": "The layout switches between different desktop and mobile panel trees. Remounting initializes local answers from a stale separate flow snapshot; autosave updates the run and cache but not that snapshot. The full-run-page visualizer synchronizes flow and preserves saved values.",
+      "reviewEvidence": {
+        "basis": "Mo report plus independent Claude Code and Codex browser reproductions and source audits, coordinator citation checks, and user acceptance.",
+        "userAccepted": true,
+        "sourceRevision": "35c645064f72bc4e3180a2c6c506cbbfee170007",
+        "severityReason": "Observed broken functionality; controls using the same saved data work.",
+        "analysis": [
+          "Both judges independently reproduced repeated answer loss and successful empty submitted output, including valid Number values after waiting for autosave. The original invalid abc value is unnecessary.",
+          "Claude verified saved run input before resizing; Codex observed earlier draft answers still present while the completed result was {}. No-resize controls produced populated results.",
+          "Within-layout resizing retained answers, while crossing the 768-pixel layout boundary cleared them. Codex also reproduced mobile-to-desktop loss; full-record-page controls retained already-saved valid answers.",
+          "Recovered-13 covers selected-record navigation and Back. A shared stale-snapshot cause is plausible, but that older Mo-only entry was not independently source-audited here. Resize is a distinct trigger with observed empty submitted output.",
+          "Latest retains local snapshot initialization and panel swapping, with an added submission flush; latest runtime was not tested."
+        ],
+        "sourceReferences": [
+          "https://github.com/twentyhq/twenty/blob/35c645064f72bc4e3180a2c6c506cbbfee170007/packages/twenty-front/src/modules/ui/layout/page/components/MainAppLayoutWithSidePanel.tsx#L129-L141",
+          "https://github.com/twentyhq/twenty/blob/35c645064f72bc4e3180a2c6c506cbbfee170007/packages/twenty-front/src/modules/workflow/workflow-steps/workflow-actions/form-action/components/WorkflowEditActionFormFiller.tsx#L34-L100",
+          "https://github.com/twentyhq/twenty/blob/35c645064f72bc4e3180a2c6c506cbbfee170007/packages/twenty-front/src/modules/workflow/hooks/useRunWorkflowRunOpeningInSidePanelEffects.ts#L40-L88",
+          "https://github.com/twentyhq/twenty/blob/35c645064f72bc4e3180a2c6c506cbbfee170007/packages/twenty-front/src/modules/workflow/workflow-steps/hooks/useUpdateWorkflowRunStep.ts#L38-L87",
+          "https://github.com/twentyhq/twenty/blob/35c645064f72bc4e3180a2c6c506cbbfee170007/packages/twenty-front/src/modules/workflow/workflow-diagram/components/WorkflowRunVisualizerEffect.tsx#L235-L246",
+          "https://github.com/twentyhq/twenty/blob/35c645064f72bc4e3180a2c6c506cbbfee170007/packages/twenty-server/src/modules/workflow/workflow-runner/workspace-services/workflow-runner.workspace-service.ts#L138-L199",
+          "https://github.com/twentyhq/twenty/blob/a6372e288ade9ed14ac2af1a7e224dabb6cc6021/packages/twenty-front/src/modules/app/components/MainAppLayoutWithSidePanel.tsx#L59-L75",
+          "https://github.com/twentyhq/twenty/blob/a6372e288ade9ed14ac2af1a7e224dabb6cc6021/packages/twenty-front/src/modules/workflow/workflow-steps/workflow-actions/form-action/components/WorkflowEditActionFormFiller.tsx#L37-L104"
+        ],
+        "limitations": [
+          "No downstream record creation from empty output was tested.",
+          "Scope is the workflow-editor Test side panel after valid answers have saved. Fast edits before autosave on the full run page and untested field types are excluded.",
+          "A shared root cause with recovered-13 is inferred, not established for that older report.",
+          "Latest was source-inspected only."
+        ]
+      },
+      "matchingGuidance": {
+        "relatedReference": "workflows-recovered-13",
+        "distinction": "Recovered-13 loses pending answers after opening the selected Company and returning with panel Back. This entry loses saved answers solely by crossing the desktop/mobile layout breakpoint, with no record navigation, and confirms empty submitted Form output."
+      }
     }
   ]
 }

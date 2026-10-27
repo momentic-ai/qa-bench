@@ -312,6 +312,125 @@
         "Click Update filter and run the query."
       ],
       "reason": "Works as intended per human review."
+    },
+    {
+      "id": "metabase-querying-453",
+      "name": "Decimal post-summary Between filter excludes quarter whose displayed total equals upper bound",
+      "summary": "Decimal post-summary Between filter excludes quarter whose displayed total equals upper bound.",
+      "expected": "Filtering between displayed totals 123889.6 and 132631.24 should retain both Q2 and Q3 2027.",
+      "actual": "Only Q2 2027 remains in the result table; Q3 2027 (previously displaying 132,631.24) is excluded when using that value as the upper bound.",
+      "reproSteps": [
+        "Use Orders, filter Created At Jan 1–Dec 31 2027.",
+        "Summarize Count, Average of Total, Sum of Total, Minimum of Total and Maximum of Total by Created At Quarter and Quantity with Don't bin.",
+        "Add second summary Count, Sum of Count and Sum of Sum of Total, grouped by inherited Created At Quarter; run. Q2 displays 123889.6 and Q3 displays 132631.24.",
+        "Add a subsequent Filter on Sum of Sum of Total Between 123889.6 and 132631.24; run and inspect results."
+      ],
+      "reason": "Works as intended: the filter compares the stored total (132631.2439…), which is above the bound; only the display rounds to 132,631.24."
+    },
+    {
+      "id": "metabase-querying-465",
+      "name": "Renaming a custom summary aggregate to match an existing column name silently breaks post-aggregation filtering and returns no results",
+      "summary": "Renaming a custom summary aggregate to match an existing column name silently breaks post-aggregation filtering and returns no results.",
+      "expected": "Renaming the custom aggregation should maintain correct filter field bindings or prevent naming collisions with existing columns.",
+      "actual": "Renaming the aggregation to 'Category' produces duplicate column names and causes the query to return 'No results!' (0 rows).",
+      "reproSteps": [
+        "As Harbor Admin, create a fresh QA-SUMMARY question from Sample Database Products.",
+        "Add custom Count() named Price and Count()*10 named Category, grouped by source Category. Sort second aggregate descending.",
+        "Add post-summary numeric aggregate Category between 500 and 535; results are Gadget 53/530 and Gizmo 51/510. Save and reopen.",
+        "Add post-summary text grouping Category is Gadget; verify Gadget 53/530.",
+        "Edit the first custom aggregate name from Price to Category, leaving Count() unchanged. Click Update, then Visualize."
+      ],
+      "reason": "Works as intended per human review."
+    },
+    {
+      "id": "metabase-querying-468",
+      "name": "Date parameter Update filter silently discards invalid typed date and closes calendar with previous date applied",
+      "summary": "Date parameter Update filter silently discards invalid typed date and closes calendar with previous date applied.",
+      "expected": "Invalid typed date should be rejected with validation feedback and keep the editor open for correction rather than silently dismissing.",
+      "actual": "Update filter remains enabled, closes the calendar on click, and retains May 15, 2025 with no validation error or feedback displayed.",
+      "reproSteps": [
+        "As default account, choose New > SQL query > Sample Database.",
+        "Create a fresh QA-PARAM question with SQL SELECT ID, CREATED_AT, TOTAL FROM ORDERS WHERE CREATED_AT >= {{start_date}} ORDER BY CREATED_AT LIMIT 10.",
+        "Configure start_date as Date and default May 15, 2025. Run, save the fresh question, and reopen.",
+        "Open Start Date calendar and replace Date text with not-a-date.",
+        "Click Update filter."
+      ],
+      "reason": "Works as intended: unparseable typed text is ignored and the last valid date, still shown in the calendar, stays applied."
+    },
+    {
+      "id": "metabase-querying-467",
+      "name": "Renaming a saved source custom column breaks a previously working downstream custom expression",
+      "summary": "Renaming a saved source custom column breaks a previously working downstream custom expression.",
+      "expected": "Renaming the source custom column should preserve the downstream expression dependency, or the rename workflow should handle dependent saved questions instead of leaving a previously valid question broken.",
+      "actual": "The downstream question displays “There was a problem with your question”; details say Column \"source.QA-EXPR-DiscountZero\" not found. The source question itself still runs after the rename.",
+      "reproSteps": [
+        "Create a QA-EXPR source question from Sample Database Orders with custom column QA-EXPR-DiscountZero = coalesce([Discount], 0), then save it.",
+        "Create a second QA-EXPR question using the saved source question. Add QA-EXPR-SafeDivide = case([QA-EXPR-DiscountZero] = 0, 0, 10 / [QA-EXPR-DiscountZero]). Visualize, save and refresh; valid numeric results appear.",
+        "Reopen the source question editor, rename QA-EXPR-DiscountZero to QA-EXPR-ZeroRenamed, Update, Visualize, then Save over the source question.",
+        "Reopen the downstream saved question and expand Show error details."
+      ],
+      "reason": "Works as intended per human review."
+    },
+    {
+      "id": "metabase-querying-469",
+      "name": "Selecting second custom label for duplicate parameter value displays the first label instead",
+      "summary": "Selecting second custom label for duplicate parameter value displays the first label instead.",
+      "expected": "The selected Second label should remain displayed, or duplicate underlying values with conflicting labels should be rejected during configuration.",
+      "actual": "Both First label and Second label are offered in the dropdown, but selecting Second label causes First label to be selected and displayed in the filter parameter. Running the query returns 9 Gizmo rows while displaying First label.",
+      "reproSteps": [
+        "Create an own native Sample Database question: SELECT ID, TITLE, CATEGORY, PRICE FROM PRODUCTS WHERE CATEGORY = {{category}} AND PRICE >= {{min_price}} ORDER BY ID.",
+        "Configure category as Text, Dropdown list, single value. Enter custom list lines Gizmo,First label; Gizmo,Second label; Widget,Widget label, with each on its own line. Configure min_price Number with default80.5.",
+        "Open category widget, choose Second label and click Update filter.",
+        "Run the query and inspect the parameter label."
+      ],
+      "reason": "Works as intended per human review."
+    },
+    {
+      "id": "metabase-querying-510",
+      "name": "SQL database switch leaves Data Reference showing the previous database's PRODUCTS schema",
+      "summary": "SQL database switch leaves Data Reference showing the previous database's PRODUCTS schema.",
+      "expected": "After changing SQL database, Data Reference should reset or show tables belonging to the chosen database rather than suggest an unavailable table.",
+      "actual": "After switching from Sample Database to Release operations, sidebar still displays PRODUCTS with ID, EAN, TITLE, CATEGORY, VENDOR, PRICE, RATING, CREATED_AT and Orders/Reviews connections. Running the preserved products query now returns ERROR: relation \"products\" does not exist.",
+      "reproSteps": [
+        "Using the primary fixture session, create a fresh question via New > SQL query > Sample Database; no existing QA question is required.",
+        "Enter SELECT p.id, p.title, o.id AS order_id FROM products p JOIN orders o ON o.product_id = p.id WHERE p.id = 1 ORDER BY o.id LIMIT 2; and run.",
+        "In Data Reference open PRODUCTS.",
+        "Change the database dropdown above the SQL editor to Release operations.",
+        "Run the preserved query and observe the PRODUCTS sidebar beside the relation-does-not-exist error."
+      ],
+      "reason": "Works as intended: Data Reference is a browser that spans databases, and it accurately shows the Sample Database table the user opened. Nothing requires it to reset when the SQL editor's database changes. The query error is correct for the newly selected database, which has no products table."
+    },
+    {
+      "id": "metabase-querying-517",
+      "name": "Snippet editor allows saving whitespace-only SQL code",
+      "summary": "Snippet editor allows saving whitespace-only SQL code.",
+      "expected": "Whitespace-only code should be rejected rather than saving a blank reusable snippet.",
+      "actual": "Save accepted three spaces and closed the dialog without error. After refresh and reopening, the snippet SQL field remains blank whitespace.",
+      "reproSteps": [
+        "Start a fresh SQL question on Sample Database and open SQL Snippets.",
+        "Create an own QA-REF snippet with SQL SELECT TITLE FROM PRODUCTS WHERE CATEGORY = 'Gizmo' and a unique QA-REF name.",
+        "Expand its sidebar entry and Edit. Clear all code: Save is disabled.",
+        "Enter exactly three spaces as the code and Save.",
+        "Refresh, reopen SQL Snippets and Edit the same snippet."
+      ],
+      "reason": "Works as intended: snippets may contain partial SQL, and Metabase's docs let authors save broken code at their own risk. The value is saved exactly as typed and shown accurately, and inserting it causes no error or data loss. This is a loose validation rule, not a breakage."
+    },
+    {
+      "id": "metabase-querying-495",
+      "name": "Changing a custom column's type bypasses validation of dependent expressions",
+      "summary": "Changing a custom column's type bypasses validation of dependent expressions.",
+      "expected": "Editing the upstream expression should revalidate dependent expressions and identify the incompatible dependency before allowing the question to remain apparently valid, consistent with validation when entering the same dependent expression.",
+      "actual": "Changing Upstream amount from [Total] * 2 to the string literal \"text\" is accepted while Downstream amount = [Upstream amount] / 2 is retained. Preview fails with 'Data conversion error converting \"text\"'. Opening the downstream editor initially enables Update; retyping the identical formula shows 'Types are incompatible.' and disables Update. The broken query can be saved and fails again after reload.",
+      "reproSteps": [
+        "Sign in and choose New → Question → Sample Database → Orders.",
+        "Add a Custom column with expression [Total] * 2 and name Upstream amount. Click Done.",
+        "Add another custom column with expression [Upstream amount] / 2 and name Downstream amount. Click Done. Preview to confirm numeric results.",
+        "Edit Upstream amount and replace its formula with the string literal \"text\" (including quotes). Click Update.",
+        "Click the Custom column step's play/Preview button. Observe a data conversion error instead of results.",
+        "Open Downstream amount. Observe that Update is initially enabled. Replace the formula with the identical [Upstream amount] / 2, and observe 'Types are incompatible.' with Update disabled.",
+        "Cancel editing and optionally save the question. Reload and run it to confirm that the invalid dependent expression persists and the query still fails."
+      ],
+      "reason": "Works as intended: the user made an incompatible change to the upstream column and the query then fails with a clear error. It can be fixed by editing the downstream formula, unlike a column that silently disappears (querying-496)."
     }
   ]
 }

@@ -646,6 +646,410 @@
         "Reload session A and confirm the remaining diagram recovers without the deleted object."
       ],
       "severity": 5
+    },
+    {
+      "id": "settings-data-model-fresh-b306ce0b",
+      "name": "Unsupported text upload persistently replaces a valid profile picture",
+      "severity": 3,
+      "owningArea": "twenty/settings-data-model",
+      "summary": "Uploading an ordinary text file through Profile picture saves it as the avatar and replaces a previously valid image with a persistent placeholder, without rejection feedback.",
+      "expected": "An unsupported non-image upload should be rejected and preserve the current valid profile picture.",
+      "actual": "After a valid PNG was saved and verified through refresh, selecting a .txt file replaced it with an empty image placeholder. Remove stayed enabled, no rejection error appeared, and refresh retained the broken picture. Both judges reproduced twice; Codex also reproduced on a workspace-member account.",
+      "reproSteps": [
+        "Sign in and open Settings > Profile on a disposable account.",
+        "Upload a genuine square PNG and refresh to verify that the valid profile picture is saved.",
+        "Use the Upload file input to select a plain .txt file containing ordinary text. If the native chooser filters to images, select its All files option.",
+        "Observe that the valid picture is replaced by a placeholder with Remove enabled and no rejection error.",
+        "Refresh and confirm the placeholder persists. Restore a genuine PNG and repeat to verify the invalid replacement.",
+        "As a control, select text content named with a .png extension and observe the upload error while the valid saved picture is retained.",
+        "Restore the account’s original picture state after checking."
+      ],
+      "sourceCause": "The pinned core-picture service uses general file identification, which permits ordinary text, and has no image-only restriction on this upload path. The client then saves the returned URL as avatarUrl and silently substitutes a placeholder when the image cannot render.",
+      "reviewEvidence": {
+        "basis": "Mo report plus independent Claude Code and Codex browser reproductions and source audits, coordinator citation checks, and user acceptance.",
+        "userAccepted": true,
+        "sourceRevision": "35c645064f72bc4e3180a2c6c506cbbfee170007",
+        "severityReason": "Observed broken functionality; controls using the same saved data work.",
+        "analysis": [
+          "Both judges independently observed a valid saved image being replaced by a stored text/plain file, with persistence after refresh and no rejection feedback.",
+          "Genuine PNG controls persisted, and text content named .png was rejected with feedback while preserving the picture. Native OS chooser filtering was not exercised; standard Playwright file-input selection was used.",
+          "Accepted N33 covers the later valid-upload preview failing to recover after an invalid upload. This entry covers accepting and persisting the invalid replacement itself.",
+          "The latest normal UI routes through direct-upload completion with an image MIME allowlist. Codex also traced the deprecated multipart path retaining the older helper, so the correction is not claimed for every latest upload path."
+        ],
+        "sourceReferences": [
+          "https://github.com/twentyhq/twenty/blob/35c645064f72bc4e3180a2c6c506cbbfee170007/packages/twenty-front/src/modules/ui/input/components/ImageInput.tsx#L129-L150",
+          "https://github.com/twentyhq/twenty/blob/35c645064f72bc4e3180a2c6c506cbbfee170007/packages/twenty-front/src/modules/ui/input/components/ImageInput.tsx#L170-L181",
+          "https://github.com/twentyhq/twenty/blob/35c645064f72bc4e3180a2c6c506cbbfee170007/packages/twenty-front/src/modules/settings/workspace-member/components/WorkspaceMemberPictureUploader.tsx#L54-L104",
+          "https://github.com/twentyhq/twenty/blob/35c645064f72bc4e3180a2c6c506cbbfee170007/packages/twenty-server/src/engine/core-modules/file/file-core-picture/services/file-core-picture.service.ts#L69-L105",
+          "https://github.com/twentyhq/twenty/blob/35c645064f72bc4e3180a2c6c506cbbfee170007/packages/twenty-server/src/engine/core-modules/file/utils/extract-file-info-or-throw.utils.ts#L27-L81",
+          "https://github.com/twentyhq/twenty/blob/a6372e288ade9ed14ac2af1a7e224dabb6cc6021/packages/twenty-front/src/modules/settings/members/hooks/useUploadWorkspaceMemberProfilePicture.ts#L21-L42",
+          "https://github.com/twentyhq/twenty/blob/a6372e288ade9ed14ac2af1a7e224dabb6cc6021/packages/twenty-server/src/engine/core-modules/file/file-upload/services/file-upload-completion.service.ts#L201-L219",
+          "https://github.com/twentyhq/twenty/blob/a6372e288ade9ed14ac2af1a7e224dabb6cc6021/packages/twenty-server/src/engine/core-modules/file/interfaces/file-folder.interface.ts#L34-L38",
+          "https://github.com/twentyhq/twenty/blob/a6372e288ade9ed14ac2af1a7e224dabb6cc6021/packages/twenty-shared/src/constants/CorePictureMimeTypes.ts#L1-L7"
+        ],
+        "limitations": [
+          "Playwright selected the file through the standard input without exercising native chooser image filtering. A native All files selection is inferred from the accept attribute.",
+          "Physical deletion of the previous profile PNG was not observed or claimed. The broken saved avatar reference is the demonstrated defect.",
+          "Latest was inspected in source, not launched. Workspace-logo, onboarding and member-administration entry points are outside this profile-specific matching scope."
+        ]
+      },
+      "matchingGuidance": {
+        "relatedReference": "settings-data-model-N33",
+        "distinction": "This entry covers replacing a verified valid saved Profile picture with an unsupported text file, leaving a persistent unusable avatar. settings-data-model-N33 covers the later valid replacement whose preview stays blank until refresh after an invalid upload; it does not claim saved-image loss. Match the stage and persisted outcome. settings-data-model-N01 instead starts with a valid Workspace picture upload and first-refresh behavior."
+      }
+    },
+    {
+      "id": "settings-data-model-fresh-b9f4ab05",
+      "name": "Long approved domains hide the email verification input",
+      "severity": 1,
+      "owningArea": "twenty/settings-data-model",
+      "summary": "A long domain on the New Approved Access Domain form squeezes the adjacent email-prefix input until its typed value is invisible.",
+      "expected": "The verification-email prefix remains visibly editable when the domain is within the form’s supported length.",
+      "actual": "At 390px width, long domain suffixes reduce the email-prefix input to an 18px box with no visible text area and can overflow or wrap outside the field. Both judges reproduced twice with short-domain controls. Longer domains also reproduce at desktop widths. The typed value remains intact; submission was not exercised.",
+      "reproSteps": [
+        "As a workspace administrator, open Settings > Members > Invite > Add Approved Access Domain.",
+        "At a 390×844 CSS-pixel viewport, enter a short domain such as acme.com and an email prefix such as qa-owner. Confirm that the prefix is readable.",
+        "Replace the domain with a longer valid domain, such as engineering.quality-team.example.co.uk, while keeping the email prefix.",
+        "Observe that the prefix input collapses to a narrow sliver, hiding its value, while the domain suffix consumes the row and may overflow or wrap outside the fixed-height field.",
+        "Click the prefix field and type more text. Confirm the stored value changes but remains unreadable. Restore the short domain to confirm readability returns.",
+        "Repeat on a fresh form with another long domain. Cancel without saving or requesting a verification email."
+      ],
+      "sourceCause": "The page passes the full domain as TextInput rightAdornment. The adornment has a fit-content minimum width and fixed height beside a shrinkable input with no protected readable minimum width.",
+      "reviewEvidence": {
+        "basis": "Mo report plus independent Claude Code and Codex browser reproductions and source audits, coordinator citation checks, and user acceptance.",
+        "userAccepted": true,
+        "sourceRevision": "35c645064f72bc4e3180a2c6c506cbbfee170007",
+        "severityReason": "GUI-only: domain text squeezes the editable input until its retained value is invisible; no save failure or data loss was observed.",
+        "analysis": [
+          "Claude and Codex each reproduced twice on fresh forms with working short-domain controls. Codex also reproduced the original candidate domain; Claude observed the issue with a 41-character domain at phone width.",
+          "The form permits domains up to 256 characters. Longer domain text can trigger the same layout on tablet and desktop; the threshold depends on glyph widths and viewport rather than a fixed character count.",
+          "The coordinator personally checked every source citation from both judges and inspected recorded frames. Existing mobile field-label, task-title and record-header clipping entries use different components and triggers; approved-domain case-only duplicate validation is a separate defect.",
+          "The latest inspected default-branch source retains the full-domain adornment and its fit-content sizing. Continued runtime exposure is inferred from source, not browser-tested."
+        ],
+        "sourceReferences": [
+          "https://github.com/twentyhq/twenty/blob/35c645064f72bc4e3180a2c6c506cbbfee170007/packages/twenty-front/src/pages/settings/security/SettingsSecurityApprovedAccessDomain.tsx#L30-L62",
+          "https://github.com/twentyhq/twenty/blob/35c645064f72bc4e3180a2c6c506cbbfee170007/packages/twenty-front/src/pages/settings/security/SettingsSecurityApprovedAccessDomain.tsx#L132-L152",
+          "https://github.com/twentyhq/twenty/blob/35c645064f72bc4e3180a2c6c506cbbfee170007/packages/twenty-front/src/modules/ui/input/components/SettingsTextInput.tsx#L122-L131",
+          "https://github.com/twentyhq/twenty/blob/35c645064f72bc4e3180a2c6c506cbbfee170007/packages/twenty-front/src/modules/ui/input/components/TextInput.tsx#L30-L80",
+          "https://github.com/twentyhq/twenty/blob/35c645064f72bc4e3180a2c6c506cbbfee170007/packages/twenty-front/src/modules/ui/input/components/TextInput.tsx#L110-L152",
+          "https://github.com/twentyhq/twenty/blob/a6372e288ade9ed14ac2af1a7e224dabb6cc6021/packages/twenty-front/src/pages/settings/security/SettingsSecurityApprovedAccessDomain.tsx#L129-L147",
+          "https://github.com/twentyhq/twenty/blob/a6372e288ade9ed14ac2af1a7e224dabb6cc6021/packages/twenty-front/src/modules/ui/input/components/TextInput.tsx#L35-L86",
+          "https://github.com/twentyhq/twenty/blob/a6372e288ade9ed14ac2af1a7e224dabb6cc6021/packages/twenty-front/src/modules/ui/input/components/TextInput.tsx#L115-L157"
+        ],
+        "limitations": [
+          "No form was submitted. Saving, verification-email delivery and downstream signup were not tested; no data loss or delivery failure is claimed.",
+          "The input remains editable and retains its value. This label covers unreadable layout, not an inability to enter or save text.",
+          "The restricted workspace-member account could not access the form; reproductions used a workspace administrator. Other callers with configured adornment suffixes were source-inspected only.",
+          "Latest was inspected in source, not launched. Browser verification used Chromium."
+        ]
+      }
+    },
+    {
+      "id": "settings-data-model-fresh-aa8a50ab",
+      "name": "Unsupported text upload is saved as the workspace logo",
+      "severity": 3,
+      "owningArea": "twenty/settings-data-model",
+      "summary": "General settings accepts an ordinary text file as the workspace picture, persisting an unusable logo without rejection feedback and allowing replacement of a valid image.",
+      "expected": "An unsupported non-image workspace-picture upload should be rejected with feedback, preserving the current valid logo or empty state.",
+      "actual": "Plain .txt uploads succeeded without an error, left a placeholder with Remove enabled, and remained unusable after reload. Both judges reproduced twice from an empty logo and also replaced a verified valid PNG. Claude additionally observed a broken image on the signed-out welcome page. Genuine PNG controls persisted; text content named .png was rejected.",
+      "reproSteps": [
+        "As a workspace administrator, open Settings > General > Picture in a disposable workspace.",
+        "Begin with no workspace logo, reload, and confirm Remove is disabled.",
+        "Use Upload to select a plain .txt file containing ordinary text. If the native chooser filters to images, use its All files option.",
+        "Observe no rejection feedback, a placeholder picture and an enabled Remove button. Reload and confirm the unusable saved picture remains.",
+        "Upload a genuine square PNG and reopen settings or reload to verify it renders and persists. Upload another plain .txt file and confirm it persistently replaces that working logo.",
+        "As a negative control, select text content named with a .png extension and observe extension/content rejection feedback.",
+        "Restore the original workspace logo after checking. Do not require a transient broken-image icon in the settings tile to match this defect."
+      ],
+      "sourceCause": "The pinned workspace-logo mutation routes through general file identification without an image-only restriction, stores a text/plain file in CorePicture, and saves its ID as the workspace logo. The UI falls back to a placeholder on image load failure without rejection feedback.",
+      "reviewEvidence": {
+        "basis": "Mo report plus independent Claude Code and Codex browser reproductions and source audits, coordinator citation checks, and user acceptance.",
+        "userAccepted": true,
+        "sourceRevision": "35c645064f72bc4e3180a2c6c506cbbfee170007",
+        "severityReason": "Observed broken functionality; controls using the same saved data work.",
+        "analysis": [
+          "Both judges reproduced on two empty-baseline trials and a valid-PNG replacement, with completed uploads and persistence through reload.",
+          "The UI explicitly advertises supported image formats. The underlying general file validator intentionally supports text; the missing picture-specific restriction is the defect, rather than general text-file acceptance.",
+          "The profile-picture accepted entry shares that validation cause but persists a member avatar through a different entry point. Existing N01 concerns a valid workspace image disappearing on first refresh, and N33 concerns later valid-image preview recovery.",
+          "The coordinator personally checked all cited source locations and subscription billing. Claude restored the original workspace logo after the recorded trials.",
+          "Latest normal UI uses direct-upload completion with an image MIME allowlist and a non-image rejection integration check. The deprecated multipart logo mutation retains general identification; latest runtime was not exercised."
+        ],
+        "sourceReferences": [
+          "https://github.com/twentyhq/twenty/blob/35c645064f72bc4e3180a2c6c506cbbfee170007/packages/twenty-front/src/modules/ui/input/components/ImageInput.tsx#L113-L181",
+          "https://github.com/twentyhq/twenty/blob/35c645064f72bc4e3180a2c6c506cbbfee170007/packages/twenty-front/src/modules/settings/workspace/components/WorkspaceLogoUploader.tsx#L18-L37",
+          "https://github.com/twentyhq/twenty/blob/35c645064f72bc4e3180a2c6c506cbbfee170007/packages/twenty-server/src/engine/core-modules/file/file-core-picture/resolvers/file-core-picture.resolver.ts#L36-L56",
+          "https://github.com/twentyhq/twenty/blob/35c645064f72bc4e3180a2c6c506cbbfee170007/packages/twenty-server/src/engine/core-modules/file/file-core-picture/services/file-core-picture.service.ts#L69-L144",
+          "https://github.com/twentyhq/twenty/blob/35c645064f72bc4e3180a2c6c506cbbfee170007/packages/twenty-server/src/engine/core-modules/file/utils/extract-file-info-or-throw.utils.ts#L27-L81",
+          "https://github.com/twentyhq/twenty/blob/a6372e288ade9ed14ac2af1a7e224dabb6cc6021/packages/twenty-front/src/modules/workspace/hooks/useUploadWorkspaceLogo.ts#L17-L35",
+          "https://github.com/twentyhq/twenty/blob/a6372e288ade9ed14ac2af1a7e224dabb6cc6021/packages/twenty-server/src/engine/core-modules/file/file-upload/services/file-upload-completion.service.ts#L201-L219",
+          "https://github.com/twentyhq/twenty/blob/a6372e288ade9ed14ac2af1a7e224dabb6cc6021/packages/twenty-server/src/engine/core-modules/file/interfaces/file-folder.interface.ts#L34-L38",
+          "https://github.com/twentyhq/twenty/blob/a6372e288ade9ed14ac2af1a7e224dabb6cc6021/packages/twenty-server/test/integration/metadata/suites/file/failing-core-picture-direct-upload.integration-spec.ts#L90-L113"
+        ],
+        "limitations": [
+          "Playwright selected files through the standard file input. Native chooser filtering and All files selection were not exercised; that native selection path is inferred.",
+          "Physical deletion of the previous logo was read in source but not independently verified in storage. Persisted replacement of the logo reference is the observed outcome.",
+          "Codex did not capture the brief broken-image icon reported by Mo; it is not a required matching detail. Claude observed the settings image element falling back and a broken signed-out welcome logo.",
+          "Other non-admin, onboarding and source-reachable entry points are outside this label’s browser-verified scope.",
+          "Latest was inspected in source, not launched."
+        ]
+      },
+      "matchingGuidance": {
+        "relatedReference": "settings-data-model-fresh-b306ce0b",
+        "distinction": "This entry covers Settings > General > Picture accepting and persisting a non-image workspace logo, including from an empty baseline and when replacing a valid logo. settings-data-model-fresh-b306ce0b covers Settings > Profile replacing a valid member avatar with text. They share missing image validation but use different upload mutations and saved references. N01 covers first-refresh behavior after a valid workspace upload; N33 covers later valid-image preview recovery after an invalid upload."
+      }
+    },
+    {
+      "id": "settings-data-model-fresh-f208bf3c",
+      "name": "Expanded Workspace Instructions offers no mobile return control",
+      "severity": 3,
+      "owningArea": "twenty/settings-data-model",
+      "summary": "Expanding saved Workspace Instructions at mobile width covers AI settings while hiding both the close button and return breadcrumb.",
+      "expected": "The expanded Workspace Instructions editor provides a usable control to return to its containing AI settings at supported mobile widths.",
+      "actual": "At 390px and 768px, the expanded editor has no visible close or return control. Escape and Expand navigation panel do not dismiss it. Both judges reproduced twice with previously persisted content. At 769px and desktop width the X closes it correctly. Saved text remains intact.",
+      "reproSteps": [
+        "As a workspace administrator, open Settings > AI > Overview and enter disposable Workspace Instructions.",
+        "Allow autosave to finish and reload to confirm the content persisted.",
+        "Set the viewport to 390×844 CSS pixels and expand Workspace Instructions without making further edits.",
+        "Observe that the fullscreen editor covers settings and its header contains no close or return control. Press Escape and try the navigation-drawer toggle; the editor remains expanded.",
+        "As controls, resize to 769px or desktop width, observe the X, and click it to return to inline AI settings.",
+        "Repeat at mobile width with another already-persisted value. Do not require loss of text or an inability to leave the application page entirely."
+      ],
+      "sourceCause": "FormAdvancedTextFieldInput disables the fullscreen close button on mobile. MobileBreadcrumb returns nothing on Settings pages with at most two links, exactly the breadcrumb supplied by Workspace Instructions, so both editor return controls are hidden.",
+      "reviewEvidence": {
+        "basis": "Mo report plus independent Claude Code and Codex browser reproductions and source audits, coordinator citation checks, and user acceptance.",
+        "userAccepted": true,
+        "sourceRevision": "35c645064f72bc4e3180a2c6c506cbbfee170007",
+        "severityReason": "Observed broken functionality; controls using the same saved data work.",
+        "analysis": [
+          "Claude and Codex independently reproduced on two persisted-content trials, with matching 768/769 breakpoint and working desktop X controls.",
+          "Browser Back and bottom navigation leave AI settings instead of returning to the inline editor. The navigation toggle changes the drawer behind the overlay without dismissing the editor.",
+          "Claude observed that editing and pausing for autosave can remount the editor through key={originalInstructions} and close it. That is a recovery side effect after an edit, not a visible return control for reading already-saved instructions.",
+          "The coordinator checked all source citations and corrected one nonexistent Claude FullScreenModal range to the actual header wiring. Latest source retains both mobile visibility conditions; latest runtime was not tested.",
+          "Accepted N49 uses the same component and missing-exit cause in a Skill Instructions form. This entry covers autosaved Workspace Instructions on AI Overview, with no Skill Save button involved."
+        ],
+        "sourceReferences": [
+          "https://github.com/twentyhq/twenty/blob/35c645064f72bc4e3180a2c6c506cbbfee170007/packages/twenty-front/src/pages/settings/ai/components/SettingsAiOverviewTab.tsx#L136-L151",
+          "https://github.com/twentyhq/twenty/blob/35c645064f72bc4e3180a2c6c506cbbfee170007/packages/twenty-front/src/modules/object-record/record-field/ui/form-types/components/FormAdvancedTextFieldInput.tsx#L180-L225",
+          "https://github.com/twentyhq/twenty/blob/35c645064f72bc4e3180a2c6c506cbbfee170007/packages/twenty-front/src/modules/ui/layout/fullscreen/components/FullScreenModal.tsx#L54-L70",
+          "https://github.com/twentyhq/twenty/blob/35c645064f72bc4e3180a2c6c506cbbfee170007/packages/twenty-front/src/modules/ui/layout/page/components/PageHeader.tsx#L109-L138",
+          "https://github.com/twentyhq/twenty/blob/35c645064f72bc4e3180a2c6c506cbbfee170007/packages/twenty-front/src/modules/ui/navigation/bread-crumb/components/MobileBreadcrumb.tsx#L45-L54",
+          "https://github.com/twentyhq/twenty/blob/a6372e288ade9ed14ac2af1a7e224dabb6cc6021/packages/twenty-front/src/pages/settings/ai/components/SettingsAiWorkspaceInstructionsSection.tsx#L72-L85",
+          "https://github.com/twentyhq/twenty/blob/a6372e288ade9ed14ac2af1a7e224dabb6cc6021/packages/twenty-front/src/modules/advanced-text-editor/components/FormAdvancedTextFieldInput.tsx#L231-L237",
+          "https://github.com/twentyhq/twenty/blob/a6372e288ade9ed14ac2af1a7e224dabb6cc6021/packages/twenty-front/src/modules/ui/navigation/bread-crumb/components/MobileBreadcrumb.tsx#L53-L59"
+        ],
+        "limitations": [
+          "No saved-text loss was observed. Editing can incidentally close the overlay after autosave; the no-edit reading flow remains affected.",
+          "Both judges share the single workspace instruction value. Each failing trial used content verified after saving; later replacement values were retained rather than overwritten for cleanup.",
+          "Other editor callers beyond Workspace and Skill Instructions were source-inspected only. Restricted-member AI access was not successfully established.",
+          "Latest was inspected in source, not launched."
+        ]
+      },
+      "matchingGuidance": {
+        "relatedReference": "settings-data-model-N49",
+        "distinction": "This entry covers Settings > AI > Overview > Workspace Instructions, an autosaved workspace-wide editor opened with already-persisted content. N49 covers Skill Instructions in the skill form, where expansion hides Save. Both share mobile close-button and Settings breadcrumb suppression; match the reported entry point. workflows-recovered-11 instead has a visible Back to Send Email link that fails to close a workflow Body editor."
+      }
+    },
+    {
+      "id": "settings-data-model-fresh-14b01040",
+      "name": "Role Save retains a false loading spinner after empty-name rejection",
+      "severity": 1,
+      "owningArea": "twenty/settings-data-model",
+      "summary": "Rejecting a role save with an empty name leaves the Save button spinning until a later successful save.",
+      "expected": "A name-validation rejection clears loading state rather than leaving a false in-progress save indicator.",
+      "actual": "Both judges reproduced on two fresh roles: an empty-name save was rejected but the loading spinner persisted through further editing and tab changes. Canceling and beginning another edit could retain it. A successful corrected save cleared it and persisted normally.",
+      "reproSteps": [
+        "Create and save a disposable custom role, then reopen its Settings.",
+        "Clear the role name and click Save. Observe the validation rejection and a loading spinner that remains on Save.",
+        "Type a valid replacement name or switch role tabs without completing another save; observe that the stale spinner can remain.",
+        "Complete a valid corrected save and confirm it succeeds and clears the spinner. Repeat with a second fresh role."
+      ],
+      "sourceCause": "SettingsRole sets isSaving before validating the role name. The empty-name return happens before the try/finally that resets it.",
+      "reviewEvidence": {
+        "basis": "Mo report plus independent Claude Code and Codex browser reproductions and source audits, coordinator citation checks, and user acceptance.",
+        "userAccepted": true,
+        "sourceRevision": "35c645064f72bc4e3180a2c6c506cbbfee170007",
+        "severityReason": "GUI-only: the demonstrated display or navigation state is wrong; no failed supported operation or saved-data loss was established.",
+        "analysis": [
+          "Both judges recommend P/1. Saved role data remains intact and saving still works; the observed defect is the false loading state.",
+          "The original claim that the spinner also survives a successful corrected save did not reproduce and is excluded.",
+          "The coordinator checked all source citations and the upstream correction moving validation before the flag. Latest runtime was not tested."
+        ],
+        "sourceReferences": [
+          "https://github.com/twentyhq/twenty/blob/35c645064f72bc4e3180a2c6c506cbbfee170007/packages/twenty-front/src/modules/settings/roles/role/components/SettingsRole.tsx#L109-L129",
+          "https://github.com/twentyhq/twenty/blob/a6372e288ade9ed14ac2af1a7e224dabb6cc6021/packages/twenty-front/src/modules/settings/roles/role/components/SettingsRole.tsx#L130-L155"
+        ],
+        "limitations": [
+          "No save blockage or role-data loss was observed.",
+          "Latest was inspected in source, not launched."
+        ]
+      }
+    },
+    {
+      "id": "settings-data-model-fresh-a8e11544",
+      "name": "Companies Record image None is overwritten onscreen by a stale metadata event",
+      "severity": 1,
+      "owningArea": "twenty/settings-data-model",
+      "summary": "Companies saves Record image None correctly, but its pushed metadata event can restore the old domain-logo display in the open settings page.",
+      "expected": "The Companies preview reflects its saved Record image None selection without a stale pushed value restoring the domain logo.",
+      "actual": "Both judges observed None saved as null while the preview retained the old domain logo. Captured pushed events carried the base Domain Name field ID beside a null override. A stale result lasted over 24 seconds. Domain Name and consistent-state reload controls worked.",
+      "reproSteps": [
+        "As an administrator, open Settings > Data model > Companies > Settings and confirm a company with a domain logo appears in the Options preview.",
+        "Select Domain Name as Record image and confirm the preview shows the logo.",
+        "Select None and allow the save response and live metadata update to finish. In an affected trial, observe None in the control while the preview retains the domain logo.",
+        "Confirm the save response and a fresh metadata read report a null image identifier, while the pushed update carries the old base identifier with a null override.",
+        "Repeat Domain Name to None to observe the intermittent race. Reload with consistent saved None as a control and confirm the logo clears."
+      ],
+      "sourceCause": "The pinned metadata-event publisher skips explicit null overrides with isDefined, leaving the standard Company object’s old base image-field ID in the pushed update. It races the correct null save response in the browser store.",
+      "reviewEvidence": {
+        "basis": "Mo report plus independent Claude Code and Codex browser reproductions and source audits, coordinator citation checks, and user acceptance.",
+        "userAccepted": true,
+        "sourceRevision": "35c645064f72bc4e3180a2c6c506cbbfee170007",
+        "severityReason": "GUI-only: the demonstrated display or navigation state is wrong; no failed supported operation or saved-data loss was established.",
+        "analysis": [
+          "Claude recommends P/1. Codex explicitly scores Companies alone 1; its overall 3 also included a separate custom-object clearing failure already covered by N30, which is excluded here.",
+          "The coordinator verified the null-aware ordinary reads, null-skipping event publisher, browser store replacement and latest null-preserving resolver.",
+          "Claude withdrew its initial claim that other tabs always fail. Cross-tab relays and cache timing can vary; unexplained wider cache observations are not required matching scope.",
+          "The original Housecall Pro preview was not used; equivalent existing GitLab company data reproduced. Latest source resolves this event mechanism; latest runtime was not tested."
+        ],
+        "sourceReferences": [
+          "https://github.com/twentyhq/twenty/blob/35c645064f72bc4e3180a2c6c506cbbfee170007/packages/twenty-server/src/engine/subscriptions/metadata-event/metadata-event-publisher.ts#L241-L262",
+          "https://github.com/twentyhq/twenty/blob/35c645064f72bc4e3180a2c6c506cbbfee170007/packages/twenty-server/src/engine/metadata-modules/object-metadata/utils/get-effective-image-identifier-field-metadata-id.util.ts#L10-L19",
+          "https://github.com/twentyhq/twenty/blob/35c645064f72bc4e3180a2c6c506cbbfee170007/packages/twenty-front/src/modules/metadata-store/effect-components/MetadataStoreSSEEffect.tsx#L39-L64",
+          "https://github.com/twentyhq/twenty/blob/35c645064f72bc4e3180a2c6c506cbbfee170007/packages/twenty-front/src/modules/object-metadata/hooks/useUpdateOneObjectMetadataItem.ts#L42-L57",
+          "https://github.com/twentyhq/twenty/blob/a6372e288ade9ed14ac2af1a7e224dabb6cc6021/packages/twenty-server/src/engine/subscriptions/metadata-event/utils/resolve-metadata-event-record.util.ts#L44-L53"
+        ],
+        "limitations": [
+          "No Company-record or image-file loss was observed; the saved None value is correct.",
+          "The separate custom-object null-persistence failure is existing N30 coverage, not this display-only entry.",
+          "Some cross-tab and stale-cache correction timing remains unresolved.",
+          "Latest was inspected in source, not launched."
+        ]
+      }
+    },
+    {
+      "id": "settings-data-model-fresh-c30660ef",
+      "name": "Resizing Company pages to tablet hides pinned actions from the initial menu",
+      "severity": 1,
+      "owningArea": "twenty/settings-data-model",
+      "summary": "After desktop-to-tablet resizing, eligible pinned Company actions disappear from both toolbar and default command menu until search or reload.",
+      "expected": "The initial command menu exposes eligible actions hidden from the toolbar at the same viewport width regardless of resize history.",
+      "actual": "Both judges reproduced twice with fresh selected Companies: resizing to 768px hid Export and other pinned actions from the toolbar and empty-search menu while selection remained. Searching Export found it, and Codex downloaded a CSV. Reload at the same width restored the initial menu. Company record headers also reproduced.",
+      "reproSteps": [
+        "As an administrator, pin and save Export Company for selected Companies through layout action customization.",
+        "At desktop width, select a disposable Company and confirm Export is available in the toolbar.",
+        "Resize to 768px and open the command menu with an empty search, preserving the selected row. Observe Export and the other formerly inline pinned commands are absent.",
+        "Search Export in the same menu and confirm it appears and can download CSV.",
+        "Reload at the same width, reselect the same Company, and confirm the empty-search menu now contains its pinned actions. Repeat with a fresh Company or full Company record page."
+      ],
+      "sourceCause": "Mobile unmounts the pinned toolbar measurement producer, but shared inline-layout state retains desktop widths. The default menu incorrectly excludes actions it believes remain inline.",
+      "reviewEvidence": {
+        "basis": "Mo report plus independent Claude Code and Codex browser reproductions and source audits, coordinator citation checks, and user acceptance.",
+        "userAccepted": true,
+        "sourceRevision": "35c645064f72bc4e3180a2c6c506cbbfee170007",
+        "severityReason": "GUI-only: the demonstrated display or navigation state is wrong; no failed supported operation or saved-data loss was established.",
+        "analysis": [
+          "Both judges recommend P/1; the original complete-unreachability claim is narrowed because search finds and executes the action.",
+          "The coordinator checked toolbar gates, retained measurements, default-menu filtering, selection eligibility and latest removal of the mechanism.",
+          "The helper’s zero-width return is not the fresh-mobile fallback: hasKnownPinnedInlineLayout=false separately makes the menu include pinned actions. This corrects Claude’s incidental explanation.",
+          "N66 reproduces the same measurement cause in the workflow editor; this approved related entry covers selected Companies and Company record headers. N52 is a distinct cross-browser metadata-cache trigger."
+        ],
+        "sourceReferences": [
+          "https://github.com/twentyhq/twenty/blob/35c645064f72bc4e3180a2c6c506cbbfee170007/packages/twenty-front/src/modules/command-menu-item/components/RecordIndexCommandMenu.tsx#L18-L40",
+          "https://github.com/twentyhq/twenty/blob/35c645064f72bc4e3180a2c6c506cbbfee170007/packages/twenty-front/src/modules/command-menu-item/display/hooks/usePinnedCommandMenuItemsInlineLayout.ts#L21-L105",
+          "https://github.com/twentyhq/twenty/blob/35c645064f72bc4e3180a2c6c506cbbfee170007/packages/twenty-front/src/modules/command-menu-item/display/components/SidePanelCommandMenuItemDisplayPage.tsx#L59-L88",
+          "https://github.com/twentyhq/twenty/blob/35c645064f72bc4e3180a2c6c506cbbfee170007/packages/twenty-front/src/modules/command-menu-item/components/RecordShowCommandMenu.tsx#L27-L43",
+          "https://github.com/twentyhq/twenty/blob/a6372e288ade9ed14ac2af1a7e224dabb6cc6021/packages/twenty-front/src/modules/command-menu-item/display/components/SidePanelCommandMenuItemDisplayPage.tsx#L86-L119"
+        ],
+        "limitations": [
+          "Search is a working recovery, and the CSV download completed; CSV contents were not audited.",
+          "No saved pin loss, selection loss or export execution failure is claimed.",
+          "Latest was source-inspected only."
+        ]
+      },
+      "matchingGuidance": {
+        "relatedReference": "workflows-N66",
+        "distinction": "This entry covers selected Companies list rows and Company record headers after desktop-to-tablet resize. workflows-N66 covers pinned Test/Deactivate/See Runs in a workflow editor. The stale layout-measurement cause is shared; match the page and commands. settings-data-model-N52 instead involves cross-browser metadata caching after saved pin updates."
+      }
+    },
+    {
+      "id": "settings-data-model-fresh-f583ee6e",
+      "name": "Role detail reload ignores its Assignment or Settings URL fragment",
+      "severity": 1,
+      "owningArea": "twenty/settings-data-model",
+      "summary": "Reloading a role tab keeps its Assignment or Settings fragment in the URL but displays Permissions instead.",
+      "expected": "A role detail link with a valid tab fragment opens that tab and its corresponding content after reload.",
+      "actual": "Both judges reproduced repeated fresh-role reloads retaining #assignment while Permissions became selected with matching Permissions content. Built-in Admin and Settings-tab variations also reproduced. Reopening Assignment recovered; the sibling Members Roles tab preserved its selection normally.",
+      "reproSteps": [
+        "As an administrator, create and save a disposable role, open its Assignment tab, and confirm Assigned Members is displayed with #assignment in the address.",
+        "Reload the page and allow loading to settle.",
+        "Observe that the address still ends in #assignment while Permissions is selected and its object/settings permission controls appear.",
+        "Click Assignment again and confirm it opens correctly. Repeat with another saved role or its Settings fragment.",
+        "As a control, open Members > Roles and reload; its valid #roles fragment and displayed tab remain consistent."
+      ],
+      "sourceCause": "The role initialization effect writes Permissions after role loading, competing with URL-driven tab selection. The exact effect scheduling is inferred; the settled tab/address mismatch is observed.",
+      "reviewEvidence": {
+        "basis": "Mo report plus independent Claude Code and Codex browser reproductions and source audits, coordinator citation checks, and user acceptance.",
+        "userAccepted": true,
+        "sourceRevision": "35c645064f72bc4e3180a2c6c506cbbfee170007",
+        "severityReason": "GUI-only: the demonstrated display or navigation state is wrong; no failed supported operation or saved-data loss was established.",
+        "analysis": [
+          "Claude recommends P/3 and Codex P/1. The user approved severity 1: no assignment changes, failed save or saved-role loss was demonstrated, and another click recovers.",
+          "The selected tab and content agree on Permissions. This excludes the rejected N51 claim that Settings remains highlighted while Permissions content appears.",
+          "The coordinator checked all citations and corrected an overlong loading-effect range. Latest has both a Permissions initializer and rewritten fragment-priority selection, so latest runtime status is left unverified."
+        ],
+        "sourceReferences": [
+          "https://github.com/twentyhq/twenty/blob/35c645064f72bc4e3180a2c6c506cbbfee170007/packages/twenty-front/src/modules/settings/roles/role/components/SettingsRoleEditEffect.tsx#L46-L59",
+          "https://github.com/twentyhq/twenty/blob/35c645064f72bc4e3180a2c6c506cbbfee170007/packages/twenty-front/src/modules/ui/layout/tab-list/components/TabListFromUrlOptionalEffect.tsx#L16-L34",
+          "https://github.com/twentyhq/twenty/blob/35c645064f72bc4e3180a2c6c506cbbfee170007/packages/twenty-front/src/modules/settings/roles/role/components/SettingsRole.tsx#L175-L190",
+          "https://github.com/twentyhq/twenty/blob/35c645064f72bc4e3180a2c6c506cbbfee170007/packages/twenty-front/src/modules/settings/components/layout/useSettingsActiveTabId.ts#L6-L28",
+          "https://github.com/twentyhq/twenty/blob/a6372e288ade9ed14ac2af1a7e224dabb6cc6021/packages/twenty-front/src/modules/ui/layout/tab-list/components/TabList.tsx#L90-L104"
+        ],
+        "limitations": [
+          "No saved assignment or role setting was lost.",
+          "Do not match the distinct unreproduced selected-tab/content mismatch rejected as N51.",
+          "Exact initialization-effect scheduling and latest runtime behavior were not established."
+        ]
+      }
+    },
+    {
+      "id": "settings-data-model-fresh-41e07e8c",
+      "name": "Clearing Profile Last Name provides no validation or save-status feedback",
+      "severity": 1,
+      "owningArea": "twenty/settings-data-model",
+      "summary": "The autosaving Profile name editor silently leaves a cleared required Last Name in the field without indicating that it will not save; reload restores the saved name.",
+      "expected": "The editor should explain that a cleared required Last Name is invalid or otherwise indicate that the displayed empty draft is not saved.",
+      "actual": "Clearing Last Name and blurring leaves a blank field with no validation message and sends no save request. Reload restores the old name. Valid nonempty edits autosave and persist, also without an explicit Saving/Saved indicator.",
+      "reproSteps": [
+        "Open Settings > Profile with a saved nonempty Last Name.",
+        "Change Last Name to a different nonempty value, wait for autosave, and reload to confirm it persisted.",
+        "Clear Last Name and leave the field. Observe no required-field validation or indication that this draft is not saving.",
+        "Reload and observe the previous saved Last Name return. No saved name was erased."
+      ],
+      "sourceCause": "NameFields suppresses autosave when either required name is empty, while its inputs render no validation state and its save path exposes no explicit saving or success feedback.",
+      "reviewEvidence": {
+        "basis": "Mo report, Claude browser reproduction with controls, independent Claude/Codex source review, coordinator source checks, and user acceptance of narrowed feedback scope despite both rejection recommendations.",
+        "userAccepted": true,
+        "sourceRevision": "35c645064f72bc4e3180a2c6c506cbbfee170007",
+        "severityReason": "Missing validation/save-status feedback only; required-name enforcement and persistence of valid names work.",
+        "analysis": [
+          "Claude reproduced the empty field, absent validation, absent request and saved-name restoration twice; valid nonempty controls persisted. Codex rejected at source/contract review without independently browser-reproducing.",
+          "Both judges rejected the original claim because name clearing is intentionally prohibited. The user accepted only the missing-feedback issue at severity 1 after clarification that valid saves also have no explicit status indicator.",
+          "The required-name guard intentionally prevents returning users to onboarding. This entry does not demand optional Last Name or treat preserving the saved name as data loss.",
+          "Rejected N07 and other required-name entries retain their functional interpretation; this narrower label covers the unexplained unsaved Last Name draft. Latest retains the guard and no-feedback integration; latest runtime was not tested."
+        ],
+        "sourceReferences": [
+          "https://github.com/twentyhq/twenty/blob/35c645064f72bc4e3180a2c6c506cbbfee170007/packages/twenty-front/src/modules/settings/profile/components/NameFields.tsx#L44-L80",
+          "https://github.com/twentyhq/twenty/blob/35c645064f72bc4e3180a2c6c506cbbfee170007/packages/twenty-front/src/modules/settings/profile/components/NameFields.tsx#L101-L121",
+          "https://github.com/twentyhq/twenty/blob/35c645064f72bc4e3180a2c6c506cbbfee170007/packages/twenty-front/src/modules/settings/profile/hooks/useUpdateWorkspaceMemberSettings.ts#L39-L55",
+          "https://github.com/twentyhq/twenty/blob/a6372e288ade9ed14ac2af1a7e224dabb6cc6021/packages/twenty-front/src/modules/settings/profile/components/NameFields.tsx#L73-L120"
+        ],
+        "limitations": [
+          "No failure to save a valid nonempty name and no saved-data loss were observed.",
+          "Codex stopped at source/contract review; Claude supplied the browser reproduction. Absence of explicit feedback for successful saves was additionally checked in source, not a new dedicated browser trial.",
+          "Both judges originally recommended rejection; severity 1 and the feedback-only scope are the user decision. Do not generalize into a requirement that every autosaving field show a success toast.",
+          "Latest was inspected in source only."
+        ]
+      }
     }
   ]
 }

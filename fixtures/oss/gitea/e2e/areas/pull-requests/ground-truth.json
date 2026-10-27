@@ -240,6 +240,177 @@
         "Open a pull request from the branch into main and wait for the mergeability check. Observe it is marked conflicting on base.txt with no merge button."
       ],
       "severity": 3
+    },
+    {
+      "id": "gitea-pr-review-skips-conversation-count",
+      "name": "Submitting a pull request review leaves the Conversation count unchanged",
+      "summary": "Submitting a review with text (Comment, Approve or Request changes) saves it and shows it in the timeline, but the pull request's Conversation tab count and the PR list's comment count don't increase. Reloading doesn't fix them; the count is corrected only when an ordinary comment is later posted.",
+      "expected": "Submitting a review increases the Conversation tab count, and the PR list's comment count, by one.",
+      "actual": "After submitting a review comment, the Conversation badge stayed the same (for example 4 → 4, or 0 with a review visible), including after reload. The next ordinary comment made the count jump by two (0 → 2) as it recounted.",
+      "reproSteps": [
+        "Open a pull request and note the Conversation tab count.",
+        "Open Files Changed > Review, enter a review message and submit it as Comment.",
+        "Return to Conversation: the review appears in the timeline but the count is unchanged, even after reload.",
+        "Post an ordinary comment and watch the count jump by two."
+      ],
+      "severity": 1
+    },
+    {
+      "id": "gitea-pr-instructions-autodetect-warning-when-enabled",
+      "name": "PR command-line instructions say autodetect manual merge is disabled when it is enabled",
+      "summary": "With Enable autodetect manual merge turned on in repository settings, a pull request's View command line instructions still warn that the merge cannot be detected because autodetect manual merge is not enabled.",
+      "expected": "The command-line instructions show the 'autodetect manual merge is not enabled' warning only when the option is off.",
+      "actual": "With Enable autodetect manual merge checked and saved, the PR's expanded command line instructions said: 'Warning: This operation cannot merge pull request because \"autodetect manual merge\" is not enabled.' It showed with Manually merged both on and off.",
+      "reproSteps": [
+        "In repository Settings > Advanced, check Enable autodetect manual merge and save.",
+        "Open an open pull request's Conversation tab.",
+        "Expand View command line instructions and read the warning."
+      ],
+      "severity": 1
+    },
+    {
+      "id": "gitea-empty-pr-files-changed-raw-error",
+      "name": "Files Changed on an empty pull request shows a bare 'after commit not found in PR commits' error",
+      "summary": "Gitea allows creating a pull request between equal branches ('This PR will be empty'), but opening that pull request's Files Changed tab replaces the whole page with a bare HTTP 400 error, 'after commit not found in PR commits', with no navigation.",
+      "expected": "Files Changed on an empty pull request stays inside the pull request page and shows that there are no changes.",
+      "actual": "On an open pull request with zero commits, clicking Files Changed showed only the text 'after commit not found in PR commits' (HTTP 400) with no page header or navigation. The Commits tab handled the empty PR correctly.",
+      "reproSteps": [
+        "Create a new branch from main without changes.",
+        "Open New Pull Request from that branch into main; the comparison says the branches are equal and the PR will be empty. Create it.",
+        "On the new pull request, click Files Changed."
+      ],
+      "severity": 5
+    },
+    {
+      "id": "gitea-pr-description-edit-disables-task-checkboxes",
+      "name": "Saving a pull request description leaves its task checkboxes disabled until reload",
+      "summary": "After editing and saving a pull request description that contains a task list, the rendered task checkboxes are disabled and cannot be toggled until the page is reloaded.",
+      "expected": "Right after saving, the PR author can toggle the description's task checkboxes, as on a fresh page load.",
+      "actual": "Saving a description with '- [ ] Verify conflict' and '- [x] Create branch' rendered both checkboxes disabled, so clicking them did nothing. Reloading the pull request made them enabled and toggling worked. Saving an unchanged task-list description had the same effect.",
+      "reproSteps": [
+        "Open a pull request you authored and choose Edit from the description's menu.",
+        "Enter a task list such as '- [ ] one' and '- [x] two' and click Save.",
+        "Try to toggle a checkbox, then reload the page and try again."
+      ],
+      "severity": 3
+    },
+    {
+      "id": "gitea-closed-pr-target-change-empty-error",
+      "name": "Changing a closed pull request's target branch fails with an empty error message",
+      "summary": "On a closed pull request, the title editor still lets the user pick a different 'merge into' branch, but Save fails with the toast 'Failed to update PR target branch:' and nothing after the colon, and the editor stays open.",
+      "expected": "Either the target-branch control is disabled on a closed pull request, or the error clearly says the pull request must be reopened before its target can change.",
+      "actual": "On a closed pull request, Edit allowed choosing a different target branch. Save got HTTP 409 with the server message 'The pull request has been closed.', but the toast read 'Failed to update PR target branch:' with no reason, and the editor stayed open. After reopening, the same change succeeded.",
+      "reproSteps": [
+        "Close an open pull request.",
+        "Click Edit beside its title and choose a different 'merge into' branch.",
+        "Click Save and read the error toast."
+      ],
+      "severity": 1
+    },
+    {
+      "id": "gitea-pr-cancel-keeps-pending-target-branch",
+      "name": "Cancelled target-branch change in the PR title editor persists",
+      "summary": "In a pull request's title editor, choosing a different 'merge into' branch and clicking Cancel doesn't discard that choice. The change stays pending in the editor and is applied the next time the editor is saved, even for a title-only edit.",
+      "expected": "Cancel discards the pending target-branch selection, so a later Save keeps the original target branch.",
+      "actual": "After selecting a new target branch and clicking Cancel, the summary still showed main. Clicking Edit again without reloading, changing only the title and saving retargeted the PR to the cancelled branch and added a 'changed target branch' event; the PR's diff and commits changed accordingly.",
+      "reproSteps": [
+        "Open a pull request and click Edit beside its title.",
+        "Choose a different 'merge into' branch, then click Cancel.",
+        "Without reloading, click Edit again, change only the title and click Save.",
+        "Check the PR's target branch and timeline."
+      ],
+      "severity": 3
+    },
+    {
+      "id": "gitea-remove-wip-prefix-empty-title-noop",
+      "name": "Remove WIP prefix silently does nothing when the PR title is only the prefix",
+      "summary": "On a draft pull request whose title is only a WIP prefix ('WIP:', '[WIP]' or 'wip:'), clicking 'Remove WIP: prefix' reloads the page with no change and no message; the PR stays a draft and can't be merged.",
+      "expected": "Clicking 'Remove WIP: prefix' either takes the pull request out of draft or explains that a non-empty title is needed.",
+      "actual": "With the title set to exactly 'WIP:', clicking 'Remove WIP: prefix' reloaded the page; the PR stayed in Draft titled 'WIP:', the button was still shown, and no error or feedback appeared.",
+      "reproSteps": [
+        "Open a draft pull request and edit its title to exactly 'WIP:'.",
+        "Click 'Remove WIP: prefix' in the merge box.",
+        "Check the PR's title and draft status."
+      ],
+      "severity": 3
+    },
+    {
+      "id": "gitea-stale-fast-forward-merge-500",
+      "name": "Confirming a stale fast-forward-only merge after the base advances shows a server error",
+      "summary": "If the base branch gains a new commit while a 'Fast-forward only' merge confirmation is open, confirming it shows 'server error: 500' instead of explaining that the base changed. The PR correctly stays unmerged.",
+      "expected": "The stale fast-forward-only merge is refused with a message explaining that the base branch changed (as Gitea does for other out-of-date merges), not a server error.",
+      "actual": "Confirming the fast-forward-only merge after a new commit landed on main showed 'server error: 500' and left the PR open. Reloading removed the Fast-forward only option.",
+      "reproSteps": [
+        "Open a pull request, choose Fast-forward only and open the merge confirmation; leave the tab open.",
+        "In another tab, commit a different change directly to the base branch.",
+        "Return to the first tab without reloading and confirm the merge."
+      ],
+      "severity": 1
+    },
+    {
+      "id": "gitea-locked-pr-allows-review-comments",
+      "name": "Users without write access can still post reviews and code comments on a locked pull request",
+      "summary": "After a pull request's conversation is locked, users without write access (including the PR's own author when not a collaborator) can no longer post general comments, but can still post inline code comments, submit reviews (Comment, Approve, Request changes) and reply to review threads.",
+      "expected": "On a locked pull request, every commenting path, including code comments, reviews and review-thread replies, refuses users without write access, as general comments do.",
+      "actual": "After the owner locked a fork PR, a non-collaborator saw no general comment editor and a general comment POST was refused, but from Files Changed they published an inline 'Add single comment' and a summary Comment review, both visible while the PR stayed locked. A different non-collaborator who wasn't the author posted a review-thread reply and Approve and Request changes reviews the same way.",
+      "reproSteps": [
+        "Have a user without write access open a pull request (or use any non-collaborator on a public repository's PR).",
+        "As the repository owner, choose Lock conversation on the PR.",
+        "As the non-collaborator, open Files Changed and add a single inline comment, then submit a Comment review.",
+        "Check whether the comments were published while the PR is locked."
+      ],
+      "severity": 3
+    },
+    {
+      "id": "gitea-manual-merge-only-hidden-on-mergeable-pr",
+      "name": "With only Manually merged enabled, a mergeable PR says all merge options are disabled and hides the manual option",
+      "summary": "When Manually merged is the only merge style enabled in repository settings, an open, mergeable pull request says 'This pull request cannot be merged because all repository merge options are disabled' and offers no Manually merged control. Enabling any automatic style makes Manually merged appear in the merge dropdown.",
+      "expected": "When Manually merged is enabled, it is offered on a mergeable pull request even if it is the only enabled merge style.",
+      "actual": "With the five automatic styles unchecked and Manually merged checked, a mergeable PR showed 'cannot be merged because all repository merge options are disabled' with no manual-merge control. After also enabling Create merge commit, the merge dropdown offered Manually merged, which opened the merge-commit-ID form. A conflicting PR showed the separate manual-merge form either way.",
+      "reproSteps": [
+        "In repository Settings, uncheck all five automatic merge styles, keep Manually merged checked and save.",
+        "Open an open, mergeable pull request and look at the merge box.",
+        "Enable Create merge commit as well, save, and check the merge dropdown again."
+      ],
+      "severity": 3
+    },
+    {
+      "id": "gitea-manual-merge-ignores-delete-branch",
+      "name": "Manually merged ignores the checked Delete Branch option",
+      "summary": "Marking a pull request as Manually merged with the form's Delete Branch option checked (or pre-checked by the repository default) records the merge but never deletes the source branch.",
+      "expected": "Confirming Manually merged with Delete Branch checked deletes the source branch, as the other merge styles do.",
+      "actual": "After confirming Manually merged with Delete Branch checked, the PR showed 'Manually merged' and the timeline recorded the manual merge, but the PR still offered 'The branch … can now be deleted' with a Delete Branch button, and the source branch still opened with its files.",
+      "reproSteps": [
+        "Open a pull request whose merge box offers Manually merged.",
+        "Choose Manually merged, enter a merge commit ID that is on the base branch and check Delete Branch.",
+        "Confirm, then check whether the source branch still exists."
+      ],
+      "severity": 3,
+      "matchingGuidance": {
+        "relatedReference": {
+          "id": "gitea-manual-merge-only-hidden-on-mergeable-pr",
+          "distinction": "Both concern Manually merged. That entry is the option being hidden when it's the only enabled merge style; this entry is the Delete Branch choice being ignored when it's used."
+        }
+      }
+    },
+    {
+      "id": "gitea-reopened-wip-pr-loses-remove-wip-button",
+      "name": "Reopened draft pull request loses its Remove WIP prefix button after the merge box refreshes",
+      "summary": "After closing and reopening a draft (WIP) pull request, the merge box first shows the 'Remove WIP: prefix' button, then about two seconds later its automatic refresh redraws the box without it. Reloading the page brings the button back.",
+      "expected": "The Remove WIP prefix button stays available to the PR author or a writer after the merge box refreshes.",
+      "actual": "After reopening a WIP pull request, 'Remove WIP: prefix' appeared, then disappeared when the merge box refreshed itself about two seconds later, leaving no button until a manual reload.",
+      "reproSteps": [
+        "Open a pull request whose title starts with 'WIP:' and close it.",
+        "Reopen it and watch the merge box for a few seconds.",
+        "Reload the page and look at the merge box again."
+      ],
+      "severity": 1,
+      "matchingGuidance": {
+        "relatedReference": {
+          "id": "gitea-remove-wip-prefix-empty-title-noop",
+          "distinction": "Both concern the Remove WIP prefix button. That entry is the button doing nothing when the title is only the prefix; this entry is the button disappearing after the merge box auto-refresh on a reopened PR."
+        }
+      }
     }
   ]
 }

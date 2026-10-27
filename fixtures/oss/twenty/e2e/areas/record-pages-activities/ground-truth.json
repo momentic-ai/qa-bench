@@ -453,6 +453,51 @@
         "severityReason": "Broken interaction or unintended record/workflow change.",
         "limitations": []
       }
+    },
+    {
+      "id": "record-pages-activities-fresh-d47fdbf5",
+      "name": "Record-page CSV exports contain only Id after refresh or direct loading",
+      "severity": 3,
+      "owningArea": "twenty/record-pages-activities",
+      "summary": "Exporting a saved record from its directly loaded or refreshed record page produces an Id-only CSV, omitting its saved content. The same record exports its fields from the list or before the record page is refreshed.",
+      "expected": "Export Note and the equivalent record-page CSV actions should retain the saved record’s content after refresh or direct loading.",
+      "actual": "Two fresh notes per judge exported only Id and the record UUID after refresh or direct loading, despite saved titles and bodies remaining visible. The same notes exported populated fields from the list or before refresh. Company and Task record-page exports also produced Id-only files.",
+      "reproSteps": [
+        "Sign in and create a fresh Note with a unique title and body.",
+        "Allow the content to save, open the Note record page, and reload it. Confirm the title and body remain visible.",
+        "Open the record’s command menu and choose Export Note. Inspect the downloaded CSV and observe only the Id header and record UUID, with no Title or Body columns.",
+        "As a control, export the same Note from the Notes list with the record selected; observe populated Title and Body columns.",
+        "Alternatively, open the Note from the list and export before refreshing; observe populated fields. Reload the same record page and repeat the failing export.",
+        "Repeat with a second saved Note. Equivalent directly loaded Company and Task record pages demonstrate the shared export path."
+      ],
+      "sourceCause": "Record-page context with a resolvable view ID supplies recordIndexId, causing ExportRecordsCommand to use the index exporter. Its visible-column state is empty after a direct record-page load, and CSV generation inserts only the mandatory Id column.",
+      "reviewEvidence": {
+        "basis": "Mo report plus independent Claude Code and Codex browser reproductions and source audits, coordinator citation checks, and user acceptance.",
+        "userAccepted": true,
+        "sourceRevision": "35c645064f72bc4e3180a2c6c506cbbfee170007",
+        "severityReason": "Observed broken functionality; controls using the same saved data work.",
+        "analysis": [
+          "Both judges reproduced on two fresh persisted notes and ran same-record controls before refresh and from the list.",
+          "Codex additionally reproduced on Company, with another user and at tablet width. Claude additionally reproduced on Company and Task.",
+          "The dedicated single-record exporter selects active metadata fields, but the view-ID branch dispatches to index export instead. The latest source retains that branch."
+        ],
+        "sourceReferences": [
+          "https://github.com/twentyhq/twenty/blob/35c645064f72bc4e3180a2c6c506cbbfee170007/packages/twenty-front/src/modules/context-store/components/MainContextStoreProvider.tsx#L104-L129",
+          "https://github.com/twentyhq/twenty/blob/35c645064f72bc4e3180a2c6c506cbbfee170007/packages/twenty-front/src/modules/command-menu-item/engine-command/utils/buildHeadlessCommandContextApi.ts#L114-L129",
+          "https://github.com/twentyhq/twenty/blob/35c645064f72bc4e3180a2c6c506cbbfee170007/packages/twenty-front/src/modules/command-menu-item/engine-command/record/components/ExportRecordsCommand.tsx#L80-L105",
+          "https://github.com/twentyhq/twenty/blob/35c645064f72bc4e3180a2c6c506cbbfee170007/packages/twenty-front/src/modules/object-record/record-field/states/currentRecordFieldsComponentState.ts#L5-L10",
+          "https://github.com/twentyhq/twenty/blob/35c645064f72bc4e3180a2c6c506cbbfee170007/packages/twenty-front/src/modules/object-record/record-index/export/hooks/useRecordIndexLazyFetchRecords.ts#L119-L165",
+          "https://github.com/twentyhq/twenty/blob/35c645064f72bc4e3180a2c6c506cbbfee170007/packages/twenty-front/src/modules/object-record/record-index/export/hooks/useRecordIndexExportRecords.ts#L43-L85",
+          "https://github.com/twentyhq/twenty/blob/35c645064f72bc4e3180a2c6c506cbbfee170007/packages/twenty-front/src/modules/object-record/record-show/hooks/useExportSingleRecord.ts#L45-L69",
+          "https://github.com/twentyhq/twenty/blob/a6372e288ade9ed14ac2af1a7e224dabb6cc6021/packages/twenty-front/src/modules/command-menu-item/engine-command/record/components/ExportRecordsCommand.tsx#L90-L117",
+          "https://github.com/twentyhq/twenty/blob/a6372e288ade9ed14ac2af1a7e224dabb6cc6021/packages/twenty-front/src/modules/context-store/components/RouteContextStoreProvider.tsx#L125-L150"
+        ],
+        "limitations": [
+          "Latest was inspected in source, not launched. Untested object types are inferred from shared command callers.",
+          "Scope requires a record-page context with a resolvable view ID; behavior on a record page without one is not established.",
+          "Saved records remain intact. The observed loss is in CSV output; PDF export uses a separate path."
+        ]
+      }
     }
   ]
 }

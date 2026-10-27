@@ -514,6 +514,192 @@
         "From third, an upward-one drop again fails. Use two Up presses before dropping to restore Mac Pro to its original second position, and confirm restoration after reload."
       ],
       "severity": 3
+    },
+    {
+      "id": "records-views-fresh-5d4fb045",
+      "name": "Account Owner filter cannot find an existing member by their full displayed name",
+      "severity": 3,
+      "owningArea": "twenty/records-views",
+      "summary": "The Companies Account Owner filter finds a workspace member by either name part but returns No results for the same member’s full displayed name.",
+      "expected": "The Account Owner filter should find an available workspace member by the full name it displays, consistent with the Account Owner cell editor.",
+      "actual": "Searching Phil Schiler returns No results, while Phil or Schiler returns a selectable Phil Schiler and applies the owner filter. The Account Owner cell editor finds the full name. Both judges reproduced the failure in two fresh views; Codex also reproduced as a workspace member.",
+      "reproSteps": [
+        "Sign in to the seeded workspace and create a fresh Companies Table view.",
+        "Open Filter > Account Owner and search the full displayed name of an existing owner with both first and last names, such as Phil Schiler.",
+        "Observe No results, then search the first name or surname alone and confirm the same owner appears and can be selected.",
+        "Open an Account Owner cell’s relation editor and search the same full name. Observe that the owner is found there.",
+        "Repeat in a second fresh Companies view to confirm the filter-specific failure."
+      ],
+      "sourceCause": "The filter picker searches the entire query independently against workspace-member firstName and lastName columns instead of matching the displayed full name.",
+      "reviewEvidence": {
+        "basis": "Mo report plus independent Claude Code and Codex browser reproductions and source audits, coordinator citation checks, and user acceptance.",
+        "userAccepted": true,
+        "sourceRevision": "35c645064f72bc4e3180a2c6c506cbbfee170007",
+        "severityReason": "Observed broken functionality; controls using the same saved data work.",
+        "analysis": [
+          "Both judges observed failed full-name lookup and working name-part selection on fresh views, with a working full-name relation-editor control.",
+          "The raw query is firstName ILIKE the full input OR lastName ILIKE the full input. The backend preserves those conditions against separate stored columns.",
+          "The checked latest default-branch source retains this helper. N20 shares its cause but covers a different person relation and entry point."
+        ],
+        "sourceReferences": [
+          "https://github.com/twentyhq/twenty/blob/35c645064f72bc4e3180a2c6c506cbbfee170007/packages/twenty-front/src/modules/object-record/select/utils/getObjectFilterFields.ts#L1-L7",
+          "https://github.com/twentyhq/twenty/blob/35c645064f72bc4e3180a2c6c506cbbfee170007/packages/twenty-front/src/modules/object-record/select/hooks/useRecordsForSelect.ts#L58-L107",
+          "https://github.com/twentyhq/twenty/blob/35c645064f72bc4e3180a2c6c506cbbfee170007/packages/twenty-front/src/modules/object-record/record-picker/single-record-picker/hooks/useSingleRecordPickerPerformSearch.ts#L64-L93",
+          "https://github.com/twentyhq/twenty/blob/35c645064f72bc4e3180a2c6c506cbbfee170007/packages/twenty-server/src/engine/api/graphql/graphql-query-runner/utils/compute-where-condition-parts.ts#L138-L142",
+          "https://github.com/twentyhq/twenty/blob/a6372e288ade9ed14ac2af1a7e224dabb6cc6021/packages/twenty-front/src/modules/object-record/select/hooks/useRecordsForSelect.ts#L63-L115"
+        ],
+        "limitations": [
+          "Latest was inspected in source, not launched. Broader workflow-form and widget effects are inferred from shared callers; they are not required to match this entry.",
+          "The original Mo report’s fresh-browser follow-up was unfinished; independent Claude and Codex reproductions provide the verification."
+        ]
+      },
+      "matchingGuidance": {
+        "relatedReference": "records-views-N20",
+        "distinction": "This entry covers Companies > Filter > Account Owner searching workspaceMember records. records-views-N20 covers Opportunities > Point of Contact searching person records. They share split-name matching code, but each entry is matched to its own relation target and entry point."
+      }
+    },
+    {
+      "id": "records-views-fresh-9960e144",
+      "name": "People summaries ignore a basic Name filter combined with Search any field",
+      "severity": 3,
+      "owningArea": "twenty/records-views",
+      "summary": "A single basic People Name filter combined with Search any field filters the visible rows correctly but leaves the total count and footer calculations describing the larger search-only result set.",
+      "expected": "The view total and column calculations should describe the same records as the filtered table rows.",
+      "actual": "With a unique Name filter plus Designer search, one matching person with no email is shown while the header reports the larger search-only count and Unique of Emails reports 43 instead of zero. Empty-of-Phones percentages and earliest creation dates also include excluded people. Both judges reproduced the mismatch and confirmed that it persists after a completed save and reload.",
+      "reproSteps": [
+        "Create a fresh People Table view and three disposable people sharing a unique name prefix. Give one Job Title Designer, leave that person’s email empty, and give the other two Job Title Engineer with distinct known email values.",
+        "Apply a single basic Name Contains filter for the unique prefix. Set the Emails footer to Unique and verify the rows, count and calculation agree for the three people.",
+        "Add Search any field with Designer while retaining that single Name filter. Observe only the Designer person remains, but the header count and email calculation describe the larger search-only set rather than the visible person.",
+        "Save the view, wait for saving to complete, and reload. Observe that the mismatched total and calculations persist.",
+        "As controls, remove Search any field and verify the three-person summaries return. Replace the Name filter with Job Title Contains Engineer and search the unique prefix; observe that rows and summaries agree.",
+        "Optionally inspect Empty of Phones or Earliest of Creation date to see that additional calculations include excluded records under the failing Name-plus-search condition."
+      ],
+      "sourceCause": "Name Contains and Search any field each generate a root OR filter. The header and footer aggregate hooks merge them with object spread, so the search OR replaces the Name OR. The row query combines them with AND correctly.",
+      "reviewEvidence": {
+        "basis": "Mo report plus independent Claude Code and Codex browser reproductions and source audits, coordinator citation checks, and user acceptance.",
+        "userAccepted": true,
+        "sourceRevision": "35c645064f72bc4e3180a2c6c506cbbfee170007",
+        "severityReason": "Observed broken functionality; controls using the same saved data work.",
+        "analysis": [
+          "Both judges observed incorrect unique-email counts, phone percentages and earliest dates alongside correct visible rows. Their fresh data and single-filter controls passed.",
+          "AggregatePeople requests omit the unique Name condition, while FindManyPeople preserves both filters. The source explains this exact overwrite.",
+          "N52 covers the same header cause through advanced Opportunities OR rules. N48 covers grouped footer calculations under a Stage filter. This case uses one basic People composite Name filter in an ungrouped table and affects both header and footer.",
+          "The checked latest default-branch source retains both shallow merges."
+        ],
+        "sourceReferences": [
+          "https://github.com/twentyhq/twenty/blob/35c645064f72bc4e3180a2c6c506cbbfee170007/packages/twenty-front/src/modules/views/hooks/internal/useGetRecordIndexTotalCount.ts#L38-L65",
+          "https://github.com/twentyhq/twenty/blob/35c645064f72bc4e3180a2c6c506cbbfee170007/packages/twenty-front/src/modules/object-record/record-table/record-table-footer/hooks/useAggregateRecordsForRecordTableColumnFooter.tsx#L111-L125",
+          "https://github.com/twentyhq/twenty/blob/35c645064f72bc4e3180a2c6c506cbbfee170007/packages/twenty-shared/src/utils/filter/turnRecordFilterIntoGqlOperationFilter.ts#L774-L788",
+          "https://github.com/twentyhq/twenty/blob/35c645064f72bc4e3180a2c6c506cbbfee170007/packages/twenty-shared/src/utils/filter/computeRecordGqlOperationFilter.ts#L56-L73",
+          "https://github.com/twentyhq/twenty/blob/35c645064f72bc4e3180a2c6c506cbbfee170007/packages/twenty-shared/src/utils/filter/turnAnyFieldFilterIntoRecordGqlFilter.ts#L228-L247",
+          "https://github.com/twentyhq/twenty/blob/35c645064f72bc4e3180a2c6c506cbbfee170007/packages/twenty-front/src/modules/object-record/record-index/hooks/useFindManyRecordIndexTableParams.ts#L80-L88",
+          "https://github.com/twentyhq/twenty/blob/a6372e288ade9ed14ac2af1a7e224dabb6cc6021/packages/twenty-front/src/modules/views/hooks/internal/useGetRecordIndexTotalCount.ts#L53-L65",
+          "https://github.com/twentyhq/twenty/blob/a6372e288ade9ed14ac2af1a7e224dabb6cc6021/packages/twenty-front/src/modules/object-record/record-table/record-table-footer/hooks/useAggregateRecordsForRecordTableColumnFooter.tsx#L112-L126"
+        ],
+        "limitations": [
+          "Latest was inspected in source, not launched. Other roles and objects were not browser-tested.",
+          "Exact inflated totals vary with fixture data; the defect is summaries using the search-only set rather than the displayed intersection.",
+          "The reproduction requires a single OR-shaped filter such as basic Name Contains. Multiple regular filters wrapped in AND and a simple Job Title TEXT filter passed the controls."
+        ]
+      },
+      "matchingGuidance": {
+        "relatedReference": "records-views-N52",
+        "distinction": "This entry covers a single basic Name filter plus Search any field on an ungrouped People table, including incorrect footer calculations. records-views-N52 covers advanced OR rules on Opportunities and the total count. records-views-N48 covers Stage-grouped calculations without this basic-Name-plus-search trigger. Match the reported trigger and affected summary surface."
+      }
+    },
+    {
+      "id": "records-views-fresh-78ca1e80",
+      "name": "Stale Update view after an immediate reload deletes a server-saved sort",
+      "severity": 3,
+      "owningArea": "twenty/records-views",
+      "summary": "An immediate reload after an acknowledged sort save can initialize stale unsorted state; clicking the offered Update view then permanently removes the retained saved sort.",
+      "expected": "A view loaded without a new user edit does not offer to save a stale missing sort as deletion of its server-retained sorting.",
+      "actual": "Both judges confirmed the narrower destructive chain on fresh views: CreateViewSort succeeded, the reloaded server view list still contained that sort, the UI had no sort and offered Update view, and clicking it destroyed the saved sort. Delayed reloads retained the deletion. Normal waited-save controls preserved sorting.",
+      "reproSteps": [
+        "Create a fresh Opportunities Table view, apply a Name sort, and click Update view.",
+        "Immediately after the save receives a successful server response, hard-reload the page. The trigger is intermittent and requires a near-instant reload before client synchronization completes.",
+        "In an affected trial, observe the missing sort chip, default row ordering and Update view offered without a new edit. Confirm the refreshed server view metadata still contains the acknowledged sort.",
+        "Click that offered Update view. Observe a successful DestroyViewSort for the retained sort and confirm that later reloads remain unsorted with no saved sort.",
+        "As a control, repeat with a fresh view but wait several seconds after saving before reload; the sort and correct ordering remain, with no spurious Update view."
+      ],
+      "sourceCause": "The client can initialize active sorts once from stale cached view metadata. Later fresh saved sorts do not reinitialize that active list, and Update view interprets missing active sorts as intentional deletions.",
+      "reviewEvidence": {
+        "basis": "Mo report plus independent Claude Code and Codex browser reproductions and source audits, coordinator citation checks, and user acceptance.",
+        "userAccepted": true,
+        "sourceRevision": "35c645064f72bc4e3180a2c6c506cbbfee170007",
+        "severityReason": "Observed broken functionality or unintended loss of saved configuration.",
+        "analysis": [
+          "After follow-up, Claude and Codex both recommend P/3 for this narrower sequence; original broad-claim F verdicts are retained in local evidence.",
+          "Codex confirmed two destructive repetitions; Claude confirmed three across sessions. Stale-state rates varied substantially, including 2/16 immediate attempts in Claude’s follow-up and 4/5 earlier. Waited controls passed.",
+          "The save was server-acknowledged and the refreshed page’s server response retained its sort before the later delete. Complete client or IndexedDB synchronization before reload was not established.",
+          "The coordinator checked the cache, initialization, difference calculation, deletion request and backend deletion paths. Exact interrupted-cache timing remains inferred. Latest retains these source paths; latest runtime was not tested.",
+          "Existing unfinished-save negative references explicitly exclude a later Update click removing retained configuration. The user approved this tightly timed destructive scope."
+        ],
+        "sourceReferences": [
+          "https://github.com/twentyhq/twenty/blob/35c645064f72bc4e3180a2c6c506cbbfee170007/packages/twenty-front/src/modules/views/components/ViewBarRecordSortEffect.tsx#L39-L49",
+          "https://github.com/twentyhq/twenty/blob/35c645064f72bc4e3180a2c6c506cbbfee170007/packages/twenty-front/src/modules/object-record/record-index/components/RecordIndexLoadBaseOnContextStoreEffect.tsx#L21-L45",
+          "https://github.com/twentyhq/twenty/blob/35c645064f72bc4e3180a2c6c506cbbfee170007/packages/twenty-front/src/modules/views/hooks/useSaveRecordSortsToViewSorts.ts#L35-L49",
+          "https://github.com/twentyhq/twenty/blob/35c645064f72bc4e3180a2c6c506cbbfee170007/packages/twenty-front/src/modules/views/hooks/useSaveRecordSortsToViewSorts.ts#L76-L92",
+          "https://github.com/twentyhq/twenty/blob/35c645064f72bc4e3180a2c6c506cbbfee170007/packages/twenty-front/src/modules/ui/utilities/state/jotai/utils/createIndexedDbBackedJotaiStorage.ts#L91-L101",
+          "https://github.com/twentyhq/twenty/blob/35c645064f72bc4e3180a2c6c506cbbfee170007/packages/twenty-server/src/engine/workspace-manager/workspace-migration/workspace-migration-runner/action-handlers/view-sort/services/delete-view-sort-action-handler.service.ts#L30-L41",
+          "https://github.com/twentyhq/twenty/blob/a6372e288ade9ed14ac2af1a7e224dabb6cc6021/packages/twenty-front/src/modules/views/components/ViewBarRecordSortEffect.tsx#L39-L49"
+        ],
+        "limitations": [
+          "Ordinary waited saves retain sorting. Do not match a generic sort-loss claim without the near-instant reload and later destructive Update click.",
+          "No opportunity records were lost. Broader objects, filters and layouts were not browser-verified.",
+          "Claude did not separately verify the Update view button disappeared before its new immediate reloads; acknowledgement and later server-retained sort were captured.",
+          "Latest was source-inspected only."
+        ]
+      }
+    },
+    {
+      "id": "records-views-fresh-d4f1f5a3",
+      "name": "Text Contains filters interpret literal percent and underscore as SQL wildcards",
+      "severity": 3,
+      "owningArea": "twenty/records-views",
+      "summary": "Ordinary UI Contains and Does not contain filters interpret typed percent and underscore as SQL wildcard syntax, including records without the typed punctuation or excluding them incorrectly.",
+      "expected": "The UI text operators should match the entered text literally, case-insensitively, rather than expose undocumented SQL wildcard syntax. This expectation concerns conversion of UI values; raw API pattern operators retain their intended wildcard semantics.",
+      "actual": "Name Contains QA% matches QA Alpha and QA Beta although neither name contains a percent sign. Job Title Does not contain 50% excludes a person whose title is 50 off, without a percent sign. Underscore also acts as a one-character wildcard. Ordinary-text controls return the expected records.",
+      "reproSteps": [
+        "Create fresh People with a unique common name prefix, for example QA Alpha and QA Beta, with neither name containing a percent sign.",
+        "Apply Name > Contains > QA%. Observe names lacking the literal percent sign still included. Compare an ordinary matching prefix and a nonexistent prefix.",
+        "Give a fresh person Job Title 50 off, without a percent sign. Apply Job Title > Does not contain > 50%. Observe the person incorrectly excluded despite not containing that literal text.",
+        "Compare a record actually containing a percent sign and ordinary-text filters. Repeat on fresh data; saving and reloading the filtered view retains the pattern behavior.",
+        "For underscore, compare names differing by one character and apply a Contains value with an underscore in that position; observe the underscore acts as a wildcard rather than requiring the character."
+      ],
+      "sourceCause": "The shared UI filter converter interpolates raw text into percent-wrapped ILIKE patterns, including composite-name tokens, without escaping user-entered percent or underscore. The server correctly evaluates those supplied patterns.",
+      "reviewEvidence": {
+        "basis": "Mo report plus independent Claude Code and Codex browser reproductions and source audits, coordinator citation checks, and user acceptance.",
+        "userAccepted": true,
+        "sourceRevision": "35c645064f72bc4e3180a2c6c506cbbfee170007",
+        "severityReason": "Observed broken functionality; controls using the same saved data work.",
+        "analysis": [
+          "Claude and Codex independently recommended acceptance at severity 3 and reproduced positive Name filtering on fresh records with passing ordinary-text controls. Claude also verified wrong exclusion through the Job Title negative filter and a literal-percent control; Codex verified saved views, another user and desktop/tablet behavior.",
+          "The inspected SQL path binds filter values as parameters. No SQL injection, executable SQL manipulation, authorization bypass or saved-data loss was demonstrated. The accepted issue is UI matching correctness.",
+          "Merged API PR 17825 deliberately leaves wildcard control with API callers. That does not establish that an ordinary UI Contains field intentionally exposes pattern syntax. Later internal matcher wildcard-parity fixes concern the lower-level pattern contract.",
+          "Official UI docs now describe Contains as case-insensitive partial-text matching without documenting wildcard input. PR 28479 added that wording on 2026-10-20, after the fixture pin; it supports current semantics without conclusively establishing historical punctuation intent.",
+          "PR 23228, opened before the fixture pin, identifies this same plain-text list-filter problem and proposes escaping existing Contains and Does-not-contain values. It closed unmerged for unanswered review comments and no linked issue. It is contributor evidence, not maintainer approval or an explicit rejection of literal semantics.",
+          "The coordinator docs/PR investigation favors an unintended UI defect with moderate confidence. The user accepted the case after reviewing those limits. Latest source retains unescaped UI interpolation; latest runtime was not tested."
+        ],
+        "sourceReferences": [
+          "https://github.com/twentyhq/twenty/blob/35c645064f72bc4e3180a2c6c506cbbfee170007/packages/twenty-shared/src/utils/filter/turnRecordFilterIntoGqlOperationFilter.ts#L210-L226",
+          "https://github.com/twentyhq/twenty/blob/35c645064f72bc4e3180a2c6c506cbbfee170007/packages/twenty-shared/src/utils/filter/turnRecordFilterIntoGqlOperationFilter.ts#L774-L818",
+          "https://github.com/twentyhq/twenty/blob/35c645064f72bc4e3180a2c6c506cbbfee170007/packages/twenty-shared/src/utils/filter/utils/generateILikeFiltersForCompositeFields.ts#L31-L47",
+          "https://github.com/twentyhq/twenty/blob/35c645064f72bc4e3180a2c6c506cbbfee170007/packages/twenty-server/src/engine/api/graphql/graphql-query-runner/utils/compute-where-condition-parts.ts#L132-L143",
+          "https://github.com/twentyhq/twenty/blob/a6372e288ade9ed14ac2af1a7e224dabb6cc6021/packages/twenty-shared/src/utils/filter/turnRecordFilterIntoGqlOperationFilter.ts#L271-L287",
+          "https://github.com/twentyhq/twenty/pull/17825",
+          "https://github.com/twentyhq/twenty/pull/23228",
+          "https://github.com/twentyhq/twenty/pull/28479",
+          "https://github.com/twentyhq/twenty/blob/52a2b0cbfa140890315e2a3909d9b5eb0dd51549/packages/twenty-docs/user-guide/views-pipelines/capabilities/filters-and-sorting.mdx#L32-L34"
+        ],
+        "limitations": [
+          "No explicit maintainer ruling on literal versus wildcard punctuation in UI Contains was located; the accepted literal-text contract remains an inference supported by docs and the matching proposal.",
+          "The clearer current documentation postdates the 2026-07-30 fixture source; the matching pre-pin PR was not merged.",
+          "Do not use this entry to classify intentional raw API wildcard matching as a bug or to claim SQL injection.",
+          "Name positive filtering and the plain-text Job Title negative filter were reproduced; broader shared converter callers are inferred rather than required matching scope.",
+          "No crash or saved-data loss was observed. Latest was inspected in source only."
+        ]
+      }
     }
   ]
 }

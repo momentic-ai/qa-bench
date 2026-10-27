@@ -1149,6 +1149,287 @@
         "Click the Awesome Concrete Shoes product cell, then click View details in its menu.",
         "Wait for details; repeat the View details click."
       ]
+    },
+    {
+      "id": "metabase-querying-423",
+      "name": "Nested self-join fields become indistinguishable in the join-key picker",
+      "severity": 3,
+      "summary": "Nested self-join fields become indistinguishable in the join-key picker.",
+      "expected": "The selector should distinguish the base Product ID from the joined Orders Product ID, as the source result table does with Product ID versus Orders → Product ID.",
+      "actual": "The picker shows two options both named Orders → Product ID under the same saved-source heading, with identical More info descriptions and no source distinction. The choices produce different joins. The same ambiguity occurs for other base/joined fields such as ID.",
+      "reproSteps": [
+        "Create an Orders question in Sample Database. Left-join Orders again on base ID < joined ID, set Row limit5, then save the question.",
+        "Create New → Question and choose that saved question from Our analytics (or the collection where you saved it).",
+        "Click Join data → Sample Database → Products.",
+        "Open the Left column selector and search for Product ID.",
+        "Inspect both results and their More info descriptions. Selecting the first uses base Product ID14; selecting the second uses joined Product IDs123,105,94,132,60."
+      ]
+    },
+    {
+      "id": "metabase-querying-461",
+      "name": "Builder fixed-date input shifts ISO 2026-01-02 to January 1, 2026 on blur",
+      "severity": 3,
+      "summary": "Builder fixed-date input shifts ISO 2026-01-02 to January 1, 2026 on blur.",
+      "expected": "The ISO date 2026-01-02 remains January 2, 2026.",
+      "actual": "After blur the Date field displays January 1, 2026 and the calendar selects day 1.",
+      "reproSteps": [
+        "Use a browser timezone behind UTC, such as America/Los_Angeles.",
+        "Create a fresh QA-DATE question using Sample Database > Orders in the notebook builder.",
+        "Add a Created At filter, choose Fixed date range, then On.",
+        "Type 2026-01-02 into Date and move focus out of the field.",
+        "Observe the Date field and selected calendar day."
+      ]
+    },
+    {
+      "id": "metabase-querying-462",
+      "name": "Custom coalesce filter expression is labeled as a direct 'Discount is equal to 0' filter on the filter chip",
+      "severity": 1,
+      "summary": "Custom coalesce filter expression is labeled as a direct 'Discount is equal to 0' filter on the filter chip.",
+      "expected": "The filter chip reflects the coalesce expression or indicates that null values are coalesced, rather than displaying a direct field equality comparison.",
+      "actual": "After updating the custom expression to 'coalesce([Discount], 0) = 0 AND [Quantity] = 1', the filter chip displays 'Discount is equal to 0 and Quantity is equal to 1', despite reopening the chip confirming the coalesce expression is present.",
+      "reproSteps": [
+        "New > Question > Sample Database > Orders; no table edits are needed.",
+        "Add Filter > Custom Expression: coalesce([Discount], 0) = 0 AND [Quantity] = 1; Done.",
+        "Inspect the resulting filter chip and reopen it.",
+        "Optionally summarize Count of rows: this expression returns 3,072; the genuinely direct expression [Discount] = 0 AND [Quantity] = 1 returns 0."
+      ]
+    },
+    {
+      "id": "metabase-querying-463",
+      "name": "Creation date Today hides a question created minutes earlier from search",
+      "severity": 3,
+      "summary": "Creation date Today hides a question created minutes earlier from search.",
+      "expected": "A question created minutes earlier remains in results when filtering its creation date to Today.",
+      "actual": "The unfiltered search lists the own question (among five QA-LIFECYCLE questions), but Today produces 'Didn't find anything'. History immediately beforehand showed this question was created 26 minutes ago.",
+      "reproSteps": [
+        "Use a browser timezone behind UTC, such as America/Los_Angeles, and create the question after 00:00 GMT has passed for the server but not locally (for PT, after 5 PM).",
+        "As Harbor Admin, create a fresh builder question using Sample Database > Orders, limit 4, and save in Our analytics with a unique QA-LIFECYCLE name.",
+        "Search globally for that unique name and open View and filter all results. Verify the saved question is listed.",
+        "Open the question's More info > History: the observed own fixture displayed 'You created this' 26 minutes ago.",
+        "Return to full search and choose Creation date > Today."
+      ]
+    },
+    {
+      "id": "metabase-querying-466",
+      "name": "Renaming a nested inner snippet removes its parameter widgets, so the query cannot run",
+      "severity": 3,
+      "summary": "Renaming a nested inner snippet removes its parameter widgets, so the query cannot run.",
+      "expected": "After renaming the inner snippet, the native query using the outer snippet still shows the inner snippet's Category and Floor widgets and runs once Category is filled in.",
+      "actual": "Only the outer snippet's Ceiling widget appears. Running shows 'Cannot run the query: missing required parameters: #{\"category\"}', and there is no Category widget to fill in. Renaming in the SQL Snippets sidebar while the query is open makes the Category and Floor widgets disappear immediately.",
+      "reproSteps": [
+        "In the native SQL editor for Sample Database, create snippet QA-inner with SQL: CATEGORY = {{category}} [[AND PRICE >= {{snippet_floor}}]].",
+        "Create snippet QA-outer with SQL: AND ({{snippet: QA-inner}}) [[AND PRICE <= {{snippet_ceiling}}]].",
+        "Enter SELECT ID, TITLE, PRICE, CATEGORY FROM PRODUCTS WHERE 1=1 {{snippet: QA-outer}} ORDER BY ID LIMIT 10 and confirm Category, Floor and Ceiling widgets appear and the query runs with Category = Gadget.",
+        "In the SQL Snippets sidebar, rename QA-inner to QA-inner-renamed.",
+        "Observe the Category and Floor widgets disappear; run the query (or start a new query using QA-outer) and observe the missing required parameters error with no way to enter Category."
+      ]
+    },
+    {
+      "id": "metabase-querying-454",
+      "name": "Nested saved-join expression uses original Quantity despite displaying qualified joined Quantity",
+      "severity": 3,
+      "summary": "Nested saved-join expression uses original Quantity despite displaying qualified joined Quantity.",
+      "expected": "For joined Count5 and joined Quantity13, the qualified joined Count / joined Quantity expression should produce5/13, approximately0.38.",
+      "actual": "QA Ratio is1 for this row and all matched rows, consistent with using original Quantity5 instead of displayed joined Quantity13. Reopened expression still displays [QA-NEST-Quantity-Counts - Quantity → Count] / [QA-NEST-Quantity-Counts - Quantity → Quantity].",
+      "reproSteps": [
+        "Create own saved Orders question; summarize Count by unbinned Quantity with Quantity >4.",
+        "Use summarized question as both sides of a left join, original Quantity = joined Count; filter original Quantity between5 and9, select original Quantity and both joined columns, then save.",
+        "Use saved join question as source for another notebook.",
+        "Add QA Ratio custom column using qualified joined Count divided by qualified joined Quantity. Save and run.",
+        "Observe row original Quantity5, joined Quantity13 and joined Count5; reopen expression and verify qualified joined names."
+      ]
+    },
+    {
+      "id": "metabase-querying-464",
+      "name": "Removing a parent join leaves orphaned Joined Category grouping in Summarize and causes the Visualize button to disappear",
+      "severity": 3,
+      "summary": "Removing a parent join leaves orphaned Joined Category grouping in Summarize and causes the Visualize button to disappear.",
+      "expected": "Removing the Products join should clean up dependent joins and their groupings (or prompt), leaving valid remaining joins and Summarize definitions with an available Visualize action.",
+      "actual": "The Products join and dependent SQL join are removed, but the 'Joined Category' grouping remains orphaned in Summarize and the bottom 'Visualize' button disappears.",
+      "reproSteps": [
+        "As Harbor Admin, create a fresh native SQL question named QA-JOIN-SQL-copy using Sample Database: SELECT p.CATEGORY AS \"Joined category\", COUNT(*) AS \"Order count\", SUM(o.TOTAL) AS \"Joined total\" FROM ORDERS o INNER JOIN PEOPLE u ON o.USER_ID = u.ID LEFT JOIN PRODUCTS p ON o.PRODUCT_ID = p.ID GROUP BY p.CATEGORY ORDER BY p.CATEGORY; run and save.",
+        "New > Question > Sample Database > Orders. LEFT join Products on Orders Product ID = Products ID.",
+        "Add LEFT join to the fresh saved SQL question on Products Category = Joined category. Add independent LEFT People join on Orders User ID = People ID before filtering/summarizing.",
+        "Filter Orders ID is 1. Summarize Count grouped by saved SQL Joined category. Execute (Widget Count 1).",
+        "Edit saved-SQL join comparison to != and execute (Doohickey, Gadget, Gizmo Count 1 each). Edit comparison to < and execute (empty category Count 1).",
+        "Switch saved-SQL join to INNER and execute (No results). Click Back to previous results, which restores prior LEFT notebook. Visualize and inspect table (empty category Count 1).",
+        "Open Editor. Remove the first Products join using its X. Observe Products and its dependent saved-SQL join removed but Joined Category grouping remains and Visualize action is absent."
+      ]
+    },
+    {
+      "id": "metabase-querying-470",
+      "name": "Relative hours input shows 1 after typing 0.5, but preview and applied filter use 5 hours",
+      "severity": 3,
+      "summary": "Relative hours input shows 1 after typing 0.5, but preview and applied filter use 5 hours.",
+      "expected": "The interval shown in the editor, preview, and applied filter should agree; fractional input should be rejected or normalized consistently.",
+      "actual": "After blur the input shows 1 hour, but preview spans October 23, 2026 12:00 PM–4:59 PM (five hours). Update applies previous 5 hours instead of the displayed 1 hour.",
+      "reproSteps": [
+        "Create a fresh question using New > Question > Sample Database > Products; save under a unique QA-FILTER name.",
+        "Add Created At relative date filter for previous 5 hours.",
+        "Reopen the filter, replace Interval with 0.5 and blur the input.",
+        "Observe the displayed interval and preview, then click Update filter."
+      ]
+    },
+    {
+      "id": "metabase-querying-455",
+      "name": "“Back to previous results” opens the notebook editor instead of returning to results",
+      "severity": 3,
+      "summary": "“Back to previous results” opens the notebook editor instead of returning to results.",
+      "expected": "The control labeled Back to previous results returns to the prior query results, or is labeled to describe returning to the editor.",
+      "actual": "It returns to the saved question’s notebook editor with Data, Filter and Visualize. No results table is displayed anywhere; Another Visualize action is needed to see the previous result.",
+      "reproSteps": [
+        "Create a Sample Database Orders question filtered to Created At May 15, 2027 at 8:04 AM; save as a separate QA fixture and inspect the one-row result.",
+        "Open Editor and change the date using the calendar to May 16, 2027 while retaining 8:04 AM; Update filter and Visualize to get No results.",
+        "Click Back to previous results and confirm Discard changes."
+      ]
+    },
+    {
+      "id": "metabase-querying-511",
+      "name": "Changing a self-join's right condition field silently deletes its existing joined-ID filter",
+      "severity": 3,
+      "summary": "Changing a self-join's right condition field silently deletes its existing joined-ID filter.",
+      "expected": "Changing the join comparison field on the same Products table should retain the independently configured joined Products ID=200 filter, which is still a valid field.",
+      "actual": "The Products ID is 200 filter remains after changing the left field to Title, but disappears entirely upon selecting Title on the right.",
+      "reproSteps": [
+        "Create a fresh QA-JOIN question using Sample Database > Products. Join Products again using Right outer join and source ID <= joined ID; add AND source ID=joined ID.",
+        "Add a filter on the joined Products ID equal to 200. Save under a fresh QA-JOIN name, run and reopen the editor (one result).",
+        "Remove the second equality join condition, leaving ID <= ID. Change the left condition field from ID to Title. Observe the joined-ID=200 filter is still present.",
+        "Change the right condition field from ID to Title. Observe the entire filter stage disappears, although the joined table remains Products."
+      ]
+    },
+    {
+      "id": "metabase-querying-512",
+      "name": "Drilling into a nonempty timezone-aware week returns No results",
+      "severity": 3,
+      "summary": "Drilling into a nonempty timezone-aware week returns No results.",
+      "expected": "Drilling into the Count 1 weekly group returns the underlying matching row.",
+      "actual": "Drilling into the Count 1 weekly group applies the filter 'EVENT_AT is Mar 1–7, 2026' and displays 'No results!' with 0 rows.",
+      "reproSteps": [
+        "Create and save a fresh SQL question on Sample Database with: SELECT 'spring_before' AS label, CAST('2026-03-08 01:59:59-05:00' AS TIMESTAMP WITH TIME ZONE) AS event_at UNION ALL SELECT 'spring_after', CAST('2026-03-08 03:00:00-04:00' AS TIMESTAMP WITH TIME ZONE) UNION ALL SELECT 'fall_first', CAST('2026-11-01 01:30:00-04:00' AS TIMESTAMP WITH TIME ZONE) UNION ALL SELECT 'fall_second', CAST('2026-11-01 01:30:00-05:00' AS TIMESTAMP WITH TIME ZONE) UNION ALL SELECT 'day_before', CAST('2026-03-07 23:59:59-05:00' AS TIMESTAMP WITH TIME ZONE) UNION ALL SELECT 'day_after', CAST('2026-03-09 00:00:00-04:00' AS TIMESTAMP WITH TIME ZONE).",
+        "Explore results, Summarize Count and group EVENT_AT by Week; Done shows three groups with counts 1, 3, 2.",
+        "Click the first Count 1 point, then See this QA-DATE DST source.",
+        "Observe the generated EVENT_AT Mar 1–7, 2026 filter and No results."
+      ]
+    },
+    {
+      "id": "metabase-querying-513",
+      "name": "Grouping timezone-aware timestamps by Month produces duplicate March and November groups",
+      "severity": 3,
+      "summary": "Grouping timezone-aware timestamps by Month produces duplicate March and November groups.",
+      "expected": "One March 2026 row with Count 4 and one November 2026 row with Count 2.",
+      "actual": "Preview displays four rows: two March 2026 rows with Count 2 and two November 2026 rows with Count 1, and the chart indicates 4 rows while plotting count 2 for March 2026.",
+      "reproSteps": [
+        "Create and save a fresh SQL question on Sample Database with: SELECT 'spring_before' AS label, CAST('2026-03-08 01:59:59-05:00' AS TIMESTAMP WITH TIME ZONE) AS event_at UNION ALL SELECT 'spring_after', CAST('2026-03-08 03:00:00-04:00' AS TIMESTAMP WITH TIME ZONE) UNION ALL SELECT 'fall_first', CAST('2026-11-01 01:30:00-04:00' AS TIMESTAMP WITH TIME ZONE) UNION ALL SELECT 'fall_second', CAST('2026-11-01 01:30:00-05:00' AS TIMESTAMP WITH TIME ZONE) UNION ALL SELECT 'day_before', CAST('2026-03-07 23:59:59-05:00' AS TIMESTAMP WITH TIME ZONE) UNION ALL SELECT 'day_after', CAST('2026-03-09 00:00:00-04:00' AS TIMESTAMP WITH TIME ZONE).",
+        "Explore results, summarize Count grouped by EVENT_AT Month.",
+        "Open Editor and click the preview triangle beside the Summarize stage."
+      ]
+    },
+    {
+      "id": "metabase-querying-514",
+      "name": "Replacing a post-aggregation join with Reviews corrupts the join configuration and returns all 1,112 reviews for a single product group",
+      "severity": 3,
+      "summary": "Replacing a post-aggregation join with Reviews corrupts the join configuration and returns all 1,112 reviews for a single product group.",
+      "expected": "Joining the aggregated Product ID group to Reviews on Product ID should join only matching reviews for Synergistic Granite Chair (product 3).",
+      "actual": "Configuring the join changes the join card to join Reviews to Reviews on Product ID = Product ID, and running the query returns 1,112 rows repeating the Synergistic Granite Chair group (Count 77) across reviews for all products.",
+      "reproSteps": [
+        "Save Products filtered to ID3 as a fresh question.",
+        "Build Orders inner join that saved source on Orders Product ID=source ID (manually reselect left Product ID if necessary).",
+        "Summarize Count grouped by Orders Product ID; verify one group for product3 Count77.",
+        "Add left join Products after aggregation using Product ID=Products ID; verify one row and optionally add Products Category is Doohickey filter.",
+        "Replace that final joined Products table with Reviews.",
+        "In newly prompted join condition choose Product ID under Summaries as left column and Reviews Product ID as right column.",
+        "Visualize."
+      ]
+    },
+    {
+      "id": "metabase-querying-515",
+      "name": "Query preview continues using old SQL after editing an inserted snippet",
+      "severity": 3,
+      "summary": "Query preview continues using old SQL after editing an inserted snippet.",
+      "expected": "Query preview should expand the snippet's current saved code, SELECT ID, EMAIL FROM ACCOUNTS.",
+      "actual": "The sidebar shows SELECT ID, EMAIL FROM ACCOUNTS, but reopened Query preview still shows SELECT EMAIL FROM ACCOUNTS.",
+      "reproSteps": [
+        "From Home choose New > SQL query using Sample Database.",
+        "Open SQL Snippets and create a fresh uniquely named QA-REF snippet with code SELECT EMAIL FROM ACCOUNTS and description QA reference composition fixture; Save.",
+        "Replace the query editor content with SELECT * FROM ( ) AS qa_ref. Place the cursor inside the parentheses and click the new snippet name to insert its reference.",
+        "Open Query preview using the eye icon; observe SELECT EMAIL FROM ACCOUNTS expanded inside the outer query, then close preview.",
+        "Expand the snippet sidebar row, choose Edit, change code to SELECT ID, EMAIL FROM ACCOUNTS and Save. Sidebar shows the changed code.",
+        "Reopen Query preview. It still expands SELECT EMAIL FROM ACCOUNTS instead of the saved SELECT ID, EMAIL FROM ACCOUNTS."
+      ]
+    },
+    {
+      "id": "metabase-querying-516",
+      "name": "Data Reference shows blank distinct-value rows for INVOICES.EXPECTED_INVOICE",
+      "severity": 1,
+      "summary": "Data Reference shows blank distinct-value rows for INVOICES.EXPECTED_INVOICE.",
+      "expected": "The distinct-values list should display readable values, as it does for category fields, so users can compose SQL predicates from the reference.",
+      "actual": "EXPECTED_INVOICE shows '2 distinct values' but its value rows are empty.",
+      "reproSteps": [
+        "Start fresh from Home > New > SQL query with Sample Database.",
+        "Open Learn about your data (Data Reference) sidebar if closed.",
+        "Open INVOICES table, then EXPECTED_INVOICE field.",
+        "Observe '2 distinct values' followed by blank rows instead of value labels."
+      ]
+    },
+    {
+      "id": "metabase-querying-518",
+      "name": "Equality cell filter on high-precision decimal returns no results for the clicked value",
+      "severity": 3,
+      "summary": "Equality cell filter on high-precision decimal returns no results for the clicked value.",
+      "expected": "The equality filter retains the clicked first row.",
+      "actual": "The derived question shows No results! and Showing 0 rows.",
+      "reproSteps": [
+        "From Home choose New > SQL query with Sample Database. Create an own-named question using SELECT 1 AS row_key, CAST(1234567890.123456789 AS DECIMAL(30,9)) AS precise_number UNION ALL SELECT 2, CAST(-0.000000001 AS DECIMAL(30,9)); run and save it.",
+        "In the result table click the first PRECISE_NUMBER cell, displayed as 1,234,567,890.12.",
+        "Choose = in Filter by this value."
+      ]
+    },
+    {
+      "id": "metabase-querying-519",
+      "name": "Saved SQL question with empty optional filters remains covered by pending-run overlay after running the query",
+      "severity": 3,
+      "summary": "Saved SQL question with empty optional filters remains covered by pending-run overlay after running the query.",
+      "expected": "Running the query removes the pending-run overlay, displaying active query results and the row count.",
+      "actual": "Clicking to run the query triggers execution ('Doing science...'), but the results remain faded underneath the centered play button overlay and no row count is shown.",
+      "reproSteps": [
+        "Home > New > SQL query; select Sample Database. Create SELECT ID, PRICE, CREATED_AT FROM PRODUCTS WHERE 1=1 [[AND {{price_filter}}]] [[AND {{date_filter}}]] ORDER BY ID.",
+        "Map price_filter as Field Filter Products.Price, widget Between. Map date_filter as Field Filter Products.Created At, widget All Options; leave defaults empty.",
+        "Set date January1–31 2026 and price Between29 and45; run and observe four matching rows. Save under a fresh own question name.",
+        "Reload and verify four rows. Reopen the saved question at its clean URL without parameter values.",
+        "Click centered Run button with both parameters empty. Repeat Run and wait for settled results."
+      ]
+    },
+    {
+      "id": "metabase-querying-520",
+      "name": "Removing a join leaves its dependent filter and makes the remaining summary fail",
+      "severity": 3,
+      "summary": "Removing a join leaves its dependent filter and makes the remaining summary fail.",
+      "expected": "Removing the join should remove or explicitly invalidate dependent filters and preserve an executable source-only summary; without the removed filter Sum of Count would be 4.",
+      "actual": "The removed join's filter remains as 'Label is not empty'. Visualize shows 'There was a problem with your question' rather than a result.",
+      "reproSteps": [
+        "Create Left native source via Home > New > SQL query: SELECT 1 AS K, 'L1' AS LABEL UNION ALL SELECT 1, 'L2' UNION ALL SELECT 2, 'L3' UNION ALL SELECT CAST(NULL AS INTEGER), 'LN'. Save with own unique name.",
+        "Create Right native source: SELECT 1 AS K, 'R1' AS LABEL UNION ALL SELECT 1, 'R2' UNION ALL SELECT 3, 'R3' UNION ALL SELECT CAST(NULL AS INTEGER), 'RN'. Save with own unique name.",
+        "Build a question from Left; summarize Count of rows by K, Don't bin; save grouped source. Three rows are null:1, 1:2, 2:1.",
+        "Build a new question from grouped source; left join Right with source K > Right K. Filter joined Right LABEL Not empty. Summarize Sum of source Count. Visualize returns 2.",
+        "Open Editor, hover Join data and click its remove X. The join disappears but 'Label is not empty' remains.",
+        "Click Visualize."
+      ]
+    },
+    {
+      "id": "metabase-querying-496",
+      "name": "Editing a custom column silently deletes dependent alias columns",
+      "severity": 3,
+      "summary": "Editing a custom column silently deletes dependent alias columns.",
+      "expected": "Preserve dependent alias columns, retarget references after rename, and recalculate them after formula edits.",
+      "actual": "Beta QA disappears immediately without warning and is absent from result columns and generated SQL. Before rename row1 showed58.93 in both columns; afterwards only Renamed Alpha QA remains. Changing only the referenced formula from [Price]*2 to [Price]*3 also deletes a direct-reference alias. Arithmetic dependent expressions such as [Alpha QA]*2 survive.",
+      "reproSteps": [
+        "Open /question/notebook and choose Sample Database > Products.",
+        "Add custom column Alpha QA with expression [Price] * 2.",
+        "Add custom column Beta QA with expression [Alpha QA].",
+        "Click Visualize and confirm both columns appear with matching values.",
+        "Open Editor, edit Alpha QA, change its name to Renamed Alpha QA, and click Update.",
+        "Observe the custom column pills, run Visualize, and inspect Editor > View SQL. Repeat with a new direct-reference column and change only the referenced column's formula."
+      ]
     }
   ]
 }
