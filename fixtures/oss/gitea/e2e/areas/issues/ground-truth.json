@@ -521,6 +521,97 @@
         "Check which issue is listed first."
       ],
       "severity": 3
+    },
+    {
+      "id": "gitea-label-filter-alt-enter-includes",
+      "name": "Alt+Enter in the Label filter includes the label instead of excluding it",
+      "summary": "The issue list's Label filter says 'Use alt + click/enter to exclude labels'. Alt+click excludes the label, but highlighting a label with the keyboard and pressing Alt+Enter includes it, so issues without that label disappear from the list.",
+      "expected": "Pressing Alt+Enter on a highlighted label excludes it (labels=-<id>), the same as Alt+click, so issues without that label stay in the list.",
+      "actual": "After typing 'documentation' in the Label filter, pressing ArrowDown and then Alt+Enter, the URL became labels=1 (included) and the list showed No results with 0 Open / 0 Closed, though unlabeled issues had been listed just before. Alt+click on the same label excluded it.",
+      "reproSteps": [
+        "Open a repository's issue list with some unlabeled issues.",
+        "Open the Label filter, type a label name, and press ArrowDown to highlight it.",
+        "Press Alt+Enter.",
+        "Check whether the URL has labels=-<id> (excluded) or labels=<id> (included), and whether unlabeled issues are still listed."
+      ],
+      "severity": 3
+    },
+    {
+      "id": "gitea-issue-ref-clear-from-tags-tab-does-nothing",
+      "name": "Clear current reference from the Tags tab leaves the issue's branch set",
+      "summary": "In an issue's Branch/Tag selector, 'Clear current reference' works from the Branches tab but does nothing from the Tags tab: the menu closes, no change is saved, and the previously selected branch stays on the issue. The Tags list has its own copy of the Clear item, and none of the Tags list's items have a click handler.",
+      "expected": "Clicking 'Clear current reference' removes the issue's branch or tag reference whichever tab of the selector is open.",
+      "actual": "With docs/release-owners saved on the issue, opening the selector's Tags tab and clicking 'Clear current reference' closed the menu without any request or timeline event; after refresh the branch was still set. The same item on the Branches tab cleared the reference. On the New Issue form the Tags tab's Clear item also left the chosen branch in place.",
+      "reproSteps": [
+        "Open an issue and select a branch in the sidebar's Branch/Tag selector; refresh to confirm it's saved.",
+        "Open the selector, switch to the Tags tab, and click 'Clear current reference'.",
+        "Refresh and check whether the branch is still shown, and whether the timeline records a change."
+      ],
+      "severity": 3,
+      "matchingGuidance": {
+        "relatedReference": {
+          "name": "Selecting a tag does not set the issue branch or tag reference",
+          "distinction": "Same cause (the Tags list items get no click handler), but this entry is the 'Clear current reference' item on the Tags tab, which leaves an existing branch in place, not selecting a tag."
+        }
+      }
+    },
+    {
+      "id": "gitea-org-issues-assigned-search-omits-issue",
+      "name": "Organization Issues 'Assigned to you' search omits a matching assigned issue",
+      "summary": "On an organization's Issues page, 'Assigned to you' with a search query returns no results even though an issue assigned to the signed-in user matches it; the same query under 'In your repositories' lists the issue.",
+      "expected": "An issue assigned to the signed-in user stays in the organization's 'Assigned to you' list when a search query matches it.",
+      "actual": "The organization's 'In your repositories' list showed 'ORG Alpha search needle' for a Words search of 'needle Alpha'. Switching to 'Assigned to you' with the same query showed 0 and No results, while the issue's Assignees still listed the user.",
+      "reproSteps": [
+        "In an organization repository, create an issue and assign it to yourself.",
+        "Open the organization's Issues page and search for words from the issue's title.",
+        "Confirm the issue appears under 'In your repositories', then switch to 'Assigned to you' with the same query."
+      ],
+      "severity": 3,
+      "matchingGuidance": {
+        "relatedReference": {
+          "name": "Assigned-to-you exact search omits a matching issue",
+          "distinction": "Same cause (the search index doesn't store assignees), but this entry is the organization Issues page rather than the global Issues dashboard."
+        }
+      }
+    },
+    {
+      "id": "gitea-cancelled-description-draft-returns",
+      "name": "Cancelled issue description or comment edit comes back when Edit is reopened",
+      "summary": "After editing an issue's description (or a comment) and clicking Cancel, the saved text stays rendered, but reopening Edit without refreshing shows the cancelled draft instead of the saved text. Clicking Update from there saves the discarded draft.",
+      "expected": "Cancel discards the edit, so reopening the editor shows the currently saved description or comment.",
+      "actual": "With the saved description 'create-edit persisted baseline', the user changed it to 'create-edit discarded edit' and clicked Cancel; the page still showed the baseline, but reopening Edit showed 'create-edit discarded edit'.",
+      "reproSteps": [
+        "Open an issue and choose Edit on its description (or on a comment).",
+        "Change the text and click Cancel; confirm the saved text is still shown.",
+        "Without refreshing, choose Edit again and check what the editor contains."
+      ],
+      "severity": 3,
+      "matchingGuidance": {
+        "relatedReference": {
+          "name": "Canceled issue title draft reappears when editing again",
+          "distinction": "Same symptom, but this entry is the description or comment editor (separate code), not the issue title."
+        }
+      }
+    },
+    {
+      "id": "gitea-farthest-due-drops-issue-in-undated-milestone",
+      "name": "Farthest due date sort drops an issue below earlier dates when it is in a milestone with no due date",
+      "summary": "Sorting issues by Farthest due date treats an issue as having no due date at all when it belongs to a milestone without a due date, so it falls below issues with earlier dates (and among undated issues). Nearest due date orders the same issues correctly. A milestone with no due date is stored with a due date of 0, and the Farthest sort uses that 0 instead of the issue's own date.",
+      "expected": "Farthest due date lists issues by their own due dates, latest first (for example January 2027 before December 2026 before November 2026), whether or not an issue is in a milestone that has no due date.",
+      "actual": "On the Issues list sorted by Farthest due date, the December 20, 2026 issue was first and the November 15, 2026 issue second, while the January 1, 2027 issue appeared fifth, below two issues with no due date. Nearest due date listed November, December, January correctly. Only the January issue was in a milestone, and that milestone had no due date.",
+      "reproSteps": [
+        "In one repository, give three open issues due dates of November 15, 2026, December 20, 2026 and January 1, 2027.",
+        "Add only the January 1, 2027 issue to a milestone that has no due date.",
+        "Open the Issues list (repository or global Issues dashboard) and choose Sort > Farthest due date.",
+        "Check whether January 1, 2027 is listed first; compare with Sort > Nearest due date, and with the January issue removed from the milestone."
+      ],
+      "severity": 3,
+      "matchingGuidance": {
+        "relatedReference": {
+          "name": "Farthest due sort uses an undated milestone as the issue date",
+          "distinction": "Same cause, but here only one issue is in the undated milestone, so it drops below issues with earlier due dates; the related entry has all issues in that milestone falling back to creation order."
+        }
+      }
     }
   ]
 }
