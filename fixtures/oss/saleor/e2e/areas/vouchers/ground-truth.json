@@ -1,0 +1,726 @@
+{
+  "bugs": [
+    {
+      "name": "Assigning an eligible category or product crashes the voucher editor",
+      "summary": "Assigning an eligible category or product while creating a Products-scope voucher replaces the editor with an unexpected-error screen.",
+      "expected": "The selected category or product should be assigned and the voucher editor should remain usable.",
+      "actual": "Confirming an Accessories category or Monospace Tee product assignment displays “We’ve encountered an unexpected error” and the editor remains unusable.",
+      "reproSteps": [
+        "Use the signed-in Saleor admin session for admin@example.com (restored from the provided saved authenticated session; no interactive sign-in was needed).",
+        "Navigate to /discounts/vouchers and select Create voucher. The new editor is at /discounts/vouchers/add.",
+        "In the draft, generate one voucher code, assign Channel-USD, and select Products under Discount.",
+        "Open Eligible products and choose Assign in the Categories row. The assignment dialog URL is /discounts/vouchers/add?action=assign-category.",
+        "Select the existing seeded Accessories category and click “Assign (1 item).” Observe the unexpected-error screen at /discounts/vouchers/add; it remains visible after five seconds.",
+        "Variant: in a new Products-scope voucher, open Eligible products > Products, select Monospace Tee, and click Assign (1 item); the same unexpected-error screen appears."
+      ],
+      "severity": 5
+    },
+    {
+      "name": "Voucher setup checklist overcounts manually added codes",
+      "summary": "A fresh voucher with one manually added code was labeled “2 codes ready” in the setup checklist, while its code table contained one row; after saving, the voucher still contained only that one code. Reported variant: The voucher setup summary reports 6 codes ready after generating a quantity of 3, while the voucher-code table shows only three draft rows; this persisted on a second fresh run after settling. Count this as the same reference rather than a separate bug.",
+      "expected": "After adding one manual code, the setup checklist should report one code ready, matching the single row in the Voucher codes table.",
+      "actual": "The checklist displayed “2 codes ready” while the table contained only the one manual Draft code row. I completed the safe creation flow; the saved voucher still had only that one code, now Active.",
+      "reproSteps": [
+        "Start signed in to Saleor Dashboard as admin@example.com using the provided admin session; no credentials were entered. Open the observed vouchers listing URL: /discounts/vouchers?asc=true&sort=code.",
+        "Click Create voucher and name the disposable voucher mo-saleor-04-promotions-voucher-checklist-20260620-1.",
+        "Under Voucher codes, click Add code > Manual code, enter mo-saleor-04-promotions-code-checklist-20260620-1, and confirm.",
+        "Before saving, compare the Add a code checklist status with the visible Voucher codes table: it says “2 codes ready,” while the table contains one Draft row for the manual code.",
+        "To complete the safe creation flow, assign Channel-USD, enter a 10% percentage discount, and click Save.",
+        "On the saved voucher at /discounts/vouchers/Vm91Y2hlcjoxMw%3D%3D, verify the table still contains only the single code, now Active.",
+        "Reported variant: At a 390 × 844 CSS-pixel viewport, load the supplied saved admin authentication state to enter the authorized admin session; no credentials were typed. Open /discounts/vouchers?asc=true&sort=code.",
+        "Reported variant: Click Create voucher, opening /discounts/vouchers/add.",
+        "Reported variant: Scroll to Details and enter a fresh voucher name, for example `voucher-verify-20261008-b91e`.",
+        "Reported variant: In Voucher codes, click + Add code and choose Generate codes.",
+        "Reported variant: Set Code Quantity to 3 and enter the fresh prefix `VOUCHER-VERIFY-MOB-B91E`; click Confirm once.",
+        "Reported variant: Observe the setup summary: it says “6 codes ready.” Scroll to Voucher codes and observe exactly three draft rows. Return to the setup summary and wait five seconds; it still says “6 codes ready.”"
+      ],
+      "severity": 3,
+      "reviewedVariants": [
+        {
+          "name": "Voucher generation reports twice the requested code count",
+          "expected": "After generating 3 voucher codes, the setup summary should indicate that 3 codes are ready, consistent with the requested quantity and the generated-code rows.",
+          "actual": "After a single confirmation with Code Quantity set to 3, the setup summary visibly said “6 codes ready,” while the Voucher codes table showed exactly three draft rows. The mismatch persisted after a five-second wait and recurred with a second fresh voucher name and prefix."
+        }
+      ]
+    },
+    {
+      "name": "Mobile voucher Add codes checklist shortcut fails to scroll to Voucher codes",
+      "summary": "At 390 × 844, clicking Add codes in the fresh-voucher setup checklist leaves the viewport unchanged instead of scrolling to the Voucher codes section. The same mobile shortcut failure was independently reproduced in two Mo runs.",
+      "expected": "When no voucher codes have been added, clicking Add codes in the setup checklist should scroll the Voucher codes section into view so the administrator can use its code-entry controls.",
+      "actual": "Repeated Add codes clicks leave the checklist and viewport unchanged at 390 × 844, including after dismissing the Saleor Pulse announcement. Manually scrolling to Voucher codes and choosing Add code > Manual code opens the working code-entry dialog. The second reproduction also successfully adds a draft code through that manual path.",
+      "reproSteps": [
+        "Set the viewport to 390 × 844 CSS pixels, sign in as the fixture administrator and open Discounts > Vouchers.",
+        "Choose Create voucher to open /discounts/vouchers/add. Use a fresh draft with no voucher codes and expand the Add a code setup-checklist step if needed.",
+        "Click Add codes in the setup checklist and wait for scrolling to settle. Click it again and observe that the viewport remains on the checklist instead of reaching Voucher codes.",
+        "Dismiss the Saleor Pulse announcement if present and repeat Add codes. Observe the same unchanged viewport.",
+        "Scroll manually to Voucher codes and choose Add code > Manual code. Observe that the code-entry dialog opens. In the second recorded reproduction, entering a fresh code and confirming also adds the draft code."
+      ],
+      "severity": 3,
+      "matchingGuidance": {
+        "claimScope": "One mobile Add codes scroll failure reported twice. Opening a modal directly is not the expected shortcut action. The existing mobile Set value reference targets a different section under different prerequisites."
+      }
+    },
+    {
+      "name": "Voucher Name sort does not order rows by visible name",
+      "summary": "The descending Name indicator updates, but stable visible voucher names remain out of descending name order. Row-count changes also occurred during concurrent fixture churn, so I am not attributing the reported missing-row symptom to sorting.",
+      "expected": "After clicking Name once from ascending order, the visible voucher rows should be ordered by their displayed names in descending order, with the visible voucher set preserved.",
+      "actual": "The Name indicator changed to descending and the URL became /discounts/vouchers?asc=false&sort=code, but rows were not in descending visible-name order: voucher names beginning “mo-saleor-04-promotions-voucher…” appeared before “Percentage order discount” and “Single Use Vouchers.” This relative order persisted when I repeated the sort with a stable seven-row subset. Fixture rows appeared and disappeared during the run, so the changing row count is not reliable evidence that sorting itself dropped a voucher.",
+      "reproSteps": [
+        "Sign in as the fixture Saleor admin. Open Discounts > Vouchers and confirm the Name column is initially ascending at /discounts/vouchers?asc=true&sort=code. Existing vouchers were treated as read-only.",
+        "Click the Name column heading once.",
+        "Inspect the descending indicator and visible rows at /discounts/vouchers?asc=false&sort=code; compare the displayed names, including the voucher-checklist and voucher-c1 rows, Percentage order discount, and Single Use Vouchers."
+      ],
+      "severity": 3
+    },
+    {
+      "name": "Percentage above 100 persists after changing a voucher from fixed amount to percentage",
+      "summary": "A saved Entire order voucher with PLN 50 and USD 20 fixed discounts accepts a switch to Percentage with PLN 120 and USD 15. Save reports success and a reload retains the invalid PLN 120% value.",
+      "expected": "Percentage discounts must not exceed 100% for any assigned channel. Saving PLN 120% should report a validation error rather than successfully persist that percentage.",
+      "actual": "Save displays “Voucher updated.” After reloading, the saved voucher still uses Percentage with Channel-PLN 120% and Channel-USD 15%.",
+      "reproSteps": [
+        "Sign in as the fixture administrator and create a disposable voucher with a unique name and manual code.",
+        "Assign both Channel-PLN and Channel-USD. Select Entire order and Fixed amount, enter PLN 50 and USD 20, and save with a valid active schedule. Wait for “Voucher created” and for Save to become disabled.",
+        "Change the discount amount to Percentage. Enter PLN 120 and USD 15, then click Save.",
+        "Observe “Voucher updated” and wait for Save to become disabled.",
+        "Reload the saved voucher detail and inspect Discount. Observe Percentage with Channel-PLN 120% and Channel-USD 15%."
+      ],
+      "severity": 3
+    },
+    {
+      "name": "Invalid voucher percentage persists an incomplete voucher and reserves its code",
+      "summary": "A failed 120% voucher save still creates a voucher with one code and no channel discount; correcting the percentage then fails because that code already exists.",
+      "expected": "An invalid percentage should reject the entire voucher creation without saving the voucher or reserving its code.",
+      "actual": "Saving a voucher with a 120% Channel-USD discount stayed on Create Voucher and showed `Invalid percentage value`. Retrying at 10% showed `Promo code already exists`. After leaving the form, the voucher GraphQL list contained the test voucher with `codesCount.totalCount = 1` and no channel listings. The claimed Active list badge was not visible in this local run.",
+      "reproSteps": [
+        "Open Discounts > Vouchers > Create voucher in the local Saleor dashboard.",
+        "Enter a unique name, add a manual code, assign Channel-USD, and set its percentage to 120.",
+        "Select Save and observe `Invalid percentage value` while remaining on the create form.",
+        "Change the percentage to 10 and select Save again; observe the duplicate-code error.",
+        "Return to the voucher list and inspect its GraphQL response: the named voucher exists with one code and no channel listing."
+      ],
+      "severity": 3
+    },
+    {
+      "name": "Voucher minimum spend list column lacks the value or Varies by channel summary",
+      "summary": "Without a selected channel, Min. Spent is blank despite a saved minimum. It should summarize assigned channel values like Offer: show the currency and amount when unambiguous, or Varies by channel when the values differ.",
+      "expected": "In the unfiltered voucher list, Min. Spent should use the same summary pattern as Offer. Show the currency and saved minimum when there is one unambiguous currency/amount across assigned channels, such as USD50.25. When channel amounts or currencies differ, show Varies by channel. The absence of a selected channel should not silently blank the summary. A selected channel may still show its specific minimum.",
+      "actual": "A voucher assigned only to Channel-USD retains its USD50.25 minimum after saving and reloading. Without a channel filter, Min. Spent is blank while Offer displays USD12.34. Selecting Channel-USD makes the already saved USD50.25 minimum appear. Offer already supports labeled currency/amount and Varies by channel summaries; Min. Spent has no equivalent unfiltered summary.",
+      "reproSteps": [
+        "Create and save a disposable voucher with a unique name and code, assigned only to Channel-USD. Use Entire order, Fixed amount USD12.34 and Minimal order value USD50.25.",
+        "Reload the saved detail and verify the enabled USD50.25 minimum remains saved.",
+        "Return to All vouchers, enable Min. Spent using Pick columns, and find the voucher without selecting a channel filter.",
+        "Compare the two columns: Offer displays the currency and USD12.34 amount, while Min. Spent is empty instead of summarizing its saved USD50.25 minimum.",
+        "Apply Channel is Channel-USD and verify the same Min. Spent cell now displays USD50.25. The minimum was saved throughout; the missing behavior is the unfiltered value/summary."
+      ],
+      "severity": 1,
+      "matchNotes": {
+        "acceptExample": "Min. Spent is blank despite a verified saved minimum and should show that value/currency or a meaningful summary when channel values differ.",
+        "summaryPattern": "Follow Offer: display the unambiguous currency and amount; display Varies by channel when amounts or currencies differ. The supplied multi-channel Offer screenshot illustrates the pattern, not a new browser reproduction of every minimum-spend branch.",
+        "sortingExample": "Clicking the column header to sort can show Sorting by this column requires active filter: Channel. That explains sorting and does not replace the missing value/Varies by channel display.",
+        "scope": "Credit a saved-minimum omission report when the saved value and blank list cell are established. Do not require the phrase missing indicator or reproduction of every summary branch. This reference does not cover a voucher with no configured minimum, and it claims no data loss."
+      }
+    },
+    {
+      "name": "Mobile voucher search overflows the viewport and shifts the main content sideways",
+      "summary": "At 390 × 844, the voucher search control extends beyond the right edge. Bringing its offscreen editing area into view shifts the hidden-overflow main content pane sideways, moving the heading and Filters control offscreen. This occurs through ordinary typing of a long query as well as the locator-based search click in the recorded flow.",
+      "expected": "The voucher search control should fit the available mobile width and remain usable without moving the surrounding heading and filter controls outside their visible content pane.",
+      "actual": "Before interaction, the text input extends to about x=533 in a 390px viewport. Clicking its visible portion alone keeps the pane in place, but typing a long query moves the main pane to scrollLeft=143 while window.scrollX remains 0. Bringing the full input into view with a locator click also causes that shift. Earlier content moves out of view, and a normal horizontal wheel gesture does not restore the pane.",
+      "reproSteps": [
+        "Sign in as the fixture administrator, set the viewport to 390 × 844 CSS pixels and open Discounts > Vouchers with a populated list.",
+        "Observe that the Search vouchers control extends past the viewport’s right edge.",
+        "Click the visible portion of Search vouchers using an ordinary screen-coordinate click. Type a long unmatched query, such as LIST-no-match-987- followed by 64 lowercase a characters, so the editing caret reaches the input’s offscreen area.",
+        "Observe the surrounding main content shift sideways, moving the heading and Filters control out of view. This is a shift of the containing pane, not merely internal scrolling of the input text.",
+        "Try scrolling horizontally left over the content with an ordinary horizontal wheel gesture. Observe that the shifted main pane does not return to its initial position."
+      ],
+      "severity": 3,
+      "matchingGuidance": {
+        "claimScope": "Overflowing mobile search control and surrounding-content displacement. The later empty-state message clipping is a separate approved observable consequence and is not required to match this reference."
+      }
+    },
+    {
+      "name": "Mobile voucher empty search result keeps a horizontal offset and clips the message",
+      "summary": "After voucher search shifts the mobile main pane sideways, zero results replace the grid but retain the pane’s horizontal offset. The leading “No” in “No vouchers found” is clipped, leaving the misleading visible fragment “vouchers found.”",
+      "expected": "After a search returns no rows, the complete “No vouchers found” message should remain readable within the mobile content pane. Removing the results grid should not leave the empty state clipped at a stale horizontal offset.",
+      "actual": "At 390 × 844, searching after the main pane has shifted to scrollLeft=143 removes the grid and its horizontal scrollbar while preserving that outer offset. The empty message begins around x=10.47 inside a pane clipped from x=33, hiding “No.” A leftward horizontal wheel gesture does not restore it. A fresh load of the same empty query without focusing search displays the full message.",
+      "reproSteps": [
+        "Sign in as the fixture administrator, set the viewport to 390 × 844 CSS pixels and open Discounts > Vouchers with a populated list.",
+        "Click the visible search field and type a long unmatched query, for example LIST-no-match-987- followed by 64 lowercase a characters, until the main content shifts sideways. The native Mo reproduction reaches the same shifted state when its locator-based click brings the search field into view before typing LIST-no-match-987.",
+        "Wait for the search to settle with no matching rows. Observe that the grid and its scrollbar are replaced by the empty state.",
+        "Inspect the empty message: its leading “No” is clipped at the left boundary and only “vouchers found” is readable.",
+        "Attempt an ordinary horizontal wheel gesture to the left over the empty content and observe that the message remains clipped. Loading the same query in a fresh, unfocused page is a control that displays the complete message."
+      ],
+      "severity": 1,
+      "matchingGuidance": {
+        "claimScope": "A no-result message clipped after mobile search shifts the containing pane. A missing grid scrollbar alone is not this bug: the grid is intentionally replaced for empty results. No claim is made that every empty search is clipped or that the message text is absent from the DOM."
+      }
+    },
+    {
+      "name": "Country assignment dialog uses a channel label for its select-all checkbox",
+      "summary": "Country assignment dialog uses a channel label for its select-all checkbox",
+      "expected": "The select-all checkbox in the Assign Countries dialog is labeled to indicate that it selects all countries.",
+      "actual": "The dialog is titled Assign Countries and lists countries, but the checkbox label says “Select all channels.”",
+      "reproSteps": [
+        "/discounts/vouchers/add",
+        "Sign in to the dashboard as an admin using the authorized saved session.",
+        "Open the create-voucher page at /discounts/vouchers/add.",
+        "Select the Free shipping discount scope.",
+        "In the Countries section, click Assign.",
+        "Observe the select-all checkbox label in the Assign Countries dialog."
+      ],
+      "severity": 1
+    },
+    {
+      "name": "Percentage voucher filter includes the Free shipping voucher",
+      "summary": "The Percentage discount-type filter persistently returns the Free shipping voucher alongside percentage-off vouchers, including after refresh.",
+      "expected": "Applying Discount type is Percentage should show only vouchers of the Percentage type.",
+      "actual": "The filtered results include “Free shipping” with the “Free shipping” offer, as well as “Single Use Vouchers” with “10% off” and “Percentage order discount” with “5% off.” The selected Discount type is Percentage, and the Free shipping result remains after refresh.",
+      "reproSteps": [
+        "Open /discounts/vouchers.",
+        "Click Filters and set the condition to Discount type is Percentage.",
+        "Click Apply and inspect the voucher names and offers; note that Free shipping appears with a Free shipping offer alongside percentage-off vouchers.",
+        "Refresh the page, reopen Filters to confirm Discount type is Percentage, and verify that the Free shipping voucher remains in the results."
+      ],
+      "severity": 3
+    },
+    {
+      "name": "Voucher availability chooser is titled “Manage Products Channel Availability”",
+      "summary": "Voucher availability chooser is titled “Manage Products Channel Availability”",
+      "expected": "The channel-selection dialog title identifies voucher availability, or uses a generic channel-availability label.",
+      "actual": "The dialog opened from a voucher’s Availability card is titled “Manage Products Channel Availability.”",
+      "reproSteps": [
+        "/discounts/vouchers/add",
+        "The current screenshot shows the voucher creation form behind the channel chooser; the chooser was opened from this voucher's Availability card.",
+        "Sign in to the Saleor Dashboard as an admin and open /discounts/vouchers/add.",
+        "Scroll to the Availability card and click Manage.",
+        "Inspect the title of the channel-selection dialog."
+      ],
+      "severity": 1
+    },
+    {
+      "id": "mo-60m-saleor-37",
+      "name": "The saved voucher's empty-country state displays contradictory country-scope copy.",
+      "summary": "The saved voucher's empty-country state displays contradictory country-scope copy.",
+      "expected": "With no countries assigned, the country-scope copy should consistently indicate that the voucher applies everywhere, or otherwise make clear that the section heading is generic.",
+      "actual": "The Countries section says “Voucher is limited to these countries” even though its empty-state message directly below says “Voucher applies to all countries.”",
+      "reproSteps": [
+        "/vouchers/",
+        "Use the browser only. Work only with a newly created voucher/code prefixed bb-voucherfreeshippingall-*. Do not change authentication, and do not use source code, benchmarks, ground truth, or prior evaluation reports.",
+        "Open the target URL and, while signed in as an admin, navigate through Discounts > Vouchers using the UI.",
+        "Create a fresh voucher with a unique manual code prefixed bb-voucherfreeshippingall- and assign one available sales channel.",
+        "Choose Free shipping and leave Countries unassigned, then save the voucher.",
+        "Open the saved voucher's Countries section and inspect the displayed country-scope text."
+      ],
+      "severity": 1
+    },
+    {
+      "name": "Voucher Set value shortcut fails to scroll to the discount field on mobile",
+      "summary": "At 390 × 844, the voucher setup card’s Set value shortcut leaves the discount field below the viewport; the admin must scroll manually to reach it.",
+      "expected": "After codes and a channel are assigned, activating Set value should take the admin to the discount-value entry so it can be configured. The card itself labels this outstanding requirement “Set the discount value,” says to enter a percentage or fixed amount, and presents “Set value →”.",
+      "actual": "With codes ready and Channel-USD assigned, the setup card shows 2 of 3. Clicking Set value twice leaves Discount amount below the viewport, including after waiting five seconds. Manually scrolling reaches the field.",
+      "reproSteps": [
+        "Set the viewport to 390 × 844 CSS pixels, sign in as the fixture administrator and open Discounts > Vouchers.",
+        "Choose Create voucher and enter a fresh voucher name.",
+        "In Voucher codes, choose Add code > Generate codes, enter quantity 1 and confirm.",
+        "Choose Manage channels in the setup card, select Channel-USD and confirm. The card shows 2 of 3 requirements complete.",
+        "Click Set value and wait for the page to settle. Click it again and wait five seconds. Observe that Discount amount remains below the viewport.",
+        "Scroll manually to Discount > Discount amount and observe that the field is reachable."
+      ],
+      "severity": 3
+    },
+    {
+      "name": "Tablet voucher Codes navigation jumps to the top instead of its target section",
+      "summary": "At 768 × 1024, clicking Codes in the voucher-create section navigation jumps the viewport to the page top instead of aligning the Voucher codes section.",
+      "expected": "Selecting Codes in the section navigation should scroll the Voucher codes section into view, preserving useful access to its code-entry controls.",
+      "actual": "From a scrolled position with the Details and Voucher codes cards visible, clicking Codes abruptly returns the viewport to the top. The setup checklist, Schedule and Availability become visible while Voucher codes and the section navigation move out of view. Manual scrolling can still reach the controls.",
+      "reproSteps": [
+        "Set the viewport to 768 × 1024 CSS pixels, sign in as the fixture administrator and open Discounts > Vouchers.",
+        "Choose Create voucher to open /discounts/vouchers/add and dismiss the Saleor Pulse announcement if present.",
+        "Scroll down until the section navigation and Details/Voucher codes cards are visible. The independent reproduction scrolled approximately 630 pixels.",
+        "Click Codes in the section navigation and wait for scrolling to settle.",
+        "Observe that the viewport jumps to the page top, showing the setup checklist and Schedule/Availability panels instead of aligning Voucher codes. Scroll manually to reach Voucher codes again."
+      ],
+      "severity": 3,
+      "matchingGuidance": {
+        "claimScope": "Tablet Codes section-navigation click on a fresh voucher. Do not require or infer failures for every navigation item. This differs from the mobile Add codes checklist and existing Set value shortcut in control, target conditions and visible outcome, while sharing the scroll helper."
+      }
+    },
+    {
+      "name": "Tablet voucher Requirements navigation fails to scroll to Minimum Requirements",
+      "summary": "At 768 × 1024, selecting Requirements in a saved voucher’s section navigation leaves earlier form sections visible instead of bringing Minimum Requirements into view. The user directly reviewed the native Mo reproduction and confirmed this scroll failure.",
+      "expected": "Selecting Requirements in the saved voucher editor’s section navigation should bring the Minimum Requirements section and its controls into view.",
+      "actual": "After clicking Requirements at 768 × 1024, Details, Voucher codes and Discount remain visible while Minimum Requirements is not brought into view. Manually scrolling down reveals the Minimum Requirements controls.",
+      "reproSteps": [
+        "Set the viewport to 768 × 1024 CSS pixels and sign in as the fixture administrator.",
+        "Create and save a disposable Entire order percentage voucher with a unique name and code and an assigned channel. Reopen it from the Vouchers list.",
+        "From the top of the saved voucher editor, click Requirements in the section navigation and wait for scrolling to settle.",
+        "Observe that the view still shows Details, Voucher codes and Discount instead of bringing Minimum Requirements into view.",
+        "Scroll down manually and observe that the Minimum Requirements card and its controls are present and reachable."
+      ],
+      "severity": 3,
+      "matchingGuidance": {
+        "claimScope": "Requirements navigation in a saved voucher at tablet width. A particular active-marker transition is not required; the observable failure is not reaching Minimum Requirements. Mobile Add codes, tablet create-page Codes navigation and mobile Set value exercise different controls or starting states with the same shared helper."
+      }
+    },
+    {
+      "id": "codex-60m-saleor-6",
+      "name": "Saving a voucher leaves false unsaved warnings for disabled fields",
+      "summary": "Values entered into a requirement or end-date control remain in the dirty-state comparison after that control is switched off. Successful saves persist the enabled settings but leave false warnings and repeat-save/reload prompts.",
+      "expected": "A successful Save clears the unsaved state, including ignored values in disabled controls.",
+      "actual": "Voucher updated appears, but Unsaved changes: General settings or Schedule remains and Save stays enabled. Repeated saves do not clear it. A second tab shows the final settings saved with Save disabled, while reloading the original prompts beforeunload.",
+      "reproSteps": [
+        "Sign in and open an existing voucher with Channel-PLN pricing, Minimal order value enabled at PLN100, and Minimum quantity of items off. Start with Save disabled.",
+        "Enable Minimum quantity of items, enter 3, then enable Minimal order value again, retaining PLN100 and switching quantity off.",
+        "Click Save and wait for Voucher updated.",
+        "Observe Unsaved changes: General settings remains; repeat Save and observe the same.",
+        "Open the voucher in another tab to confirm the settings persisted, then reload the original to see the false unsaved warning.",
+        "Alternate trigger: enable Set end date, change the date, turn Set end date off, make another valid edit, and Save. The success toast appears but Unsaved changes: Schedule remains."
+      ],
+      "severity": 3
+    },
+    {
+      "name": "Saving zero minimum order value leaves false unsaved warnings after success",
+      "summary": "Enabling Minimal order value with a channel amount of 0 on a saved voucher shows “Voucher updated” after Save, but retains an enabled zero draft, “Unsaved changes: General settings,” an enabled Save button and a false leave warning. Reopening shows the requirement disabled with a clean editor. Reviewed item-quantity variant: enabling Minimum quantity of items at 0 also reports success while retaining the invalid draft, General settings dirty state and leave warning. Count these as one save-state reference.",
+      "expected": "A successful Save should reconcile the editor with the persisted requirement and clear false unsaved indicators and navigation warnings. If zero is displayed as no minimum requirement after reopening, the live editor should represent that saved state consistently and cleanly.",
+      "actual": "Starting with no minimum requirement, enabling Minimal order value and saving Channel-USD at 0 displays “Voucher updated.” After settling, the enabled 0.00 USD draft, General settings dirty banner and enabled Save remain. Back opens “Leave without saving changes?” After Ignore changes and reopening, Minimal order value is off and Save is disabled. Zero rendering as disabled is not itself the defect. Item-quantity variant: enabling Minimum quantity of items at 0 shows “Enter at least 1 item.” Save nevertheless displays “Voucher updated” while the enabled zero draft, inline error and General settings dirty state remain; leaving still prompts to discard changes.",
+      "reproSteps": [
+        "Sign in as the fixture administrator. Create and save a disposable voucher with a unique name and manual code, Channel-USD assigned, an Entire order percentage discount, and both minimum requirements disabled.",
+        "Reopen the saved voucher and establish a clean baseline with Save disabled. Open Requirements.",
+        "Enable Minimal order value, not Minimum quantity of items, and enter 0 for Channel-USD.",
+        "Click Save and wait at least three seconds. Observe “Voucher updated” while the enabled 0.00 USD draft, “Unsaved changes: General settings” and enabled Save remain.",
+        "Click Back. Observe “Leave without saving changes?” Choose Ignore changes, reopen the voucher and inspect Requirements: Minimal order value is off and Save is disabled.",
+        "Item-quantity variant: from a saved voucher with no minimum requirement and a disabled Save button, enable Minimum quantity of items instead of Minimal order value and enter 0.",
+        "Click Save and observe “Voucher updated” together with “Enter at least 1 item,” the retained enabled zero draft and unsaved General settings state. Attempt to leave and observe the false discard warning. This is another trigger of this same save-state reference, not another independently scored bug."
+      ],
+      "severity": 3,
+      "reviewedVariants": [
+        {
+          "name": "Invalid zero minimum quantity save shows success while leaving the voucher change unsaved",
+          "summary": "Setting active Minimum quantity of items to 0 reports a successful Save but retains an invalid, dirty draft and a false navigation warning.",
+          "expected": "A successful Save should reconcile the editor with the saved requirement and clear false unsaved state. If zero is invalid for the enabled quantity control, reject the edit without a success notification; if zero means no minimum, display the clean saved off state.",
+          "actual": "Minimum quantity of items is enabled at 0 with “Enter at least 1 item.” After Save, “Voucher updated” appears while the validation message and unsaved General settings state remain. Leaving prompts to discard changes. Reopening with the requirement off does not establish data loss."
+        }
+      ],
+      "matchingGuidance": {
+        "claimScope": "Zero monetary Minimal order value or zero Minimum quantity of items enabled on a saved voucher. Match successful Save combined with retained enabled zero draft and false dirty/navigation state. The item-quantity trigger additionally retains its inline minimum-one error. Reopening either requirement disabled alone does not establish a defect or data loss. Group order-value and item-quantity reports of this same save-state failure under this one reference. Usage-limit behavior and fields explicitly switched off before Save are separate references.",
+        "relatedReference": "Saving a voucher leaves false unsaved warnings for disabled fields shares the false-dirty symptom family. That reference starts with populated controls then switches them off; this approved case enables an ORDER requirement at zero. Shared form code alone does not establish an exact duplicate."
+      }
+    },
+    {
+      "name": "Failed voucher edit persists a rename without clear partial-save feedback",
+      "summary": "Renaming an existing percentage voucher while submitting an invalid120% channel discount reports a failed Save, but the new name is already persisted. The UI does not clearly disclose that the name saved while the channel change failed.",
+      "expected": "A failed edit should preserve the previous saved name and percentages, or clearly identify partial success: the name saved while the percentage change failed and remains a draft. Generic failed-save feedback and a Channels-only unsaved label should not leave it ambiguous which edits have already persisted before the user chooses to discard or keep editing.",
+      "actual": "Starting with a saved original name and PLN10%/USD15%, submitting a new name with PLN120% shows Invalid percentage value and Couldn’t save voucher. Only Channels remains marked unsaved, but there is no explicit partial-success explanation. After Back > Ignore changes and reopening, the NEW name persists while PLN remains10% and USD15%. Failed Save > Back > Keep editing > refresh produces the same stored values. The partial write occurs on Save, before either dialog choice.",
+      "reproSteps": [
+        "Create and save a disposable Entire order Percentage voucher with a unique original name and manual code, assigned to Channel-PLN and Channel-USD with PLN10% and USD15%. Reload to verify this clean saved baseline.",
+        "Change Voucher Name to a unique new name and change Channel-PLN from10 to120, leaving Channel-USD at15.",
+        "Click Save. Observe Invalid percentage value and Couldn’t save voucher. Channels remains marked unsaved; the UI does not explicitly say the name update already succeeded.",
+        "Click Back, then Ignore changes in Leave without saving changes?. Reopen the same voucher and inspect its name and both channel percentages. The new name remains saved while the percentages remain10/15.",
+        "Variant: on a fresh valid saved baseline, make the same rename and invalid percentage edit and click Save. After failure, choose Back > Keep editing, then refresh. The new name again persists with the old valid percentages. Keep editing itself performs no save."
+      ],
+      "severity": 3
+    },
+    {
+      "name": "Failed voucher code replacement silently commits the staged code deletion",
+      "summary": "Replacing voucher A’s existing code with a code already used by voucher B reports a failed Save, but A’s staged code deletion still persists. Choosing Back > Ignore changes and reopening A reveals that its original active code is gone.",
+      "expected": "A failed code replacement should preserve the existing code or clearly report any partial persistence. Choosing Ignore changes must not silently leave the original active code deleted after the failed edit.",
+      "actual": "Save shows “Promo code already exists,” a failed-save message, and Try again. After Back > Ignore changes and reopening voucher A, its code section shows “No voucher codes found” and requires adding a code; the original active code is gone and the duplicate replacement is absent.",
+      "reproSteps": [
+        "Sign in as the fixture administrator and create two disposable active vouchers A and B, each with its own unique manual code, Channel-USD availability, and a valid 10% Entire order discount.",
+        "Reopen A and verify its original code is active. Select that code, choose Delete codes, and confirm the dialog stating it will be removed when the voucher is saved.",
+        "Choose Add code > Manual code, enter the exact active code already used by B, confirm, and click Save.",
+        "Observe “Promo code already exists,” the failed-save message directing correction of the codes section, and Try again. Click Back, then Ignore changes in the leave-without-saving dialog.",
+        "Find A in the vouchers list and reopen it. Observe the required Add a code state and “No voucher codes found”; A’s original active code has disappeared despite the failed replacement and Ignore changes."
+      ],
+      "severity": 3
+    },
+    {
+      "name": "Saving an invalid zero limit succeeds and misleadingly displays the cap as disabled",
+      "summary": "A zero total usage limit saves despite the minimum-one error, then reload displays the cap as disabled while the backend retains zero.",
+      "expected": "The zero limit should prevent Save and retain the minimum-one error. The displayed cap state should match the stored limit.",
+      "actual": "Save succeeds despite “Enter a limit of at least 1.” After reload, the total usage-limit toggle is off and its input is hidden, while the backend still stores usageLimit 0 rather than an unset limit.",
+      "reproSteps": [
+        "Sign in as the fixture administrator, open Discounts > Vouchers, and open a disposable unused voucher with a code and Channel-USD assigned.",
+        "Enable “Limit number of times this discount can be used in total,” enter 1, save, and confirm the limit remains enabled at 1.",
+        "Replace the limit with 0. Observe “Enter a limit of at least 1.” and click Save.",
+        "Reload the saved voucher. Observe the limit toggle off and its input hidden; the saved voucher response still contains usageLimit 0."
+      ],
+      "severity": 3
+    },
+    {
+      "name": "Bulk-deleted vouchers briefly reappear after in-app navigation",
+      "summary": "Returning to the Vouchers list briefly displays already deleted vouchers from stale cached UI state before fresh data removes them.",
+      "expected": "After successful bulk deletion, reopening the list should keep the deleted vouchers absent.",
+      "actual": "After navigating away and back, the deleted voucher rows briefly reappear as Active, then disappear automatically when fresh list data arrives. Reloading and searching confirms they remain deleted.",
+      "reproSteps": [
+        "Sign in as the fixture administrator, create two disposable unused vouchers with a unique shared name prefix, and open the unfiltered Vouchers list.",
+        "Search for that prefix, select only the two owned vouchers, and confirm bulk deletion. Verify “Vouchers deleted” and an empty filtered list.",
+        "Navigate to Home, then return through Discounts > Vouchers. Observe the deleted rows briefly reappear and disappear automatically without refreshing.",
+        "Reload the list and search for the same prefix; verify the deleted vouchers remain absent."
+      ],
+      "severity": 1
+    },
+    {
+      "name": "Deleted voucher detail URL remains on loading skeletons after lookup completes",
+      "summary": "Revisiting the saved detail URL of a voucher deleted through the list leaves the page on loading skeletons even after the lookup completes with no voucher. A fresh revisit produces the same terminal state.",
+      "expected": "After a completed detail lookup finds no voucher, the page should show a clear missing or deleted state instead of continuing to display loading skeletons.",
+      "actual": "The detail lookup completes successfully with data.voucher=null, but Details, Voucher codes, Discount, Availability and Schedule remain skeleton placeholders without a missing or deleted message. Repeating fresh navigation to the same URL produces the same result.",
+      "reproSteps": [
+        "Sign in as the fixture administrator and open Discounts > Vouchers. Create and save a disposable voucher with a unique name and manual code, Channel-USD, and a valid 10% Entire order discount. Note its saved detail URL.",
+        "Return to All vouchers, search the exact unique name, verify it is the sole result, select only that voucher, choose Delete vouchers, and confirm deletion. Observe the success notification and “No vouchers found.”",
+        "Navigate directly to the deleted voucher’s saved detail URL. Wait for the GraphQL detail lookup to complete with HTTP 200 and data.voucher=null.",
+        "Observe that the rendered page still shows skeleton placeholders across Details, Voucher codes, Discount, Availability and Schedule, without a missing or deleted state.",
+        "Freshly navigate to the same detail URL again. After the repeated lookup completes with data.voucher=null, verify the page remains skeleton-only."
+      ],
+      "severity": 1
+    },
+    {
+      "name": "Variant eligibility table repeats the Product Name column heading",
+      "summary": "The saved voucher variant eligibility table gives two different columns the same Product Name heading.",
+      "expected": "Columns displaying different values should have distinct headings so product names and product types can be distinguished.",
+      "actual": "The saved table headings are Product Name, Variant Name, and Product Name; a row displays Monospace Tee, S, and Top. The first column contains a product name while the third contains its product type.",
+      "reproSteps": [
+        "Sign in as the fixture administrator and create a disposable voucher.",
+        "Assign the Monospace Tee variant S as an eligible variant and save the voucher.",
+        "Read the saved variant eligibility table: Product Name appears above both Monospace Tee and the different value Top."
+      ],
+      "severity": 1
+    },
+    {
+      "name": "Voucher variants table disables pagination with 11 assigned variants and page size 10",
+      "summary": "A fresh unsaved Products-scope voucher with 11 assigned variants shows only 10 rows at page size 10, with Next disabled.",
+      "expected": "With 11 assigned variants and page size 10, Next should be enabled and open a second page containing the remaining variant.",
+      "actual": "The draft reports 11 assigned variants but renders 10 rows with Next disabled. Changing the page size to 20 reveals all 11 variants; restoring 10 disables Next again. The same behavior occurs in a second fresh unsaved draft.",
+      "reproSteps": [
+        "Open Discounts > Vouchers > Create voucher in the signed-in Saleor dashboard and select Products under Discount; keep the new draft unsaved.",
+        "In Eligible products > Variants, open Assign, select all 11 variants of the seeded Hoodie product, and confirm assignment.",
+        "Set No. of rows to 10 and observe 11 assigned variants, 10 visible variant rows, and a disabled Next button.",
+        "Change No. of rows to 20 and wait for the table to update; observe all 11 variants. Restore 10 and observe Next disabled again, then discard the unsaved draft."
+      ],
+      "severity": 3
+    },
+    {
+      "name": "Unassigning the sole last-page voucher variant hides remaining assigned variants",
+      "summary": "On a saved Products voucher with 11 assigned variants and page size 10, unassigning the only variant on page 2 reduces the count to 10 but leaves an empty table with no pagination. This occurs before Save; the remaining assigned variants should remain reachable.",
+      "expected": "After unassigning the only row on the last page, the eligible-variants table should return to a valid page showing the remaining 10 assigned variants, with a consistent count and usable pagination when needed.",
+      "actual": "The count changes from 11 assigned to 10 assigned, but the table displays “No variants found” and hides both the page-size selector and pagination controls. This persists for at least five seconds while the change is still unsaved.",
+      "reproSteps": [
+        "Sign in as the fixture administrator and open Discounts > Vouchers > Create voucher. Use a disposable voucher with a unique name and manual code.",
+        "Assign Channel-USD, select Products, configure a 10% discount, assign all 11 Hoodie variants, and save the voucher.",
+        "In Eligible products, set the page size to 10 and click Next page. Confirm that page 2 contains only Hoodie / HD-WH-XL and the count is 11 assigned.",
+        "Select HD-WH-XL, click Unassign, and confirm Unassign in the dialog.",
+        "Before clicking Save, wait at least five seconds. Observe 10 assigned alongside “No variants found,” with neither the page-size selector nor pagination controls available to reach the surviving variants."
+      ],
+      "severity": 3
+    },
+    {
+      "name": "Blank manual voucher code remains empty in the draft until Save generates it",
+      "summary": "Confirming a blank manual code adds an empty Draft row; its generated code appears only after the voucher is saved.",
+      "expected": "A blank manual code is generated in the draft or rejected before saving.",
+      "actual": "The manual-code dialog accepts an empty value and displays a blank Draft code row. Saving succeeds and replaces the blank row with a generated code that was not shown in the draft.",
+      "reproSteps": [
+        "Sign in as the fixture administrator and open Discounts > Vouchers > Create voucher.",
+        "Enter a unique voucher name. In Voucher codes, select Add code > Manual code, leave the code empty, and click Confirm.",
+        "Observe the empty code row marked Draft; no generated code is displayed.",
+        "Assign Channel-USD, set a valid 10% discount, and click Save. Observe the previously empty row now contains a generated code."
+      ],
+      "severity": 3
+    },
+    {
+      "name": "Voucher detail header clips Active status at 390px",
+      "summary": "At a 390px mobile viewport, the voucher detail header clips the Active label beside its toolbar controls, obscuring the status that tells the administrator whether the voucher is active.",
+      "expected": "The voucher status remains fully legible within the mobile header.",
+      "actual": "The header displays a green status dot followed by only “Ac”; the remaining letters of “Active” are clipped beside the action icons.",
+      "reproSteps": [
+        "Sign in as the fixture administrator and open Discounts > Vouchers.",
+        "Create a voucher with a fresh name and manual code, assign Channel-USD, and configure Entire order with a 15% percentage discount.",
+        "Click Save to open the saved voucher details.",
+        "Set the viewport to 390 × 844 CSS pixels and inspect the detail header; the Active label is clipped, including after waiting five seconds."
+      ],
+      "severity": 1
+    },
+    {
+      "name": "Voucher Save notification is clipped outside the mobile viewport",
+      "summary": "At a 390px mobile viewport, pressing Save on a voucher displays a toast partly outside the screen, obscuring the feedback about the save.",
+      "expected": "The Save notification remains fully visible and legible within the mobile viewport.",
+      "actual": "The toast after Save is off the side of the screen and only partly visible within the viewport.",
+      "reproSteps": [
+        "Sign in as the fixture administrator and set the viewport to 390 × 844 CSS pixels.",
+        "Open Discounts > Vouchers and create a voucher with a fresh name and manual code.",
+        "Assign Channel-USD and configure Entire order with a 15% percentage discount.",
+        "Click Save."
+      ],
+      "severity": 1
+    },
+    {
+      "name": "Fractional minimum quantity silently truncates on save",
+      "summary": "The integer minimum-item quantity field accepts a visible 1.5 and reports a successful Save, but silently stores 1. The form should visibly filter out the decimal point while typing or reject the fractional value on Save; successful saving should preserve the displayed accepted quantity.",
+      "expected": "The form should either strip the decimal point while typing so 1.5 visibly becomes 15 before Save and saves as 15, or reject the fractional value on Save. A successful Save must preserve the displayed accepted quantity.",
+      "actual": "The field displays 1.5. Save shows “Voucher updated” and changes the quantity to 1 without a validation message; the saved quantity remains 1 after reload.",
+      "reproSteps": [
+        "Sign in as the fixture administrator and open Discounts > Vouchers > Create voucher.",
+        "Enter a unique voucher name and manual code, assign Channel-USD, configure an Entire order discount of 10%, and click Save.",
+        "Open Requirements, enable Minimum quantity of items, clear its input, and type 1.5. Observe that the decimal point remains visible instead of the field displaying 15.",
+        "Click Save. Observe “Voucher updated” and the quantity changing to 1.",
+        "Reload the voucher and reopen Requirements. Observe that Minimum quantity of items remains enabled with the stored value 1."
+      ],
+      "severity": 3
+    },
+    {
+      "name": "Voucher status remains Active after its redemption limit is exhausted",
+      "summary": "A voucher whose redemption limit is exhausted appears in Expired results but is still labeled Active because the badge checks dates alone. With current valid dates and a zero total limit, the row shows 0 of 0 and Active even though no redemptions remain; the status should reflect the exhausted limit.",
+      "expected": "A voucher that has exhausted its total usage limit should display an expired or inactive status, consistently with its inclusion in the Expired filter.",
+      "actual": "An already-started voucher with no past end date and a saved total usage limit of 0 appears in Expired results while its row displays Active and 0 of 0. The contradiction remains after waiting for the filtered results to settle.",
+      "reproSteps": [
+        "Sign in as the fixture administrator and open Discounts > Vouchers. Use a disposable saved voucher with a code, Channel-USD, a valid discount, a start date in the past, and no expired end date.",
+        "Prepare the exhausted-limit prerequisite: enable the total usage limit, enter 0, and save. This fixture accepts the zero limit despite its separate validation error; the saved voucher has 0 uses out of a total limit of 0.",
+        "Return to Vouchers, open Filters, set voucher Status to Expired, and click Apply.",
+        "Locate the exhausted voucher in the filtered results. Observe 0 of 0 redemptions alongside the Active badge, including after waiting five seconds."
+      ],
+      "severity": 3
+    },
+    {
+      "name": "Partial voucher start time is discarded and saved as midnight",
+      "summary": "A start time showing 10:00 with AM/PM missing is saved as midnight, discarding the entered hour and minutes. The incomplete native input exposes an empty value, so the blank-time fallback treats a partially entered time as completely blank. Save should reject the incomplete time or fill AM/PM while preserving 10:00.",
+      "expected": "For a partially entered 10:00 time with AM/PM missing, Save should either reject the incomplete time or supply AM/PM while preserving the entered hour and minutes. Defaulting a genuinely blank time field to midnight remains valid.",
+      "actual": "The start-time field visibly shows 10:00 with its AM/PM segment empty. Save succeeds and the schedule shows 12:00 AM; reloading retains midnight instead of the entered 10:00.",
+      "reproSteps": [
+        "Sign in as the fixture administrator and open Discounts > Vouchers > Create voucher. Enter a unique name and manual code, assign Channel-USD, and configure a valid Entire order discount of 10%.",
+        "In Schedule, set the start date to a future date, such as 2030-12-31, and set the start time to 10:00 AM.",
+        "Focus the AM/PM segment and clear only that segment with Backspace, keeping 10:00 visible. Blur the field and verify it displays 10:00 with AM/PM missing, rather than a completely blank time.",
+        "Click Save. Observe success and the saved Schedule card displaying 12:00 AM on the selected date.",
+        "Reload the voucher and inspect Schedule. Observe that the saved start time remains midnight."
+      ],
+      "severity": 3
+    },
+    {
+      "name": "Same-day end-before-start validation highlights End Date but leaves End Hour unmarked",
+      "summary": "A same-day end of 09:30 before a 10:00 start is correctly rejected, but only End Date has error styling. End Hour remains visually valid even though changing that hour resolves the conflict.",
+      "expected": "When Start Date and End Date are the same and End Hour is earlier than Start Hour, saving should highlight both End Date and End Hour as invalid. The existing “End date cannot be before the start date” message and rejection are correct and may remain.",
+      "actual": "Before Save, both calendar dates are June 1, 2030 with Start Hour 10:00 AM and End Hour 09:30 AM. After Save, the timestamp is correctly rejected, but only End Date is outlined as invalid and displays “End date cannot be before the start date.” End Hour remains unmarked, implying that only the calendar date needs correction. Keeping the dates unchanged and changing End Hour to 10:30 AM allows Save.",
+      "reproSteps": [
+        "Sign in as the fixture administrator and create and save a disposable voucher with a unique name and manual code, Channel-PLN, and a valid 10% entire-order discount.",
+        "In Schedule, enable Set end date, set Start Date and End Date to June 1, 2030, Start Hour to 10:00 AM, and End Hour to 09:30 AM.",
+        "Click Save. Observe that it correctly rejects the earlier end timestamp and shows “End date cannot be before the start date.”",
+        "Compare both end controls: End Date is outlined as invalid, while End Hour is not, incorrectly directing attention exclusively to the calendar date.",
+        "Keep both calendar dates unchanged, change End Hour to 10:30 AM, and save successfully."
+      ],
+      "severity": 1,
+      "matchingScope": {
+        "observableFailure": "The report identifies missing invalid/error indication on End Hour, or misleading date-only highlighting, for the combined end-before-start timestamp conflict.",
+        "beforeFix": "End Date receives the error styling; End Hour does not. Validation correctly rejects the earlier combined timestamp.",
+        "afterFix": "When Start Date and End Date are the same and End Hour is earlier than Start Hour, Save highlights both End Date and End Hour as invalid. The same wording and chronological rejection remain valid.",
+        "wordingOnlyClaim": "A complaint solely that the word date is wrong because calendar dates match does not establish this accepted failure.",
+        "mixedClaim": "A report that establishes the missing End Hour error indication describes this accepted failure even if it also proposes clearer wording.",
+        "positiveExamples": [
+          "Only End Date turns red although the earlier End Hour causes the error; both end controls should show invalid.",
+          "The message is correct, but the hour is not highlighted, misleading the admin to change only the date."
+        ],
+        "negativeExample": "Both dates are June 1, so saying the end date is before the start date is incorrect; change the message to mention time."
+      },
+      "matchingGuidance": {
+        "claimScope": "Accept only the missing End Hour error indication when the combined end timestamp is invalid. The error wording and chronological validation are correct. This is distinct from stale errors after correction and post-success save-state bugs."
+      }
+    },
+    {
+      "name": "Voucher schedule keeps stale date inputs after successful Save",
+      "summary": "After clearing an existing current-day Start Date, Save correctly stores today’s default but the editor keeps the date blank and reports unsaved Schedule changes. With an initially absent end date, saving a cleared End Date similarly leaves Set end date checked although no end date is stored. Successful Save should display the stored defaults, as initial creation does.",
+      "expected": "After successful Save, the editor should display the stored current Start Date or disable Set end date when no end date is stored, and clear the corresponding unsaved Schedule state.",
+      "actual": "A saved current-day voucher accepts a completely cleared Start Date and shows Voucher updated, but the field remains blank with Unsaved changes: Schedule and Save enabled after five seconds. For an initially absent end date, enabling and clearing End Date saves null but leaves the checkbox checked and the same unsaved state. Reload displays today’s start date, turns the absent end date off, and clears the unsaved state.",
+      "reproSteps": [
+        "Sign in as the fixture administrator and create a disposable voucher with a unique name and manual code, Channel-USD, and a valid 10% Entire order discount. Leave Start Date blank and save; confirm the saved form displays today’s default date.",
+        "On that saved voucher, clear the entire Start Date field so no date segments remain, then blur it. Leave the other settings unchanged.",
+        "Click Save and observe Voucher updated.",
+        "Wait five seconds. Observe that Start Date is still blank, Unsaved changes: Schedule remains visible, and Save is still enabled.",
+        "Reload the voucher. Observe today’s stored date displayed and the unsaved Schedule state cleared.",
+        "End-date variant: on a saved voucher with no existing end date, enable Set end date, clear every segment of the seeded End Date field, blur, and click Save.",
+        "Observe successful feedback while Set end date remains checked, its date remains blank, and Schedule remains unsaved. Reload; Set end date is off and the End Date input is hidden because the stored end date is null."
+      ],
+      "severity": 1
+    },
+    {
+      "name": "Deleting the sole voucher on the last page leaves Previous enabled but inert",
+      "summary": "Deleting the only voucher on page 2 leaves an empty list with an enabled Previous button that does nothing. The surviving vouchers remain accessible after resetting the list through navigation.",
+      "expected": "After deleting the only row on the last page, the list should return to a valid page or let Previous navigate to the surviving vouchers.",
+      "actual": "Deletion shows “Vouchers deleted,” but the list remains on the same after-cursor URL with “No vouchers found.” Clicking the enabled Previous button changes neither the URL nor the rendered list; reopening Vouchers through the sidebar reveals the surviving records.",
+      "reproSteps": [
+        "Sign in as the fixture administrator. With no other session mutating the voucher list, prepare exactly 11 vouchers using uniquely named disposable vouchers alongside the seeded vouchers. Give one disposable voucher a unique high-sorting code so it is the sole row on page 2.",
+        "Open /discounts/vouchers?asc=true&sort=code, set No. of rows to 10, and navigate to page 2. Verify that the only row is the owned disposable voucher.",
+        "Select that row, choose Delete vouchers, and confirm deletion. Observe “Vouchers deleted” followed by “No vouchers found” at the same after-cursor URL.",
+        "Click the visibly enabled Previous button. Observe that the URL and empty list remain unchanged; repeat with the visible control to confirm.",
+        "Navigate through the sidebar to reopen Discounts > Vouchers. Observe the ten surviving vouchers, confirming that the empty page did not mean the list was empty."
+      ],
+      "severity": 3
+    },
+    {
+      "name": "Fractional voucher usage limit silently truncates on save",
+      "summary": "The integer Limit of Uses field accepts a visible 7.5 and reports a successful Save, but silently stores 7. The form should visibly filter out the decimal point while typing or reject the fractional value on Save; successful saving should preserve the displayed accepted usage limit.",
+      "expected": "The form should either strip the decimal point while typing so 7.5 visibly becomes 75 before Save and saves as 75, or reject the fractional value on Save. A successful Save must preserve the displayed accepted usage limit.",
+      "actual": "The Limit of Uses field displays 7.5 without validation. Save shows “Voucher created” and changes the limit to 7; Uses left shows 7 and the redemption summary shows 0 of 7 used / 7 redemptions left.",
+      "reproSteps": [
+        "Sign in as the fixture administrator and open Discounts > Vouchers > Create voucher.",
+        "Enter a unique voucher name and manual code, assign Channel-USD, and configure an Entire order discount of 10%. To match the recorded setup, enable Minimum quantity of items and enter 2.5; that separate known truncation behavior is not the finding being assessed.",
+        "Enable Limit number of times this discount can be used in total, clear Limit of Uses, and type 7.5. Observe that the decimal point remains visible instead of the field displaying 75.",
+        "Click Save. Observe “Voucher created” and open Limits: Limit of Uses and Uses left both display 7.",
+        "Inspect the redemption summary: it shows 0 of 7 used and 7 redemptions left, confirming that the successful Save accepted a smaller cap than the displayed 7.5."
+      ],
+      "severity": 3
+    },
+    {
+      "name": "Mobile voucher Status filter clips the required value selector",
+      "summary": "At a 390px viewport, selecting Status in voucher Filters clips the required value selector outside the panel, leaving Apply disabled and preventing normal touch interaction with the filter.",
+      "expected": "The required Status value selector and Apply control should be reachable through normal touch interaction at a 390 × 844 viewport.",
+      "actual": "The filter row shows Status and its operator, but the value selector is clipped beyond the panel’s right edge. Tapping the visible edge and dragging horizontally do not expose it, and Apply remains disabled. A locator-targeted click can auto-scroll the hidden control into view, but that does not provide normal touch access.",
+      "reproSteps": [
+        "Sign in as the fixture administrator, set the browser viewport to 390 × 844 CSS pixels, and open /discounts/vouchers?asc=true&sort=code.",
+        "Tap Filters, open the field selector, and select Status.",
+        "Inspect the filter row: Status and its operator are visible, but the required value selector is clipped beyond the panel’s right edge and Apply is disabled.",
+        "Tap the panel’s visible right edge and attempt a horizontal drag using normal touch interaction. Observe that the value selector remains unreachable and the filter cannot be applied.",
+        "Do not count a locator-targeted click that auto-scrolls the hidden value selector into view as normal touch access."
+      ],
+      "severity": 3
+    },
+    {
+      "name": "Deleting the last voucher-code page hides surviving codes until reload",
+      "summary": "Deleting all seven codes on page 2 of a saved 17-code voucher leaves the editor showing no codes and no pagination, even after a successful Save. Reload restores the ten surviving codes.",
+      "expected": "Deleting the last page of codes should return the table to a valid page and display the surviving codes. A successful Save should leave the editor consistent with the saved state shown after reload.",
+      "actual": "Confirming deletion replaces the seven page-2 rows with “No voucher codes found” and removes pagination. Save shows “Voucher updated,” but the table remains empty. Reload shows the ten surviving codes.",
+      "reproSteps": [
+        "Sign in as the fixture administrator and create a disposable voucher with a unique name, exactly 17 unique codes, Channel-USD availability, and a valid Entire order discount of 10%. Save the voucher.",
+        "Set the saved voucher-code table page size to 10 and navigate to page 2. Verify that it contains the remaining seven codes.",
+        "Select all seven codes, choose Delete codes (7), and confirm Delete. Observe “No voucher codes found” and the absence of pagination.",
+        "Click Save and observe “Voucher updated” while the code table remains empty.",
+        "Reload the voucher detail page. Observe the ten surviving saved codes, confirming that the empty editor hid existing codes."
+      ],
+      "severity": 3
+    },
+    {
+      "id": "mo-12m-saleor-vouchers-0",
+      "name": "Mobile voucher setup Usage limits shortcut does not scroll to the Usage Limit section",
+      "summary": "At 390 × 844, the voucher setup card’s Usage limits shortcut under Worth reviewing leaves the view on the checklist; the Usage Limit section stays far below the viewport.",
+      "expected": "Activating the Usage limits shortcut should bring the Usage Limit settings into view so the admin can review them, as the checklist entry offers.",
+      "actual": "After clicking Usage limits, the page does not scroll (window.scrollY remains 0). The Usage Limit heading stays about 2,870px down the page and must be reached by manual scrolling.",
+      "reproSteps": [
+        "Set the viewport to 390 × 844 CSS pixels, sign in as the fixture administrator and open Discounts > Vouchers.",
+        "Choose Create voucher so the setup checklist is shown.",
+        "In the checklist’s Worth reviewing group, click Usage limits and wait for the page to settle.",
+        "Observe that the view stays on the checklist and the Usage Limit section remains below the viewport; scroll manually to confirm it is reachable."
+      ],
+      "severity": 3,
+      "matchNotes": {
+        "scope": "Credit only the Usage limits shortcut failing to bring Usage Limit into view on a narrow viewport. A Set value or discount-field report matches the separate Set value reference, not this one."
+      }
+    },
+    {
+      "id": "mo-12m-saleor-vouchers-2",
+      "name": "Saving a rejected zero minimum quantity shows a Voucher updated success toast",
+      "summary": "With Minimum quantity of items set to 0, Save keeps the Enter at least 1 item. error and the unsaved General settings indicator, yet shows a green Voucher updated toast.",
+      "expected": "Save should be blocked by the validation error, or the feedback should state that the change was not saved. No success notification should appear for a rejected requirement.",
+      "actual": "A green Voucher updated toast appears for about five seconds while Enter at least 1 item. and Unsaved changes: General settings remain. The invalid quantity was the only pending change.",
+      "reproSteps": [
+        "Sign in as the fixture administrator and create a disposable voucher with a unique name and manual code, both channels assigned and a 10% percentage discount. Save it and observe Voucher created.",
+        "Open Requirements, enable Minimum quantity of items, enter 0 and move focus out of the field. Observe Enter at least 1 item.",
+        "Click Save. Observe the green Voucher updated toast while the validation error and Unsaved changes: General settings remain."
+      ],
+      "severity": 3,
+      "matchNotes": {
+        "scope": "Credit a success toast shown for a rejected minimum-quantity value while its error or unsaved state remains. Distinct from the zero total usage limit reference (a different control that saves and later displays the cap as disabled) and from false unsaved warnings after a genuinely successful save of disabled-field values."
+      }
+    },
+    {
+      "id": "mo-12m-saleor-vouchers-run2-5",
+      "name": "Voucher detail Back discards the originating list search and sort",
+      "summary": "Opening a voucher from a searched, descending-sorted Vouchers list and clicking the detail page's Back button returns to the unfiltered list in ascending order.",
+      "expected": "Back returns to the originating voucher list with its search and sort intact. The dashboard implements this: list rows pass the previous location when opening a voucher, and the detail page's Back uses that saved list URL.",
+      "actual": "Back opens the full voucher list with the search cleared and the Name sort reset from descending to ascending. Refreshing the list before opening the voucher had kept both.",
+      "reproSteps": [
+        "Sign in as the fixture administrator and open Discounts > Vouchers.",
+        "Sort by Name descending, then search for free so only the Free shipping voucher remains (or search for a fresh uniquely named voucher).",
+        "Open the matching voucher from the list without editing it.",
+        "Click the Back button in the detail page's bottom bar and inspect the list search and sort."
+      ],
+      "severity": 1
+    },
+    {
+      "id": "mo-12m-saleor-vouchers-run4-4",
+      "name": "Saving a rejected zero minimum quantity removes the saved quantity requirement",
+      "summary": "On a voucher with a saved Minimum quantity of items of 3, replacing it with 0 shows Enter at least 1 item., yet Save reports Voucher updated and turns the requirement off.",
+      "expected": "The validation error should block Save and keep the saved quantity requirement until the admin enters a valid value or deliberately turns the requirement off.",
+      "actual": "Save shows Voucher updated, then the Minimum quantity of items requirement is off and its input is gone, although Enter at least 1 item. was shown before Save.",
+      "reproSteps": [
+        "Sign in as the fixture administrator and create a disposable Entire order voucher with a unique manual code, both channels and a 10% discount. Save it.",
+        "Open Requirements, enable Minimum quantity of items, enter 3 and Save. Reload and confirm 3 persists.",
+        "Replace 3 with 0 and blur. Observe Enter at least 1 item.",
+        "Click Save. Observe Voucher updated and the quantity requirement switched off with its input removed."
+      ],
+      "severity": 3,
+      "matchNotes": {
+        "scope": "Credit losing a previously saved quantity requirement after saving a rejected 0. A success toast while the error and unsaved state remain, with no saved requirement removed, is the separate zero minimum quantity toast reference."
+      }
+    },
+    {
+      "id": "mo-12m-saleor-vouchers-run4-9",
+      "name": "Mobile voucher setup Add codes shortcut does nothing",
+      "summary": "At 390 × 844, the Create Voucher setup card's Add codes shortcut accepts the click but opens nothing and does not move to the code controls, while Manage channels in the same card works.",
+      "expected": "Add codes should open code entry or bring the Voucher codes controls into view, as Manage channels opens its picker.",
+      "actual": "The button shows a pressed state, but the URL stays /discounts/vouchers/add, the page does not scroll, and no menu or dialog opens.",
+      "reproSteps": [
+        "Set the viewport to 390 × 844 CSS pixels, sign in as the fixture administrator and open Discounts > Vouchers.",
+        "Choose Create voucher.",
+        "In the setup card's Add a code item, click Add codes and observe that nothing changes.",
+        "For comparison, click Manage channels and observe that its channel picker opens."
+      ],
+      "severity": 3,
+      "matchNotes": {
+        "scope": "Credit only the Add codes shortcut failing on a narrow viewport. Set value and Usage limits reports match their own references."
+      }
+    },
+    {
+      "id": "mo-12m-saleor-vouchers-run4-14",
+      "name": "Saving an invalid total usage limit shows Voucher updated beside a failed save",
+      "summary": "With the total usage limit enabled, saving an empty limit (or 2147483648) shows a green Voucher updated toast while Save turns into Try again and Unsaved changes remains.",
+      "expected": "A rejected limit should block Save or report failure; no success notification should appear for a save that did not apply.",
+      "actual": "Enter a limit of at least 1. is shown before Save. After Save, a green Voucher updated toast appears alongside the Try again action and the unsaved-changes notice; the invalid field stays unsaved.",
+      "reproSteps": [
+        "Sign in as the fixture administrator and create a disposable voucher with a unique code, existing channels and a 10% discount. Enable the total usage limit at 1 and Save.",
+        "In Limits, clear Limit of Uses with the total limit still enabled and blur. Observe Enter a limit of at least 1.",
+        "Click Save. Observe the Voucher updated toast together with Try again and Unsaved changes.",
+        "Variant: enter 2147483648 instead of clearing the field and Save."
+      ],
+      "severity": 3,
+      "matchNotes": {
+        "scope": "Credit contradictory success feedback for a usage-limit save that did not apply. Saving 0 successfully and hiding the cap is the separate zero usage limit reference."
+      }
+    },
+    {
+      "id": "mo-12m-saleor-vouchers-run3-5",
+      "name": "Editing a saved voucher's usage limit to 1.5 persists a fractional cap",
+      "summary": "On an existing voucher, setting Limit of Uses to 1.5 saves successfully and the voucher then shows 1.5 redemptions left.",
+      "expected": "The integer Limit of Uses should reject or filter a fractional value; a redemption cap should not persist as 1.5.",
+      "actual": "Save shows Voucher updated, and Uses left and the redemption summary show 1.5 redemptions left.",
+      "reproSteps": [
+        "Sign in as the fixture administrator and create a disposable voucher with a unique manual code, Channel-PLN and a 10% discount. Save it.",
+        "Open Limits and enable the total usage limit.",
+        "Enter 1.5 in Limit of Uses, blur and Save.",
+        "Observe Voucher updated and 1.5 redemptions left."
+      ],
+      "severity": 3,
+      "matchNotes": {
+        "scope": "Credit a fractional limit persisting on an edited saved voucher. A fractional limit truncated on save (create path) matches the existing fractional usage limit reference instead."
+      }
+    },
+    {
+      "id": "mo-12m-saleor-vouchers-run6-3",
+      "name": "Unchecking the only assigned country in Assign countries does not remove it",
+      "summary": "On an unsaved free-shipping voucher restricted to Canada, reopening Assign countries, unchecking Canada and confirming leaves Canada assigned.",
+      "expected": "Confirming the dialog applies its selection: with Canada unchecked, the voucher should no longer be restricted to Canada. The dialog starts from the assigned countries and submits the full selected set.",
+      "actual": "The dialog closes, but Countries still shows Canada and Valid in 1 country.",
+      "reproSteps": [
+        "Sign in as the fixture administrator and choose Create voucher. Enter a unique name.",
+        "Choose Free shipping. In Countries, click Assign, filter for Canada, check Canada and confirm.",
+        "Reopen Assign countries, filter for Canada, uncheck Canada and confirm.",
+        "Observe that Countries still lists Canada and Valid in 1 country."
+      ],
+      "severity": 3
+    }
+  ]
+}
