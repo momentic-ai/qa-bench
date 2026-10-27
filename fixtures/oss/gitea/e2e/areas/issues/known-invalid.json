@@ -51,6 +51,51 @@
         "Expand Teams and observe only All."
       ],
       "reason": "Intended. The dashboard navbar lists only teams without IncludesAllRepositories; filtering by an all-repositories team would equal All, so such teams (including Owners) are deliberately omitted. The reported team was created with All repositories access."
+    },
+    {
+      "id": "gitea-fuzzy-issue-search-no-typo-tolerance",
+      "name": "Global Fuzzy search fails to find a known issue when the query omits one final character",
+      "summary": "The report claims Fuzzy issue search should find an issue when the query is one character short of a word in its title.",
+      "expected": "The reporter expects Fuzzy search for 'gcountneedl' to return the issue titled with 'gcountneedle'.",
+      "actual": "Fuzzy search for the truncated word returns No results, while the full word finds the issue.",
+      "reproSteps": [
+        "Create an issue whose title contains a distinctive word such as gcountneedle.",
+        "On the global Issues dashboard, choose Fuzzy search and search for the word with its last character removed.",
+        "Observe No results; searching the full word finds the issue."
+      ],
+      "reason": "Documented default, not a defect. Gitea disables Bleve fuzziness by default for performance (TYPE_BLEVE_MAX_FUZZINESS = 0; custom/conf/app.example.ini: \"Bleve engine has performance problems with fuzzy search, so we limit the fuzziness to 0 by default to disable it\"), so Fuzzy mode performs no typo tolerance unless an administrator raises the setting. Unchanged upstream."
+    },
+    {
+      "id": "gitea-manual-time-scientific-notation-minutes",
+      "name": "Manual time treats scientific-notation minutes such as '1e2' as no time entered",
+      "summary": "In the issue time tracker's Add Time dialog, entering minutes in scientific notation (for example '1e2' for 100) is rejected with 'No time was entered.', and with hours also set only the plainly written part is saved.",
+      "expected": "The reported expectation is that '1e2' minutes is accepted as 100 minutes, or rejected with a message that scientific notation isn't supported.",
+      "actual": "With Hours 0 and Minutes 1e2, Add Time showed 'No time was entered.' and kept the dialog open. With hours written as 1e1 and minutes 30, only 30 minutes were saved.",
+      "reproSteps": [
+        "Open an issue's Time Tracker and choose Add Time.",
+        "Enter Hours 0 and Minutes 1e2, then click Add Time."
+      ],
+      "reason": "User-rejected. Entering durations in scientific notation isn't a realistic use of the Add Time dialog, so its handling isn't treated as a product bug for this eval.",
+      "matchingGuidance": {
+        "scope": "Reject reports about scientific-notation or similarly exotic numeric input (such as '1e2') in the Add Time hours or minutes fields. Do not generalize to ordinary numbers being rejected or misrecorded."
+      }
+    },
+    {
+      "id": "gitea-close-issue-stay-on-page-leaves-stale-ui",
+      "name": "Closing an issue with an unsaved description edit, then choosing Stay, leaves the page stuck and showing Open",
+      "summary": "With the issue description open in an unsaved edit, clicking Close Issue closes the issue on the server, but the browser's leave-page warning interrupts the reload. Choosing to stay leaves the page saying Open with the comment form stuck on a loading spinner until a manual reload. Close with Comment and Reopen behave the same way.",
+      "expected": "The reported expectation is that after Close Issue succeeds, the page reflects the closed state even when the user cancels the leave-page warning about an unsaved description edit.",
+      "actual": "After editing the description without saving and clicking Close Issue, the leave-page warning appeared; choosing Stay left the page showing Open with a persistent spinner on the comment form, although the issue was already closed on the server. Close with Comment also hid the posted comment until reload, and Reopen behaved the same way.",
+      "reproSteps": [
+        "Open an issue and click Edit on its description; change the text without saving.",
+        "Click Close Issue.",
+        "At the browser's leave-page warning, choose to stay on the page.",
+        "Check the issue status and the comment form, then reload."
+      ],
+      "reason": "User-rejected after reproducing it in Chrome. The behavior is Chrome's own 'Leave site? Changes you made may not be saved.' prompt for the unsaved description edit; the user is shown that native dialog and chooses Cancel or Leave. The reports describe the page after the prompt without capturing that the browser dialog was shown, so this is expected unsaved-changes handling rather than a product bug.",
+      "matchingGuidance": {
+        "scope": "Reject reports that the issue page looks stale or stuck after the browser's leave-page prompt is cancelled following Close, Reopen or Close with Comment with an unsaved description edit. Do not generalize to Close or Reopen failing without an unsaved edit or leave-page prompt."
+      }
     }
   ]
 }

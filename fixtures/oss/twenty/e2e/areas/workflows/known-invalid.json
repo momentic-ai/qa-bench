@@ -1,0 +1,545 @@
+{
+  "bugs": [
+    {
+      "id": "workflows-N08",
+      "name": "Draft Email CC edits revert after refresh",
+      "summary": "Draft Email CC changes revert after refresh: adding a recipient can lose it, and removing a saved recipient can restore it.",
+      "expected": "Saved Draft Email CC additions and removals should persist after refresh.",
+      "actual": "The reports claim that removing a saved CC recipient leaves an empty field but the recipient returns after refresh, or that adding and committing a CC recipient shows a chip that disappears after refresh while the other email settings remain.",
+      "reproSteps": [
+        "Use configuration-only testing: do not activate, test, send, or execute the email workflow.",
+        "Create an isolated workflow with a Launch manually trigger and a Draft Email action.",
+        "Configure To, Subject and Body. Add CC and BCC through Advanced options using fixture-only or example.invalid recipient addresses.",
+        "Refresh and reopen the action to confirm the baseline recipients were saved.",
+        "Remove the saved CC recipient with its chip Remove button, confirm the field appears empty, then refresh and reopen the action to inspect whether the recipient returns.",
+        "For the addition variant, add int-cc@example.invalid to a fresh Draft Email action, commit it with Enter, verify the chip, then refresh and reopen CC to inspect whether it disappears."
+      ],
+      "reason": "Rejected as assigned: both judges found CC additions and removals persisted after the save completed, with waits of about 1.5–4 seconds, and ordinary panel navigation flushed pending changes. Reversion reproduced only when a hard refresh interrupted the one-second pending-save interval, before an update request was sent; it was not CC-specific. No applicable promise established that pressing Enter or removing a chip immediately completes durable storage. No completed-save reversion was demonstrated. This rejection does not cover a separately demonstrated loss after a completed save or through ordinary in-app navigation."
+    },
+    {
+      "id": "workflows-N14",
+      "name": "Activation succeeds while the schedule editor contains an invalid cron expression",
+      "summary": "Activation succeeds with a visible invalid cron edit and silently activates an earlier valid schedule instead.",
+      "expected": "The reported expectation is that Activate blocks while invalid cron text is visible, or requires reverting that local edit before publishing the previously saved valid schedule.",
+      "actual": "Typing an invalid cron expression leaves a validation error visible even after waiting. Activate succeeds while that rejected text remains in the editor. Reload shows the previously saved valid expression; the hint beneath the field continued to describe that saved schedule.",
+      "reproSteps": [
+        "Create a uniquely named workflow with On a schedule and a Delay action set to 1 second.",
+        "Choose Cron (Custom), enter a valid expression such as 30 12 * * 1-5, blur the field and allow the save to complete.",
+        "Replace Expression with invalid, blur and wait at least 20 seconds. Verify the inline validation error is visible.",
+        "Click Activate Workflow and observe Active alongside the rejected local text and error.",
+        "Reload and reopen the trigger. Observe the previous valid expression is retained and matches the schedule described by the hint."
+      ],
+      "reason": "Rejected as assigned: invalid cron edits are validated locally and never saved. Activation publishes the valid saved version, and the hint continues describing that same saved schedule. No applicable contract requires rejected local input to block activation or automatically revert. Neither judge established executable invalid cron, incorrect run timing, lost valid configuration or another failed supported task. The completed run initially cited by Codex did not demonstrate wrong-time execution; its P/3 verdict was withdrawn. This rejection does not cover activation of an actually persisted invalid schedule or independently demonstrated incorrect execution."
+    },
+    {
+      "id": "workflows-N19",
+      "name": "Create Record Tasks action loses selected Status after refresh",
+      "summary": "Create Record for Tasks loses its selected To do status after refresh.",
+      "expected": "The chosen Task Status should persist with the other configured fields after the save completes and the workflow is refreshed.",
+      "actual": "The report claims that after refresh, Object Tasks and the configured Title remain but Status changes from the selected To do value to No Status.",
+      "reproSteps": [
+        "Sign in as the fixture Admin user and create a uniquely named draft workflow with Record is created for Notes.",
+        "Add a Create Record action and set Object to Tasks.",
+        "Enter a unique Title and select Status To do.",
+        "Verify To do is displayed, refresh the workflow, and reopen the Create Record action to inspect Status.",
+        "For the completed-save control, select To do, allow autosave to finish, then refresh and reopen the action. To do remains selected.",
+        "Keep this configuration-only; no workflow execution or Task creation is required."
+      ],
+      "reason": "Rejected as assigned: both judges reproduced completed Status saves persisting across refresh on fresh workflows. The selected Status was lost only when a hard browser reload interrupted the one-second pending-save interval, before saving completed. Ordinary in-app navigation flushed pending changes and preserved Status. No completed save reverted and no applicable promise established immediate durability before the delayed save completes. This rejection does not cover independently demonstrated loss after a completed save or through ordinary application navigation."
+    },
+    {
+      "id": "workflows-N15",
+      "name": "Task upsert Assignee selection disappears after refreshing workflow",
+      "summary": "Create or Update Record for Tasks loses its selected Assignee after refresh while other mappings persist.",
+      "expected": "A chosen Task Assignee should persist with the other configured mappings after its save completes.",
+      "actual": "The report claims that selecting Tim Apple as Assignee and refreshing returns the field to Select while the Task Title, Status and Due Date remain.",
+      "reproSteps": [
+        "Sign in as the fixture Admin user and create a uniquely named manual workflow with a Create or Update Record action.",
+        "Change the action Object from Notes to Tasks.",
+        "Enter a unique Task Title, select In progress and choose a Due Date.",
+        "Select Tim Apple as Assignee and verify the field displays that name.",
+        "Refresh and reopen the action to inspect whether Assignee returns to Select.",
+        "As a completed-save control, select Tim Apple again, wait for autosave to finish, then refresh and reopen. The Assignee persists.",
+        "Keep this configuration-only; do not execute the workflow or create Tasks."
+      ],
+      "reason": "Rejected by the reviewer: interrupting an unfinished autosave with a hard browser refresh is not a product bug. Both judges found completed Assignee saves persisted on fresh workflows, including after changing Notes to Tasks. Tim Apple returned to Select only when reload interrupted the one-second pending-save interval; ordinary in-app navigation preserved the selection. No completed-save reversion or Assignee-specific persistence defect was established. This rejection does not cover a separately demonstrated loss after saving completes or through normal in-app navigation."
+    },
+    {
+      "id": "workflows-N16",
+      "name": "Create Record action loses its configured Notes body after refresh",
+      "summary": "Create Record for Notes loses its entered Body after refresh while its Title remains.",
+      "expected": "Configured Notes Title and Body should persist after their saves complete and the workflow is reopened.",
+      "actual": "The report claims that refreshing leaves the configured Title intact but empties Body and shows its placeholder instead of the entered text.",
+      "reproSteps": [
+        "Sign in as the fixture Admin user and create a uniquely named workflow with Launch manually.",
+        "Add Create Record, leaving Object as Notes.",
+        "Enter a unique Title and Body and verify both appear in the action settings.",
+        "Refresh the workflow and reopen Create Record to inspect whether Body is empty while Title remains.",
+        "As a completed-save control, enter the values, allow autosave to finish, then refresh and reopen. Both fields persist.",
+        "Keep this configuration-only; no action execution is required."
+      ],
+      "reason": "Rejected by the reviewer under the unfinished-autosave rule. Both final judges found that completed Notes Title and Body saves persist across refresh and ordinary navigation. Loss occurs only when an immediate hard browser refresh interrupts the last pending unsent field edit; the same timing can lose Title rather than Body. No completed-save failure or Body-specific persistence defect was reproduced. This rejection does not cover independently demonstrated loss after saving completes or during ordinary in-app navigation."
+    },
+    {
+      "id": "workflows-N18",
+      "name": "Manual trigger Command Icon selection does not apply the selected Star icon",
+      "summary": "Selecting the plain Star in a manual trigger Command Icon picker does not apply it or close the picker.",
+      "expected": "Selecting a star icon from the icon picker applies it to the Command Icon and trigger node, closing the picker.",
+      "actual": "Clicking the Star icon leaves the icon picker open, and both the Command Icon field and the canvas trigger node retain the original hand icon.",
+      "reproSteps": [
+        "Open Workflows as an authenticated workspace administrator.",
+        "Create a fresh workflow and add a Launch manually trigger with Global availability.",
+        "Open Command Icon, search for star, and select the first plain Star result.",
+        "Inspect whether the picker closes and the Command Icon and trigger node update."
+      ],
+      "reason": "Rejected individually by the reviewer. Both completed judges select plain Star normally: the picker closes and the manual trigger icon updates; Claude also confirms persistence after completed save. Original Mo trace resolves the correct Star button, but its SVG is replaced between mouse-down and mouse-up and no click event is recorded. Three other original Mo icon reports share this gesture failure. A wrong AI locator is not demonstrated, and the cause of the DOM replacement remains unresolved."
+    },
+    {
+      "id": "workflows-N20",
+      "name": "Search Records sort direction reverts from Descending to Ascending after refresh",
+      "summary": "Search Records changes a configured descending sort back to ascending after refresh.",
+      "expected": "The selected Descending sort direction persists.",
+      "actual": "Search Records reopens with Creation date Ascending. The Title Contains filter value persists, but sort direction reverts.",
+      "reproSteps": [
+        "Open Workflows as an authenticated workspace administrator.",
+        "Create a fresh manual workflow with a Search Records action for Notes.",
+        "Add a Title Contains filter and a Creation date sort; select Descending.",
+        "Refresh and reopen Search Records, comparing immediate refresh against waiting for the save to complete."
+      ],
+      "reason": "Rejected under the reviewer's explicit instruction to reject all unfinished-autosave hard-refresh cases. Search Records retains completed Descending saves and its Title filter; only refresh before the save starts restores Ascending. Both judges found completed saves persist and ordinary in-app departure preserves the edit. No completed-save reversion is established; the loss requires interrupting a pending save with hard refresh. The original Mo recording’s precise save timing was not independently verified. This decision excludes separate completed-save failures and ordinary in-app edit loss."
+    },
+    {
+      "id": "workflows-N21",
+      "name": "Delete Record loses its mapped previous-step Note after refresh",
+      "summary": "Delete Record loses its mapped previous-step Note reference after refresh.",
+      "expected": "The mapped Note reference in the Record field remains saved and displayed after refreshing the workflow.",
+      "actual": "Delete Record's Record field resets to an unconfigured 'Select' state after page refresh.",
+      "reproSteps": [
+        "Create a fresh manual workflow with Create Record and Update Record actions for Notes, followed by Delete Record.",
+        "Map the Delete Record target to the Note id from the preceding Update Record action.",
+        "Refresh and reopen Delete Record, comparing immediate refresh against completed save and ordinary in-app navigation."
+      ],
+      "reason": "Rejected under the reviewer's explicit instruction to reject all unfinished-autosave hard-refresh cases. Delete Record retains completed previous-step Note mappings after reload; only immediate refresh before saving produces an empty Select field. Both judges found completed saves persist and ordinary in-app departure preserves the edit. No completed-save reversion is established; the loss requires interrupting a pending save with hard refresh. The original Mo recording’s precise save timing was not independently verified. This decision excludes separate completed-save failures and ordinary in-app edit loss."
+    },
+    {
+      "id": "workflows-N22",
+      "name": "Create Record Notes Title loses Iterator Current Item mapping after refresh",
+      "summary": "Create Record inside an Iterator loses its Current Item Title mapping after refresh.",
+      "expected": "The selected Iterator Current Item mapping remains in Notes Title after refreshing the saved workflow.",
+      "actual": "Title initially showed the mapped Current Item, but reopening after refresh shows empty Title with Enter text placeholder. A whole-page multimodal assertion confirmed no Current Item mapping in the Title configuration.",
+      "reproSteps": [
+        "Create a fresh manual workflow with an Iterator and a Create Record action inside its loop.",
+        "Choose Notes and map its Title to Iterator Current Item.",
+        "Refresh and reopen Create Record, comparing immediate refresh against completed save and ordinary in-app navigation."
+      ],
+      "reason": "Rejected under the reviewer's explicit instruction to reject all unfinished-autosave hard-refresh cases. The Current Item Title mapping survives completed-save reloads; immediate refresh before saving can leave the Title empty, as it does for literal text. Both judges found completed saves persist and ordinary in-app departure preserves the edit. No completed-save reversion is established; the loss requires interrupting a pending save with hard refresh. The original Mo recording’s precise save timing was not independently verified. This decision excludes separate completed-save failures and ordinary in-app edit loss."
+    },
+    {
+      "id": "workflows-N24",
+      "name": "Form Select field source reverts from Task Status to Opportunity Stage after refresh",
+      "summary": "A Form Select source changes from Task Status back to Opportunity Stage after refresh.",
+      "expected": "Selected source Task > Status persists for that form field.",
+      "actual": "Before refresh Field shows Task > Status; after refresh it shows Opportunity > Stage instead. Other form fields and labels survive.",
+      "reproSteps": [
+        "Create a fresh manual workflow with a Form action.",
+        "Add a Text input and change its type to Select.",
+        "Explicitly select Task Status as its source.",
+        "Refresh and reopen the field settings, comparing immediate refresh against completed save and ordinary in-app navigation."
+      ],
+      "reason": "Rejected under the reviewer's explicit instruction to reject all unfinished-autosave hard-refresh cases. Explicit Task Status selections survive completed-save reloads; immediate refresh before saving restores prior or unset source state. Both judges found completed saves persist and ordinary in-app departure preserves the edit. No completed-save reversion is established; the loss requires interrupting a pending save with hard refresh. The original Mo recording’s precise save timing was not independently verified. This decision excludes separate completed-save failures and ordinary in-app edit loss."
+    },
+    {
+      "id": "workflows-N26",
+      "name": "Pick Record forgets its selected Notes pool after refresh",
+      "summary": "Pick Record loses its selected Notes pool after refresh while retaining its strategy.",
+      "expected": "The selected Pick from pool persists together with the strategy after refresh.",
+      "actual": "Strategy remains Round robin, but Pick from resets to 'Select'.",
+      "reproSteps": [
+        "Create a fresh manual workflow with a Pick Record action for Notes.",
+        "Choose Round robin and add a Note to the Pick from pool.",
+        "Refresh and reopen Pick Record, comparing immediate refresh against completed save and ordinary in-app navigation."
+      ],
+      "reason": "Rejected under the reviewer's explicit instruction to reject all unfinished-autosave hard-refresh cases. Pick Record retains completed Round robin pool saves; only immediate refresh before the delayed save starts can restore an empty Select pool. Both judges found completed saves persist and ordinary in-app departure preserves the edit. No completed-save reversion is established; the loss requires interrupting a pending save with hard refresh. The original Mo recording’s precise save timing was not independently verified. This decision excludes separate completed-save failures and ordinary in-app edit loss."
+    },
+    {
+      "id": "workflows-N32",
+      "name": "Create Calendar Event loses enabled Add conferencing setting after refresh",
+      "summary": "Create Calendar Event loses its enabled Add conferencing setting after refresh while other settings persist.",
+      "expected": "Enabled Add conferencing should remain enabled after the workflow is saved automatically and reopened, just like the other action settings.",
+      "actual": "Add conferencing was enabled and verified on before refresh; after refresh and reopening the action, it was off. Title, description, location, dates, New York timezone, All day and attendee persisted.",
+      "reproSteps": [
+        "Create a fresh manual workflow and add or change an action to Create Calendar Event.",
+        "Fill the event fields and enable Add conferencing.",
+        "Refresh and reopen the action, comparing immediate refresh against completed save and ordinary in-app navigation."
+      ],
+      "reason": "Rejected under the reviewer's explicit instruction to reject all unfinished-autosave hard-refresh cases. Add conferencing remains enabled after completed saves and reload; only a hard refresh before the one-second save starts discards the pending toggle. Both judges found completed saves persist and ordinary in-app departure preserves the edit. No completed-save reversion is established; the loss requires interrupting a pending save with hard refresh. The original Mo recording’s precise save timing was not independently verified. This decision excludes separate completed-save failures and ordinary in-app edit loss."
+    },
+    {
+      "id": "workflows-N34",
+      "name": "Draft Email subject does not retain selected variable mapping chip after refresh",
+      "summary": "Draft Email loses a selected Workspace Member Id variable from Subject after refresh.",
+      "expected": "The selected Workspace Member Id variable chip remains in the Subject field after refreshing and reopening the node",
+      "actual": "After refresh and reopening the Draft Email node, the Subject field displays only 'INT2 mapped draft' and the Workspace Member Id chip is missing",
+      "reproSteps": [
+        "Create a fresh manual workflow with a Create Calendar Event action followed by Draft Email.",
+        "Enter literal Subject text and insert a Workspace Member Id variable chip.",
+        "Refresh and reopen Draft Email, comparing immediate refresh against completed save and ordinary in-app navigation."
+      ],
+      "reason": "Rejected under the reviewer's explicit instruction to reject all unfinished-autosave hard-refresh cases. Draft Email Subject chips persist after completed saves; refreshing before the delayed save starts discards pending chips and plain text alike. Both judges found completed saves persist and ordinary in-app departure preserves the edit. No completed-save reversion is established; the loss requires interrupting a pending save with hard refresh. The original Mo recording’s precise save timing was not independently verified. This decision excludes separate completed-save failures and ordinary in-app edit loss."
+    },
+    {
+      "id": "workflows-N30",
+      "name": "Empty optional Form Record mapping inserts literal “undefined” into created Note title",
+      "summary": "An empty optional Form Record mapping inserts the literal string undefined into the created Note title.",
+      "expected": "An unselected optional record should resolve to empty content (or show actionable validation), not add the literal internal value “undefined” to saved user content.",
+      "actual": "Run completes and Create Record output title is “undefinedRSP2 manual tablet”. The form Record was unselected. When Record was selected in an earlier test, its actual title was inserted normally.",
+      "reproSteps": [
+        "Sign in as a workspace administrator and create a fresh workflow with Launch manually, a Form action and Create Record for Notes.",
+        "Give the Form an optional Applicant Text input and an optional Notes Record picker.",
+        "Configure the Note Title to concatenate the Record Title variable and Applicant variable directly, without a missing-value check or default. Allow the configuration to save.",
+        "Run the Form, enter Applicant text and leave Record empty or choose No record, then submit.",
+        "Inspect the completed Create Record output and independently open the saved Note; its Title begins with literal undefined followed by Applicant.",
+        "As a control, select a real Note in Record and submit again; its actual Title is concatenated with Applicant."
+      ],
+      "reason": "Rejected individually by the reviewer after checking the expected-behavior contract. The workflow author concatenates a potentially absent optional Record Title with Applicant without a missing-value guard or default. Pinned workflow documentation tells authors to check that source records exist, provide defaults for optional fields and skip empty sources; its concatenation example explicitly filters missing values. Both judges reproduced the literal undefined title, but an applicable promise of automatic empty-text substitution for combined plain-text titles was not established. The empty-substitution test covers a different rich-text resolver. This candidate is insufficiently supported and configuration-dependent; the rejection does not assert that literal undefined is an explicitly intended display policy."
+    },
+    {
+      "id": "workflows-N35",
+      "name": "Search Records silently saves fractional Limit 2.5 as 2",
+      "summary": "Search Records accepts a displayed fractional Limit of 2.5 but reloads it as 2 without validation.",
+      "expected": "Reject fractional limits with validation or clearly display the actual saved value before leaving the configuration.",
+      "actual": "The Limit displayed 2.5 without validation after blur, but after refresh it displayed 2. A whole-page AI assertion confirmed no validation or conversion message.",
+      "reproSteps": [
+        "Sign in as a workspace administrator and create a fresh manual workflow with a Search Records action for Notes.",
+        "Focus Limit, replace the value with 2, then type .5 character by character so the field displays 2.5.",
+        "Move focus away and wait for the delayed save to complete. The field can keep displaying 2.5 while the saved value is integer 2.",
+        "Close and reopen the action, or refresh and reopen it; observe Limit displays 2.",
+        "As a control, enter whole-number Limit 3, let saving finish and reopen; it remains 3."
+      ],
+      "reason": "Rejected individually by the reviewer after checking the bug bar and intended normalization. Record counts are deliberately rounded down with Math.floor; the saved integer 2 is correct and no fractional value was saved and later lost. No applicable requirement to reject fractional input or display a conversion warning was recovered. Both judges observed the narrower stale blurred text 2.5 while 2 was saved, but that is a borderline GUI-consistency claim with an inferred contract; no incorrect workflow execution, record loss or blocked operation was demonstrated. The reviewer declined this weak ground-truth candidate. This rejection does not assert that the stale display is explicitly intended."
+    },
+    {
+      "id": "workflows-N42",
+      "name": "Test and Activate Workflow use stale action values when clicked after editing",
+      "summary": "Clicking Test or Activate immediately after changing a Create Record field can use its previously saved value while the new edit saves afterward.",
+      "expected": "Test Workflow and Activate Workflow should flush the current visible edits before executing or publishing, or prevent those actions until saving finishes.",
+      "actual": "Automated immediate edit-and-click trials create a Note with the previous title or publish the previous stored configuration, while the newer title subsequently saves, sometimes into a new draft. Waiting for the save to complete makes Test and Activate use the new values.",
+      "reproSteps": [
+        "Sign in as a workspace administrator and create an owned manual workflow with a Create Record action for Notes.",
+        "Set Title to First and Body to Example, wait for saving to complete, then Test and verify First is created.",
+        "Replace Title with Second and immediately click Test before the one-second save delay finishes. Observe the created Note uses First, while Second subsequently persists in the editor.",
+        "For the activation variant, replace the saved title with Third and immediately click Activate before saving completes. Launch the active workflow through the Command Menu; the previous title is used while Third remains in a draft.",
+        "As controls, wait for the changed title to save before Test or Activate. The new settings are used correctly."
+      ],
+      "reason": "Rejected individually by the reviewer after reviewing the Codex video timing. The reproduction deliberately clicks Test or Activate immediately after typing, before the one-second autosave finishes; Claude recorded a run request about 105–137 ms after the edit. The reviewer considers this rushing unfinished autosave rather than a valid product bug for this fixture. Completed-save controls execute and publish the new settings correctly, and the newer edit subsequently persists. The saved evidence does not establish a comfortable human-paced reproduction or a failure after saving completes. Both judges voted P/3, but their observations do not override this human bug-bar decision. This rejection is specific to the immediate edit-and-execute race and does not assert that stale publication is an explicitly documented design choice."
+    },
+    {
+      "id": "workflows-N43",
+      "name": "Duplicate form labels silently overwrite submitted answers",
+      "summary": "Testing a Form draft with duplicate field names returns only the later answer under the colliding output key.",
+      "expected": "Each submitted field's answer should remain accessible, or the editor should require unique labels before a workflow can run.",
+      "actual": "Two Text fields named Beta accept one and two during Test, and the completed output contains only beta:two. Activate correctly rejects the definition because form input names must be unique. Distinct-name controls return both answers.",
+      "reproSteps": [
+        "Sign in as a workspace administrator and create an owned manual workflow with a Form action.",
+        "Add two Text inputs and set both labels to Beta, creating duplicate input names. Allow the configuration to save.",
+        "Click Activate and observe the explicit error: Form action fields must have unique names.",
+        "Run the invalid draft using Test, enter one and two into its two Beta inputs, and submit. The completed output contains only beta:two.",
+        "Rename one field to Gamma and repeat Test; the output preserves both distinct answers."
+      ],
+      "reason": "Rejected individually by the reviewer as invalid user configuration. Form input names must be unique, and Activate correctly rejects colliding names with the explicit message \"Form action fields must have unique names\". The demonstrated answer collapse occurs only when Test is run on a draft violating that requirement. Unique-name controls preserve both answers. No answer loss with a valid form or normally activated duplicate-name workflow was demonstrated, and no separate requirement that Test reject every incomplete or invalid draft was established. Both judges voted P/3, but treating an invalid draft test as valid-form data loss overstates the supported contract."
+    },
+    {
+      "id": "workflows-N48",
+      "name": "Open Form date calendar consumes the first Submit click",
+      "summary": "After typing a valid Form Date with its calendar still open, the first Submit click dismisses the calendar and the next click submits the correct value.",
+      "expected": "The reported expectation is that clicking Submit should both dismiss the open date calendar and submit the form in the same click.",
+      "actual": "The first click closes the still-open calendar and leaves the form pending. A second Submit click completes with the unchanged correct date. Closing the calendar first also permits successful submission.",
+      "reproSteps": [
+        "Sign in as a workspace administrator and create an owned manual workflow with a Form Date input. Allow saving to complete and run Test.",
+        "Type a valid date and leave the calendar popup open, including after pressing Tab.",
+        "Click Submit. Observe that the calendar closes and the form remains open.",
+        "Click Submit again without changing the date. Observe that the run completes with the correct date.",
+        "As controls, select a date through the calendar or dismiss the popup with Escape or an outside click before clicking Submit; submission works."
+      ],
+      "reason": "Rejected individually by the reviewer as normal popup dismissal and a subjective interaction preference. The calendar is still open before the first Submit click; that click closes it, and the next click submits the unchanged correct date. No failed Submit click with the calendar already closed, wrong date, lost answer, or permanent submission failure was demonstrated. Calendar selection, Escape, and explicit outside dismissal also allow successful submission. A requirement that an outside click both dismiss this popup and activate Submit was not established. Comparisons to accepted first-click failures in other components do not establish that contract for this calendar. Claude initially reached F, then revised to P/3 on precedent; both final P/3 verdicts are preserved but the reviewer rejects the claim."
+    },
+    {
+      "id": "workflows-N38",
+      "name": "Fractional Amount Micros input reads back as an integer",
+      "summary": "A workflow action accepts raw Amount Micros 1.5 in its settings, but record reads and action output return the integer 1.",
+      "expected": "The reported expectation is that fractional micros input should be explicitly rejected or preserved consistently rather than returning an integer.",
+      "actual": "Completed Create or Update Record actions return annualRevenue.amountMicros 1 after raw input 1.5. Settings retain 1.5, and equality-filter and aggregate checks support retained fractional storage rather than destructive truncation. Integer controls 2 and 3210000 round-trip correctly.",
+      "reproSteps": [
+        "Sign in as a workspace administrator and create an owned manual workflow with a Create or Update Record action for Companies, using a unique company name and test domain.",
+        "For Annual Revenue, select USD and enter the raw Amount Micros value 1.5. Blur and allow saving to finish.",
+        "Run Test, open the completed action output, and expand annualRevenue. Observe amountMicros is 1.",
+        "Reopen the saved action and observe the settings still contain 1.5. Filter and aggregate checks on the owned record can still observe 1.5.",
+        "As controls, use valid integer micros values such as 2 or 3210000 and allow saving to finish; the completed output preserves those integer values."
+      ],
+      "reason": "Rejected individually by the reviewer as user error: the reproduction supplies fractional raw Amount Micros even though micros are defined as integers. Upstream commit 09f0c9e29a2af89138c6a6c6fe92b5235daf5537 explicitly explains that Currency uses parseInt because micros are integers. Valid integer controls round-trip correctly. Accepting 1.5 in the input and returning 1 on reads demonstrates inconsistent handling of an unsupported fractional-micro value, but does not establish a requirement to support sub-micro currency or a failure on supported integer input. Filter and aggregate controls retain 1.5, so the original claim of destructive stored truncation is withdrawn. No meaningful monetary damage or downstream corruption was demonstrated, and no specific requirement for fractional-input validation was established. Both judges P/3 are retained as evidence; the reviewer rejects the candidate under the integer-input contract."
+    },
+    {
+      "id": "workflows-N52",
+      "name": "Schedule hour entry 24 is rejected but silently saves 2 instead",
+      "summary": "Schedule hour entry 24 is rejected but silently saves 2 instead",
+      "expected": "Hour values outside 0–23 are rejected; an earlier valid keystroke may already have been accepted.",
+      "actual": "Typing 24 over saved hour 13 displays hour 2 plus 'Invalid hour value (newHour). Should be integer between 0 and 23'. After refresh it persists hour 2 and changes the schedule from 13:45 to 02:45 UTC every 2 days.",
+      "reproSteps": [
+        "Open Workflows and create a fresh workflow.",
+        "Create a new workflow as Tim Apple and add On a schedule trigger.",
+        "Set Days between triggers to 2, hour UTC to 13, minute UTC to 45; blur each field.",
+        "Refresh and reopen On a schedule to verify 13:45 UTC every 2 days.",
+        "Replace hour with 24 using ordinary typing and blur. Observe validation and field value 2.",
+        "Refresh and reopen trigger. Observe persisted hour 2 and schedule 02:45 UTC."
+      ],
+      "reason": "Rejected by the reviewer: this is normal per-keystroke validation. The out-of-range hour 24 is properly rejected, while the preceding input 2 is valid and accepted. No applicable contract requires an invalid edit to roll back previously accepted keystrokes, and no failure with supported hour values was established."
+    },
+    {
+      "id": "workflows-N58",
+      "name": "Invalid Date form input silently prevents test submission without validation feedback",
+      "summary": "Invalid Date form input silently prevents test submission without validation feedback",
+      "expected": "Invalid date input is rejected with understandable validation feedback explaining how to correct it.",
+      "actual": "Typing 02/30/2026 produces incomplete 02/30/202_ because the input mask refuses the impossible date. An open calendar can consume the first Submit click. After closing it, both judges submitted successfully with no date answer; correcting to a valid date submitted the correct date. No persistent submission block was reproduced.",
+      "reproSteps": [
+        "Sign in as Tim Apple and create a uniquely named workflow with Launch manually and a Form action containing a Date field labelled Appointment date.",
+        "Run Test and type 02/30/2026 into Appointment date. Observe the mask retaining incomplete 02/30/202_.",
+        "Click Submit while the calendar is open. Observe that this first click can dismiss the calendar and leave the Form open.",
+        "Close the calendar explicitly, then click Submit again. Observe that the run completes and Form output omits the incomplete date, rather than storing an impossible date.",
+        "As a valid-input control, enter 02/28/2026, close the calendar, and Submit. Observe successful completion with 2026-02-28."
+      ],
+      "reason": "Rejected by the reviewer: the invalid date is not saved, valid dates submit correctly, and the lack of an explanatory validation message alone does not establish a broken product contract or supported task. The field does not establish a requirement to provide a date. This rejection does not cover a separately confirmed submission of a stale previous date, loss of a completed valid date, or violation of an explicit required-date constraint. The first-click popup-dismissal behavior is already covered by workflows-N48 and is not the new negative claim."
+    },
+    {
+      "id": "workflows-N60",
+      "name": "Form Number silently changes 9007199254740993 to 9007199254740992 and submits changed value",
+      "summary": "Form Number silently changes 9007199254740993 to 9007199254740992 and submits changed value",
+      "expected": "Preserve entered integer or reject unsupported precision with clear validation; do not silently replace it with a different integer.",
+      "actual": "The judge action logs record entering 9007199254740993, while screenshots and completed output show 9007199254740992. The linked video moments show the resulting rounded value rather than a clear before-and-after transition. Smaller-integer controls, maximum safe integer 9007199254740991, and decimal 123.45 round-trip correctly.",
+      "reproSteps": [
+        "Sign in as Tim Apple and create a uniquely named workflow with Launch manually and a Form action containing a Number field labelled Amount.",
+        "Run Test and enter the literal text 9007199254740993 in Amount, then blur.",
+        "Inspect the input and Submit; the input and completed Form output show 9007199254740992.",
+        "Compare the entered text recorded by the input action with the rendered result; a screenshot of the resulting number alone does not establish a visible before-and-after transition.",
+        "As controls, submit 12345, 9007199254740991, and 123.45 through the same field; these values are retained."
+      ],
+      "reason": "Rejected by the reviewer after reviewing the precision-boundary claim and its evidence presentation. No user-facing exact-integer preservation or rejection requirement at this range was established, the rounded value was already visible before submission, and no failure of ordinary supported numeric values or downstream task was demonstrated. The supplied video timestamps did not clearly demonstrate the input transition by themselves; judge action logs and the frontend conversion support the observation but do not independently establish the violated product contract. This rejection is limited to the above-safe-integer precision case and does not cover corruption of ordinary supported decimals/scientific notation, loss of completed saved values, or a violation of an explicit precision guarantee."
+    },
+    {
+      "id": "workflows-N61",
+      "name": "POST-configured active webhook accepts browser GET and starts a workflow run",
+      "summary": "POST-configured active webhook accepts browser GET and starts a workflow run",
+      "expected": "A webhook configured with HTTP method POST should reject GET navigation rather than invoke its workflow.",
+      "actual": "Fresh Active workflows configured for POST accept ordinary browser GET requests at their Live URL, return success:true with a workflowRunId, and complete the run. Both POST-before-first-activation and GET-then-POST configurations behave this way. Deactivated workflows reject the request without starting a new run.",
+      "reproSteps": [
+        "Sign in as Tim Apple and create a uniquely named workflow with a Webhook trigger and a Delay action set to 1 second.",
+        "Select HTTP method POST, set Expected Body to a valid object such as {\"ticket\":\"WEBHOOK-POST\",\"count\":2}, and allow saving to complete.",
+        "Activate, reload and reopen the trigger to verify the saved POST configuration.",
+        "Open the displayed Live URL in a new browser tab, sending an ordinary GET request. Observe success:true and a new workflowRunId.",
+        "Inspect the new run and observe completion. As a control, deactivate the workflow and repeat GET; it rejects without a new run."
+      ],
+      "reason": "Rejected by the reviewer as explicitly intended behavior. Originating upstream commit f121c94d4add54f2268203592907c2cc64f5fcd8 (#11455), already an ancestor of the fixture revision, deliberately does not filter webhook execution by the configured HTTP method and says POST triggers can accept GET for flexibility. Pinned documentation permits GET or POST to start a workflow. The selector controls POST expected-body configuration; an exclusive-method enforcement contract was not established. This rejection does not cover independent saved-body corruption, payload substitution, or activation-status enforcement failures."
+    },
+    {
+      "id": "workflows-N63",
+      "name": "Refreshing See Runs loses workflow context and shows all workflows' runs",
+      "summary": "Refreshing See Runs loses workflow context and shows all workflows' runs",
+      "expected": "The workflow-specific run list opened by See Runs should retain its workflow context on refresh.",
+      "actual": "See Runs initially opens the correct Workflow filter and matching run list. Hard refresh clears this unsaved filter and shows unrelated runs. Saving the same filter as a new view, allowing the save to complete, and refreshing/reselecting that view retains the filter and matching run. No saved filter, workflow run, or output was lost.",
+      "reproSteps": [
+        "Sign in as Tim Apple and create a uniquely named manual workflow with an HTTP Request GET action targeting the fixture app root. Test it and confirm a completed run.",
+        "Close the run panel and choose See Runs. Verify the Workflow filter chip and the matching run.",
+        "Hard refresh the page. Observe the unsaved Workflow filter is gone and the global run list includes unrelated workflows.",
+        "As a control, reopen See Runs for the same workflow, click Save as new view, save a uniquely named view and wait for completion.",
+        "Refresh and reselect that saved view. Confirm its Workflow filter and matching run remain."
+      ],
+      "reason": "Rejected by the reviewer: this is refresh of an unsaved filter on the global Workflow Runs view. The UI offers Reset and Save as new view, documentation says filters/sorts are saved with a view, and the completed saved-view control persists. No independent requirement that temporary See Runs filtering survive hard refresh was established. This rejection does not cover initial See Runs navigation omitting requested workflow/version scope (accepted workflows-N50/N09), lost completed saved-view settings, or different ordinary-navigation/background-refetch failures in other components."
+    },
+    {
+      "id": "workflows-N64",
+      "name": "Renaming a Form input breaks downstream mappings but still permits activation",
+      "summary": "Changing a form input label leaves existing action variables pointing to the old label. The editor marks them Not Found, yet activation succeeds and production runs silently create blank record fields.",
+      "expected": "Renaming a form label should preserve downstream references, or block activation until broken variables are repaired.",
+      "actual": "Changing a Form label so its derived output key changes leaves old downstream variable paths unresolved. The editor visibly marks those mappings Not Found. Executing without repairing them creates blank fields for whole-value mappings or literal undefined within interpolated strings. Reselecting the renamed variable restores correct output; case-only renames retaining the same key also work.",
+      "reproSteps": [
+        "Sign in as Tim Apple and create a uniquely named manual workflow with a Form Text field labelled Company name and a downstream Create Record Companies action whose Name maps to that Form field.",
+        "Test with a nonempty answer and confirm the created Company has the supplied name.",
+        "Rename the Form field to Legal business name, allow saving to complete, and inspect the downstream mapping. It visibly says Not Found because it retains the old output key.",
+        "If the unresolved mapping is left unchanged and the workflow is run, observe a blank Company Name despite the nonempty Form answer.",
+        "Reselect Legal business name through the downstream variable picker and rerun. Confirm the supplied name is then used correctly. A case-only rename preserving the derived key is another working control."
+      ],
+      "reason": "Rejected by the reviewer as configuration error: execution proceeds after the editor visibly identifies a Not Found mapping. The label change alters the Form output key, so the existing mapping must be repaired; reselecting the renamed variable fixes the workflow. No independent promise that all label renames automatically rewrite downstream references or that every missing-reference warning blocks activation was established. Upstream validation deliberately leaves inferred-schema path-not-found warnings nonblocking because they can be false positives. The wrong output from running a visibly broken mapping is not independent proof of a product defect. This rejection does not cover a mapping still shown as valid that silently resolves incorrectly, failed explicit remapping, or loss of a completed valid mapping without a relevant configuration change."
+    },
+    {
+      "id": "workflows-N68",
+      "name": "Changing Form field type discards its custom label",
+      "summary": "Changing a Form field between Text and Number replaces its custom label with the new type's default label and clears its placeholder.",
+      "expected": "The reported expectation is that changing field type preserves a previously configured custom label and placeholder.",
+      "actual": "Changing field type explicitly initializes its type-specific defaults. Text to Number changes the saved label to Number; changing back uses Text. The editor immediately shows the replacement, which persists after completed saves and reload. No submitted-answer loss, execution failure or independently verified downstream corruption was demonstrated for this candidate.",
+      "reproSteps": [
+        "Sign in as Tim Apple and create an owned manual workflow with a Form action containing a Text field.",
+        "Give the field a custom label and placeholder. Allow saving to finish, leave and reopen it, and confirm they remain.",
+        "Change the field Type to Number. Observe the label becomes Number and the custom placeholder is cleared; the grey 1000 text is a fallback hint.",
+        "Allow saving to complete and reload. Confirm the displayed replacement remains.",
+        "Change the type back to Text and observe the new Text default label. No additional runtime failure is required to observe the reported reset."
+      ],
+      "reason": "Rejected by the reviewer as valid behavior: reinitializing defaults when changing a field's type is coherent, and preferring preservation of the previous label does not establish an ill-behaved program. The UI immediately shows the new configuration. No independent requirement that type conversion preserve labels or placeholders, and no separate functional failure, was established. Code explicitly resetting the defaults supports the observed mechanism without by itself proving maintainer intent. This rejection does not cover a configured label retained in storage but ignored at runtime, submitted-answer loss, or a separately established downstream execution defect."
+    },
+    {
+      "id": "workflows-N71",
+      "name": "Renaming an existing workflow via blur reverts to its previous name on refresh",
+      "summary": "Renaming an existing workflow via blur reverts to its previous name on refresh",
+      "expected": "A name committed by leaving the editable field should remain QA-LIST Gamma after refresh.",
+      "actual": "Ordinary mouse click outside, Tab, Enter and normal list departure commit renamed workflow titles and retain them after reload on fresh workflows. Programmatic BLUR leaves the title editor open without sending a rename; hard reload then restores the saved title. Original Gamma-to-Beta reversion is preserved, but the historical commit/request sequence is not established.",
+      "reproSteps": [
+        "Create a uniquely named workflow draft, close and reopen it from Workflows.",
+        "Edit its title to a new unique value.",
+        "Compare programmatic BLUR without a click/keyboard commit, followed by reload, with a normal outside click, Tab or Enter followed by completion and reload.",
+        "Observe the uncommitted programmatic-blur edit restores the old title, while ordinary commit paths retain the new title."
+      ],
+      "reason": "Automatically rejected under the reviewer's delegated user-error and unfinished-edit/reload rules. The failing fresh operation only programmatically blurs a still-open title edit without activating a supported commit event, then reloads. Every tested ordinary commit path saves correctly. No requirement to persist every programmatic blur or loss after a completed rename was established. This does not reject the separate accepted breadcrumb-placeholder display bug, nor a separately proven loss after clicking a working commit/save control."
+    },
+    {
+      "id": "workflows-N72",
+      "name": "HTTP Request Body variable chip disappears after refresh",
+      "summary": "The reported HTTP Body variable disappearance was reproduced only when insertion produced invalid JSON; valid JSON variable mappings persist.",
+      "expected": "The report expects an inserted HTTP Body variable to remain saved after leaving or reopening the editor.",
+      "actual": "Literal JSON and variables inserted into valid JSON value positions persist after completed saves and navigation. Inserting a variable before or after the object creates invalid JSON, which the editor refuses to save and can identify with a SyntaxError on blur. Leaving that invalid local draft restores the previously saved valid body. The original Mo caret and serialized body were not established, so its historical cause remains unconfirmed.",
+      "reproSteps": [
+        "Create an owned manual workflow with an HTTP Request action and a valid literal JSON body, then allow the save to complete.",
+        "Insert a variable before or after the JSON object, making the complete body invalid even after variable placeholders are replaced with null.",
+        "Focus and leave the editor to observe its SyntaxError. Wait comfortably, navigate to another action and return; the prior valid body remains.",
+        "As controls, insert the variable inside a valid JSON value position and allow saving to complete. Confirm the mapping survives navigation and reload; URL plain-text variable mappings also persist."
+      ],
+      "reason": "Automatically rejected under the reviewer's delegated rule to reject clear invalid-input and configuration errors without presenting them. The reproduced disappearance is refusal to save an invalid JSON body, while supported variable placements persist. This establishes no loss of a completed valid mapping and no promise that invalid drafts must be saved. Original Mo caret placement remains unknown, so the historical event is not asserted to have had the exact fresh-trial cause. The narrower focus-dependent delay in validation feedback is not treated as a separate confirmed bug or rejected solely because it concerns UX; no violated immediate-feedback promise was established."
+    },
+    {
+      "id": "workflows-N75",
+      "name": "Adding Count all before saving a filtered workflow view loses the Name filter after reload",
+      "summary": "Adding Count all before saving a filtered workflow view loses the Name filter after reload",
+      "expected": "Saving the view should preserve both the Name filter and Count all calculation; the two matching workflows should remain.",
+      "actual": "Normal completed Update-view saves preserve the Workflow Name filter and Count all after reload. Fresh unmodified failures require near-instant reload within about 0.25 seconds of Update: the first page can show unfiltered rows while the saved filter remains on the server, and another reload recovers. The historical Mo cause was not independently established. No waited-save failure or stored filter loss was demonstrated for the assigned case.",
+      "reproSteps": [
+        "Create a uniquely named Workflow Table view; apply a Name filter matching owned workflows and add Count all.",
+        "Click Update view, wait for completion feedback, and reload. The filter and Count all persist.",
+        "For the reported fast variant, reload immediately after Update before the client update settles. The first page can show old unfiltered view state; another reload recovers the saved filter.",
+        "Do not treat an artificially delayed request or a different later Update action as evidence that the original completed save was lost."
+      ],
+      "reason": "Automatically rejected under the reviewer's explicit instruction to filter unfinished-save/reload timing cases. The reproduced assigned scope interrupts view-update completion and client synchronization with near-instant reload; normal completion controls pass. It does not demonstrate that a completed saved filter was erased. This rejection excludes the separate once-observed later Update click that removed a retained filter, any independently confirmed completed-save failure, and normal in-app navigation or background-refetch defects. Artificially delayed/failed network controls are not evidence for the original claim."
+    },
+    {
+      "id": "workflows-N77",
+      "name": "Pick Record Load balanced by Tasks fails with Unidentified field in groupBy",
+      "summary": "Testing a load-balanced Pick Record action with an explicitly incompatible Tasks configuration and no Count by field produces a handled Failed step with a raw groupBy error.",
+      "expected": "The report expects the selected load-balancing setup to run or provide a more specific error instead of Unidentified field in groupBy.",
+      "actual": "The editor warns that Tasks has no relation to Note and disables Count by, leaving the configuration incomplete. Testing that draft produces a Failed step. Activation rejects it as Invalid workflow version. Choosing the compatible Note Targets object and Count by Note completes successfully; Random selection also works. No valid load-balanced configuration failure was demonstrated.",
+      "reproSteps": [
+        "Create an owned manual workflow with Pick Record over two Notes and choose Load balanced.",
+        "Choose Tasks as Balance by. Observe the explicit no-relation warning and disabled Count by field.",
+        "Test the incompatible draft and observe a handled Failed step with Unidentified field in groupBy. Attempt activation and observe Invalid workflow version.",
+        "As a supported control, select Note Targets and Count by Note; verify the run completes. Random selection also completes."
+      ],
+      "reason": "Automatically rejected under the reviewer's delegated instruction to reject clear configuration errors without presenting them. The failure follows an explicitly warned incompatible object and missing Count by relation. Supported compatible configuration runs, and activation blocks the incomplete version. No requirement that Test reject every invalid draft before execution or that this handled error use particular wording was established. This rejection does not cover a supported compatible load-balancing setup that fails, an incompatible configuration misrepresented as valid, or an actual browser crash."
+    },
+    {
+      "id": "workflows-N78",
+      "name": "Deleting Iterator leaves its loop Delay stranded as a disconnected graph node",
+      "summary": "Deleting an Iterator retains its configured loop Delay without an incoming edge, rather than automatically deleting or promoting the child action.",
+      "expected": "The report expects Iterator deletion to remove or reconnect the former loop body automatically.",
+      "actual": "On a normally created Iterator, deletion preserves the configured Delay and its settings, removes the incoming loop connection, and retains the outgoing continuation. No post-deletion execution failure, lost settings or blocked editing was demonstrated. A fresh fully floating variation began with an already broken placeholder-origin loop return covered by N51; the historical Mo pre-delete return was not recovered.",
+      "reproSteps": [
+        "Create an owned manual workflow with a normally added Iterator, a configured one-second Delay in its loop body, and a Filter on its completed path. Allow the graph to save.",
+        "Delete the Iterator and inspect the remaining graph. Observe the configured Delay remains without an incoming connection while its outgoing continuation and saved settings remain.",
+        "Leave and reopen the workflow and inspect the Delay settings. The retained configured action remains editable.",
+        "Compare an ordinary middle-step deletion, which reconnects its plain successor. That control does not establish a cascade-delete or loop-body-promotion contract for deleting a controller."
+      ],
+      "reason": "Rejected by the reviewer as coherent, plausibly intended behavior: deleting the Iterator can preserve configured child steps for reuse or manual rewiring. No requirement to automatically delete or reconnect those children, and no independent functional failure, was established. Source implements this retention, but implementation alone is not asserted as proof of maintainer intent. This rejection excludes N51's separately accepted broken loop-return generation and any independently demonstrated loss of saved child settings, blocked editing, or supported execution failure."
+    },
+    {
+      "id": "workflows-N80",
+      "name": "Workflow header launch button runs a different Untitled workflow instead of the open Form workflow",
+      "summary": "A global pinned manual-workflow shortcut is mistaken for a command that runs whichever workflow is currently open.",
+      "expected": "Launching the open activated workflow should execute its configured Form steps and associate the run with that workflow.",
+      "actual": "The global pinned manual-workflow shortcut launches its own configured workflow version, independently of the workflow currently open. Original saved command configuration was MANUAL, pinned and GLOBAL; its requested version and resulting run both belonged to the shortcut workflow. Fresh controls confirm the open Form workflow runs correctly through its own Test command.",
+      "reproSteps": [
+        "Create two owned manually launched workflows with distinct names and valid actions. Configure the first workflow with Global availability and its Navbar button pinned, then activate both workflows after saving completes.",
+        "Open the second workflow editor and click the first workflow’s global Navbar shortcut.",
+        "Inspect the resulting run and its Workflow relation: both belong to the configured first workflow.",
+        "Use the second workflow’s own Test command and verify it executes the second workflow’s configured steps."
+      ],
+      "reason": "Automatically rejected under the reviewer's delegated clear user/configuration-error rule: the clicked global pinned shortcut is misidentified as a command for the currently open workflow. The Navbar setting explicitly creates a button for its configured workflow, and both the original request and fresh controls honor that target. This does not reject an independently demonstrated command targeting the wrong configured version, a separate name-erasure defect, or every untested duplicate-name scenario."
+    },
+    {
+      "id": "workflows-N91",
+      "name": "Update Record Tasks Due Date disappears after calendar selection and refresh",
+      "summary": "Update Record Tasks Due Date disappears after calendar selection and refresh",
+      "expected": "Selected Due Date remains saved along with other Update Record values.",
+      "actual": "Due Date selected in Update Record persists after successful completed saves and reload, and immediate ordinary node/list navigation preserves it. Hard refresh inside the one-second pending-save interval can restore the prior saved date or leave an initially blank date blank. No completed-save failure was reproduced.",
+      "reproSteps": [
+        "Create an owned manual workflow with Create Record Tasks followed by Update Record targeting that Task.",
+        "Select a Due Date in Update Record, allow the update request to complete, then reload; the date persists.",
+        "Compare a hard refresh within the pending-save interval after selecting a different date; the previous saved date can return.",
+        "As another control, select a date and leave through normal node/list navigation; reopening retains it."
+      ],
+      "reason": "Automatically rejected under the reviewer's explicit instruction to reject unfinished-autosave hard-refresh cases without showing them again. The only reproduced loss interrupts a pending Update Record save; completed-save and ordinary-navigation controls retain the date. The original refresh began about 0.6 seconds after selection, while its complete request history was not captured. This rejection excludes failed keyboard clearing after comfortable waits (N70), separately proven completed-save loss, and ordinary navigation discarding a valid edit."
+    },
+    {
+      "id": "workflows-recovered-10-persistence",
+      "name": "Monthly cron expression loses its final asterisk after reload",
+      "owningArea": "twenty/workflows",
+      "summary": "The original report claimed that entering 0 12 1 * * saved a truncated expression, visible as 0 12 1 * after reload. The reproduction retained the complete expression.",
+      "expected": "The entered five-field expression 0 12 1 * * should remain intact after saving and reloading.",
+      "actual": "Mo reproduced an incorrect initial preview, but reloading retained both asterisks and restored the correct monthly description and upcoming dates. No persisted truncation was observed.",
+      "reproSteps": [
+        "Create an owned workflow with an On a schedule trigger and a harmless Code action. Save weekday Cron (Custom) expression 15 9 * * 1-5 and leave the workflow deactivated.",
+        "Select the entire cron expression and type 0 12 1 * * using normal keyboard input, then blur the expression field.",
+        "Inspect the initial description and upcoming execution dates: they show midnight on January 12 with yearly dates rather than noon on the first of every month.",
+        "Reload the page and reopen the trigger. Observe that 0 12 1 * * retains both asterisks and the description and upcoming dates now correctly show noon UTC on the first of every month."
+      ],
+      "reason": "Rejected by the reviewer for the narrowly split claim of persisted expression truncation: the reproduction retained the complete 0 12 1 * * expression after reload. The incorrect initial preview is separately accepted as workflows-recovered-10-preview and must not match this negative reference. This rejection does not establish the cause of the original report or rule out a separately evidenced truncation under different conditions. Actual scheduled execution was not tested.",
+      "reviewEvidence": {
+        "basis": "Mo browser reproduction and explicit user rejection of the persisted-truncation claim; no independent judge or source audit.",
+        "userAccepted": false,
+        "sourceRevision": "35c645064f72bc4e3180a2c6c506cbbfee170007",
+        "limitations": [
+          "Rejection is based on the full expression surviving reload in this reproduction, not on source proof that truncation is impossible."
+        ]
+      }
+    },
+    {
+      "id": "workflows-fresh-b5b81504",
+      "name": "See Version from a tested and stopped run opens a persistently empty canvas",
+      "owningArea": "twenty/workflows",
+      "summary": "The reported persistent empty graph after See Version did not reproduce across fresh tested/stopped workflows and multiple entry points.",
+      "expected": "See Version should display the linked version’s trigger and action graph.",
+      "actual": "Both reviewers saw the correct v1 page with connected Launch manually and five-minute Delay nodes on two fresh workflows each. Claude observed a brief navigation-loading blank before both nodes appeared. Separate graph displacement after resizing remains accepted coverage.",
+      "reproSteps": [
+        "Create a fresh manual workflow with a Delay set to five minutes; allow saving to finish.",
+        "Run Test, stop the running execution, and inspect Delay settings/output. Confirm Minutes 5 and the ended-before-completion output.",
+        "Close the action panel and use the run command menu’s See Version. Observe the correct version page with its trigger and Delay graph.",
+        "Repeat on a second fresh workflow and compare the runs-list side panel, full run page, desktop/tablet/mobile widths, and settled reloads."
+      ],
+      "reason": "The user rejected the reported persistent See Version failure as not reproduced. Both agents independently displayed the expected graph on two fresh workflows, with passing controls. This negative reference is limited to that entry-point claim. It does not reject the accepted resize-triggered off-screen graph or Restore-triggered blank editor. The historical Mo cause remains unknown; a brief loading state and a separately observed resize defect do not prove what happened in that session.",
+      "reviewEvidence": {
+        "basis": "Independent Claude Code and Codex browser checks, coordinator citation verification, and user rejection of the reported See Version trigger.",
+        "sourceRevision": "35c645064f72bc4e3180a2c6c506cbbfee170007",
+        "analysis": [
+          "Each judge tested two fresh manual workflows, Test then Stop, with no subsequent configuration edits. Both nodes appeared on the correct v1 record.",
+          "Codex covered desktop/tablet and version-history controls. Claude additionally covered three entry points and widths from 1920 to 390 pixels. Its sampled navigation showed an empty sample around 200 milliseconds and both nodes by about 340 milliseconds.",
+          "Source navigation uses the selected run’s workflowVersion ID. Version effects build the graph from fetched content and clear while content is unavailable or mismatched. The coordinator corrected Claude’s wholly out-of-range visualizer-effect citation to the actual pinned effects.",
+          "Claude separately reproduced nodes moving off-screen after resizing an already-open version page; this does not establish the original report’s cause. A later feature-flagged command no-op fix is also a different defect."
+        ],
+        "sourceReferences": [
+          "https://github.com/twentyhq/twenty/blob/35c645064f72bc4e3180a2c6c506cbbfee170007/packages/twenty-front/src/modules/command-menu-item/engine-command/record/single-record/workflow-runs/components/SeeVersionWorkflowRunSingleRecordCommand.tsx#L6-L26",
+          "https://github.com/twentyhq/twenty/blob/35c645064f72bc4e3180a2c6c506cbbfee170007/packages/twenty-front/src/modules/workflow/workflow-diagram/components/WorkflowVersionCard.tsx#L37-L54",
+          "https://github.com/twentyhq/twenty/blob/35c645064f72bc4e3180a2c6c506cbbfee170007/packages/twenty-front/src/modules/workflow/workflow-diagram/components/WorkflowVersionVisualizerEffect.tsx#L34-L78",
+          "https://github.com/twentyhq/twenty/blob/35c645064f72bc4e3180a2c6c506cbbfee170007/packages/twenty-front/src/modules/workflow/workflow-version/hooks/useWorkflowVersionContent.ts#L18-L70"
+        ],
+        "limitations": [
+          "The original Mo event and its historical cause remain unverified.",
+          "Other roles and archived-version cases were not tested. Do not apply this rejection to a separate resize, Restore or independently proven graph-loading failure.",
+          "No latest-runtime or upstream-fix claim is made."
+        ]
+      }
+    }
+  ]
+}

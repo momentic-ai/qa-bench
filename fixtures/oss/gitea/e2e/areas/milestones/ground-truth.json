@@ -90,6 +90,222 @@
         "Click the visible “1 Closed” filter. At /eval/mo-gitea-03-issues-milestones-close-repro/milestones?state=closed, observe the milestone row."
       ],
       "severity": 3
+    },
+    {
+      "id": "gitea-whitespace-milestone-title-saved-empty",
+      "name": "Whitespace-only titles create milestones with invisible detail links",
+      "summary": "A milestone title made only of spaces passes the required-title check, is trimmed to an empty name, and is saved, leaving a milestone whose title link, detail heading, and picker entry are blank.",
+      "expected": "A whitespace-only milestone title is rejected like an empty one, as Gitea does for issue, release, and wiki titles.",
+      "actual": "Creating a milestone titled with spaces succeeds with 'The milestone \" \" has been created.' The list shows a zero-size, unclickable title link, the detail page has an empty heading, and the issue sidebar's milestone picker shows a nameless entry. Editing an existing milestone's title to spaces does the same.",
+      "reproSteps": [
+        "Sign in as the fixture account and open a repository's Issues → Milestones → New Milestone.",
+        "Enter three spaces as the title and choose Create Milestone.",
+        "Observe the success message and the increased open count.",
+        "Observe the new row has no visible title link, and opening it by URL shows an empty heading.",
+        "As a control, submit an empty title and observe the browser blocks it with \"Please fill out this field.\""
+      ],
+      "severity": 3
+    },
+    {
+      "id": "gitea-milestone-accented-search-zero-counters",
+      "name": "Accented milestone search lists matches but the Open/Closed counters read zero",
+      "summary": "On SQLite, milestone search matches accented keywords with ASCII-only uppercasing, but the Open/Closed counters uppercase the keyword fully, so an accented search like café lists matching milestones under tabs that read 0 Open / 0 Closed.",
+      "expected": "The Open and Closed counters count the same milestones the search lists, as they do for unaccented keywords.",
+      "actual": "Searching closed milestones for 'café' lists the matching closed milestones, but the tabs read 0 Open and 0 Closed, including after reload. Searching 'caf' lists the same rows with the correct Closed count. The global Milestones page shows the same zero counters, and its pagination follows them, so with more than one page of accented matches the Next link is missing.",
+      "reproSteps": [
+        "Open a repository's Milestones page and create a milestone whose title contains 'café', then close it.",
+        "Select Closed and search for 'café'.",
+        "Observe the milestone is listed but the tabs read 0 Open and 0 Closed.",
+        "Search for 'caf' instead and observe the same milestone with a Closed count of 1."
+      ],
+      "severity": 3
+    },
+    {
+      "id": "gitea-milestone-unbroken-title-overflows-mobile",
+      "name": "Unbroken milestone titles overflow the mobile milestone list and detail pages",
+      "summary": "Milestone titles render without any word-break rule, so a long title with no spaces or hyphens (up to the form's 50-character limit) widens the repository milestone list and the milestone detail page past a 390px viewport, forcing horizontal scrolling.",
+      "expected": "A milestone title the form accepts wraps within a 390px viewport on the repository milestone list and the milestone detail page, as hyphenated titles and Projects titles do.",
+      "actual": "At 390×844, a 50-character unbroken title makes the repository milestone list about 430–480px wide with the title clipped at the edge, and the milestone detail page about 625–707px wide with its heading running off screen. Both persist after reload and need horizontal scrolling to read. A hyphenated 50-character title fits, and tablet and desktop widths are fine.",
+      "reproSteps": [
+        "Create a milestone whose title is 50 characters with no spaces or hyphens, e.g. 'WWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWW'.",
+        "Set the viewport to 390×844 and open the repository's Milestones list.",
+        "Observe the page scrolls horizontally and the title runs past the right edge.",
+        "Open the milestone's detail page and observe the heading widens the page well past 390px."
+      ],
+      "severity": 1,
+      "matchingGuidance": {
+        "relatedReference": {
+          "name": "Long milestone titles overlap repository labels in the global milestone list at 390×844",
+          "distinction": "Both come from milestone titles having no word-break at mobile width, but on different pages with different symptoms: this reference covers the repository milestone list and milestone detail page widening the page into horizontal scroll, and the related reference covers the global /milestones list where the title overlaps the repository label. Credit each finding to the reference for the page and symptom it reports."
+        }
+      }
+    },
+    {
+      "id": "gitea-milestone-close-reopen-drops-search",
+      "name": "Closing or reopening a milestone from a searched list clears the search and sort",
+      "summary": "The milestone list's Close and Open (reopen) actions redirect to the list with only a state parameter, so a search keyword and sort selected on the list are discarded and unrelated milestones reappear.",
+      "expected": "After closing or reopening a milestone from a searched, sorted list, the list keeps the search keyword and sort, as the list's own Open/Closed tabs do.",
+      "actual": "Searching the milestone list, sorting by Latest due date, and clicking Close on a result lands on /milestones?state=close with an empty search box, the default sort, and non-matching open milestones listed. Reopening a milestone from a searched Closed list likewise lands on /milestones?state=open without the search or sort.",
+      "reproSteps": [
+        "Create several milestones whose titles share a prefix, plus one milestone that doesn't match.",
+        "On the repository's Milestones page, search for the shared prefix and choose Sort > Latest due date.",
+        "Click Close on one of the matching milestones.",
+        "Observe the search box is empty, the sort is reset, and the non-matching milestone is listed.",
+        "Switch to Closed, search again, click Open on the closed milestone, and observe the search is lost the same way."
+      ],
+      "severity": 3,
+      "matchingGuidance": {
+        "relatedReference": {
+          "name": "Closing a milestone opens an empty closed-milestone list",
+          "distinction": "Both come from the milestone status-change redirect, but they are different defects: this reference covers losing the search keyword and sort after Close or Reopen from a searched list (Reopen sends the correct state and still loses them), and the related reference covers the redirect using state=close so the Closed list is not shown. Credit search/sort-loss findings here and empty-closed-list findings to the related reference."
+        }
+      }
+    },
+    {
+      "id": "gitea-milestone-delete-drops-search",
+      "name": "Deleting a milestone from a searched list clears the search, sort and state",
+      "summary": "Deleting a milestone from the milestone list always redirects to the bare Milestones page, so the search keyword, sort, and Open/Closed state selected on the list are discarded and unrelated milestones reappear.",
+      "expected": "After deleting a milestone from a searched, sorted list, the list keeps the search keyword, sort and selected state.",
+      "actual": "Searching the milestone list, sorting by Latest due date, and deleting a matching milestone succeeds but lands on /milestones with an empty search box, the default sort, and non-matching milestones listed. Deleting from the Closed tab also returns to the Open tab.",
+      "reproSteps": [
+        "Create several milestones whose titles share a prefix, plus one milestone that doesn't match.",
+        "On the repository's Milestones page, search for the shared prefix and choose Sort > Latest due date.",
+        "Click Delete on one of the matching milestones and confirm.",
+        "Observe the search box is empty, the sort is reset, and the non-matching milestone is listed."
+      ],
+      "severity": 3,
+      "matchingGuidance": {
+        "relatedReference": {
+          "id": "gitea-milestone-close-reopen-drops-search",
+          "distinction": "Both lose the milestone list's search and sort after an action, but through different handlers: this reference covers Delete (which redirects to the bare Milestones page), and the related reference covers Close and Reopen (which redirect with only a state parameter). Credit each finding to the reference for the action it reports."
+        }
+      }
+    },
+    {
+      "id": "gitea-milestone-year-one-date-placeholder",
+      "name": "Milestone due date January 1, 0001 renders as '-' despite being saved",
+      "summary": "A milestone due date of 0001-01-01 saves and reopens in the editor, but every milestone view shows a red calendar icon and '-' instead of the date, because the date re-parses to Go's zero time, which the date formatter treats as no date.",
+      "expected": "A saved due date of January 1, 0001 is displayed as that date on the milestone list, detail page and global Milestones dashboard.",
+      "actual": "Saving 01/01/0001 as a milestone's due date succeeds and Edit shows 0001-01-01, but the repository milestone list, milestone detail page and global Milestones dashboard show a red calendar icon followed by '-'. Neighboring dates such as 0001-01-02 and ordinary dates render correctly.",
+      "reproSteps": [
+        "Create or edit a milestone and set its due date to 01/01/0001.",
+        "Save and reopen Edit to confirm the date is stored as 0001-01-01.",
+        "Open the repository's Milestones list and observe '-' instead of the date."
+      ],
+      "severity": 1,
+      "matchingGuidance": {
+        "relatedReference": {
+          "id": "gitea-milestone-epoch-date-placeholder",
+          "distinction": "Both come from the date formatter treating a special instant as 'no date', but for different dates: this reference covers January 1, 0001 (Go's zero time), and the related reference covers January 1, 1970 (Unix zero). Credit each finding to the reference for the date it reports."
+        }
+      }
+    },
+    {
+      "id": "gitea-milestone-assigned-to-you-ignores-assignee-filter",
+      "name": "Milestone Type Assigned to you ignores the Assignee filter",
+      "summary": "With the milestone Type filter set to Assigned to you, choosing an Assignee option such as Assigned to nobody updates the URL but leaves the list filtered only to the signed-in user, so contradictory filters show the user’s own assigned issues.",
+      "expected": "An explicit Assignee selection is honored together with Type Assigned to you (Assigned to nobody shows no results), or the conflicting option is cleared or disabled so the list never contradicts the selected filters.",
+      "actual": "In a milestone with issue #1 assigned to eval and issue #2 unassigned, Type Assigned to you listed only #1. Choosing Assignee, then Assigned to nobody, changed the URL to type=assigned&assignee=(none) but still listed #1 with 1 Open. On a fresh milestone page with Type All issues, the same Assigned to nobody choice listed only #2.",
+      "reproSteps": [
+        "Sign in as eval. In a writable repository, create a milestone with two open issues: one assigned to eval and one with no assignee.",
+        "Open the milestone detail page and confirm both issues are listed.",
+        "Open the Type filter and choose Assigned to you. Confirm only the issue assigned to eval is listed.",
+        "Open the Assignee filter and choose Assigned to nobody. Observe that the URL contains assignee=(none) but the issue assigned to eval is still listed."
+      ],
+      "severity": 3,
+      "matchingGuidance": {
+        "relatedReference": {
+          "id": "gitea-pass2-005",
+          "distinction": "gitea-pass2-005 is switching Type back to All issues and keeping the assignee=<you> restriction that Assigned to you injected. This entry is choosing an explicit Assignee option (Assigned to nobody, Assigned to anybody, or another user) while Type stays Assigned to you, and the list ignoring that Assignee choice."
+        }
+      }
+    },
+    {
+      "id": "gitea-milestone-created-by-you-ignores-author-filter",
+      "name": "Milestone Type Created by you ignores the Author filter",
+      "summary": "With the milestone Type filter set to Created by you, choosing another user in the Author filter updates the URL and shows that user as the selected Author, but the list stays filtered to the signed-in user's own issues, so contradictory filters show issues the selected author did not open.",
+      "expected": "An explicit Author selection is honored together with Type Created by you (Author alex shows no issues opened by eval), or the conflicting option is cleared or disabled so the list never contradicts the selected filters.",
+      "actual": "In a milestone with issue #1 opened by eval and issue #2 opened by alex, Author alex with Type All issues (poster=alex) listed only #2. With Type Created by you and Author alex (type=created_by&poster=alex), the Author dropdown still had alex selected and Created by you was active, but the list showed only #1, opened by eval, with 1 Open.",
+      "reproSteps": [
+        "Sign in as eval. In a repository where alex can open issues, create a milestone with two open issues: one opened by eval and one opened by alex.",
+        "Open the milestone detail page and confirm both issues are listed.",
+        "Open the Type filter and choose Created by you. Confirm only the issue opened by eval is listed.",
+        "Open the Author filter and choose alex. Observe that the URL contains poster=alex and the Author filter shows alex, but the issue opened by eval is still listed and the issue opened by alex is not."
+      ],
+      "severity": 3,
+      "matchingGuidance": {
+        "relatedReference": {
+          "id": "gitea-milestone-assigned-to-you-ignores-assignee-filter",
+          "distinction": "gitea-milestone-assigned-to-you-ignores-assignee-filter is the Assignee filter being ignored while Type is Assigned to you. This entry is the Author filter being ignored while Type is Created by you, so the list shows the signed-in user's own issues instead of the selected author's."
+        }
+      }
+    },
+    {
+      "id": "gitea-milestone-name-sort-descending",
+      "name": "Milestone Sort > Name orders milestones Z to A",
+      "summary": "Choosing Sort > Name on the repository or global Milestones list orders milestones in reverse alphabetical order, with no option for A to Z. Nothing breaks and the order is consistent, but a plain Name sort running Z to A is unintuitive.",
+      "expected": "Sort > Name lists milestones alphabetically, A to Z (for example, Shared Release before Zebra Beta Release), as Gitea’s other unlabeled name sorts do, or the option is labelled to show it sorts in reverse.",
+      "actual": "On the global Milestones page, searching a shared prefix and choosing Sort > Name gave Zebra, Mango, Banana, Apple, strictly Z to A across repositories; the repository Milestones list gave the same reverse order. The comparison is case-sensitive, so lowercase names sort above uppercase ones (asdf above Handbook above CROSS-Zebra above CROSS-Shared). The default sort lists the same undated milestones A to Z.",
+      "reproSteps": [
+        "Sign in as eval. In a writable repository, create milestones named Apple, Banana, Mango and Zebra with no due dates.",
+        "Open the repository Milestones page and confirm the default order is Apple, Banana, Mango, Zebra.",
+        "Open Sort and choose Name.",
+        "Observe the order Zebra, Mango, Banana, Apple."
+      ],
+      "severity": 1,
+      "matchingGuidance": {
+        "relatedReference": {
+          "id": "gitea-global-milestone-name-sort-drops-repositories",
+          "distinction": "gitea-global-milestone-name-sort-drops-repositories is Sort > Name on the global Milestones page discarding the repository filter and bringing back excluded milestones. This entry is the order Sort > Name produces (reverse alphabetical, case-sensitive) on the repository or global list, regardless of filters."
+        }
+      }
+    },
+    {
+      "id": "gitea-milestone-label-chip-drops-filters",
+      "name": "Clicking an issue’s label on a milestone page drops the Project, Sort and Author filters",
+      "summary": "On a milestone detail page, clicking a label chip on an issue row keeps the search, Type, state and Assignee filters but drops the selected Project, Sort and Author, so the list widens to issues the user had filtered out.",
+      "expected": "Clicking an issue’s label adds that label filter while preserving the other selected filters, including Project, Sort and Author, as the filter bar’s own Label dropdown does.",
+      "actual": "In a milestone with issue A in project Roadmap and issue B in no project, both labelled bug, choosing Project → Roadmap listed only A with project=2 in the URL. Clicking the bug chip on A’s row navigated to ?q=&type=all&state=open&labels=4&assignee=&poster= and listed both A and B. With sort=oldest the chosen order was also lost. Choosing Label → bug from the filter bar instead kept project=2 and listed only A.",
+      "reproSteps": [
+        "Sign in as eval. In a writable repository, create a label, a project and a milestone.",
+        "Create two open issues in the milestone, both with the label: issue A assigned to the project and issue B with no project.",
+        "Open the milestone detail page, open the Project filter and choose the project. Confirm only issue A is listed.",
+        "Click the label chip on issue A’s row. Observe that the URL no longer contains project and issue B is listed again."
+      ],
+      "severity": 3
+    },
+    {
+      "id": "gitea-org-milestone-repo-badge-overlaps-title-mobile",
+      "name": "Long repository badges overlap the milestone title on mobile organization and global milestone lists",
+      "summary": "At a 390px-wide viewport, a milestone row whose repository name is long shrinks the repository badge, but the badge text keeps painting past it over the milestone icon and title.",
+      "expected": "The repository badge and milestone title wrap or truncate within their own space and stay readable on mobile.",
+      "actual": "On an organization’s Milestones page at 390×844, a repository named with 62 characters produced a 261px badge whose text ran 240px past its edge, painting over a 106×17px area of the milestone icon and title. A short repository name in the same list did not overlap, and the long row did not overlap at 1280px.",
+      "reproSteps": [
+        "Sign in as eval. Create an organization with one repository that has a long name (about 60 characters) and one with a short name, and create an open milestone in each.",
+        "Set the viewport to 390×844 CSS pixels and open the organization’s Milestones page.",
+        "Compare the two milestone heading rows. Observe that the long repository badge text runs over the milestone icon and title, while the short one does not."
+      ],
+      "severity": 1,
+      "matchingGuidance": {
+        "relatedReference": {
+          "name": "Long milestone titles overlap repository labels in the global milestone list at 390×844",
+          "distinction": "That entry is a long milestone title overflowing onto the repository label. This entry is the opposite element: a long repository badge overflowing onto the milestone icon and title."
+        }
+      }
+    },
+    {
+      "id": "gitea-new-issue-deleted-milestone-raw-json-error",
+      "name": "Creating an issue whose selected milestone was deleted shows a raw JSON SyntaxError",
+      "summary": "If the milestone selected on an unsaved New Issue draft is deleted elsewhere, clicking Create Issue shows a 'Network error SyntaxError … is not valid JSON' toast instead of saying the milestone no longer exists.",
+      "expected": "Create Issue explains that the selected milestone no longer exists (or creates the issue without it), with no raw parser error.",
+      "actual": "The server rejects the deleted milestone with a plain-text 404 'Not found.', and the page shows the toast: Network error SyntaxError: Unexpected token 'N', \"Not found.\" is not valid JSON. No issue is created; the draft stays on the page with the deleted milestone still selected. Clearing the milestone lets the issue be created.",
+      "reproSteps": [
+        "Create a milestone in a repository.",
+        "Open New Issue, enter a title, select that milestone, and leave the draft unsaved.",
+        "In a second tab, delete that milestone from the Milestones page.",
+        "Return to the draft and click Create Issue."
+      ],
+      "severity": 1
     }
   ]
 }

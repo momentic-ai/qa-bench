@@ -1,0 +1,1305 @@
+{
+  "bugs": [
+    {
+      "id": "workflows-N03",
+      "name": "Bulk workflow Name update is offered but always fails with Method not allowed",
+      "severity": 3,
+      "summary": "The Workflows list offers and confirms bulk Name updates, but submitting them always returns “Method not allowed” and leaves the selected workflows unchanged.",
+      "expected": "The Workflows list should not offer and confirm a bulk Name update that is unconditionally unsupported. An offered, confirmed update should complete, or the unsupported action should be unavailable.",
+      "actual": "Selecting two workflows, entering a replacement Name, and confirming Update records closes the confirmation and shows “Method not allowed.” Both original names remain unchanged after refresh, although individual workflow renaming succeeds.",
+      "reproSteps": [
+        "Sign in as the fixture Admin user and open Workflows.",
+        "Create two draft workflows with distinct, uniquely prefixed names, then return to the Workflows list.",
+        "Select both workflow rows and click Update.",
+        "Enter a replacement Name in Update records, click Apply, and confirm Update 2 records.",
+        "Observe the “Method not allowed” error and unchanged workflow names. Refresh the list and confirm the original names remain."
+      ]
+    },
+    {
+      "id": "workflows-N04",
+      "name": "Rejected workflow version status drag leaves the card falsely displayed as Deactivated",
+      "severity": 1,
+      "summary": "Dragging an Active workflow version into Deactivated is rejected, but the board leaves the card in Deactivated with a false status until navigation or refresh.",
+      "expected": "After rejecting a workflow version status change, the board should keep or restore the card and its status badge to the saved Active state.",
+      "actual": "A toast says “This field cannot be updated directly on a workflow version,” yet the card remains in the Deactivated column and displays Deactivated. The saved version is still Active; opening its record or refreshing the board restores the correct display.",
+      "reproSteps": [
+        "Sign in as the fixture Admin user and open Workflows.",
+        "Create a uniquely named workflow, add a Launch manually trigger and a Delay action, then activate it.",
+        "Open Workflow Versions and create a uniquely named Kanban view grouped by Version status.",
+        "Filter the view to the new workflow, save the view, and reload the board. Verify the version card appears as Active.",
+        "Drag the Active version card into the Deactivated column.",
+        "Observe the rejection toast while the card remains in Deactivated with a Deactivated badge. Refresh the board and verify the card returns to Active."
+      ]
+    },
+    {
+      "id": "workflows-N05",
+      "name": "Iterator silently loses pending edits when its settings panel is closed or changed quickly",
+      "severity": 3,
+      "summary": "Leaving the Iterator settings panel within its one-second save delay silently discards pending input edits, including an input-array selection or deletion of a literal item. A lost array selection can make the workflow complete without processing the intended loop.",
+      "expected": "Iterator settings edited through the editor should persist when the user closes the panel or moves to another step, including pending array selections and literal-item deletions within the save delay.",
+      "actual": "The All Companies array chip appears immediately after selection, but closing the panel or switching steps within about one second prevents the edit from saving. Reopening after refresh shows an empty Items input. Waiting longer than the save delay retains the selection. In a tested workflow, the lost input caused a completed run to skip the loop Delay despite Search Records returning two companies; restoring the input and waiting made Delay execute twice. In a separate literal-array reproduction, deleting Alpha from saved Alpha/Beta shows only Beta, but immediately switching to another step and returning restores both items without a save request. Waiting for the deletion to save before leaving retains only Beta through navigation and refresh.",
+      "reproSteps": [
+        "Sign in as the fixture Admin user and create a uniquely named workflow with a Launch manually trigger.",
+        "Add Search Records for Companies with Limit 2, then add an Iterator.",
+        "In the Iterator Items input, select Search Records > All Companies from the variable picker.",
+        "Immediately close the Iterator settings panel or select its loop step, within about one second of choosing the array.",
+        "Wait, refresh the page, reopen the Iterator, and observe the empty Items input instead of the selected All Companies chip.",
+        "As a control, select All Companies again, wait at least two seconds before leaving the panel, and refresh. The selection persists.",
+        "Alternate reproduction: configure and save literal Iterator items Alpha and Beta, then reload to verify both. Delete Alpha and immediately select another workflow step within the one-second save delay. Return to the Iterator and observe Alpha restored. Repeat the deletion but wait at least two seconds before switching steps; only Beta remains after navigation and refresh."
+      ]
+    },
+    {
+      "id": "workflows-N06",
+      "name": "Discard Draft leaves stale settings that a later edit saves into a new workflow draft",
+      "severity": 3,
+      "summary": "Discarding a workflow draft leaves its open settings panel showing discarded values. Editing another field can save those stale values into a new draft and execute them.",
+      "expected": "Discard Draft should delete the unpublished workflow version and return the editor to the active configuration. An open settings panel should close or refresh to that configuration, and subsequent edits should not silently restore discarded values.",
+      "actual": "After discarding a draft whose Create Record action has Title Original, the canvas returns to Active but the open action panel still shows Original instead of the active Title Updated. Test without another edit creates Updated, and reopening the panel corrects its display. Editing only Body in the stale panel instead creates a new draft that restores Title Original; testing that new draft creates a Note with the discarded title.",
+      "reproSteps": [
+        "Use a wide desktop viewport so Discard Draft is available in the workflow header without replacing the open settings panel.",
+        "Create a uniquely named workflow with Launch manually and Create Record > Notes, set Title to Original, and activate v1.",
+        "Edit the action Title to Updated and activate v2, leaving v1 archived.",
+        "Open archived v1 in Workflow Versions and choose Use as Draft.",
+        "Open the draft Create Record action settings, verify Title Original, and leave the panel open.",
+        "Click the header Discard Draft. Observe that the canvas shows Active while the panel still displays Original.",
+        "Without closing or reopening the panel, edit only Body and wait for the edit to save. Observe a new draft with the discarded Title Original restored.",
+        "Test the new draft and inspect the created Note: its Title is Original, although the only post-discard edit was to Body."
+      ]
+    },
+    {
+      "id": "workflows-N07",
+      "name": "Rejected workflow run or version deletion leaves a false deleted banner and Restore controls",
+      "severity": 1,
+      "summary": "A rejected Delete on a workflow run or version leaves its detail page falsely displaying a deleted record and Restore controls, although the record remains undeleted.",
+      "expected": "When deletion is rejected, the detail page should retain or restore the undeleted presentation, without a deleted banner or Restore controls.",
+      "actual": "Delete Workflow Run or Delete Workflow Version shows “You do not have permission to perform this workflow action,” but the detail page also shows “This record has been deleted” and Restore controls. Refresh clears the false deleted presentation and retains the same undeleted record. No persisted deletion or data loss was observed.",
+      "reproSteps": [
+        "Sign in as the fixture Admin user and create a uniquely named manual workflow with a Form containing a Text field.",
+        "Test the workflow, leave the Form pending, and open the full run detail from Workflow Runs. Close the Form panel if it opens.",
+        "Open the run Command Menu and choose Delete Workflow Run.",
+        "Observe the permission-denied toast together with the false deleted banner and Restore controls.",
+        "Refresh the detail page. Verify the deleted banner disappears and the same undeleted run remains.",
+        "For the version variant, create and activate a manual workflow with Delay 1 second, change Delay to 2 seconds and activate v2, then open archived v1 and choose Delete Workflow Version. The rejected deletion produces the same false state, which clears on refresh."
+      ]
+    },
+    {
+      "id": "workflows-N09",
+      "name": "Workflow Version See Runs omits the selected version filter",
+      "severity": 3,
+      "summary": "See Runs on a workflow version drops the selected version scope and shows runs from other versions. After a fresh version-page load it can also omit workflow scope and show unrelated workflows’ runs.",
+      "expected": "See Runs from a specific workflow version should show only runs linked to that version. An untested v2 should show an empty run list rather than runs from v1.",
+      "actual": "On two fresh workflows, v2 had an empty Runs relation but See Runs displayed the completed run from v1 with only a Workflow filter. Opening that run confirmed Workflow version v1. A manually applied v2 filter correctly returned no runs. Freshly loading a version page before See Runs also produced an unscoped workspace run list containing unrelated workflows.",
+      "reproSteps": [
+        "Sign in as the fixture Admin user and create a uniquely named workflow with Launch manually and a Delay action set to 1 second.",
+        "Test the draft once to create a completed v1 run, then activate v1.",
+        "Change Delay to 2 seconds and activate the resulting v2 without testing it.",
+        "Open Workflow Versions, open this workflow’s v2, and verify its Runs relation is empty.",
+        "Click See Runs. Observe the v1 run appears; open it and verify its Workflow version is v1.",
+        "As a control, manually filter Workflow Runs by this workflow and its exact v2. The list correctly has no runs.",
+        "For the missing-workflow-scope variant, refresh a version detail page and then click See Runs. Observe that the resulting list can also include unrelated workflows’ runs."
+      ]
+    },
+    {
+      "id": "workflows-N10",
+      "name": "Restored draft workflows lose their list status and disappear from Draft filters",
+      "severity": 3,
+      "summary": "Restoring a deleted draft workflow leaves its stored Statuses empty, so its table status is blank and Draft filtering excludes it even though the editor still shows Draft.",
+      "expected": "Restored draft workflows should show Draft in the Workflows Statuses column and remain included when the list is filtered to Draft.",
+      "actual": "Restored workflows have blank Statuses cells after refresh, while their editors still show Draft and retain their workflow configuration. A Statuses: Draft filter excludes the restored drafts and retains the otherwise equivalent undeleted control. The restored versions are Draft but the parent workflow’s saved statuses array is empty.",
+      "reproSteps": [
+        "Sign in as the fixture Admin user and create two uniquely named draft workflows with manual triggers and an action.",
+        "Create or use an isolated Workflows table view filtered to those workflows. Verify both initially show Draft in Statuses.",
+        "Select both rows and use the table context menu to Delete Workflows.",
+        "Open the command menu and choose See deleted Workflows. Select the two deleted workflows, choose Restore Workflows, and confirm.",
+        "Remove the Deleted filter and reload the Workflows table. Observe both restored rows have blank Statuses cells.",
+        "Open a restored workflow and verify its editor still shows Draft and its configuration remains.",
+        "Return to the table and apply Statuses: Draft. Observe the restored drafts are excluded; an equivalent draft that was never deleted remains included."
+      ]
+    },
+    {
+      "id": "workflows-N11",
+      "name": "Discarding a tested workflow draft breaks its completed run Flow and output inspection",
+      "severity": 3,
+      "summary": "Discard Draft retains the completed draft test run, but its Flow becomes Invalid Configuration and its step-output inspection stops working.",
+      "expected": "A retained completed run should remain inspectable after its draft is discarded, including the executed Flow and step outputs stored with that run.",
+      "actual": "Before discard, the completed draft test run shows successful Trigger and Delay nodes and inspectable Delay output. After Discard Draft, reopening the same run still shows Completed but its Flow shows only Invalid Configuration, the version relation is empty, and step-output controls are unavailable. The failure persists after reload. See Version reports an error without navigating. The saved execution snapshot and results remain visible in State; no loss of execution data was observed.",
+      "reproSteps": [
+        "Sign in as the fixture Admin user and create a uniquely named workflow with Launch manually and Create Record > Notes using a unique Note title.",
+        "Test the workflow successfully, then activate v1.",
+        "Edit the active workflow by replacing Create Record with a Delay action set to 2 seconds, leaving the other time units zero.",
+        "Test this draft and open its completed run. Verify the Flow shows successful Trigger and Delay nodes and the Delay output is inspectable.",
+        "Close the run panel and click Discard Draft to return the workflow to its active Create Record version.",
+        "Open See Runs and reopen the same completed Delay test run, then use Open for its full detail.",
+        "Observe Completed alongside Invalid Configuration in Flow, an empty version relation and missing step-output controls. Refresh and verify the Flow remains broken.",
+        "Click See Version and observe the error without navigation. As a control, reopen a run of retained v1 and verify its Flow and outputs still work."
+      ]
+    },
+    {
+      "id": "workflows-N12",
+      "name": "Unset Create Calendar Event time zone falsely displays American Samoa as selected",
+      "severity": 1,
+      "summary": "A new Create Calendar Event action displays American Samoa as its selected time zone although its configured time zone is empty.",
+      "expected": "When no time zone is configured, the Time zone selector should show an empty or explicit no-selection state instead of a specific zone that is not stored.",
+      "actual": "Before any time zone is selected on a fresh Create Calendar Event action, the Time zone field displays “(GMT-11:00) American Samoa Standard Time.” The step’s stored time zone is empty. Explicitly selecting New York and allowing autosave to finish persists correctly; completed-save reversion and calendar execution failure are not part of this finding.",
+      "reproSteps": [
+        "Sign in as the fixture Admin user and create a uniquely named draft workflow with a Launch manually trigger.",
+        "Add a Create Calendar Event action and open its configuration panel.",
+        "Before choosing a time zone, inspect Time zone: American Samoa is displayed as selected despite no zone having been configured.",
+        "As a control, explicitly select New York, allow autosave to finish, then close and reopen the panel or refresh. New York remains selected.",
+        "Do not execute the calendar action; the demonstrated defect is the false empty-value display."
+      ]
+    },
+    {
+      "id": "workflows-N13",
+      "name": "Re-selecting POST silently resets the saved webhook Expected Body while showing stale JSON",
+      "severity": 3,
+      "summary": "Choosing POST when the webhook method is already POST overwrites a saved custom Expected Body with defaults, while the editor continues displaying the old JSON.",
+      "expected": "Selecting the already-selected HTTP method should preserve the saved webhook configuration. The Expected Body editor should accurately reflect the configuration being saved.",
+      "actual": "A custom Expected Body survives a normal reload, but re-selecting the checkmarked POST option saves the default {\"message\":\"Workflow was started\"} instead. The editor temporarily retains the custom JSON, concealing the overwrite. Reopening the panel or refreshing reveals the default body. The method remains POST and no warning appears.",
+      "reproSteps": [
+        "Sign in as the fixture Admin user and create a uniquely named draft workflow with a Webhook trigger and a Delay action.",
+        "Select POST, replace Expected Body with a valid custom JSON object such as {\"custom\":\"retained\",\"count\":2}, then blur the editor and allow the save to finish.",
+        "Refresh and reopen the trigger to verify the custom body is saved and POST is selected.",
+        "Open the HTTP method dropdown and click POST again, even though it is already checkmarked.",
+        "Observe that the Expected Body editor still displays the custom JSON.",
+        "Close and reopen the trigger panel or refresh. Observe that Expected Body has been overwritten with {\"message\":\"Workflow was started\"} while the method remains POST.",
+        "As a control, save the custom body again, open the method menu and dismiss it without choosing an option. Refresh and verify the custom body remains."
+      ]
+    },
+    {
+      "id": "workflows-N50",
+      "name": "See Runs from a freshly loaded Workflows selection loses the selected workflow filter",
+      "severity": 3,
+      "summary": "Selecting a workflow in a freshly loaded Workflows list and clicking See Runs can open the unfiltered workspace run list, including runs from unrelated workflows.",
+      "expected": "See Runs for a selected workflow should show only that workflow’s runs. The action should not silently ignore selected workflows; if it supports only one workflow, it should be unavailable for multiple selections.",
+      "actual": "After freshly loading the Workflows list, selecting one workflow and clicking See Runs navigates to Workflow Runs without a Workflow filter, showing runs from unrelated workflows. Opening the workflow record first allows the single-selection shortcut to filter correctly. With two workflows selected, the offered action can show all runs or filter only the first selected workflow.",
+      "reproSteps": [
+        "Sign in as the fixture Admin user. Create two uniquely named workflows A and B with Launch manually and a one-second Delay; test each to create a completed run.",
+        "Return to Workflows and reload the list. Do not open either workflow record before using the list action.",
+        "Select only A using its row checkbox, then click the header See Runs action.",
+        "Observe that Workflow Runs has no Workflow filter and includes B or other unrelated workflows’ runs.",
+        "Repeat from a freshly loaded Workflows list with B selected alone to verify the same missing scope.",
+        "As a control, open A’s workflow record first, return to the list, select A and click See Runs. The resulting list correctly filters to A.",
+        "For the multiple-selection variant, select A and B in the list and use the offered See Runs action. Observe that it can omit workflow filtering or show only the first selected workflow rather than respecting the selection."
+      ]
+    },
+    {
+      "id": "workflows-N28",
+      "name": "Selecting a literal dotted webhook key writes the nested field value instead",
+      "severity": 3,
+      "summary": "The webhook variable picker separately offers a literal customer.name key, but selecting it maps the nested customer > name field and creates a Note with the wrong title.",
+      "expected": "Selecting the offered top-level customer.name field should use its previewed value, distinct from the nested customer > name field. An unsupported key should not silently substitute another field’s value.",
+      "actual": "With different sample values for the literal customer.name key and nested customer.name, the picker offers the literal key with the Dotted preview. Selecting it inserts a chip labeled name with a Webhook > customer > name path. Test completes and creates a Note titled Nested rather than Dotted, although both distinct input values remain present in the sample.",
+      "reproSteps": [
+        "Sign in as the fixture Admin user and create a uniquely named workflow with a Webhook trigger.",
+        "Choose POST and set Expected Body to {\"customer.name\":\"Dotted sample\",\"customer\":{\"name\":\"Nested sample\"},\"plain\":\"Plain sample\"}. Blur the JSON editor and allow the configuration to save.",
+        "Add a Create Record action with Object Notes.",
+        "Open the Title variable picker and select the top-level customer.name option previewing Dotted sample, rather than the customer submenu’s name field.",
+        "Observe that the inserted chip is labeled name and identifies the nested Webhook > customer > name path.",
+        "Click Test, wait for Completed, and inspect the Create Record output and created Note. Its Title is Nested sample rather than the selected Dotted sample.",
+        "As controls, deliberately select nested customer > name and then plain in separate tests. Those selections produce Nested sample and Plain sample respectively.",
+        "Use the Expected Body sample through Test; no live webhook delivery is required."
+      ]
+    },
+    {
+      "id": "workflows-N17",
+      "name": "Changing trigger Record Type leaves existing condition pickers on the previous object",
+      "severity": 3,
+      "summary": "Changing a record trigger from Workflows to Companies leaves existing Conditions field pickers offering Workflow fields and prevents selecting Company fields until the panel is reopened.",
+      "expected": "After Record Type changes, existing Conditions pickers should offer fields of the newly selected object, without requiring the trigger panel to be reopened.",
+      "actual": "After changing Record Type from Workflows to Companies, an existing condition picker still displays Workflow · Pick a Workflow record and Workflow fields such as Statuses and Core workflow id. Company-only fields such as Domain Name are unavailable. A newly added rule or reopening the trigger panel correctly shows Company fields.",
+      "reproSteps": [
+        "Sign in as the fixture Admin user, create a uniquely named workflow and add a Record is created trigger.",
+        "Add a Conditions filter row and set Record Type to Workflows.",
+        "Allow the configuration to save, refresh and reopen the trigger. Verify the condition field picker shows Workflow fields, then dismiss the picker while leaving the trigger panel open.",
+        "Change Record Type from Workflows to Companies and allow the change to save without closing the trigger panel.",
+        "Open Select a field in the existing Conditions row. Observe that it still shows Workflow and its fields rather than Company fields; Company-only Domain fields cannot be selected.",
+        "As controls, add a new condition rule and observe its picker correctly shows Company fields, or close and reopen the trigger panel and observe the existing picker is corrected."
+      ]
+    },
+    {
+      "id": "workflows-N23",
+      "name": "HTTP errors are marked successful and let workflow execution continue",
+      "severity": 3,
+      "summary": "HTTP Request actions receiving an HTTP 404 or 500 response can be saved as successful steps and mark the workflow Completed; later actions execute even with Continue on failure disabled.",
+      "expected": "With Continue on failure disabled, an HTTP error reported as Request Failed by action Test should fail the workflow action and run rather than be recorded as successful and execute subsequent actions.",
+      "actual": "Action Test reports Request Failed for a 404, but the same request in a full workflow run is recorded as SUCCESS and the run is Completed while its logs retain HTTP 404 NOT FOUND. A 500 response is also marked successful. A following action executes despite Continue on failure being off.",
+      "reproSteps": [
+        "Sign in as a workspace administrator, create a fresh workflow and add a Launch manually trigger.",
+        "Add an HTTP Request action with method POST, URL https://httpbin.org/status/404 and raw JSON body {}. Leave Continue on failure disabled and allow the configuration to save.",
+        "Test the HTTP action and observe Request Failed with status code 404.",
+        "Run Test Workflow. Inspect its Completed status, successful HTTP action and Logs containing 404 NOT FOUND.",
+        "For the continuation variant, add a following HTTP Request to https://httpbin.org/status/200, save and test the workflow again. Observe that the following action executes despite the preceding HTTP error and disabled Continue on failure.",
+        "As controls, changing the failing endpoint to a 200 response makes action Test and the workflow agree on success, while an unreachable-host request fails the workflow normally."
+      ]
+    },
+    {
+      "id": "workflows-N25",
+      "name": "Workflow Runs group sort resets to Manual after refreshing a saved view",
+      "severity": 1,
+      "summary": "Reverse Alphabetical group ordering in a custom Workflow Runs view resets to Manual after refresh, even after an explicit Update view save completes.",
+      "expected": "A saved custom view should retain the chosen group ordering after refresh, consistently with its saved grouping, filters and Hide empty groups setting.",
+      "actual": "Selecting Reverse Alphabetical immediately changes the group order, but refreshing restores Manual and the previous display order. Completed Update view saves preserve other configuration without preserving group sort.",
+      "reproSteps": [
+        "Sign in as a workspace administrator and create or use owned workflows with runs in at least two statuses, such as Completed and Failed.",
+        "Open Workflow Runs and create a fresh custom table view. Group by run status and optionally hide empty groups.",
+        "In Options > Group > Sort choose Reverse Alphabetical. Confirm that Failed appears before Completed.",
+        "Change a saved filter or record sort to enable Update view, click Update view and wait for the save to finish.",
+        "Refresh and reopen the same view. Observe that group Sort now reads Manual and the chosen group ordering is lost, while the other saved view settings persist.",
+        "As controls, reapply Reverse Alphabetical to restore the order, or navigate within the app and return without a full reload to observe that the in-memory selection remains."
+      ]
+    },
+    {
+      "id": "workflows-N27",
+      "name": "Workflow Runs counter reports zero while matching runs remain visible",
+      "severity": 1,
+      "summary": "A custom Workflow Runs table grouped by Workflow or Workflow version with no configured groups displays matching run rows but reports a total count of zero.",
+      "expected": "The live run count and visible rows in the same filtered view should describe the same collection.",
+      "actual": "With Workflow or Workflow version grouping selected and no manually configured groups, the table displays matching runs as flat rows while its live counter shows 0. Completed saves, reload and ordinary navigation retain the inconsistency. Adding the matching groups manually makes the rows and count agree.",
+      "reproSteps": [
+        "Sign in as a workspace administrator and create two owned manual workflows with valid actions. Run them to produce several identifiable Workflow Runs.",
+        "Open Workflow Runs, create a fresh custom table view and apply a filter that includes the owned runs. Confirm matching rows are present.",
+        "Choose Options > Group > Workflow without adding any manual relation groups. Allow the configuration to save.",
+        "Observe that matching runs remain visible as flat rows while the view counter reports 0. Refresh or navigate away and return to confirm the inconsistency persists.",
+        "Repeat with Group by Workflow version and no manually configured groups.",
+        "As controls, group by run status or manually add the matching Workflow groups through Options > New group; observe matching rows and a correct count."
+      ]
+    },
+    {
+      "id": "workflows-N29",
+      "name": "Selecting a slash-named webhook field creates a Note with a blank body",
+      "severity": 3,
+      "summary": "The variable picker offers a nonempty webhook field named a/b, but mapping it to Create Record Notes Body creates a saved Note with no selected content.",
+      "expected": "Selecting the offered literal webhook field a/b should insert its displayed value into the created Note body.",
+      "actual": "The picker previews the nonempty a/b value and saves the mapping chip. The completed run retains that value in its trigger data, but Create Record stores a blank Note body. Opening the created Note independently confirms the content is missing.",
+      "reproSteps": [
+        "Sign in as a workspace administrator and create a fresh workflow with a POST webhook trigger.",
+        "Set the webhook Expected Body to {\"a/b\":\"Slash value\",\"plain\":\"Plain control\"} and allow the configuration to save.",
+        "Add Create Record for Notes with a unique static Title. In Body use the variable picker to select the offered a/b field, which previews Slash value. Allow the mapping to save.",
+        "Run Test Workflow with the configured webhook test data and wait for completion. Confirm that trigger output still contains a/b with Slash value.",
+        "Inspect Create Record output and open the created Note in Notes. Observe that its Body has no Slash value despite successful creation.",
+        "As a control, map Body to the plain field, save and run again; the created Note contains Plain control."
+      ]
+    },
+    {
+      "id": "workflows-N31",
+      "name": "Historical workflow run falsely marks its original variable mapping Not Found",
+      "severity": 1,
+      "summary": "After changing a tested draft’s webhook sample schema, opening its earlier successful run through in-app navigation falsely labels an original valid mapping Not Found.",
+      "expected": "The read-only Node inspector for a historical run should resolve its mappings against that run’s saved flow and schema, consistently with its original Input and Output.",
+      "actual": "The historical run’s Node tab shows Not Found for its original Body mapping after the current draft schema changes, while the same run’s stored input still contains the original field and its output retains the correct Note content. A full reload of the run page restores the correct mapping label.",
+      "reproSteps": [
+        "Sign in as a workspace administrator and create a fresh POST webhook workflow with Expected Body {\"customer\":{\"name\":\"Example\",\"address\":{\"city\":\"Paris\"}}}.",
+        "Add Create Record for Notes, map Title to customer.name and Body to customer.address.city, and wait for saving to finish.",
+        "Test the workflow successfully and keep the first run. Verify its trigger Input contains city Paris, its created Note Body contains Paris, and its Node tab resolves the city mapping.",
+        "Return to the draft and replace the webhook sample with {\"customer\":{\"name\":\"Updated\"},\"zip\":\"69000\"}. Wait for saving to finish; another test run is unnecessary.",
+        "Without reloading the page, use See Runs to open the first run, select Create Record and open its Node tab. Observe that its original mapping is now labelled Not Found.",
+        "Inspect that historical run’s Input and Output to confirm the original city value and created Note content remain correct. Fully reload the same run page and observe the correct mapping label returns."
+      ]
+    },
+    {
+      "id": "workflows-N33",
+      "name": "Webhook Test overwrites supplied payload and metadata fields",
+      "severity": 3,
+      "summary": "Webhook Test replaces nonempty sample fields named payload and metadata with internal trigger context, so picker-selected values create Notes with blank or incorrect content.",
+      "expected": "POST webhook Test should resolve picker-selected fields to the values supplied in Expected Body, consistently with the field structure delivered through the live webhook.",
+      "actual": "The picker previews nonempty payload.id and metadata.label values, but completed Test runs create Notes with blank titles and bodies. Test replaces payload with a copy of the whole sample and metadata with the running member context. Other selected paths can resolve to wrong nonempty values. Equivalent live webhook delivery and renamed data/meta sample controls resolve correctly.",
+      "reproSteps": [
+        "Sign in as a workspace administrator and create a fresh workflow with a POST webhook trigger.",
+        "Set Expected Body to {\"payload\":{\"id\":\"Sample title\"},\"metadata\":{\"label\":\"Sample body\"},\"plain\":\"Control\"} and allow saving to finish.",
+        "Add Create Record for Notes. Use the variable picker to map Title to payload.id and Body to metadata.label; confirm that it previews Sample title and Sample body. Allow saving to finish.",
+        "Run Test Workflow and wait for completion. Inspect Create Record output and the created Note: Title is blank and Body lacks Sample body, despite the selected values being present in the saved sample.",
+        "Inspect trigger output to observe payload now contains the full sample object and metadata contains the running workspace member rather than the supplied metadata.label.",
+        "As a control, rename the sample parent keys to data and meta, select the corresponding fields again, save and Test; the Note receives both supplied values.",
+        "For the live-path comparison, activate an equivalent owned workflow with the original payload/metadata mappings and POST a body of the same field structure to its webhook URL. Verify the supplied values are preserved, then deactivate the demonstration workflow."
+      ]
+    },
+    {
+      "id": "workflows-N36",
+      "name": "A saved 25-hour workflow schedule is represented as daily cron occurrences",
+      "severity": 3,
+      "summary": "Hours between triggers accepts and retains 25, but the generated cron schedule previews daily occurrences while the summary promises every 25 hours.",
+      "expected": "An accepted Hours between triggers value should represent the stated interval, with its summary and upcoming execution times agreeing. Unsupported intervals should not be presented as a correctly configured every-N-hours schedule.",
+      "actual": "The saved Hours value remains 25 and the summary says every 25 hours, but the next execution dates occur at the same time on consecutive days, only 24 hours apart. The contradiction persists after completed saves, reload and ordinary navigation. The backend generates the same hour-field cron pattern as the preview; actual scheduled executions were not observed.",
+      "reproSteps": [
+        "Sign in as a workspace administrator and create a fresh workflow with a scheduled trigger.",
+        "Choose Hours, enter 25 in Hours between triggers and set Trigger at minute (UTC) to 0. Move focus away and wait for the configuration to save.",
+        "Observe the every 25 hours summary alongside upcoming execution dates at midnight UTC on consecutive days. Those dates are 24 hours apart.",
+        "Reload and reopen the trigger, or navigate away and return. Confirm Hours remains 25 and the same summary/preview contradiction remains.",
+        "As controls, use 12 hours to obtain midnight/noon/midnight previews, or 24 hours to obtain daily previews that agree with the stated interval."
+      ]
+    },
+    {
+      "id": "workflows-N37",
+      "name": "Override Draft leaves stale settings that a later edit saves over restored values",
+      "severity": 3,
+      "summary": "Use as Draft followed by Override Draft correctly replaces an existing draft on the server, but the editor retains the old draft settings and later writes them back when another field is edited.",
+      "expected": "After overriding the current draft with a selected historical version, the editor should show that restored version’s values and subsequent edits should preserve its other restored settings.",
+      "actual": "A selected version has Delay Seconds 1 and the old draft has Seconds 2. Override Draft restores 1 server-side, but reopening Delay in the returned editor still shows 2. Editing only another duration field saves the stale Seconds 2 back, and the unintended value persists after reload.",
+      "reproSteps": [
+        "Sign in as a workspace administrator and create a fresh workflow with Launch manually and a Delay of 1 second. Activate it as the first version.",
+        "Edit that workflow’s Delay to 2 seconds to create a newer draft. Wait for saving to complete and load the edited draft in the editor.",
+        "Open version history and select the first version, verifying that its Delay is still 1 second.",
+        "Choose Use as Draft and confirm Override Draft when told a draft already exists.",
+        "In the returned draft editor, reopen Delay. Observe that Seconds still displays the old draft value 2 rather than restored value 1.",
+        "Without changing Seconds, change Minutes to 1 and allow saving to complete. Reload and reopen Delay; observe that Seconds 2 has been saved back along with the intentional Minutes edit.",
+        "As a control, fully reload immediately after Override Draft before editing any field; the restored 1-second setting displays correctly. Use as Draft without an existing draft also displays the copied settings correctly."
+      ]
+    },
+    {
+      "id": "workflows-N39",
+      "name": "Duplicating an automatically laid-out workflow stacks copied action nodes",
+      "severity": 1,
+      "summary": "Duplicating a supported workflow without stored action positions, including seeded Quick Lead, gives copied action nodes the same canvas position so they obscure one another.",
+      "expected": "Duplicating a workflow whose source graph is visibly separated should leave its copied actions separately visible and accessible, retaining or recomputing a usable layout for actions without saved coordinates.",
+      "actual": "The source has separated nodes, but its duplicate stores copied action positions at the same point and displays overlapping cards, making covered actions appear missing. All actions, their data and linear connections remain present. The overlap persists on reload; Tidy up separates the nodes again.",
+      "reproSteps": [
+        "Sign in as a workspace administrator and open the seeded Quick Lead workflow. Observe that its trigger and action nodes are visibly separated by the automatic layout.",
+        "Use Duplicate Workflow and open the newly created copy.",
+        "Observe that copied action nodes stack at one canvas position, with the top card obscuring other actions. Clicking the stack selects the top node rather than the covered nodes.",
+        "Reload or navigate away and return to confirm the overlapping layout persists.",
+        "Use Tidy up on an owned duplicate and allow the arranged node positions to save. Observe the separate nodes return with their configuration and connections intact.",
+        "As controls, duplicate that tidied copy or a fresh workflow drawn with saved canvas positions. Its copied nodes remain separated."
+      ]
+    },
+    {
+      "id": "workflows-N44",
+      "name": "Workflow Form date calendar is hidden behind the form on mobile and tablet",
+      "severity": 3,
+      "summary": "At viewport widths up to 768 pixels, a workflow Form Date calendar opens beneath the fixed form panel, preventing calendar day selection.",
+      "expected": "Opening a Form Date picker on mobile or tablet should display the calendar above the form and allow a day to be selected.",
+      "actual": "At 390-pixel and 768-pixel widths, the calendar exists but is visually covered by the form panel. Ordinary clicks intended for calendar days hit the covering panel or dismiss the picker, leaving Date empty. At 769 pixels and desktop widths the calendar is visible and date selection works; a desktop control also submits the selected date successfully.",
+      "reproSteps": [
+        "Sign in as a workspace administrator and create an owned workflow with a Launch manually trigger and a Form action containing one Date field. Allow the configuration to save.",
+        "At a mobile viewport such as 390 by 844 CSS pixels, run Test and click the Date field to open its calendar.",
+        "Observe that the calendar is hidden behind the form panel. Attempt ordinary day selection and observe that the Date remains empty.",
+        "Repeat at a 768-pixel-wide viewport and observe the same covered calendar.",
+        "As controls, repeat at 769 pixels or a desktop width. The calendar appears above the form, a day can be selected, and Submit completes with the selected date.",
+        "The mobile failure can also be reproduced by activating the valid workflow and launching it directly through the Command Menu at 390 pixels, without resizing an already open desktop form."
+      ]
+    },
+    {
+      "id": "workflows-N45",
+      "name": "Changing an action to If/else leaves missing branches and subsequent edits can crash the workflow editor",
+      "severity": 5,
+      "summary": "Changing an existing action to If/else saves its branch placeholders but omits them from the live canvas. Adding a route errors, and adding another node can crash the editor.",
+      "expected": "The offered Change node type operation should produce a usable If/else graph with its branch placeholders, as direct creation does. Subsequent route and node additions should work without crashing.",
+      "actual": "After converting a Delay to If/else, the canvas shows only the trigger and converted action, with no branch placeholders. Add route displays Invalid Configuration. On a fresh converted workflow, Add a Node > If/else produces the full-page Sorry, something went wrong error screen. The server has saved the branches correctly; reloading restores them and recovers editing.",
+      "reproSteps": [
+        "Sign in as a workspace administrator and create an owned workflow with a Launch manually trigger and a Delay action. Allow saves to complete.",
+        "Use the Delay action menu to choose Change node type, then select If/else. Wait for the successful save.",
+        "Observe that the converted If/else node has no branch action placeholders on the canvas. In its settings, click Add route and observe Invalid Configuration.",
+        "On a second fresh workflow, repeat the saved Delay-to-If/else conversion without clicking Add route. Use the top Add a Node command and choose If/else.",
+        "Observe the editor is replaced by Sorry, something went wrong and asks for a page refresh.",
+        "Reload the workflow and observe the saved branch placeholders return and editing recovers. As a control, add If/else directly to a fresh workflow: its initial branches, Add route, and subsequent node creation work."
+      ]
+    },
+    {
+      "id": "workflows-N46",
+      "name": "Workflow Form Select shows New as selected but omits it from submitted answers",
+      "severity": 3,
+      "summary": "A workflow Form Select based on Opportunity Stage displays New as selected even when no value is set. Submitting it untouched completes without a Stage answer, while explicitly selecting the same New option submits NEW.",
+      "expected": "A submitted Form should include the answer displayed as selected. If the field has no answer, it should present a clear empty state instead of displaying and checkmarking New as selected.",
+      "actual": "The runtime Form shows New in Stage and marks New selected in the open dropdown. Submitting without choosing an option completes with an empty result. Explicitly clicking the already checkmarked New and submitting returns the corresponding NEW value. The omission reproduces in Test and when launching an activated workflow through the Command Menu; saved and submitted values are not lost through refresh or save interruption.",
+      "reproSteps": [
+        "Sign in as a workspace administrator and create an owned workflow with a Launch manually trigger and a Form action.",
+        "Add a Select input, give it a unique label such as Sales status, and explicitly choose Existing field > Opportunity > Stage as its source field. Do not set a default answer. Allow configuration saving to complete.",
+        "Run Test. Observe that the Stage dropdown already displays New. Open the dropdown and observe New is checkmarked; dismiss it without selecting an option.",
+        "Click Submit. After the run completes, open the Form step Output and observe an empty result with no Sales status answer.",
+        "Run the same form again, explicitly click New in the dropdown, then Submit. Observe the completed output contains salesStatus: NEW.",
+        "Activate the valid workflow and launch it through the Command Menu. Leave the displayed New untouched and Submit; the completed Form result is again empty."
+      ]
+    },
+    {
+      "id": "workflows-N47",
+      "name": "Historical Delay Delete and Duplicate controls modify the current workflow draft",
+      "severity": 3,
+      "summary": "Delay inspectors in completed runs and archived workflow versions expose Delete and Duplicate despite being read-only. These actions create or change the current workflow draft instead of editing the displayed historical graph.",
+      "expected": "Read-only run and historical-version inspectors should not expose step mutation controls. Editing from a historical version should require an explicit Use as draft transition and target the version the user chose to edit.",
+      "actual": "A completed run shows disabled Delay fields but enabled Delete and Options controls. Deleting the historical Delay creates or updates the current draft with that step removed, while the run graph remains unchanged. Archived-version Delete and Duplicate likewise target current configuration; a duplicate can use the current Delay value rather than the historical value displayed. Changes persist after successful mutation responses, navigation, and reload. The published active version and historical records remain unchanged.",
+      "reproSteps": [
+        "Sign in as a workspace administrator and create an owned workflow with a Launch manually trigger and a short Delay. Allow saving to complete, activate the workflow, and complete a run.",
+        "Open the completed run, select its Delay node, and open the Node tab. Observe disabled settings alongside enabled Delete and Options controls.",
+        "Click Delete in that historical Delay inspector. The historical run graph still contains its Delay.",
+        "Use See Workflow to open current configuration. Observe a new draft, or a change to an existing draft, with the Delay removed. Reload and confirm the draft change persists.",
+        "For the version-history variant, publish a second version with a changed Delay duration so the first version becomes archived. Open the archived version and its Delay inspector.",
+        "Choose Options > Duplicate from the archived Delay. Observe a duplicate added to the current draft, using current Delay settings rather than necessarily the historical settings. Delete from the same archived inspector also removes the corresponding current-draft step.",
+        "As controls, inspecting history without using the mutation controls preserves configuration, and the historical Trigger inspector hides those mutation controls."
+      ]
+    },
+    {
+      "id": "workflows-N49",
+      "name": "Workflow Activate and Deactivate are offered for multiple selections but change only the first row",
+      "severity": 3,
+      "summary": "The Workflows list offers Activate and Deactivate with multiple eligible workflows selected, but each command changes only the first selected workflow in table order.",
+      "expected": "Single-workflow Activate and Deactivate commands should be unavailable when multiple workflows are selected. A selection action should not silently apply to only one row while displaying a multi-row selection.",
+      "actual": "With two eligible workflows selected, the header offers Deactivate but only the first table-order workflow becomes Deactivated. Activate similarly changes only the first selected row. The partial result persists after completed mutations and reload. Either omitted workflow can be changed successfully when selected alone, and changing table sort changes which selected row is affected.",
+      "reproSteps": [
+        "Sign in as a workspace administrator and create two owned workflows with Launch manually triggers and a short valid Delay action each. Allow saving to complete and activate both.",
+        "Open the Workflows list, select both Active rows using their checkboxes, and observe the header indicates two selected while offering Deactivate.",
+        "Click Deactivate and allow the operation to finish. Observe only the first selected row in table order becomes Deactivated; the other remains Active. Reload and confirm both statuses.",
+        "Select only the omitted Active workflow and deactivate it successfully, confirming it is eligible and making both workflows Deactivated.",
+        "Select both Deactivated workflows and click the offered Activate command. Observe only the first selected row becomes Active, including after reload.",
+        "As controls, activate the omitted workflow individually. Repeat multi-selection with a changed Name sort or reversed checkbox click order to distinguish table order from selection click order."
+      ]
+    },
+    {
+      "id": "workflows-N51",
+      "name": "Choosing Iterator on an existing action placeholder saves a broken loop return and fails after the first item",
+      "severity": 3,
+      "summary": "Choosing Iterator in an If/else branch placeholder or changing an existing action to Iterator generates a loop child whose return references a nonexistent step. The saved workflow fails after processing its first item.",
+      "expected": "An Iterator created through an offered action-type choice should have a valid loop return to that Iterator and process every saved item, as an Iterator created directly through Add a step does.",
+      "actual": "After choosing Iterator in an If/else branch, its generated loop controls are initially missing from the canvas. Refresh reveals the saved child, but the loop return still targets a transient ID that does not belong to any saved step. A Test with two successfully saved items processes the first item, then fails on the missing destination. The empty loop body itself succeeds and is supported; a directly added top-level Iterator with the same two items completes both. Changing a top-level Delay to Iterator reproduces the malformed return too. Replacing the revealed loop child with a one-second Delay does not repair the saved return: the Delay succeeds for item one, then the run fails before item two. A directly added Iterator with the same Delay completes both items.",
+      "reproSteps": [
+        "Sign in as a workspace administrator and create an owned workflow with a Launch manually trigger and an If/else action.",
+        "Set the IF condition to Metadata > Workspace Member ID > Is not empty so the branch is taken.",
+        "Click that branch Add an Action placeholder and choose Iterator. Enter and commit two literal items, 1 and 2, then allow saving to complete before leaving its settings.",
+        "Observe the loop action placeholder is initially absent. Reload or navigate away and back to reveal the saved loop child. Leave that loop body empty for this reproduction.",
+        "Run Test after the items and graph have saved. Observe the first item is reached, the empty body succeeds, and the run fails before the second item because the saved loop return references a nonexistent step. Reopening does not repair this saved connection.",
+        "As a control, create a fresh manual workflow and add Iterator directly with Add a step. Save the same two items and leave its body empty; Test completes both items.",
+        "An alternate entry point is to add a top-level Delay and use Change node type > Iterator. Configure and save the same two items; its generated loop return also references a missing step.",
+        "Configured-body variant: after revealing the child, change it to a one-second Delay, wait for saving to complete, and Test. Observe the Delay succeeds once but the Iterator fails before item two. A directly added top-level Iterator with the same two items and one-second Delay executes the Delay twice and completes."
+      ]
+    },
+    {
+      "id": "workflows-N01",
+      "name": "Workflow Form source picker shows an unsaved selection and blocks the sole Multi-Select source",
+      "severity": 3,
+      "summary": "New Form Select and Multi-Select fields display an existing source as selected without saving its source ID. With only one Multi-Select source available, the picker disables itself, preventing configuration and causing the entire input to be omitted at runtime.",
+      "expected": "A source shown as selected should be stored, or the source picker should clearly require and permit an explicit selection, including when only one source is available. A Form input should become usable after choosing a supported existing field.",
+      "actual": "The builder displays Opportunity > Stage for Select and Workflow > Statuses for Multi-Select, but saved settings have no selectedFieldId. Runtime forms omit these inputs while ordinary Number and Date fields render. Explicitly selecting a source repairs Select. The sole Multi-Select source picker is disabled and cannot make that selection, so Multi-Select remains absent after saving, reload, Test, and an activated workflow launch. The existing source already defines its answer options; no separate Form options-entry step is missing.",
+      "reproSteps": [
+        "Sign in as a workspace administrator in the fixture workspace, where Workflow > Statuses is the only available Multi-Select source. Create an owned manual workflow with a Form action.",
+        "Add a Number field, a uniquely named Select field, and a uniquely named Multi-Select field. Open each choice field settings and observe that its Field source displays Opportunity > Stage or Workflow > Statuses without explicitly selecting it.",
+        "For Multi-Select, attempt to open the Field source picker. Observe it is disabled despite the source selection not being saved. The source already has Draft, Active, and Deactivated answer options.",
+        "Allow the configuration to save, reload, and run Test. Observe that the form contains Number but omits the entire Select and Multi-Select inputs.",
+        "As a control, return to the Select settings and explicitly choose Opportunity > Stage or Task > Status. Save, reload, and Test; that Select now renders. Multi-Select remains absent because its sole source cannot be selected.",
+        "The omission can also be observed when the workflow is activated and launched through the Command Menu."
+      ]
+    },
+    {
+      "id": "workflows-N02",
+      "name": "Restoring a workflow loaded while deleted leaves a blank editor until reload",
+      "severity": 3,
+      "summary": "After a workflow page is loaded while the workflow is deleted, Restore succeeds and removes the deleted banner but leaves the editor blank and Test/Activate unavailable until reload or navigation.",
+      "expected": "A successful workflow Restore should reload the restored workflow and version dependencies so its saved graph and eligible Test/Activate actions are usable without another reload.",
+      "actual": "The deleted banner clears after Restore, and the server restores the workflow and its versions, but the canvas remains empty and Test/Activate are absent. Reloading or navigating back recovers the saved graph and actions. Restoring immediately after deletion without loading the deleted page works. No permanent data loss or full-page crash is observed.",
+      "reproSteps": [
+        "Sign in as a workspace administrator and create an owned workflow with a Launch manually trigger and a valid action such as a short Delay. Allow saving to complete and verify its graph is visible.",
+        "Delete the workflow and allow deletion to finish. Reload its detail page while it is still deleted, so the deleted workflow page is loaded.",
+        "Use the deleted banner Restore button or the header Restore command and allow the successful restore to finish.",
+        "Observe that the deleted banner disappears but the editor canvas remains empty and Test/Activate controls are unavailable.",
+        "Reload the restored workflow or navigate away and reopen it. Observe its original saved trigger, actions, and eligible controls return.",
+        "As a control, delete a fresh owned workflow and immediately Restore without reloading while deleted. Its graph and controls recover without the blank-editor failure."
+      ]
+    },
+    {
+      "id": "codex-60m-twenty-6",
+      "name": "Workflow form select inputs ignore their configured labels",
+      "summary": "A form Select field persists its custom Label setting in the editor but renders the underlying object's field name at runtime.",
+      "expected": "The tested/active form should use the saved custom Label for the Select input.",
+      "actual": "The form editor preserves 'Bash custom selection label' after reload, while Test renders 'Stage' above the Opportunity Stage selector.",
+      "reproSteps": [
+        "Sign in and create a workflow with a manual trigger and a Form step.",
+        "In Form, add a Select input using Opportunity > Stage as its existing field.",
+        "Open that input's settings and set Label to 'Bash custom selection label'.",
+        "Close settings, activate the workflow, and click Test.",
+        "Observe that the runtime form labels the input 'Stage'.",
+        "Reload and inspect the Form editor; the custom label remains saved, then Test reproduces the incorrect label."
+      ],
+      "severity": 1
+    },
+    {
+      "id": "codex-60m-twenty-8",
+      "name": "Workflow duplication loses branch connections and action variable references",
+      "summary": "Duplicate Workflow assigns copied actions new identities but leaves branch destinations and action-input variable references pointing to original actions. Branch copies report Completed without running either branch, and copied Iterator inputs show Not Found.",
+      "expected": "Workflow copies preserve connections and remap references to their corresponding copied actions.",
+      "actual": "Branch duplicate graph loses both outgoing branch edges; repeated runs report Completed with both copied Create Record actions NOT_STARTED and no note created. Visible State retains original branch destination IDs while copied actions have new IDs. Iterator duplicate displays Items to iterate over 'Not Found' instead of its configured Search Records variable.",
+      "reproSteps": [
+        "Open active Bash Branch Workflow at /object/workflow/c37f6f96-23a8-4006-8689-396267f02acc (manual trigger → If/Else → Create Record on both branches); Test confirms selected branch creates its note.",
+        "Open Command Menu → Duplicate Workflow → Activate → Test.",
+        "Inspect the copied graph and completed run's Home State. Repeat Test.",
+        "Alternate reproduction: open Bash Iterator Workflow at /object/workflow/161edbb4-0ddb-4587-800f-b98979b64f17 (Search Records → Iterator using Search Records/All Notes). Duplicate it and inspect the Iterator input variable."
+      ],
+      "severity": 3
+    },
+    {
+      "id": "codex-30m-twenty-3",
+      "name": "Adding a Delay to an active workflow errors and retry crashes the editor",
+      "summary": "Adding a node to the seeded active Quick Lead workflow fails in the frontend, leaves the picker open, and crashes on retry. Reload reveals both nodes persisted, so the failed UI encourages duplicate steps.",
+      "expected": "Selecting Delay should add one node and show its configuration without an error. The picker should close and reflect the persisted draft.",
+      "actual": "First selection shows 'Failed to apply diff at path steps.3: Error: Expected object or array, got undefined' and no new canvas node. Selecting Delay again shows a full-page 'Sorry, something went wrong' screen. Reload reveals both Delay nodes in the draft.",
+      "reproSteps": [
+        "Sign in and open Workflows.",
+        "Open the seeded active Quick Lead workflow; discard any test draft first to restore the active version.",
+        "Click Add a Node and select Delay.",
+        "Observe the error toast, missing node, and still-open node picker.",
+        "Select Delay again.",
+        "Observe the full-page error requesting a reload.",
+        "Reload and observe two Delay nodes were persisted in the draft."
+      ],
+      "severity": 5
+    },
+    {
+      "id": "codex-60m-twenty-2",
+      "name": "Successful workflow form submission displays invalid-operation errors",
+      "summary": "Submitting valid workflow form input successfully completes the workflow but also produces two false 'Invalid workflow operation.' error toasts.",
+      "expected": "A successful form submission and completed workflow should display its completion without operation error messages.",
+      "actual": "The completed run opens and its company/person records are created, while two 'Invalid workflow operation.' error toasts appear. Reproduced with Quick Lead and a separate numeric form workflow, including after reload.",
+      "reproSteps": [
+        "Sign in and open Workflows.",
+        "Open Quick Lead and click Test.",
+        "Fill all six form fields with valid values: Bash, Workflow, bashflow@example.com, Tester, Bash Workflow Co, and https://bashworkflow.example.com.",
+        "Click Submit.",
+        "Observe that the run completes and creates the expected records, but two 'Invalid workflow operation.' error toasts appear."
+      ],
+      "severity": 3
+    },
+    {
+      "id": "mo-60m-twenty-4",
+      "name": "Use as Draft confirmation modal fails after returning from draft",
+      "summary": "On an owned workflow with an existing draft, returning from Go to Draft to the active v1 page and selecting Use as Draft again shows an error toast instead of the existing-draft choices.",
+      "expected": "After returning to the active v1 detail, Use as Draft should reopen the existing-draft confirmation with Cancel, Go to Draft, and Override Draft choices.",
+      "actual": "The second Use as Draft click showed “Command menu item confirmation — A modal is already active for another caller”; no confirmation dialog opened and the active v1 detail remained visible. After the toast disappeared, a retry produced the same toast.",
+      "reproSteps": [
+        "Load the supplied saved authentication state for Tim Apple in the Apple workspace, then open /objects/workflowVersions?viewId=00d61af0-65c7-442c-baa0-d8b48387fe31.",
+        "From Workflows, create a uniquely named workflow (fixture used: “Tim Apple Use as Draft Repro 20260529-1752”), add a Launch manually trigger and a Delay action, and activate v1. Do not run the workflow.",
+        "Open the active v1 version detail and select Use as Draft once to create v2. Return through Workflows > Workflow Versions and reopen the active v1 detail at /object/workflowVersion/07f61f07-2ec5-470c-8b40-20f3cef8e5a7.",
+        "Select Use as Draft. When the “A draft already exists” dialog appears, select Go to Draft.",
+        "Use browser Back to return to the active v1 detail, then select Use as Draft again.",
+        "Observe the error toast and absence of the dialog. Wait until the toast disappears and retry Use as Draft; the same toast appears again."
+      ],
+      "severity": 3
+    },
+    {
+      "id": "mo-60m-twenty-5",
+      "name": "Choosing None in custom Workflow Versions view does not remove Version status grouping",
+      "summary": "In a fresh Workflow Versions Table view, selecting None in Group by leaves the table divided into Version status groups and the selector still marks Version status as selected; the reproducer view was deleted afterward.",
+      "expected": "After selecting None in Options > Group > Group by, the custom view should show a flat, ungrouped list, and reopening the selector should show None checked.",
+      "actual": "After Version status was selected, the table displayed Active, Archived, Deactivated, and Draft groups. Selecting None closed the selector, but after the page settled those groups remained. Reopening Group by still showed a checkmark beside Version status, not None. Repeating the None selection produced the same result.",
+      "reproSteps": [
+        "Load the provided saved authentication state for Tim Apple in the Apple workspace; no credentials were entered during this run.",
+        "Open /objects/workflowVersions?viewId=00d61af0-65c7-442c-baa0-d8b48387fe31.",
+        "From Options, create a uniquely named custom Table view: “QA Workflow Versions None Group 873641.”",
+        "Open Options > Group > Group by and choose Version status; wait for the table to display the status sections.",
+        "Reopen Options > Group > Group by and choose None.",
+        "After the selector closes and the table settles, observe that status groups remain; reopen the selector and observe Version status still checked.",
+        "Delete the reproducer's custom view; confirm the collection returns to the original Versions view."
+      ],
+      "severity": 3
+    },
+    {
+      "id": "workflows-N53",
+      "name": "Create Record displays No Status but creates To do tasks and ignores explicitly selected No Status",
+      "summary": "The workflow Create Record action displays No Status when Status is unset, yet creates To do tasks. Explicitly choosing No Status also creates To do tasks instead of a task with no status.",
+      "expected": "The configuration displays the effective default accurately, and an explicitly selected No Status creates a task with an empty status.",
+      "actual": "After completed saves and reload, an untouched Status selector still displays and checkmarks No Status, but completed workflow runs create To do tasks. Explicitly selecting No Status saves null in the configuration, yet execution also creates To do tasks. An In progress control creates an In progress task; ordinary task editing can save an empty status.",
+      "reproSteps": [
+        "Create a fresh workflow with Launch manually and a connected Create Record action for Tasks. Supply any required task fields.",
+        "Leave Status untouched. Confirm the selector displays No Status, then wait for saving to finish and reload to verify the configuration.",
+        "Run the workflow and inspect the created Task: its status is To do.",
+        "Create a second fresh workflow, select a nonempty Status and then explicitly choose No Status. Wait for saving to finish and reload.",
+        "Run the second workflow and inspect its created Task: it also has To do instead of an empty status.",
+        "As a control, configure In progress, wait for saving to finish, and run the workflow; the created Task has In progress."
+      ],
+      "severity": 3
+    },
+    {
+      "id": "workflows-N54",
+      "name": "Select all hides working workflow commands when only one eligible workflow is listed",
+      "summary": "With the Workflows list filtered to a single eligible workflow, header Select all hides working commands that selecting the same row individually exposes.",
+      "expected": "Selecting the same single eligible workflow through the header checkbox or its row checkbox should make its supported commands available.",
+      "actual": "Header Select all shows 1 selected but hides workflow commands in the toolbar and command menu. Selecting the same row individually exposes them. On a previously published workflow with Active v1 and Draft v2, Discard Draft then succeeds and preserves Active v1. A separate single-row control exposes See Runs and successfully opens the selected workflow's run list after the context cache is warm.",
+      "reproSteps": [
+        "Sign in as Tim Apple and create a uniquely named workflow with a Launch manually trigger and a Delay action set to 1 second. Activate v1 without running it.",
+        "Create Draft v2 from the published workflow, then return to the Workflows list and filter the list to this workflow only.",
+        "Click the header Select all checkbox. Verify 1 selected and observe that Discard Draft is missing from both the toolbar and the command menu.",
+        "Clear selection and select the same workflow using its own row checkbox. Observe that Discard Draft is now offered.",
+        "Click Discard Draft. Confirm it succeeds, removes Draft v2, and leaves Active v1 available."
+      ],
+      "severity": 1
+    },
+    {
+      "id": "workflows-N55",
+      "name": "Send Email configuration enters typing intended for the Subject field into the To recipients field",
+      "summary": "Leaving pending recipient text by clicking Subject moves focus back to the recipient editor, so subsequent subject text is saved as To recipients.",
+      "expected": "Clicking Subject after typing a recipient should let subsequent typing edit Subject while committing the recipient text in To.",
+      "actual": "With uncommitted text in To, clicking Subject commits the pending recipient but returns focus to To. Subsequent typing becomes recipient tokens while Subject remains empty or unchanged. Wrong tokens persist after autosave completes, reload, and ordinary list-to-workflow navigation. Committing the recipient with Enter first or clicking Subject again before typing avoids the issue. No email was sent.",
+      "reproSteps": [
+        "Sign in as Tim Apple, create a uniquely named workflow with Launch manually, and add Send Email. Keep the workflow configuration-only; do not execute sending.",
+        "Type focus-check@example.invalid in To without pressing Enter.",
+        "Click directly inside Subject, pause normally, and type a unique subject such as Subject-coordinate-check.",
+        "Observe that the text appears as recipient tokens in To while Subject stays empty or unchanged.",
+        "Allow autosave to complete, reload and reopen the action; confirm the wrong recipient tokens remain. Ordinary navigation back through the Workflows list also retains them.",
+        "As a control, commit the To recipient with Enter before clicking Subject. Subject typing then goes into the intended field."
+      ],
+      "severity": 3
+    },
+    {
+      "id": "workflows-N56",
+      "name": "Permanent destruction leaves deleted workflow detail offering a nonworking Restore button",
+      "summary": "Permanent destruction leaves deleted workflow detail offering a nonworking Restore button",
+      "expected": "After irreversible destruction, remove the destroyed workflow detail or show a clear permanently destroyed state without a Restore offer.",
+      "actual": "Permanent destruction succeeds and removes the workflow from the normal list, but its old detail page remains with This record has been deleted and a Restore button. Clicking Restore does not recover the destroyed workflow or clear the stale page. Ordinary sidebar and list navigation remain usable; no unintended deletion or additional data loss is established.",
+      "reproSteps": [
+        "Sign in as Tim Apple and create a uniquely named workflow with Launch manually and a Code action; activate and then deactivate it.",
+        "At mobile width 390, open the workflow command menu and choose Delete Workflow.",
+        "Open the command menu again, choose Permanently destroy Workflow, and confirm permanent destruction.",
+        "Observe that the deleted detail remains visible with a deletion banner and Restore button. Click Restore; the same stale detail and banner remain.",
+        "Navigate to the normal Workflows list and confirm the permanently destroyed workflow is absent. As a separate control, soft-deleting and restoring an owned workflow without permanent destruction succeeds."
+      ],
+      "severity": 1
+    },
+    {
+      "id": "workflows-N59",
+      "name": "Dragging Form field reorder handle leaves field order unchanged",
+      "summary": "The Form builder's visible Reorder field grip does not start dragging or change field order; dragging the label or field body works and persists the new order.",
+      "expected": "Dragging a Form field's Reorder field grip to another position should move that field and save the new order.",
+      "actual": "Repeated slow mouse drags starting on the visible grip produce no lift, drag placeholder or order change. Dragging the same field by its label or body changes the order, which persists after autosave and ordinary navigation. No general inability to reorder or save is established.",
+      "reproSteps": [
+        "Sign in as Tim Apple and create a uniquely named workflow with Launch manually and a Form action.",
+        "Add three fields labelled Full name, Amount and Lead stage, and allow saving to finish.",
+        "Hover Full name to reveal its grip labelled Reorder field. Press directly on the grip, drag slowly below Lead stage and release.",
+        "Observe no drag feedback and unchanged Full name, Amount, Lead stage order. Repeat with another field and direction.",
+        "As a control, drag the field by its label or body instead. Observe that it moves, then allow saving to finish and leave/reopen the workflow; the changed order persists."
+      ],
+      "severity": 3
+    },
+    {
+      "id": "workflows-N66",
+      "name": "Resizing the workflow editor to tablet hides pinned commands until reload",
+      "summary": "After resizing a desktop workflow editor to tablet width, its default command menu omits Test, Deactivate and See Runs; reloading at the same width restores the commands.",
+      "expected": "The default command menu should expose the same eligible workflow commands at a given tablet width regardless of whether that width was reached by resizing or opening the page.",
+      "actual": "Resizing desktop to 768 pixels hides the inline workflow commands and leaves them absent from the default menu. Reloading at the same tablet width restores them in the menu. Searching the menu still finds and executes eligible commands in the affected state, so the demonstrated defect is stale menu presentation rather than an inability to use the workflow actions.",
+      "reproSteps": [
+        "Sign in as Tim Apple and create an owned workflow with Launch manually and a one-second Delay. Activate it and open its editor at desktop width.",
+        "Confirm the desktop header exposes workflow commands, then resize to 768 by 1024 and dismiss any open configuration or navigation panels.",
+        "Open the top-right command menu without entering a search. Observe that Test, Deactivate and See Runs are missing.",
+        "Search for Deactivate and confirm the matching command remains available; no execution failure is claimed.",
+        "Clear the search and reload at the same 768-pixel width. Open the default menu and observe the eligible pinned commands now appear."
+      ],
+      "severity": 1
+    },
+    {
+      "id": "workflows-N67",
+      "name": "Restoring a previously active workflow leaves a false Active badge until refetch",
+      "summary": "After successful deletion and restoration of an active workflow, the editor retains an Active badge although deletion deactivated the workflow; reloading or reopening corrects it.",
+      "expected": "After Restore completes, the activation badge should reflect the workflow's saved Deactivated state.",
+      "actual": "After successful Restore and waits of five to ten seconds or more, the editor still shows green Active. Reloading or reopening the same workflow shows Deactivated. Deletion intentionally deactivates the workflow; this report concerns the stale badge, not an expectation that Restore reactivates it. No execution failure or data loss was demonstrated.",
+      "reproSteps": [
+        "Sign in as Tim Apple and create a uniquely named workflow with Launch manually and a one-second Delay. Activate it and confirm Active remains after a normal reload.",
+        "Open its command menu and choose Delete Workflow. Confirm the deletion.",
+        "Choose Restore Workflow and confirm the restoration. Observe that the graph returns and the editor still displays Active.",
+        "Wait at least ten seconds. Confirm the badge remains Active rather than correcting itself.",
+        "Reload or leave and reopen the workflow. Observe the badge now reads Deactivated. Repeat on a fresh workflow; both desktop and tablet width reproduce the stale badge."
+      ],
+      "severity": 1
+    },
+    {
+      "id": "workflows-N69",
+      "name": "Typing a negative decimal into a Form Number field drops its minus sign",
+      "summary": "Typing -0.005 into a workflow Form Number field rewrites the intermediate -0 to 0, so the completed answer becomes positive 0.005; entering the complete negative decimal at once works.",
+      "expected": "Typing a supported negative decimal should preserve its sign through intermediate input and submit the same negative value that whole-value entry successfully submits.",
+      "actual": "Sequential keyboard entry of -0.005 with ordinary pauses displays -, then 0 after the next key, and finally positive 0.005. Completed Form output records positive 0.005. Entering the complete -0.005 value at once submits the correct negative value, and negative-integer and positive-fraction controls work. This accepted scope excludes scientific-notation expectations and untested downstream monetary or record damage.",
+      "reproSteps": [
+        "Sign in as Tim Apple and create a uniquely named workflow with Launch manually and a Form containing a Number field. Test the workflow to open its answer form.",
+        "Focus the empty Number field. Type -, 0, ., 0, 0, 5 sequentially with roughly 200 to 300 milliseconds between keys.",
+        "Observe the initial minus sign disappear when the intermediate -0 is rewritten as 0, leaving positive 0.005 after typing finishes.",
+        "Submit and inspect the completed run's Form Output. Confirm its numeric answer is positive 0.005.",
+        "Repeat in a fresh test run. As controls, enter the complete -0.005 value at once and submit; it remains negative. Negative integers such as -5 or -12 and a positive fraction such as 123.45 also submit correctly."
+      ],
+      "severity": 3
+    },
+    {
+      "id": "workflows-N70",
+      "name": "Keyboard clearing a saved workflow date leaves an empty display without saving the clear",
+      "summary": "Deleting all text in a saved Calendar or Delay date field leaves an empty mask but never saves the removal; ordinary reopening restores the old date, while the picker's Clear command works.",
+      "expected": "Clearing an editable date through keyboard deletion should save the same empty draft configuration that the field's explicit Clear command successfully saves.",
+      "actual": "Ctrl+A followed by Delete or Backspace leaves Calendar Starts at or Delay until date visibly empty, but emits no date update after waits of five to ten seconds. Closing and reopening the action without refreshing restores the old date. A subsequent Location edit saves successfully while retaining the old date despite the empty date display. Picker Clear persists an empty setting. No execution with an incorrectly retained date or other downstream harm was demonstrated.",
+      "reproSteps": [
+        "Sign in as Tim Apple and create an owned manual workflow with Create Calendar Event. Set valid Starts at and Ends at dates and allow saving to complete; reopen and confirm the dates persist.",
+        "Focus Starts at, select all date text and press Delete or Backspace. Observe an empty date mask and wait at least ten seconds.",
+        "Close and reopen the action panel without refreshing the page. Observe the original Starts at date returns.",
+        "Repeat deletion, then edit Location and allow that edit to save. Reopen the action and confirm the new Location persists while the old Starts at remains.",
+        "As a control, use the date picker's Clear command. Allow saving to finish and reopen; the empty date persists.",
+        "Repeat with a Delay configured for At a specific date or time: keyboard deletion is ignored after normal reopening, while picker Clear saves an empty draft setting. No claim that an empty date is executable is required."
+      ],
+      "severity": 3
+    },
+    {
+      "id": "workflows-N73",
+      "name": "Test run Home panel keeps showing Running after the same run completes",
+      "summary": "Opening a workflow test run's Home tab while a Delay runs leaves the panel showing Running and a blank end time after completion; the same run's full page shows Completed.",
+      "expected": "The Home panel and full run page should reflect the same run's execution status, including transition to Completed after the Delay finishes.",
+      "actual": "After entering Home from a running workflow test, Home retained Running and a blank end time for more than fifty to sixty seconds while the same run's full record page showed Completed. Switching Home to Flow and back recovered the current state. Flow-only and full-page controls updated live. Execution succeeded; no lost output or blocked workflow operation was observed. This accepted scope excludes the grouped historical Flow-stale report, which neither judge reproduced.",
+      "reproSteps": [
+        "Sign in as Tim Apple and create a uniquely named manual workflow with a Delay of ten or twenty seconds. Allow configuration saving to complete.",
+        "Click Test and open the test run side panel's Home tab while its status is Running.",
+        "Leave Home open for at least a minute. Observe Running, a blank run end time and stale step state after the Delay should have completed.",
+        "Open that same run's full record page in a separate browser tab. Confirm its status is Completed, its end time is populated and the Delay succeeded, then return to the original Home panel and observe it still says Running.",
+        "Switch the original panel to Flow and back to Home. Observe the status recovers to Completed.",
+        "As controls, keep a fresh test on Flow or open its full record page while Running; observe those surfaces update on completion. Repeat the Home flow on a fresh workflow."
+      ],
+      "severity": 1
+    },
+    {
+      "id": "workflows-recovered-01",
+      "name": "Deleting an Else if route leaves its Filter action disconnected on the canvas",
+      "severity": 3,
+      "owningArea": "twenty/workflows",
+      "summary": "Deleting an Else if route removes its settings and edge but leaves its Filter action disconnected on the workflow canvas.",
+      "expected": "Deleting a conditional route should remove its route actions or reconnect them consistently, without leaving unreachable actions.",
+      "actual": "The Else if settings and connection disappeared while its Filter remained disconnected. The If Delay and Else Filter remained connected.",
+      "reproSteps": [
+        "Create a fresh manual workflow with Code Expected Output Body {\"message\":\"alternate\"}, followed by If/Else.",
+        "Configure If as Code message Is primary and add an Else if route with message Is alternate.",
+        "Add a Filter under Else if, a Delay under If, and a Filter under Else.",
+        "Select If/Else, open the Else if route three-dot menu, and choose Delete.",
+        "Observe that the former Else if Filter remains disconnected while the other branches stay connected."
+      ],
+      "reviewEvidence": {
+        "basis": "Mo browser reproduction followed by explicit user acceptance; no independent judge or source audit.",
+        "userAccepted": true,
+        "sourceRevision": "35c645064f72bc4e3180a2c6c506cbbfee170007",
+        "severityReason": "Broken interaction or unintended record/workflow change.",
+        "limitations": [
+          "The observation concerns graph editing; subsequent workflow execution was not tested."
+        ]
+      }
+    },
+    {
+      "id": "workflows-recovered-06",
+      "name": "Workflow Versions header counts two versions while only one row is visible",
+      "severity": 1,
+      "owningArea": "twenty/workflows",
+      "summary": "After restoring an archived version as a draft and discarding that draft, Versions shows a count of two with only one version row.",
+      "expected": "The unfiltered Versions counter should agree with the displayed version rows.",
+      "actual": "Versions showed 2 while only v2 Active was listed. Applying an Active filter showed 1; removing it restored 2 with the same single row.",
+      "reproSteps": [
+        "Create a manual workflow with a Code action; set distinguishable inputs and activate v1.",
+        "Use v1 as Draft, change the Code inputs, and activate v2.",
+        "Use archived v1 as Draft and then Discard Draft.",
+        "Inspect Versions: the header displays 2 but only v2 Active is listed.",
+        "Apply an Active filter and observe count 1; remove it and observe count 2 while only v2 remains visible."
+      ],
+      "reviewEvidence": {
+        "basis": "Mo browser reproduction followed by explicit user acceptance; no independent judge or source audit.",
+        "userAccepted": true,
+        "sourceRevision": "35c645064f72bc4e3180a2c6c506cbbfee170007",
+        "severityReason": "Visible display defect without an observed execution failure.",
+        "limitations": []
+      }
+    },
+    {
+      "id": "workflows-recovered-07",
+      "name": "Reimporting a workflow's exported CSV replaces its saved steps with an empty draft",
+      "severity": 3,
+      "owningArea": "twenty/workflows",
+      "summary": "Importing a workflow list CSV exported from the same workspace replaces the existing workflow graph with an empty draft.",
+      "expected": "Reimporting exported record fields should preserve existing workflow steps that the CSV does not define.",
+      "actual": "The previously active manual-trigger and one-second Delay workflow reopened as Draft with only Add a Trigger and neither saved step.",
+      "reproSteps": [
+        "Create a fresh workflow with Launch manually followed by a one-second Delay, and activate it.",
+        "Export that workflow to CSV from the Workflows list.",
+        "Import the exported CSV using automatic column matching, Next Step, and Confirm.",
+        "Reopen the same workflow and observe Draft, Add a Trigger, and the missing saved steps."
+      ],
+      "reviewEvidence": {
+        "basis": "Mo browser reproduction followed by explicit user acceptance; no independent judge or source audit.",
+        "userAccepted": true,
+        "sourceRevision": "35c645064f72bc4e3180a2c6c506cbbfee170007",
+        "severityReason": "Broken interaction or unintended record/workflow change.",
+        "limitations": [
+          "The reproduced export included Id, Name, Statuses, Last update and creator columns, rather than only Id. It contained no workflow definition."
+        ]
+      }
+    },
+    {
+      "id": "workflows-recovered-09",
+      "name": "Form Submit's advertised Ctrl+Enter shortcut does not submit valid input",
+      "severity": 3,
+      "owningArea": "twenty/workflows",
+      "summary": "A workflow Form advertises Ctrl+Enter beside Submit, but that shortcut leaves valid answers unsubmitted while clicking Submit succeeds.",
+      "expected": "The advertised Ctrl+Enter shortcut should submit valid Form answers just as clicking Submit does.",
+      "actual": "Two Ctrl+Enter attempts left the Form open with 42.125 and an enabled Submit button. Clicking Submit completed run #1.",
+      "reproSteps": [
+        "Create and activate a manually launched workflow with Bulk availability for Workflows and a Form containing a Number field.",
+        "Select the workflow in the Workflows list and launch its command from the command menu.",
+        "Enter abc in the Number field, then replace it with 42.125.",
+        "Press Ctrl+Enter twice while the Form is open and observe that it does not submit despite the advertised shortcut.",
+        "Click Submit and confirm that the run completes."
+      ],
+      "reviewEvidence": {
+        "basis": "Mo browser reproduction followed by explicit user acceptance; no independent judge or source audit.",
+        "userAccepted": true,
+        "sourceRevision": "35c645064f72bc4e3180a2c6c506cbbfee170007",
+        "severityReason": "Broken interaction or unintended record/workflow change.",
+        "limitations": []
+      }
+    },
+    {
+      "id": "workflows-recovered-11",
+      "name": "Send Email expanded Body editor does not close using Back to Send Email at mobile width",
+      "severity": 3,
+      "owningArea": "twenty/workflows",
+      "summary": "The expanded Send Email Body editor remains open after its Back to Send Email link is clicked at mobile width.",
+      "expected": "Back to Send Email should close the expanded Body editor and restore the action configuration, including To and Subject.",
+      "actual": "At 390×844, clicking Back to Send Email by its link target and by coordinates left the expanded Body editor visible and To and Subject unavailable.",
+      "reproSteps": [
+        "Create a fresh manual workflow with a Send Email action and enter a line of Body text.",
+        "Set the viewport to 390×844 and expand Body.",
+        "Click Back to Send Email.",
+        "Observe that the expanded editor remains open and To and Subject are not visible."
+      ],
+      "reviewEvidence": {
+        "basis": "Mo browser reproduction followed by explicit user acceptance; no independent judge or source audit.",
+        "userAccepted": true,
+        "sourceRevision": "35c645064f72bc4e3180a2c6c506cbbfee170007",
+        "severityReason": "Broken interaction or unintended record/workflow change.",
+        "limitations": [
+          "No workflow activation or email delivery was performed."
+        ]
+      }
+    },
+    {
+      "id": "workflows-recovered-12",
+      "name": "Opening nested Iterator run Input tab crashes the workflow page",
+      "severity": 5,
+      "owningArea": "twenty/workflows",
+      "summary": "Switching a completed nested Iterator run from its last Output item to Input replaces the workflow page with an error screen.",
+      "expected": "Input inspection on a completed nested Iterator should display its inputs while keeping the workflow page usable.",
+      "actual": "At 390px width, advancing the inner Iterator Output to 4/4 and selecting Input dismissed the panel and displayed Sorry, something went wrong. Resizing to desktop confirmed the page error.",
+      "reproSteps": [
+        "Create a manual workflow with an outer Iterator containing two literal string items.",
+        "Inside its loop, add a one-second Delay followed by a nested Iterator containing one literal string item; add a half-second Delay inside that loop.",
+        "Reload to confirm the graph and inputs persist, then test the workflow and wait for Completed.",
+        "At 390px width, open the run Flow, inspect the inner Iterator Output, and advance to 4/4.",
+        "Select Input and observe the workflow page error; resize to desktop to inspect the same error."
+      ],
+      "reviewEvidence": {
+        "basis": "Mo browser reproduction followed by explicit user acceptance; no independent judge or source audit.",
+        "userAccepted": true,
+        "sourceRevision": "35c645064f72bc4e3180a2c6c506cbbfee170007",
+        "severityReason": "Workflow page replaced by the full-page error screen.",
+        "limitations": []
+      }
+    },
+    {
+      "id": "workflows-recovered-13",
+      "name": "Opening a selected record from a workflow form discards all pending answers",
+      "severity": 3,
+      "owningArea": "twenty/workflows",
+      "summary": "Opening a selected company from a workflow Form and returning with panel Back clears every pending Form answer without warning.",
+      "expected": "Opening a selected record for inspection and returning should preserve the unsubmitted Form answers or warn before discarding them.",
+      "actual": "Text and Number answers became blank and the Record answer reset to Select after opening its selected company link and returning with Back.",
+      "reproSteps": [
+        "Create a fresh company, using a helper Create Record workflow if necessary.",
+        "Create and activate a manual workflow with a Form containing Text, Number, and Company Record fields.",
+        "Launch the workflow from the command menu and fill Text with QA Production Retain, Number with 321, and Record with the fresh company.",
+        "Open the selected company link and then click the record panel Back control.",
+        "Observe that Text and Number are blank and Record has reset to Select without a discard warning."
+      ],
+      "reviewEvidence": {
+        "basis": "Mo browser reproduction followed by explicit user acceptance; no independent judge or source audit.",
+        "userAccepted": true,
+        "sourceRevision": "35c645064f72bc4e3180a2c6c506cbbfee170007",
+        "severityReason": "Broken interaction or unintended record/workflow change.",
+        "limitations": [
+          "The reproduced Text and Number field labels retained default prefixes; their field types and answer values matched the report."
+        ]
+      }
+    },
+    {
+      "id": "workflows-recovered-14",
+      "name": "Resizing the workflow editor to mobile hides the graph until reload",
+      "severity": 1,
+      "owningArea": "twenty/workflows",
+      "summary": "A visible workflow graph becomes blank after the editor is narrowed from desktop to mobile; reloading at the same mobile size restores it.",
+      "expected": "The existing graph should remain visible and usable when the editor changes viewport size.",
+      "actual": "A manual-trigger and Delay graph visible at 1440×900 disappeared after resizing to 390×844 and collapsing mobile navigation. Reloading at 390×844 restored both nodes.",
+      "reproSteps": [
+        "At 1440×900, create a manual workflow with a Delay using its default duration.",
+        "Close the action configuration panel and confirm both graph nodes are visible.",
+        "Resize to 390×844 and collapse the mobile navigation.",
+        "Observe a blank graph canvas.",
+        "Reload at the same viewport size and observe both nodes again."
+      ],
+      "reviewEvidence": {
+        "basis": "Mo browser reproduction followed by explicit user acceptance; no independent judge or source audit.",
+        "userAccepted": true,
+        "sourceRevision": "35c645064f72bc4e3180a2c6c506cbbfee170007",
+        "severityReason": "Visible display defect without an observed execution failure.",
+        "limitations": [
+          "No workflow execution or DOM geometry investigation was performed; the accepted observation is the visible blank canvas."
+        ]
+      }
+    },
+    {
+      "id": "workflows-recovered-10-preview",
+      "name": "Monthly cron preview shows January 12 instead of the first of every month until reload",
+      "severity": 1,
+      "owningArea": "twenty/workflows",
+      "summary": "After typing the monthly cron expression, its initial schedule preview shows a different yearly schedule; reload restores the correct preview.",
+      "expected": "The expression 0 12 1 * * should preview 12:00 UTC on the first of every month as soon as the edit is committed.",
+      "actual": "Replacing the saved weekday expression with keyboard-typed 0 12 1 * * initially previewed January 12 at 00:00 UTC with yearly upcoming dates. After reload, both asterisks remained saved and the preview correctly showed monthly noon.",
+      "reproSteps": [
+        "Create an owned workflow with an On a schedule trigger and a harmless Code action. Save weekday Cron (Custom) expression 15 9 * * 1-5 and leave the workflow deactivated.",
+        "Select the entire cron expression and type 0 12 1 * * using normal keyboard input, then blur the expression field.",
+        "Inspect the initial description and upcoming execution dates: they show midnight on January 12 with yearly dates rather than noon on the first of every month.",
+        "Reload the page and reopen the trigger. Observe that 0 12 1 * * retains both asterisks and the description and upcoming dates now correctly show noon UTC on the first of every month."
+      ],
+      "reviewEvidence": {
+        "basis": "Mo browser reproduction followed by explicit user acceptance of the preview-only finding; no independent judge or source audit.",
+        "userAccepted": true,
+        "sourceRevision": "35c645064f72bc4e3180a2c6c506cbbfee170007",
+        "severityReason": "Incorrect schedule description and upcoming-date display; no incorrect execution was established.",
+        "limitations": [
+          "The workflow remained deactivated. Actual scheduled execution before or after refresh was not tested.",
+          "This acceptance covers the initial preview only, not persisted expression truncation or a confirmed backend scheduling error."
+        ]
+      }
+    },
+    {
+      "id": "workflows-fresh-45c0e8e0",
+      "name": "Clearing a numeric workflow condition inserts and saves literal null text",
+      "severity": 3,
+      "owningArea": "twenty/workflows",
+      "summary": "Clearing an If/Else or Filter numeric condition produces the literal string null, so typing a replacement appends to invalid text instead of starting from an empty input.",
+      "expected": "Clearing a numeric condition leaves an empty editable value so a replacement number can be entered without text being inserted by the application.",
+      "actual": "On two fresh workflows per judge, clearing a numeric Total Count condition inserted null immediately. Typing 1 produced null1 and Invalid number. The null string was saved and survived reload, while null1 was rejected. The sibling Filter action reproduced. Direct selected replacement and Search Records Limit/Offset clear-and-retype controls worked.",
+      "reproSteps": [
+        "Create a fresh manual workflow with a Search Records action and an If/Else condition using Search Records > Total Count, operator Is, and value 0. Allow the configuration to save.",
+        "Focus the numeric condition, select all, and press Backspace. Observe that the input inserts the literal text null instead of staying empty.",
+        "Type 1 without selecting the inserted text. Observe null1 and Invalid number.",
+        "Reopen or reload the saved condition and observe that null remains the stored value; do not require invalid null1 to save.",
+        "Replace the selected contents directly with a valid number, without first passing through an empty input, and confirm it works without the error.",
+        "As a control, clear and retype a Search Records Limit or Offset value and observe a normal empty intermediate state. Repeat the failing condition in a second fresh workflow or the sibling Filter action."
+      ],
+      "sourceCause": "FormNumberFieldInput emits real null for an empty numeric input. WorkflowStepFilterValueInput converts non-string primitive values with String(value), turning null into the four-character string null and saving it as the condition value.",
+      "reviewEvidence": {
+        "basis": "Mo report plus independent Claude Code and Codex browser reproductions and source audits, coordinator citation checks, and user acceptance.",
+        "userAccepted": true,
+        "sourceRevision": "35c645064f72bc4e3180a2c6c506cbbfee170007",
+        "severityReason": "Observed broken functionality; controls using the same saved data work.",
+        "analysis": [
+          "Claude and Codex independently reproduced twice on fresh workflows, including persisted null after reload, a sibling Filter variation and successful direct-replacement controls.",
+          "Ordinary digit-by-digit deletion also triggers the insertion. The later null1 validation is correctly rejecting nonnumeric text the editor itself introduced.",
+          "The coordinator checked each cited source location and the composite callback path. The same number component works under Search Records callbacks that do not stringify null.",
+          "Rejected Maximum values counter behavior restores a valid minimum; this adapter manufactures nonnumeric text. Rejected out-of-range schedule input and optional-value concatenation have different contracts and triggers.",
+          "Latest retains the adapter conversion despite newer numeric-input synchronization. Continued runtime exposure is inferred from source, not a live latest run."
+        ],
+        "sourceReferences": [
+          "https://github.com/twentyhq/twenty/blob/35c645064f72bc4e3180a2c6c506cbbfee170007/packages/twenty-front/src/utils/cast-as-number-or-null.ts#L28-L40",
+          "https://github.com/twentyhq/twenty/blob/35c645064f72bc4e3180a2c6c506cbbfee170007/packages/twenty-front/src/utils/cast-as-number-or-null.ts#L63-L67",
+          "https://github.com/twentyhq/twenty/blob/35c645064f72bc4e3180a2c6c506cbbfee170007/packages/twenty-front/src/modules/object-record/record-field/ui/form-types/components/FormNumberFieldInput.tsx#L58-L87",
+          "https://github.com/twentyhq/twenty/blob/35c645064f72bc4e3180a2c6c506cbbfee170007/packages/twenty-front/src/modules/workflow/workflow-steps/filters/components/WorkflowStepFilterValueInput.tsx#L81-L103",
+          "https://github.com/twentyhq/twenty/blob/35c645064f72bc4e3180a2c6c506cbbfee170007/packages/twenty-front/src/modules/workflow/workflow-steps/filters/components/WorkflowStepFilterValueInput.tsx#L255-L287",
+          "https://github.com/twentyhq/twenty/blob/35c645064f72bc4e3180a2c6c506cbbfee170007/packages/twenty-front/src/modules/workflow/workflow-steps/filters/hooks/useUpsertStepFilterSettings.ts#L49-L65",
+          "https://github.com/twentyhq/twenty/blob/a6372e288ade9ed14ac2af1a7e224dabb6cc6021/packages/twenty-front/src/modules/workflow/workflow-steps/filters/components/WorkflowStepFilterValueInput.tsx#L81-L103",
+          "https://github.com/twentyhq/twenty/blob/a6372e288ade9ed14ac2af1a7e224dabb6cc6021/packages/twenty-front/src/modules/object-record/record-field/ui/form-types/components/FormNumberFieldInput.tsx#L70-L103"
+        ],
+        "limitations": [
+          "No workflow execution or activation consequence was browser-tested. Numeric comparisons against NaN are source-only inference and are not an observed impact claim.",
+          "Invalid null1 is rejected and was not observed to persist; the stored invalid value demonstrated is the inserted null string.",
+          "Other roles, currency/phone fields, database-event conditions, nested groups and broader numeric callers were not browser-verified.",
+          "Latest was inspected in source, not launched. No crash or saved-record loss was observed."
+        ]
+      }
+    },
+    {
+      "id": "workflows-fresh-19dfdd26",
+      "name": "Changing a workflow condition operator conceals its cleared value and executes a different comparison",
+      "severity": 3,
+      "owningArea": "twenty/workflows",
+      "summary": "Changing a string comparison operator clears the saved value while the If/Else or Filter input continues to display the previous value, concealing the configuration used by execution.",
+      "expected": "The visible workflow comparison represents the condition actually saved and executed. If changing an operator resets its value, the input reflects that reset.",
+      "actual": "Both judges reproduced on two fresh workflows: changing Is to Is not saved an empty string but retained the old text onscreen; reopening revealed the empty field. With the triggering member’s actual ID still displayed, tests took the branch for comparison against an empty value rather than the displayed ID. Re-entering the value restored correct routing. A completed-save, long-wait trial also failed.",
+      "reproSteps": [
+        "Create a fresh manual workflow with an If/Else action comparing trigger metadata Workspace Member Id to the current member’s actual ID using Is. Connect safe observable actions such as Delay or Filter to its branches.",
+        "Allow the condition to save, close and reopen its panel, and confirm the value remains. Test to establish the expected branch for that ID.",
+        "Change Is to Is not without editing the value. Wait for saving to complete. Observe that the input still displays the member ID.",
+        "Test the workflow and inspect its branch result. Observe that If executes despite the visible Is not comparison against the triggering member’s own ID.",
+        "Close and reopen the condition panel. Observe the value is empty; the operator change already cleared it before Test or any later navigation.",
+        "Re-enter the member ID without changing the operator, allow saving to finish, and test again. Observe the correct Else branch.",
+        "Repeat with a fresh workflow. The same string-value display mismatch can be checked in the sibling Filter action."
+      ],
+      "sourceCause": "WorkflowStepFilterOperandSelect explicitly saves an empty value when the operator changes. The string value editor remains mounted under the same condition key, and useTextVariableEditor initializes its content from defaultValue without synchronizing later default changes.",
+      "reviewEvidence": {
+        "basis": "Mo report plus independent Claude Code and Codex browser reproductions and source audits, coordinator citation checks, and user acceptance.",
+        "userAccepted": true,
+        "sourceRevision": "35c645064f72bc4e3180a2c6c506cbbfee170007",
+        "severityReason": "Observed broken functionality; controls using the same saved data work.",
+        "analysis": [
+          "Claude and Codex independently reproduced the concealed reset and incorrect execution on fresh workflows with valid actual member IDs. Re-entering the value without another operator change corrected routing.",
+          "The reset happens on operator selection before Test, Add route or panel navigation. Codex confirmed a completed empty-value mutation and a roughly 25-second wait before execution, distinguishing this from unfinished-autosave races.",
+          "Ordinary unchanged comparisons persisted. The sibling Filter string editor also reproduced; other value types and nested/database-trigger cases remain unverified.",
+          "The coordinator checked all numbered citations and expanded shortened paths. Claude’s inferred extension to FormNumberFieldInput was excluded because that component derives its value from current props.",
+          "Latest retains the string-editor integration despite workflow save and storage rewrites. Continued latest runtime exposure is inferred from source, not browser-tested."
+        ],
+        "sourceReferences": [
+          "https://github.com/twentyhq/twenty/blob/35c645064f72bc4e3180a2c6c506cbbfee170007/packages/twenty-front/src/modules/workflow/workflow-steps/filters/components/WorkflowStepFilterOperandSelect.tsx#L38-L60",
+          "https://github.com/twentyhq/twenty/blob/35c645064f72bc4e3180a2c6c506cbbfee170007/packages/twenty-front/src/modules/workflow/workflow-steps/filters/components/WorkflowStepFilterGroupChildren.tsx#L51",
+          "https://github.com/twentyhq/twenty/blob/35c645064f72bc4e3180a2c6c506cbbfee170007/packages/twenty-front/src/modules/workflow/workflow-steps/filters/components/WorkflowStepFilterValueInput.tsx#L175-L183",
+          "https://github.com/twentyhq/twenty/blob/35c645064f72bc4e3180a2c6c506cbbfee170007/packages/twenty-front/src/modules/object-record/record-field/ui/form-types/hooks/useTextVariableEditor.ts#L43-L67",
+          "https://github.com/twentyhq/twenty/blob/35c645064f72bc4e3180a2c6c506cbbfee170007/packages/twenty-front/src/modules/object-record/record-field/ui/form-types/hooks/useTextVariableEditor.ts#L130-L139",
+          "https://github.com/twentyhq/twenty/blob/35c645064f72bc4e3180a2c6c506cbbfee170007/packages/twenty-front/src/modules/workflow/workflow-steps/filters/hooks/useUpsertStepFilterSettings.ts#L49-L65",
+          "https://github.com/twentyhq/twenty/blob/35c645064f72bc4e3180a2c6c506cbbfee170007/packages/twenty-server/src/modules/workflow/workflow-executor/workflow-actions/filter/utils/evaluate-filter-conditions.util.ts#L461-L475",
+          "https://github.com/twentyhq/twenty/blob/a6372e288ade9ed14ac2af1a7e224dabb6cc6021/packages/twenty-front/src/modules/workflow/workflow-steps/filters/components/WorkflowStepFilterOperandSelect.tsx#L38-L60",
+          "https://github.com/twentyhq/twenty/blob/a6372e288ade9ed14ac2af1a7e224dabb6cc6021/packages/twenty-front/src/modules/object-record/record-field/ui/form-types/hooks/useTextVariableEditor.ts#L70-L75",
+          "https://github.com/twentyhq/twenty/blob/a6372e288ade9ed14ac2af1a7e224dabb6cc6021/packages/twenty-front/src/modules/object-record/record-field/ui/form-types/hooks/useTextVariableEditor.ts#L153-L162"
+        ],
+        "limitations": [
+          "Browser verification covers string comparisons in If/Else and Filter; other field types, nested/Else-if and database-trigger callers were source-inspected only.",
+          "The workspace-member account could not access editable workflows. Administrator reproductions establish this scope.",
+          "Latest was inspected in source, not launched. The original Mo video was not independently reviewed by the judges."
+        ]
+      },
+      "matchingGuidance": {
+        "relatedReference": "workflows-N13",
+        "distinction": "This entry covers If/Else and Filter string-comparison operator changes, where the saved value is cleared but stale text remains and tests can execute a different branch. workflows-N13 covers re-selecting POST in a webhook trigger and a reset Expected Body concealed by stale JSON. They share useTextVariableEditor through different input components and entry points; match the reported selector and concealed value."
+      }
+    },
+    {
+      "id": "workflows-fresh-57ec05ae",
+      "name": "Workflow test Flow panel stays Running after the run completes",
+      "severity": 1,
+      "owningArea": "twenty/workflows",
+      "summary": "A completed short workflow test can leave its Flow panel displaying Running until refetched.",
+      "expected": "The Flow run-status indicator reflects the completed state of that same execution.",
+      "actual": "Both judges repeatedly observed fresh completed runs with Flow still Running for 40–60 seconds or more while the full run page showed Completed. Switching tabs or reopening a fresh completed-run panel recovered. Execution and stored results were correct.",
+      "reproSteps": [
+        "Create and save a fresh manual workflow with Search Records and an If/Else branch containing only safe actions, then Test it.",
+        "Keep the newly opened run panel on Flow while the short run finishes.",
+        "In an affected trial, wait at least 40 seconds and observe Running remains despite completed steps and the same run’s detail showing Completed.",
+        "Open the full run detail or switch Home to Flow and confirm Completed is displayed after refetch.",
+        "Repeat with fresh run IDs; the defect is intermittent. A short workflow without If/Else can also reproduce."
+      ],
+      "sourceCause": "Two independently captured races can freeze the same Flow status: live-listener registration after a short run finishes, or an older RUNNING query response overwriting a newer terminal live update in the cache.",
+      "reviewEvidence": {
+        "basis": "Mo report plus independent Claude Code and Codex browser reproductions and source audits, coordinator citation checks, and user acceptance.",
+        "userAccepted": true,
+        "sourceRevision": "35c645064f72bc4e3180a2c6c506cbbfee170007",
+        "severityReason": "GUI-only: the demonstrated display or navigation state is wrong; no failed supported operation or saved-data loss was established.",
+        "analysis": [
+          "Both judges recommend P/1. Codex captured a listener registration starting 1.291 seconds after its diagnostic run completed; Claude captured newer COMPLETED live events followed by older RUNNING fetch responses. Do not attribute every affected run to one cause.",
+          "Passing event/query order and fresh-panel controls distinguish the intermittent display failure from failed execution.",
+          "The coordinator checked every cited source location and the separate upstream fixes for immediate listener registration and stale-response protection. Latest runtime was not tested.",
+          "N73 accepts Home during a long Delay and explicitly excludes the then-unconfirmed Flow variant. This approved related entry confirms Flow independently; shared root cause with that older Home observation is not established."
+        ],
+        "sourceReferences": [
+          "https://github.com/twentyhq/twenty/blob/35c645064f72bc4e3180a2c6c506cbbfee170007/packages/twenty-front/src/modules/sse-db-event/components/SSEQuerySubscribeEffect.tsx#L181-L223",
+          "https://github.com/twentyhq/twenty/blob/35c645064f72bc4e3180a2c6c506cbbfee170007/packages/twenty-front/src/modules/workflow/hooks/useRunWorkflowVersion.tsx#L143-L165",
+          "https://github.com/twentyhq/twenty/blob/35c645064f72bc4e3180a2c6c506cbbfee170007/packages/twenty-front/src/modules/workflow/hooks/useWorkflowRun.ts#L9-L47",
+          "https://github.com/twentyhq/twenty/blob/35c645064f72bc4e3180a2c6c506cbbfee170007/packages/twenty-front/src/modules/workflow/workflow-diagram/components/WorkflowRunVisualizer.tsx#L12-L24",
+          "https://github.com/twentyhq/twenty/blob/35c645064f72bc4e3180a2c6c506cbbfee170007/packages/twenty-front/src/modules/sse-db-event/hooks/useTriggerOptimisticEffectFromSseUpdateEvents.ts#L111-L120",
+          "https://github.com/twentyhq/twenty/blob/a6372e288ade9ed14ac2af1a7e224dabb6cc6021/packages/twenty-front/src/modules/sse-db-event/components/SSEQuerySubscribeEffect.tsx#L206-L267",
+          "https://github.com/twentyhq/twenty/blob/a6372e288ade9ed14ac2af1a7e224dabb6cc6021/packages/twenty-front/src/modules/workflow/utils/workflowRunStaleResponseLink.ts#L23-L77"
+        ],
+        "limitations": [
+          "No execution failure, lost output or blocked workflow operation was observed.",
+          "Original Mo recording and selected tab were unavailable to the judges; independent Flow reproductions establish this scope.",
+          "Other subscription callers and roles were not browser-verified. Latest was source-inspected only."
+        ]
+      },
+      "matchingGuidance": {
+        "relatedReference": "workflows-N73",
+        "distinction": "This entry covers a short run’s Flow status remaining Running after completion, independently confirmed through delayed-listener or stale-query races. N73 covers leaving Home open during a long Delay and explicitly excluded unconfirmed Flow behavior. Match the tab and trigger; no shared root cause with N73 is assumed."
+      }
+    },
+    {
+      "id": "workflows-fresh-5e370825",
+      "name": "Creation-page refresh opens an empty workflow name editor that erases its saved name on commit",
+      "severity": 3,
+      "owningArea": "twenty/workflows",
+      "summary": "Reloading a freshly created workflow’s landing page opens an empty title draft; an ordinary canvas click or Tab then overwrites its saved name.",
+      "expected": "Refreshing a named workflow does not reopen an empty name draft that ordinary unrelated interaction saves over the completed name.",
+      "actual": "Both judges reproduced fresh workflows with saved names: refresh opened an empty Name editor while the saved name remained recoverable, then a canvas click or Tab made the workflow persistently Untitled. Escape and list-reopen controls preserved names. Configured active workflows and an unconfigured draft were affected.",
+      "reproSteps": [
+        "Create a fresh workflow, enter a unique name and press Enter to commit it. Allow the name to save and confirm it is displayed.",
+        "Without first leaving the creation landing page, reload it. Observe an empty focused Name editor while the browser title still retains the saved name.",
+        "Click the workflow canvas or press Tab. Observe the empty draft being committed and the breadcrumb changing to Untitled.",
+        "Reopen the Workflows list and reload to confirm the stored name is now empty.",
+        "As controls on fresh workflows, press Escape after the creation-page reload to preserve the saved name, or open the workflow from the list before reloading and confirm no empty editor appears."
+      ],
+      "sourceCause": "The new-record router-history flag survives reload and repeatedly opens the title editor. Its separate draft is seeded before saved record data is available, and normal click/Tab commit handlers persist that empty value.",
+      "reviewEvidence": {
+        "basis": "Mo report plus independent Claude Code and Codex browser reproductions and source audits, coordinator citation checks, and user acceptance.",
+        "userAccepted": true,
+        "sourceRevision": "35c645064f72bc4e3180a2c6c506cbbfee170007",
+        "severityReason": "Observed broken functionality or unintended loss of saved configuration.",
+        "analysis": [
+          "Both judges recommend P/3 for refresh followed by a normal commit, not refresh alone. No activation or workflow-step setup is required.",
+          "The coordinator traced creation state, editor draft, commit handlers and backend persistence, and read the upstream fix explicitly identifying refresh-triggered editor reopening as defective.",
+          "Latest replaces retained history-state consumption with a matching one-shot pending title request that is cleared after use; latest runtime was not tested.",
+          "The accepted Notes/Tasks creation-page title-loss entry shares this cause but is name-only in the current dataset. Related guidance uses its exact name and location without inventing an ID. Rejected N71 concerns an unfinished programmatic blur, not erasing a completed name through this automatically reopened editor."
+        ],
+        "sourceReferences": [
+          "https://github.com/twentyhq/twenty/blob/35c645064f72bc4e3180a2c6c506cbbfee170007/packages/twenty-front/src/modules/object-record/record-table/hooks/useCreateNewIndexRecord.ts#L89-L119",
+          "https://github.com/twentyhq/twenty/blob/35c645064f72bc4e3180a2c6c506cbbfee170007/packages/twenty-front/src/modules/app/effect-components/PageChangeEffect.tsx#L208-L237",
+          "https://github.com/twentyhq/twenty/blob/35c645064f72bc4e3180a2c6c506cbbfee170007/packages/twenty-front/src/modules/object-record/record-title-cell/hooks/useOpenNewRecordTitleCell.ts#L35-L49",
+          "https://github.com/twentyhq/twenty/blob/35c645064f72bc4e3180a2c6c506cbbfee170007/packages/twenty-front/src/modules/object-record/record-title-cell/components/RecordTitleCell.tsx#L62-L99",
+          "https://github.com/twentyhq/twenty/blob/35c645064f72bc4e3180a2c6c506cbbfee170007/packages/twenty-front/src/modules/object-record/record-field/ui/hooks/usePersistField.ts#L268-L283",
+          "https://github.com/twentyhq/twenty/blob/a6372e288ade9ed14ac2af1a7e224dabb6cc6021/packages/twenty-front/src/modules/app/effect-components/PageChangeEffect.tsx#L241-L255"
+        ],
+        "limitations": [
+          "Refresh alone leaves the stored name intact until an ordinary commit of the empty editor. Escape recovers it.",
+          "The original Mo post-refresh action was not established; the proposed reproduction explicitly includes the later click or Tab.",
+          "Precise cold-record-store timing is inferred. No step configuration or workflow execution loss was demonstrated.",
+          "Other creation callers and member-role behavior were not independently verified. Latest was source-inspected only."
+        ]
+      },
+      "matchingGuidance": {
+        "relatedReference": {
+          "name": "Refreshing newly created Notes or Tasks opens an empty title editor that can erase their saved names",
+          "location": "fixtures/oss/twenty/e2e/areas/record-pages-activities/ground-truth.json"
+        },
+        "distinction": "The existing name-only entry covers Notes and Tasks after creation-page reload. This entry covers Workflows and its editor breadcrumb, with the same retained creation-state and empty-draft commit mechanism. Do not invent an ID for the older reference; match the object and entry point."
+      }
+    },
+    {
+      "id": "workflows-fresh-a4320e8f",
+      "name": "Default zero-duration Delay fails execution before later workflow steps run",
+      "severity": 3,
+      "owningArea": "twenty/workflows",
+      "summary": "A standalone Delay left at its default all-zero duration fails the workflow with an internal pending-state error instead of completing immediately.",
+      "expected": "A Delay using its valid default zero duration should complete immediately or receive clear configuration validation rather than fail the workflow with an internal state error.",
+      "actual": "Two fresh manual workflows per judge failed on the zero-duration Delay with “Workflow has been ended before this step was completed”; stored run error was “Step is not pending”. Later steps did not start. Changing Seconds to 1 completed; an activated manual launch also failed with zero.",
+      "reproSteps": [
+        "Create a fresh workflow with Launch manually and a Delay action.",
+        "Leave Days, Hours, Minutes and Seconds at their default 0 values. Allow saving to complete; reopening the saved workflow also reproduces.",
+        "Run Test Workflow and inspect Delay output and run status. Observe Failed and the ended-before-completion message.",
+        "Optionally add a following harmless Delay and observe it remains not started after the zero-duration step fails.",
+        "As a control, change only Seconds to 1, allow saving to complete, and test again. Observe successful completion."
+      ],
+      "sourceCause": "The Delay action queues an immediately runnable resume job before the executor persists PENDING. The resume worker treats a non-PENDING step as fatal and ends the run; termination supplies the displayed step error.",
+      "reviewEvidence": {
+        "basis": "Mo report plus independent Claude Code and Codex browser reproductions and source audits, coordinator citation checks, and user acceptance.",
+        "userAccepted": true,
+        "sourceRevision": "35c645064f72bc4e3180a2c6c506cbbfee170007",
+        "severityReason": "Observed broken functionality; controls using the same saved data work.",
+        "analysis": [
+          "Both judges independently reproduced on two fresh standalone workflows with passing one-second controls. Claude repeated the zero version through the API five times, all failing, and confirmed the next step remained NOT_STARTED. Codex additionally reproduced an activated manual launch.",
+          "The builder seeds all duration components to zero and the schema permits zero; no unfinished edit or Iterator is needed.",
+          "The exact worker ordering is inferred from source and stored errors, not captured in a worker trace. All sampled zero-duration runs failed, without establishing a universal frequency.",
+          "Accepted Iterator malformed-loop-return and editor-Delay failures have different causes. Latest uses TIME waits and retries premature wake-ups; a source-level fix is plausible, but latest runtime was not tested."
+        ],
+        "sourceReferences": [
+          "https://github.com/twentyhq/twenty/blob/35c645064f72bc4e3180a2c6c506cbbfee170007/packages/twenty-server/src/modules/workflow/workflow-builder/workflow-version-step/workflow-version-step-operations.workspace-service.ts#L663-L682",
+          "https://github.com/twentyhq/twenty/blob/35c645064f72bc4e3180a2c6c506cbbfee170007/packages/twenty-shared/src/workflow/schemas/workflow-delay-action-settings-schema.ts#L4-L18",
+          "https://github.com/twentyhq/twenty/blob/35c645064f72bc4e3180a2c6c506cbbfee170007/packages/twenty-server/src/modules/workflow/workflow-executor/workflow-actions/delay/delay.workflow-action.ts#L74-L116",
+          "https://github.com/twentyhq/twenty/blob/35c645064f72bc4e3180a2c6c506cbbfee170007/packages/twenty-server/src/modules/workflow/workflow-executor/workspace-services/workflow-executor.workspace-service.ts#L364-L429",
+          "https://github.com/twentyhq/twenty/blob/35c645064f72bc4e3180a2c6c506cbbfee170007/packages/twenty-server/src/modules/workflow/workflow-executor/workflow-actions/delay/jobs/resume-delayed-workflow.job.ts#L47-L110",
+          "https://github.com/twentyhq/twenty/blob/35c645064f72bc4e3180a2c6c506cbbfee170007/packages/twenty-server/src/modules/workflow/workflow-runner/workflow-run/workflow-run.workspace-service.ts#L477-L500",
+          "https://github.com/twentyhq/twenty/blob/a6372e288ade9ed14ac2af1a7e224dabb6cc6021/packages/twenty-server/src/modules/workflow/workflow-executor/workflow-actions/delay/delay.workflow-action.ts#L63-L84",
+          "https://github.com/twentyhq/twenty/blob/a6372e288ade9ed14ac2af1a7e224dabb6cc6021/packages/twenty-server/src/modules/workflow/workflow-runner/workspace-services/workflow-waiting-step.workspace-service.ts#L83-L108"
+        ],
+        "limitations": [
+          "Concurrent worker ordering is inferred; no worker-level trace was collected.",
+          "Other roles, automated triggers, scheduled-date mode, fractional durations and Iterator placement were not browser-tested.",
+          "Latest was source-inspected only."
+        ]
+      }
+    },
+    {
+      "id": "workflows-fresh-b4cded10",
+      "name": "Changing trigger Record Type retains an incompatible condition that prevents runs",
+      "severity": 3,
+      "owningArea": "twenty/workflows",
+      "summary": "Changing a Record-updated trigger from Notes to Companies retains the old Title condition after reload; it displays Select a field and the active workflow does not run on Company updates.",
+      "expected": "After changing the trigger object, incompatible object-specific conditions should be reset or clearly identified as invalid so a retained old-object condition does not silently prevent execution.",
+      "actual": "Notes Title Contains a nonempty value survives switching to Companies as a saved trigger.properties.after.title reference. The field displays Select a field, activation succeeds, and Company updates produce no run. Selecting a valid Company Name condition restores normal execution.",
+      "reproSteps": [
+        "Create a fresh workflow with Record is updated > Notes. Add a Title Contains condition with a unique nonempty value.",
+        "Change Record Type to Companies, directly or through Tasks. Observe Select a field while Contains and the previous value remain.",
+        "Add a harmless valid action, allow saving to finish, and activate. Reload and confirm the unresolved field remains.",
+        "Update an owned Company and observe no run for the stale condition.",
+        "As a control, explicitly select Company Name in that condition and use a value matching the Company. Save and activate, update the Company again, and observe a completed run."
+      ],
+      "sourceCause": "The Record Type handler changes eventName while preserving the previous filter. The field selector cannot resolve Title in the Company schema and displays a placeholder; activation does not validate filter compatibility, and event evaluation retains the missing-field predicate.",
+      "reviewEvidence": {
+        "basis": "Mo report plus independent Claude Code and Codex browser/source reviews, official Claude clarification, coordinator citation checks, and user acceptance after reviewing the P/F disagreement.",
+        "userAccepted": true,
+        "sourceRevision": "35c645064f72bc4e3180a2c6c506cbbfee170007",
+        "severityReason": "Observed broken functionality; controls using the same saved data work.",
+        "analysis": [
+          "Both judges reproduced the persisted unresolved condition on two fresh workflows. Valid Company Name controls completed, and Codex repaired the affected condition and verified subsequent execution.",
+          "Claude accepts at severity 3; Codex rejects because the field placeholder visibly indicates incomplete configuration and no explicit product contract requires automatic clearing or activation rejection. The user accepted a related entry at severity 3 after reviewing the disagreement.",
+          "Claude withdrew claims that the full stale row and empty control looked identical, that empty-condition pass-through establishes a contract, and that upstream b109ddbe7e addresses this precise defect. Only the field placeholder matches; operator/value differ.",
+          "Acceptance rests on consistency with sibling workflow object pickers that reset object-specific settings and accepted N17, rather than documented maintainer intent. Rejected N64 is a meaningful counterprecedent because it also has a visibly unresolved mapping.",
+          "A stale Title predicate is not expected to match Company Name. No-run observations establish the retained configuration effect, not that any Company name should satisfy that predicate. Latest retains the handler; latest runtime was not tested."
+        ],
+        "sourceReferences": [
+          "https://github.com/twentyhq/twenty/blob/35c645064f72bc4e3180a2c6c506cbbfee170007/packages/twenty-front/src/modules/workflow/workflow-trigger/components/WorkflowEditTriggerDatabaseEventForm.tsx#L155-L168",
+          "https://github.com/twentyhq/twenty/blob/35c645064f72bc4e3180a2c6c506cbbfee170007/packages/twenty-front/src/modules/workflow/workflow-steps/filters/components/WorkflowStepFilterFieldSelect.tsx#L66-L99",
+          "https://github.com/twentyhq/twenty/blob/35c645064f72bc4e3180a2c6c506cbbfee170007/packages/twenty-server/src/modules/workflow/workflow-trigger/utils/assert-version-can-be-activated.util.ts#L253-L263",
+          "https://github.com/twentyhq/twenty/blob/35c645064f72bc4e3180a2c6c506cbbfee170007/packages/twenty-server/src/modules/workflow/workflow-trigger/automated-trigger/listeners/workflow-database-event-trigger.listener.ts#L428-L453",
+          "https://github.com/twentyhq/twenty/blob/35c645064f72bc4e3180a2c6c506cbbfee170007/packages/twenty-server/src/modules/workflow/workflow-executor/workflow-actions/filter/utils/evaluate-filter-conditions.util.ts#L139-L190",
+          "https://github.com/twentyhq/twenty/blob/35c645064f72bc4e3180a2c6c506cbbfee170007/packages/twenty-front/src/modules/workflow/workflow-steps/workflow-actions/find-records-action/components/WorkflowEditActionFindRecords.tsx#L174-L188",
+          "https://github.com/twentyhq/twenty/blob/a6372e288ade9ed14ac2af1a7e224dabb6cc6021/packages/twenty-front/src/modules/workflow/workflow-trigger/components/WorkflowEditTriggerDatabaseEventForm.tsx#L51-L63",
+          "https://github.com/twentyhq/twenty/blob/a6372e288ade9ed14ac2af1a7e224dabb6cc6021/packages/twenty-front/src/modules/workflow/workflow-steps/filters/components/WorkflowStepFilterFieldSelect.tsx#L128-L143"
+        ],
+        "limitations": [
+          "The field placeholder visibly signals an unset field; this is not concealed valid-looking comparison text. Automatic reset or explicit invalid-condition feedback is an inferred consistency contract approved by the user.",
+          "The precise listener cause of absent runs was inferred from source, not traced live. No HTTP Request was executed; harmless actions were used.",
+          "An additional displayed-versus-saved operand discrepancy is uninvestigated and excluded.",
+          "Latest was source-inspected only; the later malformed-template warning is a different cause."
+        ]
+      },
+      "matchingGuidance": {
+        "relatedReference": "workflows-N17",
+        "distinction": "N17 covers stale current-object picker options after Record Type changes, recoverable by reopening the panel. This entry covers a saved old-object condition whose field remains unresolved after reopening/reload and prevents matching runs; explicit reselection repairs it."
+      }
+    },
+    {
+      "id": "workflows-fresh-e7933534",
+      "name": "Resizing the workflow Test form clears saved answers and submits empty output",
+      "severity": 3,
+      "owningArea": "twenty/workflows",
+      "summary": "Crossing the mobile breakpoint with a desktop workflow-editor Test form open clears already-saved Text, Number and Company Record answers; Submit can complete with an empty result.",
+      "expected": "Changing the viewport layout of the same pending Form should retain its saved answers and submit those answers.",
+      "actual": "After valid answers had autosaved, crossing 769 to 768 pixels cleared all three fields without warning. Returning to desktop left them blank, and Submit completed with {}. No-resize controls submitted populated results; the full Workflow Run page retained saved valid answers across resizing.",
+      "reproSteps": [
+        "Create a fresh manual workflow with a Form containing Text, Number and a Company Record field.",
+        "At desktop width, run Test from the workflow editor so the pending form opens in the side panel.",
+        "Enter a unique Text answer, a valid Number and a selected Company. Wait several seconds for autosave.",
+        "Narrow the window from above 768 CSS pixels to 768 or less without navigation. Observe every answer reset without a warning; returning to desktop does not restore them.",
+        "Click Submit and inspect Form output. Observe successful completion with an empty object instead of the earlier answers.",
+        "As controls, submit populated answers without crossing the breakpoint, resize within the same layout, or open the full Workflow Run record page and resize after saving valid answers."
+      ],
+      "sourceCause": "The layout switches between different desktop and mobile panel trees. Remounting initializes local answers from a stale separate flow snapshot; autosave updates the run and cache but not that snapshot. The full-run-page visualizer synchronizes flow and preserves saved values.",
+      "reviewEvidence": {
+        "basis": "Mo report plus independent Claude Code and Codex browser reproductions and source audits, coordinator citation checks, and user acceptance.",
+        "userAccepted": true,
+        "sourceRevision": "35c645064f72bc4e3180a2c6c506cbbfee170007",
+        "severityReason": "Observed broken functionality; controls using the same saved data work.",
+        "analysis": [
+          "Both judges independently reproduced repeated answer loss and successful empty submitted output, including valid Number values after waiting for autosave. The original invalid abc value is unnecessary.",
+          "Claude verified saved run input before resizing; Codex observed earlier draft answers still present while the completed result was {}. No-resize controls produced populated results.",
+          "Within-layout resizing retained answers, while crossing the 768-pixel layout boundary cleared them. Codex also reproduced mobile-to-desktop loss; full-record-page controls retained already-saved valid answers.",
+          "Recovered-13 covers selected-record navigation and Back. A shared stale-snapshot cause is plausible, but that older Mo-only entry was not independently source-audited here. Resize is a distinct trigger with observed empty submitted output.",
+          "Latest retains local snapshot initialization and panel swapping, with an added submission flush; latest runtime was not tested."
+        ],
+        "sourceReferences": [
+          "https://github.com/twentyhq/twenty/blob/35c645064f72bc4e3180a2c6c506cbbfee170007/packages/twenty-front/src/modules/ui/layout/page/components/MainAppLayoutWithSidePanel.tsx#L129-L141",
+          "https://github.com/twentyhq/twenty/blob/35c645064f72bc4e3180a2c6c506cbbfee170007/packages/twenty-front/src/modules/workflow/workflow-steps/workflow-actions/form-action/components/WorkflowEditActionFormFiller.tsx#L34-L100",
+          "https://github.com/twentyhq/twenty/blob/35c645064f72bc4e3180a2c6c506cbbfee170007/packages/twenty-front/src/modules/workflow/hooks/useRunWorkflowRunOpeningInSidePanelEffects.ts#L40-L88",
+          "https://github.com/twentyhq/twenty/blob/35c645064f72bc4e3180a2c6c506cbbfee170007/packages/twenty-front/src/modules/workflow/workflow-steps/hooks/useUpdateWorkflowRunStep.ts#L38-L87",
+          "https://github.com/twentyhq/twenty/blob/35c645064f72bc4e3180a2c6c506cbbfee170007/packages/twenty-front/src/modules/workflow/workflow-diagram/components/WorkflowRunVisualizerEffect.tsx#L235-L246",
+          "https://github.com/twentyhq/twenty/blob/35c645064f72bc4e3180a2c6c506cbbfee170007/packages/twenty-server/src/modules/workflow/workflow-runner/workspace-services/workflow-runner.workspace-service.ts#L138-L199",
+          "https://github.com/twentyhq/twenty/blob/a6372e288ade9ed14ac2af1a7e224dabb6cc6021/packages/twenty-front/src/modules/app/components/MainAppLayoutWithSidePanel.tsx#L59-L75",
+          "https://github.com/twentyhq/twenty/blob/a6372e288ade9ed14ac2af1a7e224dabb6cc6021/packages/twenty-front/src/modules/workflow/workflow-steps/workflow-actions/form-action/components/WorkflowEditActionFormFiller.tsx#L37-L104"
+        ],
+        "limitations": [
+          "No downstream record creation from empty output was tested.",
+          "Scope is the workflow-editor Test side panel after valid answers have saved. Fast edits before autosave on the full run page and untested field types are excluded.",
+          "A shared root cause with recovered-13 is inferred, not established for that older report.",
+          "Latest was source-inspected only."
+        ]
+      },
+      "matchingGuidance": {
+        "relatedReference": "workflows-recovered-13",
+        "distinction": "Recovered-13 loses pending answers after opening the selected Company and returning with panel Back. This entry loses saved answers solely by crossing the desktop/mobile layout breakpoint, with no record navigation, and confirms empty submitted Form output."
+      }
+    }
+  ]
+}

@@ -1,0 +1,450 @@
+{
+  "bugs": [
+    {
+      "id": "mo-60m-metabase-11",
+      "name": "Saved metric date filter is not applied to its detail result",
+      "summary": "The saved metric definition retained its Previous 12 months filter, but its detail result showed All time and 49 rows both immediately after saving and after refresh.",
+      "expected": "The saved metric's detail result should honor its configured Created At — Previous 12 months filter and show the filtered monthly result after refresh.",
+      "actual": "The query preview showed Previous 12 months and 12 rows. After saving, the metric detail showed All time and 49 rows; refreshing left it at All time and 49 rows. Reopening Edit metric definition still showed Created At in the previous 12 months, Sum of Total, and Created At: Month. In this run the detail was already All time/49 immediately after save, rather than changing from 12 to 49 on refresh.",
+      "reproSteps": [
+        "Using the authorized Harbor Admin test user, open the provided signed-in session (no credentials entered) and navigate to /browse/metrics.",
+        "Choose the plus icon on the Metrics page to create a New metric, then select Sample Database and Orders.",
+        "Set the filter to Created At — Previous 12 months, the formula to Sum of Total, and the default time dimension to Created At: Month.",
+        "Click Visualize and observe the Previous 12 months monthly preview with 12 rows.",
+        "Save as the fresh QA-only metric “QA-only Metric Filter Persistence 20260220-873146” in Harbor Admin's Personal Collection.",
+        "On the saved metric detail page, observe View All time and Showing 49 rows; this was already the displayed result immediately after saving.",
+        "Refresh the page and observe that it still shows All time and 49 rows.",
+        "Open the metric's more-options menu, choose Edit metric definition, and confirm the Created At previous 12 months filter, Sum of Total formula, and Created At: Month dimension remain configured."
+      ],
+      "reason": "The saved metric still applies its date filter: exactly12 months have totals and37 additional timeline rows are null. All time describes the viewer's separate filter;49 displayed rows do not establish an ignored definition filter."
+    },
+    {
+      "name": "Personal models are absent from Models browse",
+      "summary": "A model saved in a personal collection appears there but is omitted from the Models browse list.",
+      "expected": "Models browse should include models saved in personal collections.",
+      "actual": "A model saved in a personal collection appears there but is omitted from the Models browse list.",
+      "reproSteps": [
+        "Save a model in your personal collection.",
+        "Verify it appears in that collection.",
+        "Open Data > Models and search for the saved model."
+      ],
+      "reason": "User adjudication on 2026-10-13 rejects the expectation that models in personal collections must appear in category browse. Official Metabase release-x.58.x source at e1504fe17a3235e95186946883659af8b444a648, useFilteredModels, explicitly requests filter_items_in_personal_collection: \"exclude\" (https://github.com/metabase/metabase/blob/e1504fe17a3235e95186946883659af8b444a648/frontend/src/metabase/browse/models/BrowseModels.tsx#L208). Saving and reopening a personal item establishes collection access, not a promise that category browse includes it. Independent Opus review found insufficient basis for an unintended-behavior claim. The exact fixture source commit remains unproven; this rejection is the user-authorized reference correction, not a claim of fixture/source identity. A filed claim with these same conditions is a known false positive, not merely unmatched; apply this reference to every agent."
+    },
+    {
+      "name": "Personal metrics are absent from Metrics browse",
+      "summary": "A metric saved in a personal collection appears there but is omitted from the Metrics browse list.",
+      "expected": "Metrics browse should include metrics saved in personal collections.",
+      "actual": "A metric saved in a personal collection appears there but is omitted from the Metrics browse list.",
+      "reproSteps": [
+        "Save a metric in your personal collection.",
+        "Verify it appears in that collection.",
+        "Open Data > Metrics and search for the saved metric."
+      ],
+      "reason": "User adjudication on 2026-10-13 rejects the expectation that metrics in personal collections must appear in category browse. Official Metabase release-x.58.x source at e1504fe17a3235e95186946883659af8b444a648, useFilteredMetrics, explicitly requests filter_items_in_personal_collection: \"exclude\" (https://github.com/metabase/metabase/blob/e1504fe17a3235e95186946883659af8b444a648/frontend/src/metabase/browse/metrics/BrowseMetrics.tsx#L230). Saving and reopening a personal item establishes collection access, not a promise that category browse includes it. Independent Opus review found insufficient basis for an unintended-behavior claim. The exact fixture source commit remains unproven; this rejection is the user-authorized reference correction, not a claim of fixture/source identity. A filed claim with these same conditions is a known false positive, not merely unmatched; apply this reference to every agent."
+    },
+    {
+      "id": "metabase-data-modeling-061",
+      "name": "Member users are trapped behind metric onboarding",
+      "summary": "Member users are trapped behind metric onboarding.",
+      "expected": "Start exploring should dismiss onboarding and allow the member to use the metric.",
+      "actual": "For maya@example.test, repeatedly clicking Start exploring left the 'It's okay to play around with metrics' modal open. Escape did not dismiss it, and the overlay blocked More info and editing/history. Each attempt sent PUT /api/user/2/modal/qbnewb, which returned HTTP 500 {'message':'Internal server error.'}. Evidence: metric-member-onboarding-stuck.png, page-2026-10-19T22-05-09-482Z.yml, and page-2026-10-19T22-05-21-670Z.yml.",
+      "reproSteps": [
+        "In a separate browser session, sign in as maya@example.test with password momentic-eval-1.",
+        "Open /browse/metrics and select Number of Orders (the failure also occurs on a newly created saved metric).",
+        "In the 'It's okay to play around with metrics' dialog, click Start exploring.",
+        "Try Start exploring again or Escape. The modal stays open, preventing access to metric detail controls."
+      ],
+      "reason": "Cannot reproduce on human review."
+    },
+    {
+      "id": "metabase-data-modeling-071",
+      "name": "Hidden table and field reference links render empty detail pages",
+      "summary": "Hidden table and field reference links render empty detail pages.",
+      "expected": "A reference URL for hidden metadata should show readable metadata if accessible, or clearly indicate that it is hidden or unavailable.",
+      "actual": "A hidden table is excluded from reference lists but its URL renders without name/schema; Actual name in database says 'No description yet', and incomplete useful links point to /question. Edit opens an empty form for admin. A field set Do not include is likewise excluded from the list, but its old URL renders without a field name, Actual name/Data type say 'No description yet', and useful links omit the field.",
+      "reproSteps": [
+        "Sign in as eval@momentic.ai and open /reference/databases/1/tables/5 (Sample Database → Feedback); retain this URL.",
+        "Open Admin → Table Metadata → Sample Database and click the eye beside Feedback to hide the table.",
+        "Reopen the retained reference URL; observe the blank nameless detail page and incomplete links.",
+        "In Table Metadata, open a field on a visible table (for example Products > Rating), note its reference URL under /reference/databases/1/tables/<table>/fields/<field>, and set its visibility to Do not include.",
+        "Reopen that field's reference URL; observe the empty field-detail shell with incomplete useful links."
+      ],
+      "reason": "Works as intended per human review: hidden tables and fields are excluded from Data Reference; their pages are reachable only through old URLs."
+    },
+    {
+      "id": "metabase-data-modeling-219",
+      "name": "Models catalog Description header button does not change sorting",
+      "summary": "Models catalog Description header button does not change sorting.",
+      "expected": "Clicking Description sorts the models by description and shows a sort arrow on that header, as the Metrics catalog does.",
+      "actual": "The order stays Name descending (Orders + People, MO-Actions-Trash-1021, MO-Actions-1021). Name keeps its descending arrow, and Description never shows a sort indicator.",
+      "reproSteps": [
+        "Click the Name header twice. The order becomes Name descending: Orders + People is above MO-Actions-1021.",
+        "Click the Description header.",
+        "Observe that the order does not change and no sort arrow appears on Description.",
+        "For comparison, open /browse/metrics and click Description there. The rows re-sort by description and an arrow appears."
+      ],
+      "reason": "Works as intended per human review."
+    },
+    {
+      "id": "metabase-data-modeling-220",
+      "name": "Description edit/revert on duplicate model changes Info field list from 14 to 12 fields",
+      "summary": "Description edit/revert on duplicate model changes Info field list from 14 to 12 fields.",
+      "expected": "Changing and reverting only a model description should preserve its field definitions and Info field list.",
+      "actual": "Info initially listed 14 fields including User → User → ID and Product → Product → ID. After editing description, clearing it, and reverting to the description revision, Info lists 12 fields and omits those two joined ID fields. Description itself restores correctly. A whole-page AI assertion confirmed the 12-field count and absence of the two nested ID entries.",
+      "reproSteps": [
+        "As Harbor Admin, duplicate Orders + People into Examples with a unique name and description.",
+        "Open More info > Overview; observe 14 fields including User → User → ID and Product → Product → ID.",
+        "Edit description to Restored model – café & revenue <test> and press Tab; refresh and reopen Info.",
+        "Clear the description, press Tab, refresh and reopen Info > History.",
+        "Revert to the You edited this revision containing the nonempty description, then refresh and reopen Overview.",
+        "Observe restored description but only 12 fields, without the two joined ID entries."
+      ],
+      "reason": "Works as intended as reported: the revert restores the correct 12 stored columns; the two extra entries were foreign-key display helper columns that Duplicate stored (covered by data-modeling-242)."
+    },
+    {
+      "id": "metabase-data-modeling-264",
+      "name": "Member can revert a shared model into another user's inaccessible personal collection",
+      "summary": "Member can revert a shared model into another user's inaccessible personal collection.",
+      "expected": "A member should not be able to move a shared model into another user's inaccessible personal collection through history. The revert should preserve the accessible location or reject the operation.",
+      "actual": "Maya's normal Move picker does not offer Harbor Admin's personal collection, but reverting a revision from that collection succeeds. Maya immediately receives a permission-denied page. Primary account confirms the model is in Harbor Admin's Personal Collection and Maya is the last editor.",
+      "reproSteps": [
+        "As eval@momentic.ai, open /browse/models > Create a new model > notebook. Select Release operations > Release Requests and save as QA Private History in the default personal collection.",
+        "Open model Settings, change the default view from Table to List, and save to create another private revision.",
+        "Use the model's ellipsis > Move to place it in Our analytics.",
+        "In a separate browser session, sign in as maya@example.test with password momentic-eval-1. Open the shared model. Its normal Move picker only offers accessible collections, excluding Harbor Admin's personal collection.",
+        "Open Info > History and revert the revision that changed the display from Table to List.",
+        "Observe Maya receives permission denied. As the primary account, open the model and confirm it moved into Harbor Admin's Personal Collection with Maya as last editor."
+      ],
+      "reason": "Works as intended: reverting restores the earlier version, including its collection location."
+    },
+    {
+      "id": "metabase-data-modeling-225",
+      "name": "Refreshing Metrics catalog leaves Collection descending indicator while rows reset to Name ascending",
+      "summary": "Refreshing Metrics catalog leaves Collection descending indicator while rows reset to Name ascending.",
+      "expected": "Rendered ordering and sort indicators agree after refresh: either retain Collection descending or reset both ordering and indicator to Name.",
+      "actual": "After refresh Name shows ascending and rows are ordered MO-Catalog-1021-Examples, MO-Catalog-1021-Root, Number of Orders, QA-MetricCore entries, Revenue, interleaving Examples/Our analytics. Collection still shows descending arrow. A multimodal assertion confirmed both indicators and the mismatched row order.",
+      "reproSteps": [
+        "Have metrics in Examples and Our analytics, including names sorting across those collections.",
+        "Open Metrics catalog and click Collection twice to select descending sort; Our analytics rows appear before Examples.",
+        "Refresh the page and wait for table to finish loading."
+      ],
+      "reason": "Works as intended: the arrow on Collection is the column menu caret, not a sort indicator."
+    },
+    {
+      "id": "metabase-data-modeling-296",
+      "name": "Malformed model Link URL http://[ saves without feedback and clicking it opens Home",
+      "summary": "Malformed model Link URL http://[ saves without feedback and clicking it opens Home.",
+      "expected": "An invalid URL should be rejected with understandable feedback, or the invalid link should not silently navigate to an unrelated application page.",
+      "actual": "http://[ saved without any URL validation feedback. Record3 rendered Discount 6.42 as a link; clicking it navigated to app Home / showing Hey there, Harbor. A whole-page AI assertion confirmed no malformed-URL or navigation-error message.",
+      "reproSteps": [
+        "Duplicate Orders + People into a disposable own model.",
+        "Edit metadata; select Discount, set Display as Link and Link text Discount {{Discount}}.",
+        "Enter http://[ in Link URL, blur and save changes.",
+        "Open record3 full-page details and click Discount 6.42."
+      ],
+      "reason": "Works as intended: the Link URL is free text with column templating and no stated format; a malformed URL the author typed resolves to wherever that text points."
+    },
+    {
+      "id": "metabase-data-modeling-299",
+      "name": "Restored metric does not appear in Metrics browse upon sidebar navigation until the page is refreshed",
+      "summary": "Restored metric does not appear in Metrics browse upon sidebar navigation until the page is refreshed.",
+      "expected": "Navigating to Metrics browse after restoring a metric displays the restored metric in the list without requiring a manual page refresh.",
+      "actual": "After restoring QA-MACTR-Recovery and navigating to Metrics browse via the sidebar (00:47.600), the metric is missing from the list; it only appears after refreshing the page (01:16.200).",
+      "reproSteps": [
+        "Create independent QA-MACTR metric via Duplicate, with cleared description, saved to Our analytics.",
+        "Trash it from Metrics browse row menu.",
+        "Open Trash, click metric name and use Restore banner button.",
+        "Verify chart displays with no trash banner; refresh detail.",
+        "Open Metrics browse and refresh; inspect original Our analytics collection and Trash."
+      ],
+      "reason": "Cannot reproduce: restored metrics appear in browse and search immediately. The original run overlapped another agent trashing and undoing the same metric (Undo leaves it archived, data-modeling-182), so the metric was genuinely in Trash when listed."
+    },
+    {
+      "id": "metabase-data-modeling-301",
+      "name": "Restored QA metric is missing from global search results",
+      "summary": "Restored QA metric is missing from global search results.",
+      "expected": "An active restored metric matching QA-MACTR should be returned in search alongside other matching metrics.",
+      "actual": "Global search popup and full search results returned only QA-MACTR-Lifecycle, not restored QA-MACTR-Recovery. Whole-page assertion confirmed absence in full results.",
+      "reproSteps": [
+        "Duplicate Number of Orders into Our analytics with independent QA-MACTR name and cleared description.",
+        "Trash from Metrics browse row options.",
+        "Open metric through Trash and click Restore; verify active chart and refresh detail.",
+        "Use global Search to search QA-MACTR then open View and filter all results."
+      ],
+      "reason": "Cannot reproduce: restored metrics appear in browse and search immediately. The original run overlapped another agent trashing and undoing the same metric (Undo leaves it archived, data-modeling-182), so the metric was genuinely in Trash when listed."
+    },
+    {
+      "id": "metabase-data-modeling-302",
+      "name": "Opening model metadata editor and clicking Cancel without changes creates an extra metadata-edit history entry",
+      "summary": "Opening model metadata editor and clicking Cancel without changes creates an extra metadata-edit history entry.",
+      "expected": "Cancelling the metadata editor without making changes should not add an edit entry to the model's history.",
+      "actual": "History displays a new 'You edited the metadata. A few seconds ago' entry after reopening the editor and clicking Cancel without any modifications.",
+      "reproSteps": [
+        "Open a disposable shared model with saved metadata and inspect its History.",
+        "Edit only ID description and Save changes once.",
+        "Reopen Edit metadata to verify saved value without changing any field.",
+        "Click Cancel, open More info > History.",
+        "Observe two current-user metadata-edit entries despite only one explicit metadata save."
+      ],
+      "reason": "Works as intended per human review."
+    },
+    {
+      "id": "metabase-data-modeling-311",
+      "name": "Native model Info description collapses real saved line breaks in its read-only display",
+      "summary": "Native model Info description collapses real saved line breaks in its read-only display.",
+      "expected": "A multiline description entered using Enter should retain the two-line presentation in its saved display.",
+      "actual": "After entering a two-line description and blurring the input to save, the read-only Info description collapses the line break and displays both lines on a single line: Native multiline first line Ω Native multiline second line.",
+      "reproSteps": [
+        "As Harbor Admin create a separate native model using Sample Database and SELECT 1 AS native_id; run and save under a QA-MODEL-NATIVE name.",
+        "Open model Info Overview and click Add description.",
+        "Type Native multiline first line Ω, press Enter, then append Native multiline second line.",
+        "Blur the description to save; inspect the read-only description.",
+        "Refresh, reopen Info and click the description to edit; then blur again."
+      ],
+      "reason": "Works as intended per human review."
+    },
+    {
+      "id": "metabase-data-modeling-309",
+      "name": "Metric numeric filter silently drops an invalid minimum and changes the condition to less than or equal to maximum",
+      "summary": "Metric numeric filter silently drops an invalid minimum and changes the condition to less than or equal to maximum.",
+      "expected": "A non-numeric minimum value is rejected with validation and does not silently change the filter condition.",
+      "actual": "Clicking 'Update filter' accepts non-numeric input 'abc' without validation error and converts 'Total is between 100 and 200' to 'Total is less than or equal to 200', which saves successfully and updates the metric chart.",
+      "reproSteps": [
+        "Create fresh QA-METRIC-CORE metric over Orders with Sum([Total])/Count(), Created At Month.",
+        "Edit definition and add Total Between Min 100 Max 200; save.",
+        "Reopen definition and edit the saved Total filter.",
+        "Replace Min 100 with abc; keep Max 200 and click Update filter.",
+        "Save changes, refresh and reopen definition."
+      ],
+      "reason": "Works as intended: an invalid numeric bound is ignored, matching the visible-normalization precedent."
+    },
+    {
+      "id": "metabase-data-modeling-306",
+      "name": "Clearing Previous interval and applying silently uses the prior hidden value (15 days)",
+      "summary": "Clearing Previous interval and applying silently uses the prior hidden value (15 days).",
+      "expected": "A blank interval should be rejected or visibly corrected before applying, rather than applying a value absent from the form.",
+      "actual": "Clicking Apply closed the picker and applied Previous 15 days, showing October 2026 Count 28.",
+      "reproSteps": [
+        "As an admin, create a People Count metric with Created At by Month, save it and open its detail page.",
+        "Open View date range footer, select Previous and enter 15 days.",
+        "Clear Interval so the field is visibly empty.",
+        "Click Apply.",
+        "Observe Previous 15 days filter and October 2026 Count 28 rather than rejection of the blank interval."
+      ],
+      "reason": "Works as intended: a blank interval falls back to the last valid value when the filter is applied."
+    },
+    {
+      "id": "metabase-data-modeling-348",
+      "name": "“All distinct values of Amount” reference suggestion shows numeric ranges instead of distinct amounts",
+      "summary": "“All distinct values of Amount” reference suggestion shows numeric ranges instead of distinct amounts.",
+      "expected": "The suggestion labeled “All distinct values of Amount” displays the individual distinct Amount values, not grouped numeric ranges.",
+      "actual": "The destination is titled “Amount: Auto binned” and displays five ranges: 50–100, 100–150, 150–200, 200–250 and 350–400, under “Amount: 8 bins”.",
+      "reproSteps": [
+        "Open Data reference and select Release operations.",
+        "Select Tables in Release operations, then Release Requests.",
+        "Select Fields in this table, then Amount.",
+        "Click All distinct values of Amount."
+      ],
+      "reason": "Works as intended per human review."
+    },
+    {
+      "id": "metabase-data-modeling-354",
+      "name": "String Title foreign key permits numeric Products ID target, then View details opens a broken question",
+      "summary": "String Title foreign key permits numeric Products ID target, then View details opens a broken question.",
+      "expected": "The model should prevent an incompatible relationship target, or handle traversal without creating an invalid question.",
+      "actual": "Products → ID is selectable and saves on string Title. View details opens Products with filter ID is Rustic Paper Wallet and displays There was a problem with your question.",
+      "reproSteps": [
+        "Create fresh Products notebook model without Summarize and save in Our analytics.",
+        "Edit metadata, select string Title column, choose Foreign Key then Products → ID, and Save changes.",
+        "Click Rustic Paper Wallet in the Title column, then View details."
+      ],
+      "reason": "Works as intended: the foreign-key picker deliberately allows text-to-number targets; mapping product names onto numeric IDs is a misconfiguration that Metabase reports with its standard invalid-input error."
+    },
+    {
+      "id": "metabase-data-modeling-355",
+      "name": "Relative date filter silently saves Previous 0 days as Previous 1 day",
+      "summary": "Relative date filter silently saves Previous 0 days as Previous 1 day.",
+      "expected": "Zero should either be rejected with validation or preserved according to explicitly explained semantics; it should not silently become a different entered interval.",
+      "actual": "With Interval showing0, Add filter remained enabled. Saved chip became “Created At is yesterday”; after refresh, reopening showed Interval1 day. The saved metric returned54.22 on the observed average formula rather than retaining the entered zero interval.",
+      "reproSteps": [
+        "Edit an own saved Orders metric definition.",
+        "Add Created At filter > Relative date range; keep Previous and days, enter Interval 0.",
+        "Add filter and Save changes.",
+        "Reload and reopen Edit metric definition and the Created At filter."
+      ],
+      "reason": "Works as intended: an interval of 0 previous days is visibly normalized, matching the dashboards relative-date precedent."
+    },
+    {
+      "id": "metabase-data-modeling-356",
+      "name": "Saving a stale metric definition overwrites another user's saved description",
+      "summary": "Saving a stale metric definition overwrites another user's saved description.",
+      "expected": "Changing only the metric definition should preserve another user's independently saved description, or warn about the conflict before discarding it.",
+      "actual": "Maya saved an already-open Average Rating definition (3.47) after Harbor Admin saved description “Primary concurrent metadata edit”. The description reverted to “Maya lifecycle duplicate”, immediately and after refresh. History says Maya modified the query and changed the description. A whole-page AI assertion confirmed no conflict warning or save error.",
+      "reproSteps": [
+        "As Maya, create a fresh shared-collection metric using Count of Sample Database Products (200), with description “Maya lifecycle duplicate”.",
+        "Open Edit metric definition and change Count to Average of Rating; run preview (3.47), but leave it unsaved.",
+        "In a separate primary Harbor Admin session, edit only the same metric's description to “Primary concurrent metadata edit”; save and refresh to verify that description and Count200 persist.",
+        "After the primary save completes, return to Maya's unchanged stale editor and click Save changes.",
+        "Open More info, then refresh and inspect description and History: formula is 3.47 but description has reverted to “Maya lifecycle duplicate”."
+      ],
+      "reason": "Works as intended for labeling: concurrent edits from a stale editor follow last-write-wins."
+    },
+    {
+      "id": "metabase-data-modeling-397",
+      "name": "Clicking 'QA-MACT Recovery' under Questions about Orders opens a 'The page you asked for couldn't be found' 404 page",
+      "summary": "Clicking 'QA-MACT Recovery' under Questions about Orders opens a 'The page you asked for couldn't be found' 404 page.",
+      "expected": "Clicking a listed metric navigates to that metric's page",
+      "actual": "The page displays 'We're a little lost... The page you asked for couldn't be found.'",
+      "reproSteps": [
+        "As primary fixture Harbor Admin, browse Sample Database > Orders > Questions about this table.",
+        "Click the listed QA-MACT Recovery metric.",
+        "Observe the destination error rather than the selected metric."
+      ],
+      "reason": "Cannot reproduce on human review."
+    },
+    {
+      "id": "metabase-data-modeling-399",
+      "name": "Orders data reference Questions tab opens a Something's gone wrong error page",
+      "summary": "Orders data reference Questions tab opens a Something's gone wrong error page.",
+      "expected": "The Questions about Orders page should display the saved questions and metrics using this table.",
+      "actual": "The entire page is replaced by Something's gone wrong and We've run into an error. You can try refreshing the page, or just go back.",
+      "reproSteps": [
+        "Open Databases and select Learn about our data.",
+        "Select Sample Database, then Tables in Sample Database.",
+        "Select Orders, then Questions about this table."
+      ],
+      "reason": "Cannot reproduce on human review."
+    },
+    {
+      "id": "metabase-data-modeling-417",
+      "name": "Model and metric revision shortcut opens Overview instead of History",
+      "summary": "Model and metric revision shortcut opens Overview instead of History.",
+      "expected": "Clicking the revision-history shortcut should open the History tab so the relevant saved revisions are visible.",
+      "actual": "Clicking the Edited button on a model opened Info with Overview selected and description/fields visible; History was unselected. Independently reproduced on a metric after reload.",
+      "reproSteps": [
+        "Sign in as eval@momentic.ai and open /browse/models.",
+        "Click Create a new model, Use the notebook editor, select Sample Database then People, and Save.",
+        "Name the model Model QA People and confirm Save.",
+        "Open its three-dot menu > Edit metadata, change the ID display name to Person Key, and Save changes.",
+        "Click the “Edited … by you” button beneath the model name.",
+        "Observe Info opens on Overview; History is a separate unselected tab."
+      ],
+      "reason": "Works as intended: the Edited shortcut opens the Info panel on Overview by design (same as dashboards-390)."
+    },
+    {
+      "id": "metabase-data-modeling-456",
+      "name": "Saved metric's fixed date range chart expands from 3 to 49 months after refresh",
+      "summary": "Saved metric's fixed date range chart expands from 3 to 49 months after refresh.",
+      "expected": "Refreshing the saved metric should preserve its Jan–Mar 2026 result range, not add years of zero-count buckets.",
+      "actual": "Immediately after saving Created At between Jan 1 and Mar 31, 2026, chart shows 3 rows (January, February, March). Refresh changes it to 49 rows spanning April 2025–April 2029, with zero counts outside the saved interval. Reopened definition still retains Jan 1–Mar 31, 2026.",
+      "reproSteps": [
+        "On the copy, open Edit metric definition. Open Created At filter, go Back then Fixed date range.",
+        "Choose Between; enter January 1, 2026 and March 31, 2026, Update filter, then Save changes. Keep default Created At: Month.",
+        "Observe chart shows 3 rows January–March 2026.",
+        "Refresh the browser. Observe 49 rows April 2025–April 2029 with zero-count points outside Jan–Mar 2026.",
+        "Open definition to verify saved fixed date range remains Jan 1–Mar 31, 2026, then Cancel."
+      ],
+      "reason": "Works as intended: a saved metric opens with its filter folded into the aggregation, so every month shows with zeros outside the range; the 3-row view after saving was the editor preview."
+    },
+    {
+      "id": "metabase-data-modeling-459",
+      "name": "Correcting a saved failing SQL model definition clears unchanged column display name and description",
+      "summary": "Correcting a saved failing SQL model definition clears unchanged column display name and description.",
+      "expected": "Correcting the SQL back to the same column names and types preserves saved column display names and descriptions.",
+      "actual": "After saving a missing-column SQL error and correcting it to the original ID/TITLE/AMOUNT schema, the TITLE display name changed from 'Maya SQL Title' to 'TITLE' and its description became empty.",
+      "reproSteps": [
+        "Set TITLE display name to 'Maya SQL Title' and description to 'Title metadata retained across SQL schema edits.' Save and refresh to verify.",
+        "Edit the model definition to SELECT missing_qa_column FROM PRODUCTS, run it, and save the failing definition.",
+        "Refresh and reopen Edit query definition; replace the SQL with the original two-row schema, changing only the first amount to 14.50. Run and save.",
+        "Refresh, open Edit metadata, and inspect TITLE: display name is TITLE and description is empty."
+      ],
+      "reason": "Works as intended: a failing query has no result columns, so their metadata is dropped just as when the columns are removed."
+    },
+    {
+      "id": "metabase-data-modeling-506",
+      "name": "“View this Account’s Feedbacks” from distinct Account IDs displays only the grouped Account ID instead of feedback records",
+      "summary": "“View this Account’s Feedbacks” from distinct Account IDs displays only the grouped Account ID instead of feedback records.",
+      "expected": "The advertised Feedbacks destination shows the selected account's feedback records, including feedback details.",
+      "actual": "The destination retains the Account ID-only grouped results, now filtered to Account ID 1766: one email row and no feedback fields.",
+      "reproSteps": [
+        "Open Sample Database > Feedback > Fields in this table > Account ID.",
+        "Click All distinct values of Account ID.",
+        "Click abbott-berneice@hotmail.example, then View this Account's Feedbacks."
+      ],
+      "reason": "Works as intended per human review."
+    },
+    {
+      "id": "metabase-data-modeling-507",
+      "name": "Related field X-ray exposes People Password values despite reference marking them not visible",
+      "summary": "Related field X-ray exposes People Password values despite reference marking them not visible.",
+      "expected": "A field documented as not visible and unavailable as a reference detail link should not have its values exposed by a related X-ray.",
+      "actual": "The related Password X-ray loads and displays actual Password values in a 2,500-row 'Password by Source' table, plus its count and distinct value statistics.",
+      "reproSteps": [
+        "Open Sample Database > Tables in Sample Database > People > Fields in this table.",
+        "Observe Password's description says it should not be visible and its row does not open a field page.",
+        "Open Email and select X-ray this field.",
+        "In More X-rays, click the related 'Password fields' entry.",
+        "Observe Password values rendered in the 'Password by Source' table."
+      ],
+      "reason": "Works as intended per human review."
+    },
+    {
+      "id": "metabase-data-modeling-498",
+      "name": "Scalar metric conversion history claims display changed to table while model still displays scalar",
+      "summary": "Scalar metric conversion history claims display changed to table while model still displays scalar.",
+      "expected": "History should accurately describe the visible result of converting the metric, rather than claim a table display when the result remains a single scalar value.",
+      "actual": "After converting the scalar metric, the model still displays 4,354 as one large number. History says \"changed the display from scalar to table\" alongside the metric-to-model change.",
+      "reproSteps": [
+        "Duplicate Number of Orders into an owned QA metric in Examples.",
+        "Edit metric definition, remove Created At Month default time dimension, save; metric displays scalar 4,354.",
+        "Use the actions menu > Turn into a model.",
+        "Open Info > History and compare conversion entry with the displayed scalar."
+      ],
+      "reason": "Works as intended per human review."
+    },
+    {
+      "id": "metabase-data-modeling-500",
+      "name": "Turning a model into a saved question and back to a model discards custom column labels and formatting",
+      "summary": "Turning a model into a saved question and back to a model discards custom column labels and formatting.",
+      "expected": "Converting a question back into a model should preserve previous column metadata customizations or warn that conversion resets them.",
+      "actual": "Converting to a question and back resets column labels (e.g., 'Customer Email' reverts to 'People - User - Email', 'State' reverts to 'People - User - State'), removes currency formatting symbols from headers, and reduces 'Edit metadata' completion from 100% to 83%.",
+      "reproSteps": [
+        "As Harbor Admin open Orders + People. Use top-right menu Duplicate to create a fresh MA-prefixed model in Examples, then reopen clone from Examples.",
+        "Observe clone headers Customer Email, State, Subtotal ($), Tax ($), and Total ($).",
+        "Use model menu Turn back to saved question. Refresh.",
+        "Use question menu Turn into a model and confirm Turn this into a model. Refresh and reopen from Examples.",
+        "Inspect table headers and Edit metadata."
+      ],
+      "reason": "Works as intended per human review."
+    },
+    {
+      "id": "metabase-data-modeling-509",
+      "name": "Dragging available columns from the sidebar into model List layout wells does nothing",
+      "summary": "Dragging available columns from the sidebar into model List layout wells does nothing.",
+      "expected": "Per the sidebar instruction, Age moves into the well where it is dropped and shows up in the preview.",
+      "actual": "After each drag, Age is still in the available list. The wells still hold Order Reference on the left and Created At, User ID, Product ID, Subtotal and Customer Email on the right. The preview has no Age column. The video shows no drag preview at all during the sidebar drag.",
+      "reproSteps": [
+        "As an admin, create a model from Sample Database > Orders joined to People with the notebook editor, save it, and open its Columns page (/model/<id>/columns).",
+        "Click the Settings tab. List is the selected default view. Click 'Customize the List layout'.",
+        "Press the mouse on the grip of the Age row in the sidebar ('Drag a column into a well to place it there.'), then drag it gradually into a well and release.",
+        "Observe that Age stays in the sidebar, the wells and preview don't change, and no drag preview appears.",
+        "For comparison, drag the Created At chip to the start of the right well the same way. That reorder works: the chips and preview update and Save changes becomes enabled."
+      ],
+      "reason": "Works as intended per human review."
+    },
+    {
+      "id": "metabase-data-modeling-544",
+      "name": "Model Columns editor keeps ID selected in sidebar when clicking Title column header",
+      "summary": "Model Columns editor keeps ID selected in sidebar when clicking Title column header.",
+      "expected": "Clicking the Title column header selects Title in the sidebar so its column metadata can be edited.",
+      "actual": "Clicking the Title column header opens an informational popover with distinct values, while the sidebar remains on the ID column's display name and description.",
+      "reproSteps": [
+        "Create a fresh QA-MC-prefixed model using notebook editor and Sample Database → Products; save it in Our analytics.",
+        "Open model ellipsis menu → Edit metadata.",
+        "Click the Title header (both its label and blank area of header).",
+        "Inspect the sidebar Display name and Description."
+      ],
+      "reason": "Cannot reproduce on human review."
+    }
+  ]
+}

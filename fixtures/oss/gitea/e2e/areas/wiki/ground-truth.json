@@ -138,6 +138,136 @@
         "Observe that the edit form is replaced by a full-page 500 with `EditWikiPage, wiki title is reserved: raw`; the original page remains unchanged."
       ],
       "severity": 5
+    },
+    {
+      "id": "gitea-wiki-bracket-link-hyphenated-title",
+      "name": "Wiki bracket links cannot resolve a page's literal hyphenated title",
+      "summary": "A [[Title-With-Hyphen]] link renders as /wiki/Title-With-Hyphen, but Gitea stores a page whose title contains a literal hyphen at /wiki/Title-With-Hyphen.-, so the link redirects to the Pages list instead of opening the page.",
+      "expected": "A bracket link that uses a page's exact saved title opens that page, the same way the Pages list does.",
+      "actual": "The rendered link omits the `.-` marker, so clicking it redirects to /wiki/?action=_pages. If a page with the space-separated version of the title also exists, the link opens that other page instead. Opening the page from the Pages list works.",
+      "reproSteps": [
+        "Sign in to Gitea with the fixture account and open /eval/harbor-handbook/wiki.",
+        "Choose New Page, title it with a literal hyphen, for example `Pier-Notes`, add any content, and choose Save Page. The page opens at /wiki/Pier-Notes.-.",
+        "Choose New Page again, title it `Link Test`, set its content to `[[Pier-Notes]]`, and choose Save Page.",
+        "Click the rendered Pier-Notes link. Observe that the browser lands on /eval/harbor-handbook/wiki/?action=_pages instead of the page.",
+        "From the Pages list, open Pier-Notes and confirm it exists at /wiki/Pier-Notes.- with its content."
+      ],
+      "severity": 3
+    },
+    {
+      "id": "gitea-wiki-bracket-link-md-suffix-title",
+      "name": "Wiki-style links to a page whose title ends in .md open the wrong page",
+      "summary": "A [[Title.md]] link renders as /wiki/Title.md, but Gitea stores a page whose title ends in .md at /wiki/Title.md.-, so the link opens the page named Title instead, or the Pages list when no such page exists.",
+      "expected": "A bracket link that uses a page's exact saved title, such as [[Home.md]], opens that page, the same way the Pages list does.",
+      "actual": "[[Home.md]] renders href /wiki/Home.md and opens the separate Home page. The page titled Home.md is only reached through its saved URL /wiki/Home.md.- or the Pages list. Aliased [[label|Home.md]] links fail the same way, and with no Home page the link redirects to /wiki/?action=_pages.",
+      "reproSteps": [
+        "Sign in to Gitea with the fixture account and open /eval/harbor-handbook/wiki.",
+        "Create a page titled `Home` with identifiable content.",
+        "Create a separate page titled `Home.md` with different content. It saves at /wiki/Home.md.-, and the Pages list shows Home and Home.md separately.",
+        "Edit Home to include `[[Home.md]]` and save.",
+        "Click the rendered Home.md link. Observe that it opens Home instead of the Home.md page. Opening Home.md from the Pages list shows the correct content."
+      ],
+      "severity": 3,
+      "matchingGuidance": {
+        "relatedReference": {
+          "id": "gitea-wiki-bracket-link-hyphenated-title",
+          "distinction": "Both come from [[...]] links omitting the .- marker, but the triggers differ: this reference covers page titles ending in .md, and the related reference covers titles containing a literal hyphen. Credit this reference for the .md-suffix trigger and the related one for the hyphen trigger."
+        }
+      }
+    },
+    {
+      "id": "gitea-wiki-stale-editor-overwrites-newer-edit",
+      "name": "Saving a stale wiki editor silently discards newer edits",
+      "summary": "The wiki editor carries no record of the revision it was opened from, so saving an editor opened before another save replaces the page with the older body. The newer saved change disappears without warning, unlike Gitea's file editor and issue editor, which reject the same stale save.",
+      "expected": "When the page changed after the editor was opened, the save is refused with a conflict message (as the repository file editor and issue description editor do) or the edits are merged, and the newer saved change is kept.",
+      "actual": "Two editors are opened on a checklist page with 'Check ropes' and 'Check tide'. The second editor adds 'Check radio' and saves. The first, now stale, changes only 'Check ropes' to 'Check ropes carefully' and saves successfully with no warning. The page now lists 'Check ropes carefully' and 'Check tide'; 'Check radio' is gone, and the new revision's diff deletes it. Reload confirms the loss. The same happens across two users.",
+      "reproSteps": [
+        "Create a wiki page with a checklist containing 'Check ropes' and 'Check tide'.",
+        "Open that page's Edit form in two tabs before saving either.",
+        "In the second tab, append 'Check radio' and click Save Page.",
+        "In the first tab, change only 'Check ropes' to 'Check ropes carefully' and click Save Page.",
+        "Reload the page and observe 'Check radio' is gone, with no warning shown at save time."
+      ],
+      "severity": 3
+    },
+    {
+      "id": "gitea-wiki-bracket-link-plus-title",
+      "name": "Wiki-style links to titles containing + fail to open the existing page",
+      "summary": "A [[...]] link to a wiki page whose title contains '+' renders the '+' unescaped, and the server decodes '+' in wiki paths as a space, so the link opens the Pages list or a different page whose title has a space instead.",
+      "expected": "[[Radio+Codes]] opens the page titled Radio+Codes, as the Pages list link does.",
+      "actual": "[[Radio+Codes]] renders a link to /wiki/Radio+Codes, which redirects to the Pages list, while the Pages list links the page as /wiki/Radio%2BCodes and opens it. If a page titled 'Radio Codes' also exists, the link silently opens that page instead. Links without '+' work, including titles with accented letters and '%'.",
+      "reproSteps": [
+        "Create a wiki page titled Radio+Codes with some content.",
+        "Create another wiki page whose content contains [[Radio+Codes]] and save it.",
+        "Click the rendered link and observe it opens the Pages list instead of Radio+Codes.",
+        "Open Radio+Codes from the Pages list and observe its URL uses %2B and the page opens."
+      ],
+      "severity": 3
+    },
+    {
+      "id": "gitea-wiki-page-picker-long-title-overflows-mobile",
+      "name": "Long wiki page title makes the open mobile Page picker overflow and shift the page",
+      "summary": "At phone width, opening a wiki's Page picker when one page has a long title sizes the menu to that title with no width cap. The menu runs off the right edge and the whole page scrolls sideways, clipping the wiki's left edge.",
+      "expected": "At phone width the open Page picker fits the screen, wrapping or truncating long page names, and the rest of the wiki stays in place.",
+      "actual": "At 390×844 with a 73-character page title, the open Page menu was about 530px wide and its filter about 506px. The document grew to about 538px wide and scrolled sideways about 20px, cutting off the logo and the Page button at the left; the menu and long title ran off the right. Filtering and navigation still worked.",
+      "reproSteps": [
+        "Create a wiki page titled 'Harbor operations handbook for onboarding and emergency response procedures'.",
+        "At 390×844, open the wiki's Home page.",
+        "Tap the 'Page: Home' button to open the page picker and look at both edges of the screen."
+      ],
+      "severity": 1,
+      "matchingGuidance": {
+        "relatedReference": {
+          "id": "gitea-novel-012",
+          "distinction": "Same long-title trigger. That entry is the closed page/title area covering the mobile Code button; this entry is the open Page picker menu overflowing and shifting the whole page sideways."
+        }
+      }
+    },
+    {
+      "id": "gitea-wiki-heading-toolbar-appends-marker",
+      "name": "Wiki editor heading button appends ## after the text instead of making a heading",
+      "summary": "In the wiki page editor, typing a line and clicking the heading toolbar button with the caret at the end of the line appends '## ' after the text, so the line renders as ordinary text rather than a heading.",
+      "expected": "Clicking Add heading turns the current line into a heading by putting the ## marker at the start of the line.",
+      "actual": "With 'Toolbar heading' typed and the caret at the end, clicking the H2 button produced 'Toolbar heading## '; Preview and the saved page showed ordinary text, not a heading. It works only with the caret at the start of the line or the line selected; the new issue editor inserts the heading correctly.",
+      "reproSteps": [
+        "Open a repository Wiki and click New Page.",
+        "Type 'Toolbar heading' in the content and leave the caret at the end with nothing selected.",
+        "Click the heading (H2) toolbar button, then click Preview."
+      ],
+      "severity": 3
+    },
+    {
+      "id": "gitea-legacy-editor-shortcuts-do-nothing",
+      "name": "Legacy editor toolbar advertises keyboard shortcuts that do nothing",
+      "summary": "In the legacy (EasyMDE) Markdown editor, used after 'Use the legacy editor instead', the toolbar buttons' tooltips advertise shortcuts such as 'Bold (Ctrl-B)' and 'Italic (Ctrl-I)', but pressing them does nothing. The toolbar buttons themselves work.",
+      "expected": "The advertised shortcuts apply their formatting (for example Ctrl-B makes the selection bold), or the tooltips don't advertise them.",
+      "actual": "In the legacy editor on a wiki page, with text selected, Ctrl+B and Ctrl+I left the text unchanged, while clicking the Bold button produced '**…**'. The buttons' titles read 'Bold (Ctrl-B)', 'Italic (Ctrl-I)', 'Link (Ctrl-K)' and so on.",
+      "reproSteps": [
+        "Open a wiki page editor and click 'Use the legacy editor instead' in the Markdown toolbar.",
+        "Type and select some text, then press Ctrl+B.",
+        "Hover the Bold button to read its tooltip, then click it on the same selection."
+      ],
+      "severity": 1,
+      "matchingGuidance": {
+        "relatedReference": {
+          "id": "gitea-wiki-heading-toolbar-appends-marker",
+          "distinction": "Both are wiki editor formatting controls. That entry is the heading toolbar button appending ## at the end of the line; this entry is the legacy editor's advertised keyboard shortcuts doing nothing."
+        }
+      }
+    },
+    {
+      "id": "gitea-wiki-leading-rule-collapses-blocks",
+      "name": "Wiki content that starts with a --- horizontal rule loses its paragraphs and the rule",
+      "summary": "A wiki _Footer (or other wiki page) whose Markdown starts with '---' renders without the horizontal rule, and its blank-line-separated paragraphs run together on one line. The leading '---' is treated as the start of front matter instead of a rule. Without the leading '---' the same content renders normally.",
+      "expected": "A '---' line renders as a horizontal rule and blank-line-separated blocks render as separate paragraphs, wherever the rule appears in the wiki content.",
+      "actual": "A _Footer saved as '---', blank line, '**Special Footer QA**', blank line, 'FOOTER-SPECIAL-2026', blank line, a link, displayed below pages as one line ('Special Footer QA FOOTER-SPECIAL-2026 Structured guide') with no horizontal rule. The saved source still had the rule and blank lines; bold and the link still rendered.",
+      "reproSteps": [
+        "In a repository wiki, create or edit _Footer.",
+        "Set its content to '---', a blank line, '**Footer title**', a blank line, 'Second paragraph', a blank line, and a link to another wiki page.",
+        "Save and open any wiki page.",
+        "Check whether the footer shows a horizontal rule and separate paragraphs."
+      ],
+      "severity": 1
     }
   ]
 }

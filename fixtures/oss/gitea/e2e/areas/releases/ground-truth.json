@@ -266,6 +266,261 @@
         "After the title validation error appears, observe that the saved title and notes are restored and Mark as Pre-Release is unchecked."
       ],
       "severity": 3
+    },
+    {
+      "id": "gitea-release-archive-full-sha-tag-name",
+      "name": "Source archives use the wrong commit for a tag named as an existing full SHA",
+      "summary": "When a release's tag name is the full 40-character SHA of another commit, the release's Source Code ZIP and TAR.GZ downloads contain the commit that the name spells, not the commit the tag points to.",
+      "expected": "A release's Source Code downloads contain the commit its tag points to, the same commit the release page and /src/tag/<name> show.",
+      "actual": "Both archives return HTTP 200 but contain the commit whose SHA equals the tag name, so files added in the tagged commit are missing. Tags-page and tag Code-menu archive links behave the same. Ordinary and short-SHA tag names on the same commit download correctly.",
+      "reproSteps": [
+        "Sign in to Gitea with the fixture account and open a repository with at least two commits. Note the full 40-character SHA of an older commit.",
+        "Add a file in a new commit on the default branch.",
+        "Open Releases → New Release. Enter the older commit's full SHA as the tag name, target the default branch, and publish.",
+        "Confirm the release page shows the default-branch commit.",
+        "Download the release's Source Code ZIP or TAR.GZ. Observe that its commit comment is the older commit and the new file is missing.",
+        "As a control, publish a release with an ordinary tag name on the same target and confirm its archive includes the file."
+      ],
+      "severity": 3
+    },
+    {
+      "id": "gitea-deleted-draft-release-leaves-orphan-record",
+      "name": "Deleting a draft release leaves an undeletable record that keeps its notes and blocks the tag name",
+      "summary": "Delete Release on an unpublished draft reports success and removes it from Releases, but its title, notes, and Draft badge stay readable at /releases/tag/<name>. The leftover record has no Git tag, isn't listed on Tags, and blocks reusing the tag name.",
+      "expected": "Deleting a draft, which never created a Git tag, removes it completely: its old URL no longer shows its content and its tag name can be reused.",
+      "actual": "After \"The release has been deleted.\", /releases/tag/<name> still shows the draft's title, notes, and Draft badge, and New Release from there prefills them. The record is missing from both Releases and Tags. Deleting again from /releases/edit/<name> reports success but changes nothing, and Create Tag Only with the same name fails with \"A release with this tag name already exists.\"",
+      "reproSteps": [
+        "Sign in as the fixture account and open Releases → New Release in a repository.",
+        "Enter a new tag name, a title, and notes, and choose Save Draft.",
+        "Open the draft's edit page, choose Delete Release, and confirm.",
+        "Open /releases/tag/<tag name> and observe the deleted draft's title, notes, and Draft badge are still shown.",
+        "Open Releases → New Release, enter the same tag name, choose Create Tag Only, and observe \"A release with this tag name already exists.\" even though nothing is listed on Releases or Tags."
+      ],
+      "severity": 3
+    },
+    {
+      "id": "gitea-create-tag-only-hides-tag-message",
+      "name": "Create Tag Only doesn't show its tag message on the tag page or in New Release",
+      "summary": "With \"Use the title and content of release as tag message\" ticked, Create Tag Only writes an annotated tag with the entered title and notes, but Gitea's tag page and the New Release prefill show neither, unlike the same annotated tag pushed with git.",
+      "expected": "A tag created with the title and content as its message shows that title and those notes on its tag page and prefills them in New Release, as an equivalent tag pushed with git does.",
+      "actual": "The tag page heading is only the tag name with no notes, and New Release from that tag opens with a blank title and notes. The git tag itself does contain the full message, as the API shows. The API's tag creation with a message behaves the same.",
+      "reproSteps": [
+        "Sign in as the fixture account and open Releases → New Release in a repository.",
+        "Enter a new tag name, a title, and notes, tick \"Use the title and content of release as tag message\", and choose Create Tag Only.",
+        "Open the tag's page at /releases/tag/<tag name> and observe only the tag name as the heading, with no notes.",
+        "Choose New Release from that tag and observe the title and notes are blank.",
+        "As a control, push an annotated tag with a title and body using git, and observe its page shows them and New Release prefills them."
+      ],
+      "severity": 3
+    },
+    {
+      "id": "gitea-draft-release-hides-tag-from-tags-feed",
+      "name": "Saving a draft release hides its existing tag from the Tags RSS feed",
+      "summary": "Starting a release on an existing tag and saving it as a draft turns the tag's release row into a draft, and the Tags RSS/Atom feed excludes drafts, so a Git tag that still exists drops out of the feed until the release is published. The Tags page keeps such tags on purpose.",
+      "expected": "The Tags RSS and Atom feeds list every existing Git tag, including one whose release is still a draft, as the Tags page does.",
+      "actual": "A tag created with Create Tag Only appears in tags.rss and tags.atom. After New Release on that tag and Save Draft, it disappears from both feeds while the Tags page still lists it with its commit and archive downloads. Publishing the release makes it reappear. A tag whose release is published directly never leaves the feed.",
+      "reproSteps": [
+        "On a repository's Tags page, use Create Tag Only to create a tag.",
+        "Open the repository's tags.rss and confirm the tag is listed.",
+        "On the Tags page, click New Release on that tag, enter a title, and click Save Draft.",
+        "Reload tags.rss and observe the tag is gone, while the Tags page still lists it.",
+        "Publish the release and observe the tag returns to tags.rss."
+      ],
+      "severity": 1
+    },
+    {
+      "id": "gitea-tag-detail-header-rss-overlaps-tabs-mobile",
+      "name": "Mobile tag detail header overlaps the RSS Feed button",
+      "summary": "At phone width, for a user who can create releases, the Releases/Tags tab menu on a tag's detail page overflows onto the RSS Feed button, so the Tags tab paints over the button.",
+      "expected": "On a tag detail page at 390px, the Releases/Tags tabs, RSS Feed and New Release controls fit or wrap without overlapping.",
+      "actual": "At 390px on a tag detail page, the Tags tab spanned x=111–187 while RSS Feed started at x=156, a 31px overlap; the RSS icon was drawn inside the Tags tab area and taps at x=160–183 hit the Tags link. At 430px and wider, and on /tags without the New Release button, there was no overlap.",
+      "reproSteps": [
+        "Sign in as eval (a user who can create releases) and set the viewport to 390×844.",
+        "On New Release, create a tag with Create Tag Only, then open that tag's detail page from the Tags list.",
+        "Look at the header row with the Releases/Tags tabs, RSS Feed and New Release.",
+        "Observe the Tags tab overlapping the RSS Feed button."
+      ],
+      "severity": 1,
+      "matchingGuidance": {
+        "relatedReference": {
+          "id": "gitea-releases-list-header-rss-overlaps-tabs-mobile",
+          "distinction": "Same shared header template on a different page. This entry is a tag's detail page (/releases/tag/<tag>); the related entry is the Releases list page (/releases)."
+        }
+      }
+    },
+    {
+      "id": "gitea-releases-list-header-rss-overlaps-tabs-mobile",
+      "name": "Mobile Releases list header overlaps the RSS Feed button",
+      "summary": "At phone width, for a user who can create releases, the Releases/Tags tab menu on the Releases list overflows onto the RSS Feed button once the counts have two digits, so tapping the visible RSS button opens Tags.",
+      "expected": "On the Releases list at 390px, the Releases/Tags tabs, RSS Feed and New Release controls fit or wrap without overlapping, and tapping RSS Feed opens the feed.",
+      "actual": "At 390px on the Releases list with two-digit release and tag counts, the RSS Feed button (wrapped onto two lines) sat over the Tags tab by about 31px, and a tap on the visible RSS button opened /tags. The same page at 430px and wider did not overlap.",
+      "reproSteps": [
+        "Sign in as eval (a user who can create releases) in a repository with at least 10 releases and 10 tags, and set the viewport to 390×844.",
+        "Open the repository's Releases page.",
+        "Look at the header row with the Releases/Tags tabs, RSS Feed and New Release.",
+        "Observe the RSS Feed button overlapping the Tags tab; tap the left part of RSS Feed and observe it opens Tags."
+      ],
+      "severity": 1,
+      "matchingGuidance": {
+        "relatedReference": {
+          "id": "gitea-tag-detail-header-rss-overlaps-tabs-mobile",
+          "distinction": "Same shared header template on a different page. This entry is the Releases list page (/releases); the related entry is a tag's detail page (/releases/tag/<tag>)."
+        }
+      }
+    },
+    {
+      "id": "gitea-tag-message-checkbox-overlaps-label-mobile",
+      "name": "Mobile tag-message checkbox overlaps its label on the New Release form",
+      "summary": "Below 439px wide, the New Release form stretches the “Use the title and content of release as tag message” checkbox to the full field width, so its check glyph sits in the middle of the label text.",
+      "expected": "At phone width the tag-message checkbox keeps its normal small size beside its label, with the label text readable.",
+      "actual": "At 390px on New Release, the tag-message checkbox measured about 346px wide instead of 15px; its glyph was drawn over the label text. At 439px and wider it rendered normally.",
+      "reproSteps": [
+        "Sign in as eval and open a repository’s New Release page.",
+        "Set the viewport to 390×844.",
+        "Look at the “Use the title and content of release as tag message” checkbox and observe its glyph overlapping the label text."
+      ],
+      "severity": 1,
+      "matchingGuidance": {
+        "relatedReference": {
+          "id": "gitea-pass2-011",
+          "distinction": "Same New Release form and same mobile CSS rule, different control. That entry is the Pre-Release checkbox; this entry is the tag-message checkbox."
+        }
+      }
+    },
+    {
+      "id": "gitea-release-preview-task-checkboxes-mobile",
+      "name": "Mobile release notes Preview shows task checkboxes as identical empty bars",
+      "summary": "Below 439px wide, task-list checkboxes in the New/Edit Release notes Preview are stretched to the full field width with no check mark, so checked and unchecked tasks look the same.",
+      "expected": "At phone width, Preview renders task checkboxes at their normal size with checked tasks visibly checked, as the published release and issue Preview do.",
+      "actual": "At 390px, Preview of notes containing “- [x] done” and “- [ ] todo” rendered both as 342×14px empty bars with no check mark (the checked input was still checked in the DOM). At 439px and wider, on the published release page, and in issue Preview, they rendered as normal 14px checkboxes.",
+      "reproSteps": [
+        "Sign in as eval, open a repository’s New Release page and set the viewport to 390×844.",
+        "In the notes, enter “- [x] done” and “- [ ] todo”.",
+        "Open the Preview tab and observe both tasks rendered as identical empty full-width bars."
+      ],
+      "severity": 1,
+      "matchingGuidance": {
+        "relatedReference": {
+          "id": "gitea-tag-message-checkbox-overlaps-label-mobile",
+          "distinction": "Same New Release form and mobile CSS rule, different element. That entry is the tag-message option checkbox; this entry is the task checkboxes inside the notes Preview."
+        }
+      }
+    },
+    {
+      "id": "gitea-releases-list-long-tag-pushes-release-offscreen",
+      "name": "Long tag name pushes the release card off the Releases list on desktop",
+      "summary": "On the Releases list at desktop width, a release whose valid 250-character tag name never wraps widens the tag column across the row, pushing the release title, details and Edit control out of view or squeezing them into a narrow column.",
+      "expected": "A long tag name on the Releases list wraps or is truncated within its column, so the release title, details and Edit control stay visible and usable.",
+      "actual": "At 1440–1920px wide, a release with a 250-character tag widened the normally 150px tag column to about 1700px. The release card was pushed out of the viewport or squeezed to about 30–160px, wrapping its title into many short lines.",
+      "reproSteps": [
+        "Open a repository's New Release page.",
+        "Enter a new tag name of 250 characters (for example, REL- followed by lowercase a characters), a title and the default target, then publish the release.",
+        "Open the repository's Releases list at 1440×900 or wider and look at that release's row."
+      ],
+      "severity": 1,
+      "matchingGuidance": {
+        "relatedReference": {
+          "id": "gitea-release-long-tag-name-server-error",
+          "distinction": "Both use long tag names. That entry is the release creation failing with HTTP 500; this entry is a release that saved successfully but whose long tag breaks the Releases list layout."
+        }
+      }
+    },
+    {
+      "id": "gitea-release-tag-validation-shows-internal-key",
+      "name": "Release tag name validation error shows an internal field key",
+      "summary": "On New Release, an invalid, empty or too-long tag name shows an error that names the field with the internal key form.TagName instead of the visible 'Tag name' label.",
+      "expected": "The tag name validation error names the Tag name field in readable language.",
+      "actual": "Entering tagcreate-invalid..name as the tag name and clicking Create Tag Only showed 'form.TagName must be a well-formed Git reference name.' Empty and over-long tag names show the same raw key.",
+      "reproSteps": [
+        "Open a repository's New Release page.",
+        "Enter tagcreate-invalid..name as the tag name and click Create Tag Only (or Publish Release).",
+        "Read the validation error."
+      ],
+      "severity": 1,
+      "matchingGuidance": {
+        "relatedReference": {
+          "id": "gitea-release-validation-loses-upload",
+          "distinction": "Same tag validation failure. That entry is the uploaded attachment being dropped; this entry is the error wording exposing the internal key form.TagName."
+        }
+      }
+    },
+    {
+      "id": "gitea-release-title-validation-shows-internal-key",
+      "name": "Empty release title validation error shows an internal field key",
+      "summary": "Saving a release with an empty title shows the error 'form.Title cannot be empty.', naming the field with its internal key instead of the visible 'Title' label.",
+      "expected": "The empty-title validation error names the release Title field in readable language, for example 'Title cannot be empty.'",
+      "actual": "Clearing the release title on Edit Release and clicking Update Release showed the banner 'form.Title cannot be empty.'",
+      "reproSteps": [
+        "Create a release, then open Edit Release.",
+        "Clear the release title and click Update Release.",
+        "Read the validation banner."
+      ],
+      "severity": 1,
+      "matchingGuidance": {
+        "relatedReference": {
+          "id": "gitea-release-empty-title-edit-loses-unsaved-state",
+          "distinction": "Same empty-title submission and banner. That entry is the unsaved notes and prerelease state being discarded; this entry is the banner's wording exposing the internal key form.Title."
+        }
+      }
+    },
+    {
+      "id": "gitea-release-validation-clears-tag-message-option",
+      "name": "New Release validation errors silently clear the tag-message checkbox",
+      "summary": "When the New Release form is rejected by a validation error (such as an invalid or duplicate tag name), it comes back with the tag, title, notes and Pre-Release choice kept, but 'Use the title and content of release as tag message' unchecked. Correcting the tag and resubmitting then creates the tag without that message.",
+      "expected": "After a validation error, the form keeps every entered choice, including the tag-message checkbox.",
+      "actual": "With the tag-message box and Mark as Pre-Release both checked, submitting the invalid tag 'qa-invalid..tag' showed the error with title, notes and Pre-Release kept, but the tag-message box unchecked. A duplicate-tag rejection on Create Tag Only reset it the same way.",
+      "reproSteps": [
+        "Open New Release, enter an invalid tag such as qa-invalid..tag, a title and notes.",
+        "Check 'Use the title and content of release as tag message' and Mark as Pre-Release.",
+        "Click Publish Release and look at both checkboxes on the error page."
+      ],
+      "severity": 3,
+      "matchingGuidance": {
+        "relatedReference": {
+          "id": "gitea-release-validation-loses-upload",
+          "distinction": "Same New Release validation failure. That entry is the uploaded attachment being dropped; this entry is the tag-message checkbox being cleared."
+        }
+      }
+    },
+    {
+      "id": "gitea-new-release-tag-only-button-stays-hidden",
+      "name": "Create Tag Only stays hidden after changing an existing tag to a new name on New Release",
+      "summary": "When New Release is opened for an existing tag (for example from the Tags page) or re-shown after a release error, changing the tag name to an unused one updates the hint to 'New tag…' but the Create Tag Only button never appears, so a tag-only creation isn't possible from that form.",
+      "expected": "Entering an unused tag name makes Create Tag Only available, however the form was opened.",
+      "actual": "Opening New Release from the existing tag v1.0.0 and replacing the tag with an unused name showed 'New tag. This tag will be created from the target', but only Save Draft and Publish Release were offered. A fresh New Release form with the same unused name offered Create Tag Only. The same happened after a 'A release with this tag name already exists.' rejection.",
+      "reproSteps": [
+        "Open the Tags page and click New Release on an existing tag.",
+        "Replace the tag name with an unused name.",
+        "Check which buttons are offered, then compare with a fresh New Release form."
+      ],
+      "severity": 3
+    },
+    {
+      "id": "gitea-release-notes-duplicate-heading-anchors",
+      "name": "Release note heading permalinks jump to a different release with the same heading",
+      "summary": "On the Releases page, each release's notes are rendered separately, so two releases with the same heading text (for example '## Notes') both get the same anchor id. A link to the older release's heading lands on the newer release's heading, and the older one can't be linked from the list.",
+      "expected": "Each release's heading permalink on the Releases page scrolls to that release's own heading, as footnote links already do per release.",
+      "actual": "Two releases with a '## Notes' heading both rendered id=\"user-content-notes\"; the link …/releases#notes from either release scrolled to the first (newer) one.",
+      "reproSteps": [
+        "Create two releases whose notes both contain the heading '## Notes'.",
+        "Open the Releases page and follow the older release's Notes heading link, or open …/releases#notes.",
+        "Check which release the page scrolls to."
+      ],
+      "severity": 1
+    },
+    {
+      "id": "gitea-release-title-silently-truncated",
+      "name": "Long Unicode release title is silently shortened with an ellipsis on save",
+      "summary": "A release title within the 255-character limit that contains CJK or emoji characters is saved shortened and ending in '…', with no error or warning. The form accepts it, but storage trims it by byte length and display width, so the user doesn't learn their title was changed.",
+      "expected": "A release title the form accepts is saved exactly, or the user is told it is too long before saving instead of having it rewritten without notice.",
+      "actual": "A 247-character title containing Japanese text and an emoji, ending in ' — END', saved without any message as 244 characters ending ' —…' on both create and edit. The reopened editor shows the shortened title. ASCII titles of the same and greater length (up to 255) saved exactly.",
+      "reproSteps": [
+        "Create or edit a release.",
+        "Set the title to 'notes 長いリリース 🚀 — ' followed by 'ABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789' repeated six times, followed by ' — END'.",
+        "Save the release and reopen its editor.",
+        "Check whether the title still ends in ' — END' and whether any message mentioned shortening it."
+      ],
+      "severity": 1
     }
   ]
 }

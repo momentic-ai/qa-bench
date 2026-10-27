@@ -1,0 +1,1641 @@
+{
+  "bugs": [
+    {
+      "name": "Switching question flows discards unsaved edits without warning",
+      "severity": 3,
+      "summary": "Starting another question flow abandons a visibly unsaved question without warning the user that their edits will be lost.",
+      "expected": "Switching flows should warn before discarding an unsaved question.",
+      "actual": "Starting another question flow abandons a visibly unsaved question without warning the user that their edits will be lost.",
+      "reproSteps": [
+        "Start a new question from Sample Database > Orders and make an edit so Save is enabled.",
+        "Open the global New menu and start a SQL query.",
+        "See the application switch flows immediately without warning about the unsaved question."
+      ]
+    },
+    {
+      "name": "Discarding SQL conversion leaves a blank question editor",
+      "severity": 5,
+      "summary": "After converting a notebook question to SQL, navigating Back and confirming discard leaves a blank notebook editor without its prior steps or a starting-data picker.",
+      "expected": "Discarding SQL conversion should restore the prior notebook editor state.",
+      "actual": "After converting a notebook question to SQL, navigating Back and confirming discard leaves a blank notebook editor without its prior steps or a starting-data picker.",
+      "reproSteps": [
+        "Start a new notebook question from Sample Database > Orders.",
+        "Choose View SQL and Convert this question to SQL.",
+        "Navigate Back and confirm Discard changes.",
+        "Inspect the resulting notebook editor."
+      ]
+    },
+    {
+      "name": "Summarize preview ignores a preceding filter",
+      "severity": 3,
+      "summary": "After filtering Orders + People to State=MN, a downstream Count by User ID preview includes users outside the filtered rows.",
+      "expected": "Summarize preview should respect the filter applied before it.",
+      "actual": "After filtering Orders + People to State=MN, a downstream Count by User ID preview includes users outside the filtered rows.",
+      "reproSteps": [
+        "Open the Orders + People model in the notebook editor.",
+        "Add a State=MN filter and preview its rows.",
+        "Add Summarize > Count of rows grouped by User ID and preview the result."
+      ]
+    },
+    {
+      "name": "Monthly Orders result disables Switch to data",
+      "severity": 3,
+      "summary": "A summarized monthly Orders question has 49 result rows but disables its data-view toggle.",
+      "expected": "The result-view control should allow viewing the query results as data.",
+      "actual": "After Count of rows grouped by Created At: Month is visualized as Bar, the footer shows 49 rows but Switch to data is disabled.",
+      "reproSteps": [
+        "Create a question on Sample Database > Orders.",
+        "Summarize Count of rows by Created At: Month and visualize it.",
+        "Choose Bar visualization and inspect the disabled Switch to data control."
+      ]
+    },
+    {
+      "id": "mo-30m-metabase-3",
+      "name": "Required native SQL filter chip can be cleared despite Always require a value",
+      "summary": "The clear X emptied a selected Date Range chip while Always require a value remained enabled; rerunning was blocked until the required value was supplied.",
+      "expected": "With Always require a value enabled, clearing the filter chip should not remove the selection entirely, consistent with the setting’s visible explanation: users can change or reset the value but cannot clear it entirely.",
+      "actual": "Clicking the chip’s X removed the date range and left a blank Harbor Native Value chip while Always require a value stayed enabled. Running the query then displayed: “You'll need to pick a value for 'Harbor Native Value' before this query can run.”",
+      "reproSteps": [
+        "Open the app while authenticated as the Harbor account using its configured saved session; do not change authentication details.",
+        "Choose New > SQL query.",
+        "Select Sample Database and enter the read-only query: SELECT count(*) AS harbor_native_count FROM PEOPLE WHERE 1 = 1 AND {{harbor_native_value}}.",
+        "Open Variables. Set harbor_native_value to Field Filter, map it to Sample Database > People > Created At, and set Filter widget type to Date Range.",
+        "Set a date range in the Harbor Native Value filter chip and add the filter.",
+        "Enable Always require a value. Its visible explanation says the value can be changed or reset but cannot be cleared entirely.",
+        "Run the query with the selected range; it returns a result.",
+        "Click the clear X on the Harbor Native Value chip. The chip becomes blank while Always require a value remains enabled.",
+        "Click Run query. The app displays: “You'll need to pick a value for 'Harbor Native Value' before this query can run.”"
+      ],
+      "severity": 3
+    },
+    {
+      "id": "mo-60m-metabase-5",
+      "name": "Pressing Enter to rename a saved question also runs its graphical query",
+      "summary": "Pressing Enter while renaming a fresh saved question commits the title and also runs its previously unrun graphical query; repeated with a second fresh fixture.",
+      "expected": "Pressing Enter should commit the edited title without running the query, consistent with the page's separate visible query-run affordance labeled “Ctrl + enter.”",
+      "actual": "On two fresh, saved-but-unrun questions, Enter committed the renamed title, displayed “Doing science...” with a loading spinner, and then rendered the query results table.",
+      "reproSteps": [
+        "Sign in as Harbor Admin using the provided saved authentication state; do not change authentication details.",
+        "At the app, select New > Question > Release operations > Release Requests.",
+        "Choose Save, name the new question QA-qactions, leave the description blank, and save without running it. Confirm the saved page shows the unrun play button labeled “Ctrl + enter.”",
+        "Click the saved-question title, replace it with QA-qactions renamed, and press Enter.",
+        "Observe the title update, the “Doing science...” loading state, and the query results table appear. Repeat from a second fresh saved-but-unrun QA-qactions question; the same sequence occurs."
+      ],
+      "severity": 3
+    },
+    {
+      "id": "codex-60m-metabase-2",
+      "name": "Relative date filter previews a different day from the applied query",
+      "summary": "With browser timezone America/Los_Angeles and Report timezone set to Database default, Previous 1 day previews October 7 but queries October 8. Fixed-date October 7 returns a different set, proving the preview misstates the applied date.",
+      "expected": "The calendar date shown in the relative-date preview matches the dates used by the applied filter, using the query/report timezone consistently.",
+      "actual": "At browser time October 8, 2026, 9:39 PM PDT (October 9 UTC), Previous 1 day (Include today off) previews 'Oct 7, 2026'. Applying 'Created At is yesterday' returns 9 Orders dated October 8. A fixed On October 7 filter returns 17 Orders dated October 7. Admin Localization shows Report timezone = Database default.",
+      "reproSteps": [
+        "Sign in with browser timezone America/Los_Angeles during the reproduced boundary: October 9, 2026 UTC / October 8 evening PDT. Report timezone is Database default.",
+        "Open a question using Sample Database > Orders, such as /question/61-qa-table-interactions-c1009.",
+        "Choose Filter > Created At > Relative date range.",
+        "Set Previous, Interval 1, Unit day, and leave Include today off. Observe the preview 'Oct 7, 2026'.",
+        "Apply the filter and inspect Created At values. All 9 returned rows are dated October 8, 2026, although the preview said October 7.",
+        "Remove the relative filter and choose Created At > Fixed date range > On > October 7, 2026.",
+        "Apply it: 17 different rows dated October 7 are returned, confirming the relative preview did not match the queried date."
+      ],
+      "severity": 3
+    },
+    {
+      "id": "codex-12m-metabase-public-required-filter-reset",
+      "name": "Public question filter cannot reset to its required default",
+      "severity": 3,
+      "summary": "Resetting a public question’s required Boolean filter leaves the changed value and results in place instead of restoring its configured default.",
+      "expected": "Reset filter to default state restores the configured False value and reruns the question with that value.",
+      "actual": "After Approved changes from False to True, clicking Reset filter to default state leaves Approved=True and the True result rows in place.",
+      "reproSteps": [
+        "Create a SQL question in Release operations with SELECT * FROM RELEASE_REQUESTS WHERE {{approved}}.",
+        "Configure approved as a Field Filter mapped to Release Requests → Approved. Set the default to False, enable Always require a value, and save the question.",
+        "Create a public sharing link and open it in a fresh browser. Confirm Approved=False and rows with IDs 2, 4, 6.",
+        "Change Approved to True and apply it. Wait for rows with IDs 1, 3, 5.",
+        "Click Reset filter to default state. Wait for the page to settle and compare the filter and result rows.",
+        "Observe Approved=True and rows 1, 3, 5 remain. Repeat from a fresh navigation with Approved=True to verify the same failure."
+      ]
+    },
+    {
+      "id": "metabase-querying-160",
+      "name": "Category \"Does not contain %\" returns no Products instead of all rows without a percent sign",
+      "severity": 3,
+      "summary": "Category \"Does not contain %\" returns no Products instead of all rows without a percent sign.",
+      "expected": "The filter pill reads \"Category does not contain %\", so all 200 Products should be returned, because no category contains a literal \"%\".",
+      "actual": "Visualize shows \"No results!\" and \"Showing 0 rows\".",
+      "reproSteps": [
+        "Open a new notebook question.",
+        "Pick data: Sample Database > Products",
+        "Click Add filters to narrow your answer > Category, change the operator to Does not contain, type %, and leave Case sensitive unchecked",
+        "Click Add filter, then Visualize",
+        "Observe No results! / Showing 0 rows"
+      ]
+    },
+    {
+      "id": "metabase-querying-162",
+      "name": "Category Contains '_' returns all 200 Products including categories without underscores",
+      "severity": 3,
+      "summary": "Category Contains '_' returns all 200 Products including categories without underscores.",
+      "expected": "Contains '_' should match category text containing a literal underscore, not categories such as Gizmo, Gadget, Widget or Doohickey.",
+      "actual": "The applied Category contains _ filter returns 200 rows. Visible rows include Gizmo, Doohickey, Gadget and Widget, none containing an underscore.",
+      "reproSteps": [
+        "Start a new question in the notebook using Sample Database > Products.",
+        "Add a Category filter, select Contains, enter a single underscore (_) and leave Case sensitive unchecked.",
+        "Add the filter and click Visualize.",
+        "Observe 200 returned rows including categories Gizmo, Gadget, Doohickey and Widget."
+      ]
+    },
+    {
+      "id": "metabase-querying-164",
+      "name": "Does not contain backslash retains a row containing backslashes in saved SQL results",
+      "severity": 3,
+      "summary": "Does not contain backslash retains a row containing backslashes in saved SQL results.",
+      "expected": "The row C:\\folder\\file is excluded; only the other four rows remain.",
+      "actual": "Five rows are returned, including C:\\folder\\file. A multimodal assertion confirmed the query was finished, the filter was a single backslash and all five rows remained.",
+      "reproSteps": [
+        "Create a new SQL query on Sample Database with: SELECT 1 AS id, 'O''Brien' AS sample_text UNION ALL SELECT 2, CONCAT('C:', CHAR(92), 'folder', CHAR(92), 'file') UNION ALL SELECT 3, 'café 東京' UNION ALL SELECT 4, 'plain' UNION ALL SELECT 5, '_literal_'",
+        "Run it and save as a fresh QA-FILTER2 question.",
+        "Click Explore results, then SAMPLE_TEXT column header > Filter by this column.",
+        "Select Does not contain, enter one backslash (\\), leave Case sensitive unchecked, and add the filter.",
+        "Wait for results and inspect row 2."
+      ]
+    },
+    {
+      "id": "metabase-querying-076",
+      "name": "Custom filter summaries omit meaningful AND/OR parentheses",
+      "severity": 1,
+      "summary": "Custom filter summaries omit meaningful AND/OR parentheses.",
+      "expected": "The filter pill should preserve meaningful logical grouping, such as '(ID is 1 or ID is 2) and Seats is greater than 100', so filters with different semantics have distinguishable summaries.",
+      "actual": "Both expressions display exactly 'ID is 1 or ID is 2 and Seats is greater than 100'. The first returns zero rows; the second returns Account1 (Macy Kub, Seats32). Reopening the expression editor confirms grouping is preserved in the query, but omitted from its visible summary.",
+      "reproSteps": [
+        "Sign in and choose New > Question > Sample Database > Accounts.",
+        "Choose Filter > Custom Expression, enter `([ID] = 1 OR [ID] = 2) AND [Seats] > 100`, and click Done.",
+        "Click Visualize. Observe zero results and the filter pill 'ID is 1 or ID is 2 and Seats is greater than 100'.",
+        "Edit that filter to `[ID] = 1 OR ([ID] = 2 AND [Seats] > 100)` and apply it.",
+        "Observe Account1 with Seats32 is now returned, while the filter pill remains exactly the same."
+      ]
+    },
+    {
+      "id": "metabase-querying-078",
+      "name": "Post-summary filters offer selected source columns that no longer exist",
+      "severity": 3,
+      "summary": "Post-summary filters offer selected source columns that no longer exist.",
+      "expected": "A filter after Count grouped by Category should offer Category and Count. Source columns excluded by the aggregation must not be offered as outputs of that summary.",
+      "actual": "The post-summary filter picker offers ID and Title under Summaries. Choosing ID is 10 and running produces 'Column \"source.ID\" not found' because the generated subquery selects only CATEGORY and count. Reproduced from a fresh question, also with Sum/Avg Price.",
+      "reproSteps": [
+        "Open /question/notebook and choose Sample Database > Products.",
+        "Open Pick columns beside Products. Click Select all to deselect columns (ID remains), then select Title. Close the picker.",
+        "Choose Count of rows as the summary and Category as the grouping column.",
+        "Click Filter beneath the Summarize step to add a filter after the summary.",
+        "In the resulting field picker, select ID; enter 10, press Enter, and click Add filter.",
+        "Click Visualize, then Show error details. Observe Column \"source.ID\" not found."
+      ]
+    },
+    {
+      "id": "metabase-querying-079",
+      "name": "Self-join source custom expression is compiled against the joined table",
+      "severity": 3,
+      "summary": "Self-join source custom expression is compiled against the joined table.",
+      "expected": "The left expression should reference the source Orders ID. Source ID1 should match joined ID2, source ID2 should match joined ID3, and so on.",
+      "actual": "All joined columns are blank. View SQL shows AS \"Orders\" ON (\"Orders\".\"ID\" + 1) = \"Orders\".\"ID\"; both sides reference the joined table. Repeated twice from fresh questions.",
+      "reproSteps": [
+        "Choose New > Question and Sample Database > Orders.",
+        "Click Join data and select Sample Database > Orders to self-join.",
+        "In the automatically opened left/source join-column picker, choose Custom Expression.",
+        "Enter [ID] + 1 and click Done.",
+        "In the right/joined column picker, choose ID. Leave the join as Left outer join and equality.",
+        "Click Visualize and observe blank joined columns.",
+        "Return to Editor and turn on View SQL. Observe the ON clause uses the joined \"Orders\" alias for both operands."
+      ]
+    },
+    {
+      "id": "metabase-querying-080",
+      "name": "Orders self-join displays incorrect source user and product labels",
+      "severity": 3,
+      "summary": "Orders self-join displays incorrect source user and product labels.",
+      "expected": "The source Orders row ID1 should retain User ID label Hudson Borer and Product ID label Awesome Concrete Shoes when a join duplicates it.",
+      "actual": "With source ID < joined ID, source row ID1 instead displays Abbie Ryan and Incredible Bronze Wallet across joined matches. A source custom concat([User ID],\" / \",[Product ID]) still shows1 /14. Verified twice including fresh flow without expressions.",
+      "reproSteps": [
+        "Choose New > Question > Sample Database > Orders and click Visualize.",
+        "Observe source row ID1: User ID shows Hudson Borer and Product ID shows Awesome Concrete Shoes.",
+        "Open Editor, click Join data, and select Sample Database > Orders.",
+        "Choose source ID as the left column and joined ID as the right column. Change the comparison operator from = to <; keep Left outer join.",
+        "Click Visualize. For source row ID1 joined to IDs2,3 and so on, observe the source User ID and Product ID labels have changed to Abbie Ryan and Incredible Bronze Wallet.",
+        "Optionally add source custom column concat([User ID], \" / \", [Product ID]) to confirm source numeric keys are still1 /14 despite the wrong labels."
+      ]
+    },
+    {
+      "id": "metabase-querying-087",
+      "name": "Replacing a reloaded join's table with a saved question breaks its join condition",
+      "severity": 3,
+      "summary": "Replacing a reloaded join's table with a saved question breaks its join condition.",
+      "expected": "The automatically detected Orders.Product ID = saved Products.ID condition should execute and return the joined rows.",
+      "actual": "Visualize shows “There was a problem with your question”, zero rows, and full error `Missing ::desired-alias->escaped for \"PRODUCT_ID\"`. The UI still shows Orders.Product ID on the left. Explicitly reselecting Orders > Product ID repairs the query. A fresh join directly to the saved source runs correctly.",
+      "reproSteps": [
+        "Sign in. Create a question from Sample Database > Products with no filters or summaries; Visualize and save as QA Products source.",
+        "Create a question from Sample Database > Orders; join Products using the automatically detected Orders.Product ID = Products.ID condition.",
+        "Visualize and save as QA Single Product join.",
+        "Reload the saved join question URL, then open Editor.",
+        "Click the joined Products source; search for QA Products source and select that saved question. Leave the detected join condition unchanged.",
+        "Click Visualize, then Show error details. Observe Missing ::desired-alias->escaped for PRODUCT_ID.",
+        "As a control, open Editor, click Left column, explicitly select Orders > Product ID, and Visualize again. The query now succeeds."
+      ]
+    },
+    {
+      "id": "metabase-querying-167",
+      "name": "Second self-join of a saved question compares the original source column instead of the selected first-join column",
+      "severity": 3,
+      "summary": "Second self-join of a saved question compares the original source column instead of the selected first-join column.",
+      "expected": "The second join compares the selected first joined N against the new N. First-join N19901 has no smaller values, so second-join columns should be blank there. Expected 12 total rows.",
+      "actual": "The second join produces 26 rows. Rows whose first joined N is19901 receive second-join N19901 matches, violating the selected greater-than condition; results instead correspond to comparing original source N again.",
+      "reproSteps": [
+        "Save a SQL question on Sample Database with: SELECT 'greater' AS op, COUNT(*) AS n FROM PRODUCTS a LEFT JOIN PRODUCTS b ON a.ID > b.ID UNION ALL SELECT 'less', COUNT(*) FROM PRODUCTS a LEFT JOIN PRODUCTS b ON a.ID < b.ID UNION ALL SELECT 'greater_equal', COUNT(*) FROM PRODUCTS a LEFT JOIN PRODUCTS b ON a.ID >= b.ID UNION ALL SELECT 'less_equal', COUNT(*) FROM PRODUCTS a LEFT JOIN PRODUCTS b ON a.ID <= b.ID UNION ALL SELECT 'not_equal', COUNT(*) FROM PRODUCTS a LEFT JOIN PRODUCTS b ON a.ID <> b.ID. It returns N = 19901 twice, 20100 twice and 39800 once.",
+        "Open it in the editor, left join it to itself on source N > joined N, and visualize: 10 rows. Save as a new question.",
+        "Reopen the editor and add a second left join to the same saved SQL question.",
+        "For its left column, pick N from the first joined copy; pick N on the new copy and set the operator to >.",
+        "Visualize: expect 12 rows. Observe 26 rows, including rows where the first joined N is 19901 and the second joined N is also 19901."
+      ]
+    },
+    {
+      "id": "metabase-querying-083",
+      "name": "Selecting a custom column with a source field's name silently references the source field",
+      "severity": 3,
+      "summary": "Selecting a custom column with a source field's name silently references the source field.",
+      "expected": "The second expression should reference the computed Price that was selected, so Copy custom Price equals that column: 58.93 for Product ID 1 and 140.16 for ID 2. Alternatively the UI should prevent an ambiguous duplicate name.",
+      "actual": "Copy custom Price instead equals the original source Price: ID 1 shows original 29.46, computed 58.93, copy 29.46; ID 2 shows original 70.08, computed 140.16, copy 70.08. View SQL shows PRICE * 2 AS Price_2 but bare PRICE AS Copy custom Price, confirming selection of the computed suggestion was lost.",
+      "reproSteps": [
+        "Start signed in at /question/notebook, or choose New → Question. Select Sample Database → Products.",
+        "Add a Custom column with expression [Price] * 2 and name Price; click Done.",
+        "Click the + in the Custom column row to add a second custom column.",
+        "Focus the empty expression editor and press the literal [ key. In the suggestions, locate the two Price entries: the original source Price between Vendor and Rating, and the computed Price as the last entry after Created At. Explicitly click the last, computed Price entry.",
+        "Name the second column Copy custom Price and click Done, then Visualize.",
+        "Compare the original Price, computed Price, and Copy custom Price in the first rows. Optionally return to Editor → View SQL to inspect the compiled references."
+      ]
+    },
+    {
+      "id": "metabase-querying-075",
+      "name": "Replacing special SQL references with normal variables leaves invalid parameter metadata",
+      "severity": 3,
+      "summary": "Replacing special SQL references with normal variables leaves invalid parameter metadata.",
+      "expected": "Ordinary State/Num parameter controls should appear and their valid parameterized SQL should be runnable and saveable, independent of the previous reference type.",
+      "actual": "Snippet replacement shows no State control, disables Save, and errors Invalid query: {:stages [{:template-tags {\"state\" {:snippet-name [\"missing required key\"]}}}]}. Saved-question replacement similarly leaves no Num control and errors {:template-tags {\"num\" {:card-id [\"missing required key\"]}}}. Snippet branch reproduced twice including fresh question; card branch reproduced with newly created SELECT1 question.",
+      "reproSteps": [
+        "Sign in, choose New > SQL query, and select Sample Database.",
+        "Open SQL Snippets and create a uniquely named snippet SQL Bash New York containing STATE = 'NY'.",
+        "Enter SELECT COUNT(*) FROM PEOPLE WHERE {{snippet: SQL Bash New York}}; and run with Ctrl+Enter. It returns74.",
+        "Select all editor text and replace it with SELECT COUNT(*) FROM PEOPLE WHERE STATE = {{state}};. Run with Ctrl+Enter.",
+        "Alternate reproduction: create and save a native question SELECT 1 AS one; named SQL Bash One. Note its numeric ID in the URL. In a new SQL query, run SELECT * FROM {{#<ID>-sql-bash-one}}; then replace all SQL with SELECT {{num}} + 1 AS result; and run."
+      ]
+    },
+    {
+      "id": "metabase-querying-161",
+      "name": "Selectable values sourced from a parameterized saved SQL question show \"An error occurred in your query\"",
+      "severity": 3,
+      "summary": "Selectable values sourced from a parameterized saved SQL question show \"An error occurred in your query\".",
+      "expected": "The preview should list the LABEL values from the source question, using its saved defaults (O'Reilly & café). If the source setup isn't supported, the preview should say so clearly.",
+      "actual": "The preview shows \"An error occurred in your query\" and lists no values. The request POST /api/dataset/parameter/values returns HTTP 500.",
+      "reproSteps": [
+        "Create a Sample Database SQL question: SELECT {{label}} AS label, {{chosen_day}} AS chosen_date. Make label a Text variable with default O'Reilly & café and chosen_day a Date variable with default 2024-02-29. Save it.",
+        "Create and save a second SQL question: SELECT COUNT(*) AS total FROM PRODUCTS WHERE 1=1 [[AND CATEGORY IN ({{categories}})]].",
+        "Open the Variables panel. For categories, choose Multiple values and Search box, then click Edit next to the selectable values.",
+        "Choose 'From another model or question', pick the first question, and choose the LABEL column.",
+        "The preview shows 'An error occurred in your query'."
+      ]
+    },
+    {
+      "id": "metabase-querying-163",
+      "name": "Date parameter picker changes ISO date 2024-02-29 to February 28, 2024",
+      "severity": 3,
+      "summary": "Date parameter picker changes ISO date 2024-02-29 to February 28, 2024.",
+      "expected": "Entering 2024-02-29 in the date picker input should select and retain February 29, 2024.",
+      "actual": "Typing 2024-02-29 into the date picker input changes the value to February 28, 2024 and selects day 28 on the calendar.",
+      "reproSteps": [
+        "Open New > SQL query on Sample Database.",
+        "Enter SELECT {{label}} AS label, {{chosen_day}} AS chosen_date, {{label}} AS repeated_label.",
+        "Set label Text default to O'Reilly & café and chosen_day type to Date.",
+        "Open chosen_day default filter widget value, type 2024-02-29 in the Date input and move focus with Tab.",
+        "Observe the picker changes the entry to February 28, 2024; applying the filter and running the query also returns February 28, 2024."
+      ]
+    },
+    {
+      "id": "metabase-querying-165",
+      "name": "Multiple-value custom-list SQL parameter label displays only Tools when Tools and Devices are applied",
+      "severity": 1,
+      "summary": "Multiple-value custom-list SQL parameter label displays only Tools when Tools and Devices are applied.",
+      "expected": "The applied parameter summary should indicate both selected values, or a two-value count, rather than suggesting only Tools is filtering results.",
+      "actual": "The query applies both values and returns 107, but the parameter summary remains Categories: Tools. A whole-page AI assertion confirmed that the label does not summarize Devices.",
+      "reproSteps": [
+        "Create a SQL question on Sample Database: SELECT COUNT(*) AS total FROM PRODUCTS WHERE 1=1 [[AND CATEGORY IN ({{categories}})]].",
+        "Configure categories as Text, Search box, Multiple values. Edit selectable values to Custom list, with separate lines Gadget,Devices; Widget,Tools; Doohickey,Other; Gizmo,Gizmos.",
+        "Save the question with a QA-PARAM2 name.",
+        "Select Tools in Categories, apply it, reopen the parameter and search Dev without clearing the Tools chip.",
+        "Select Devices, click Update filter and run the query."
+      ]
+    },
+    {
+      "id": "metabase-querying-158",
+      "name": "Saved native question CSV export ignores selected-statement run and exports the saved full query result",
+      "severity": 3,
+      "summary": "Saved native question CSV export ignores selected-statement run and exports the saved full query result.",
+      "expected": "The downloaded CSV contains the result shown in the table: selected,222.",
+      "actual": "The table shows selected / 222, but the downloaded CSV contains QA_TEXT,QA_VALUE and first,111, the saved query's full result.",
+      "reproSteps": [
+        "Click New > SQL query and choose Sample Database.",
+        "Enter line 1: SELECT 'first' AS qa_text, 111 AS qa_value; and line 2: SELECT 'selected' AS qa_text, 222 AS qa_value;",
+        "Save the question, reload its page, and click Open Editor.",
+        "Select only line 2 and press Ctrl+Enter. The table shows selected / 222.",
+        "Click the download icon, choose .csv, and download. The CSV contains first,111."
+      ]
+    },
+    {
+      "id": "metabase-querying-159",
+      "name": "JSON result download silently discards earlier columns with duplicate SQL aliases",
+      "severity": 3,
+      "summary": "JSON result download silently discards earlier columns with duplicate SQL aliases.",
+      "expected": "The downloaded JSON keeps all 5 result columns shown in the table, for example by giving duplicate names distinct keys, or it warns the user that data will be lost.",
+      "actual": "The downloaded file contains [{\"QA_DUPLICATE\":\"QA-SQL right\",\"QA_EMPTY\":\"\",\"QA_DECIMAL\":-12.3456}]. The value \"QA-SQL left café 東京\" and the first QA_EMPTY column are missing, and no warning appears. The download shows \"Download completed\".",
+      "reproSteps": [
+        "Choose New > SQL query on Sample Database.",
+        "Run: SELECT 'QA-SQL left café 東京' AS qa_duplicate, 'QA-SQL right' AS qa_duplicate, CAST(NULL AS VARCHAR) AS qa_empty, '' AS qa_empty, CAST(-12.3456 AS DECIMAL(10,4)) AS qa_decimal",
+        "Observe that the table shows 5 columns, including both 'QA-SQL left café 東京' and 'QA-SQL right'.",
+        "Click the download icon, choose .json, uncheck 'Keep the data formatted', and click Download.",
+        "Open the file: it has only the keys QA_DUPLICATE ('QA-SQL right'), QA_EMPTY ('') and QA_DECIMAL."
+      ]
+    },
+    {
+      "id": "metabase-querying-166",
+      "name": "Restoring a saved question leaves its collection breadcrumb labeled Trash",
+      "severity": 3,
+      "summary": "Restoring a saved question leaves its collection breadcrumb labeled Trash.",
+      "expected": "The restored question should display its restored collection in the top breadcrumb rather than Trash.",
+      "actual": "The red in-trash banner disappears and question controls return, but the top-left collection breadcrumb still reads Trash.",
+      "reproSteps": [
+        "Create and save a fresh SQL question in Our analytics using Sample Database: SELECT ID, TITLE, CATEGORY, PRICE FROM PRODUCTS WHERE ID <= 5 ORDER BY ID.",
+        "Use question ellipsis menu > Move to trash and confirm.",
+        "Reload the trashed question and wait for the Restore control in the red banner.",
+        "Click Restore.",
+        "Inspect the collection breadcrumb after the restore completes."
+      ]
+    },
+    {
+      "id": "metabase-querying-086",
+      "name": "Whitespace-only inline rename leaves saved question header blank until reload, without validation feedback",
+      "severity": 1,
+      "summary": "Whitespace-only inline rename leaves saved question header blank until reload, without validation feedback.",
+      "expected": "Reject a whitespace-only name while retaining the existing visible title, or display an actionable validation message. The displayed title should agree with the saved title.",
+      "actual": "Entering three spaces in the saved SQL question title and pressing Enter makes its visible header blank, even after clicking elsewhere. A whole-page AI assertion confirmed no validation error. Reload restores QA-SAVE SQL renamed 1045; the whitespace rename was not saved.",
+      "reproSteps": [
+        "Choose New > SQL query with Sample Database.",
+        "Enter SELECT CATEGORY, COUNT(*) AS PRODUCT_COUNT FROM PRODUCTS GROUP BY CATEGORY ORDER BY CATEGORY and run.",
+        "Save it with a unique name in your personal collection, then reload.",
+        "Replace the inline question title with three spaces, press Enter, then click outside the title.",
+        "Observe blank question header and no validation feedback. Reload to see the original saved title return."
+      ]
+    },
+    {
+      "id": "metabase-querying-192",
+      "name": "Numeric filters silently truncate comma-formatted and partially numeric input",
+      "severity": 3,
+      "summary": "Numeric filters silently truncate comma-formatted and partially numeric input.",
+      "expected": "Interpret 1,000 as 1000 or reject the entire invalid input with validation; never silently change it to 1. Inputs with nonnumeric suffixes should be rejected.",
+      "actual": "Products Price >= input 1,000 becomes Price >=1 and returns all 200 products, including prices29.46 and70.08. Editing the same input to1000 returns0 rows. Orders Discount >=5.94xyz is likewise accepted as5.94.",
+      "reproSteps": [
+        "Sign in and open /question/notebook; choose Sample Database → Products.",
+        "Click Add filters to narrow your answer and select Price.",
+        "Change Filter operator to Greater than or equal to.",
+        "Enter 1,000 as the bound and click Add filter, then Visualize.",
+        "Observe the filter chip says Price >=1 and results include products priced below1000.",
+        "Reopen the filter, change the value to1000 without a comma, and update it. Observe0 rows, confirming the previous input was silently truncated."
+      ]
+    },
+    {
+      "id": "metabase-querying-193",
+      "name": "Filtering a numeric bin from results uses only its lower-bound value",
+      "severity": 3,
+      "summary": "Filtering a numeric bin from results uses only its lower-bound value.",
+      "expected": "Equality on the selected4–4.5 bin should retain all96 products with4 <= Rating <4.5. Exclusion should remove that entire bin.",
+      "actual": "The '=' action creates 'Rating is equal to4' and changes the labelled4–4.5 bucket Count96 to37, excluding59 products within the selected bin. The '≠' action creates 'Rating is not equal to4' and leaves59 products in that bucket instead of excluding it. Control: Zoom in correctly uses >=4 and <4.5 and sub-bin counts total96.",
+      "reproSteps": [
+        "Choose New > Question, then Sample Database > Products.",
+        "Choose Count of rows as the summary and Rating as the grouping column.",
+        "Edit the Rating grouping's binning controls and select10 bins, then Visualize.",
+        "Click the Rating cell labelled4–4.5, whose Count is96.",
+        "Choose '='. Observe filter 'Rating is equal to4' and bucket Count37.",
+        "Alternatively remove the filter, click the same bin and choose '≠'; observe filter 'Rating is not equal to4' and that bucket still present with Count59."
+      ]
+    },
+    {
+      "id": "metabase-querying-194",
+      "name": "Filtering a year-grouped date after summarizing generates an invalid numeric date comparison",
+      "severity": 3,
+      "summary": "Filtering a year-grouped date after summarizing generates an invalid numeric date comparison.",
+      "expected": "The grouped Created At field should offer date-compatible filtering and execute a2026–2027 year range successfully.",
+      "actual": "The field picker displays Created At: Year with a numeric icon and Min/Max number inputs. Entering2026 and2027 then Visualize shows 'There was a problem with your question'. The browser-observed dataset error says 'Values of types TIMESTAMP and INTEGER are not comparable'; generated comparison is source.CREATED_AT BETWEEN2026 AND2027 against DATE_TRUNC('year', ORDERS.CREATED_AT).",
+      "reproSteps": [
+        "Choose New > Question, then Sample Database > Orders.",
+        "Choose Count of rows as the summary and Created At as the grouping.",
+        "Edit the Created At grouping, open its temporal bucket controls, and select Year.",
+        "Click the Filter button below the summary to add a downstream filter.",
+        "Select Created At: Year. In the offered numeric range inputs, enter Min2026 and Max2027, then Add filter.",
+        "Click Visualize and observe the query error instead of the requested year results."
+      ]
+    },
+    {
+      "id": "metabase-querying-235",
+      "name": "On-date time filter changes entered March 8, 2026 2:00 AM to 3:00 AM and selects the wrong timestamp row",
+      "severity": 3,
+      "summary": "On-date time filter changes entered March 8, 2026 2:00 AM to 3:00 AM and selects the wrong timestamp row.",
+      "expected": "For the timestamp-without-timezone source, selecting the displayed 2:00AM timestamp should retain that selected time and return ID2, rather than silently selecting 3AM.",
+      "actual": "The filter becomes 'EVENT_AT is on Mar 8, 2026, 3:00 AM' and the table contains ID4 at3:00AM, not ID2 at2:00AM. The UI had displayed both timestamps in the unfiltered/source and date-only results.",
+      "reproSteps": [
+        "Create a new SQL query in Sample Database: SELECT 1 AS ID, TIMESTAMP '2026-03-08 01:59:59' AS EVENT_AT UNION ALL SELECT 2, TIMESTAMP '2026-03-08 02:00:00' UNION ALL SELECT 3, TIMESTAMP '2026-03-08 02:30:00' UNION ALL SELECT 4, TIMESTAMP '2026-03-08 03:00:00'. Run and save under a unique DATE source name.",
+        "Create a new query-builder question using that saved SQL question as its starting data.",
+        "Filter EVENT_AT > Fixed date range > On > March 8, 2026; visualize. IDs1–4 appear, including2AM and2:30AM.",
+        "Open the filter, click Add time, enter02:00 (2AM) in the native Time field, then Update filter.",
+        "Inspect the resulting filter and table."
+      ]
+    },
+    {
+      "id": "metabase-querying-236",
+      "name": "Reopening a March 8, 2026 3:00 AM filter displays 04:00 AM in the time input and saves as 4:00 AM",
+      "severity": 3,
+      "summary": "Reopening a March 8, 2026 3:00 AM filter displays 04:00 AM in the time input and saves as 4:00 AM.",
+      "expected": "Reopening the 'before Mar 8, 2026, 3:00 AM' filter popover displays 03:00 AM in the time input and preserves the 3:00 AM boundary when updating.",
+      "actual": "Opening the filter popover already populates the time input with 04:00 AM, and clicking Update filter saves the boundary as 4:00 AM.",
+      "reproSteps": [
+        "Create a fresh SQL question in Sample Database using: SELECT 1 AS ID, TIMESTAMP '2026-03-08 01:59:59' AS EVENT_AT UNION ALL SELECT 2, TIMESTAMP '2026-03-08 02:00:00' UNION ALL SELECT 3, TIMESTAMP '2026-03-08 02:30:00' UNION ALL SELECT 4, TIMESTAMP '2026-03-08 03:00:00' UNION ALL SELECT 5, TIMESTAMP '2026-11-01 00:59:59' UNION ALL SELECT 6, TIMESTAMP '2026-11-01 01:00:00' UNION ALL SELECT 7, TIMESTAMP '2026-11-01 01:59:59' UNION ALL SELECT 8, TIMESTAMP '2026-11-01 02:00:00'. Run and save with a unique DATE name.",
+        "Create a new builder question using that saved SQL question as its data source.",
+        "Filter EVENT_AT using Fixed date range, Before March 8, 2026. Add time, enter 03:00 AM, apply and Visualize. The chip shows before Mar 8, 2026, 3:00 AM and IDs 1–3 appear.",
+        "Reopen that filter, click After, and click Update filter without editing the date or time.",
+        "Observe the filter chip now says after Mar 8, 2026, 4:00 AM."
+      ]
+    },
+    {
+      "id": "metabase-querying-240",
+      "name": "Clicking the notebook source-search input closes the picker instead of positioning the cursor",
+      "severity": 3,
+      "summary": "Clicking the notebook source-search input closes the picker instead of positioning the cursor.",
+      "expected": "Clicking the visible search input keeps the picker open and allows editing the search query",
+      "actual": "Clicking the search input immediately closes the source search picker and restores the initial Products button",
+      "reproSteps": [
+        "Open an owned saved Products question and enter Editor.",
+        "Click Products to open the source picker; its Search for tables and more input receives focus.",
+        "Type p directly; matching source results appear.",
+        "Click the search input to edit the search text."
+      ]
+    },
+    {
+      "id": "metabase-querying-252",
+      "name": "Discard changes remains stuck after rejecting a circular saved-question source",
+      "severity": 3,
+      "summary": "Discard changes remains stuck after rejecting a circular saved-question source.",
+      "expected": "Discard changes dismisses the dialog and returns to the prior saved question state without saving the circular reference.",
+      "actual": "Discard your changes dialog remains open over the unsaved B-sourced results after repeated Discard changes clicks. A multimodal assertion confirmed the dialog remained with both controls visible.",
+      "reproSteps": [
+        "Create saved notebook question A on any table, and saved notebook question B that uses A as its source.",
+        "Open the notebook URL of saved question A (/question/<A id>/notebook) directly in a new tab.",
+        "Edit A and change source to B, Visualize, Save and choose replace original.",
+        "Observe expected 'Cannot save card with cycles.' validation; cancel Save dialog.",
+        "Use browser Back, then click Discard changes in the unsaved-changes dialog."
+      ]
+    },
+    {
+      "id": "metabase-querying-234",
+      "name": "Deleting a join silently changes a later join's left operand to the base source's same-named field",
+      "severity": 3,
+      "summary": "Deleting a join silently changes a later join's left operand to the base source's same-named field.",
+      "expected": "Removing a source should invalidate or remove its dependent condition, or ask for a replacement; it should not silently substitute a different source's same-named column and execute a different join.",
+      "actual": "Remaining condition displays base JOIN-Known-Left JOIN_KEY in place of selected joined JOIN-Known-Right JOIN_KEY. Query executes as a self join, matching L1/L1 and L2/L2.",
+      "reproSteps": [
+        "Create a fresh native SQL question JOIN-Left with: SELECT 1 AS JOIN_KEY, 'L1' AS SIDE_LABEL, 10 AS AMOUNT UNION ALL SELECT 2, 'L2', 20 UNION ALL SELECT CAST(NULL AS INTEGER), 'Lnull', 30. Save it.",
+        "Create fresh native SQL question JOIN-Right with: SELECT 2 AS JOIN_KEY, 'R2' AS SIDE_LABEL, 200 AS AMOUNT UNION ALL SELECT 3, 'R3', 300 UNION ALL SELECT CAST(NULL AS INTEGER), 'Rnull', 400. Save it.",
+        "Create builder question from JOIN-Left. Left join JOIN-Right on JOIN_KEY equality. Save own baseline.",
+        "Add another left join to JOIN-Left. Set its left operand specifically to JOIN-Right's joined JOIN_KEY and right operand to new JOIN-Left JOIN_KEY. Reopen left operand and select joined JOIN-Right JOIN_KEY again if initial selection falls back; ensure notebook displays JOIN-Right as left source.",
+        "Remove first join (JOIN-Right) using its X.",
+        "Inspect remaining condition and Visualize: left operand is now base JOIN-Left JOIN_KEY; L1 now matches new JOIN-Left L1."
+      ]
+    },
+    {
+      "id": "metabase-querying-183",
+      "name": "Renaming a custom column to its dependent column's name silently deletes the dependent calculation",
+      "severity": 3,
+      "summary": "Renaming a custom column to its dependent column's name silently deletes the dependent calculation.",
+      "expected": "Preserve both calculations by rejecting the duplicate name or giving the renamed column a unique suffix, as happens when the existing column is independent. Do not silently delete a calculation during rename.",
+      "actual": "Products had 'Renamed Double QA'=[Price]*2 and 'Plus One QA'=[Renamed Double QA]+1. Renaming Renamed Double QA to Plus One QA left only one custom column, containing [Price]*2. The original Plus One QA expression disappeared without warning. Visualize confirms a single derived column; first product shows 58.93 rather than the original dependent value 59.93. Independently reproduced earlier with case/concat dependent expressions. Control test renaming an independent second custom column to an occupied name preserves both with 'Label (1)'.",
+      "reproSteps": [
+        "Open /question/notebook and select Sample Database > Products.",
+        "Click Custom column. Enter [Price] * 2, name it Double Price QA, and click Done.",
+        "Click the + in the Custom column step. Enter [Double Price QA] + 1, name it Plus One QA, and click Done.",
+        "Click the text Double Price QA to edit that expression; leave the formula unchanged, change its name to Plus One QA, and click Update.",
+        "Observe that the notebook now contains only one custom column. Click Visualize: only Plus One QA remains and it contains the double-price calculation; the original plus-one calculation was deleted."
+      ]
+    },
+    {
+      "id": "metabase-querying-190",
+      "name": "Snippet search steals focus while editing native SQL",
+      "severity": 3,
+      "summary": "Snippet search steals focus while editing native SQL.",
+      "expected": "After clicking the SQL editor, typed characters should remain in SQL until the user focuses another control.",
+      "actual": "On a fresh SELECT 1 query, clicking the editor and typing x then y produced SELECT 1x in SQL and SQLy in snippet search. On reopened saved queries typing was redirected immediately; the parent observed search SQL becoming SQLx with SQL unchanged. Closing snippet search restores normal editor input. Independently reproduced in two browser sessions.",
+      "reproSteps": [
+        "Sign in and choose New > SQL query. Select Sample Database.",
+        "Type SELECT 1 in the editor, then open SQL Snippets using the snippet icon.",
+        "If no active snippets exist, click Create snippet, enter SQL `1` and name `SQL QA Focus`, and Save. Otherwise any active snippet is sufficient.",
+        "Click the sidebar search magnifying glass and enter SQL in the search box.",
+        "Click inside the SQL editor at the end of the query. Type x, then y.",
+        "Observe the editor loses focus and one or both characters appear in snippet search instead of SQL."
+      ]
+    },
+    {
+      "id": "metabase-querying-255",
+      "name": "Aggregation picker offers Median, but its valid expression is rejected as Unsupported function Median",
+      "severity": 3,
+      "summary": "Aggregation picker offers Median, but its valid expression is rejected as Unsupported function Median.",
+      "expected": "An aggregation explicitly offered by the picker accepts its valid numeric column argument and can be added, or is excluded/disabled when unsupported.",
+      "actual": "The picker offers Median and inserts Median(column), but Median([Total]) displays “Unsupported function Median” with Done disabled, preventing adding the offered metric.",
+      "reproSteps": [
+        "No persistent data changes required. Other metrics and weekday grouping are incidental; use a fresh Orders query if desired.",
+        "Open an Orders notebook query.",
+        "Add an aggregation and search for median.",
+        "Choose the offered Median result under Custom Expressions.",
+        "Replace its column placeholder with [Total], producing Median([Total]); name it QA median total."
+      ]
+    },
+    {
+      "id": "metabase-querying-256",
+      "name": "Changing joined Products table to People hides the active downstream Count filter from notebook",
+      "severity": 3,
+      "summary": "Changing joined Products table to People hides the active downstream Count filter from notebook.",
+      "expected": "Notebook should show all active filtering stages, including retained Count filter, so users can understand and edit the query.",
+      "actual": "After replacing joined table, notebook omits the downstream Count filter, yet results still apply it and show No results. Result-view filter chip exposes Count between 4500 and 5000. Default multimodal assertion confirmed no Filter stage or Count-range filter anywhere in notebook.",
+      "reproSteps": [
+        "Create Orders query with right outer Products join on Product ID=ID; summarize Count by Products Category.",
+        "Add subsequent filter Count between 4500 and 5000.",
+        "In notebook change joined Products table to People. Default condition becomes Orders User ID=People ID and Category grouping clears.",
+        "Visualize: No results. Show filters in result header: Count is between 4500 and 5000 remains active.",
+        "Reopen Editor: notebook ends at Count summary, without displaying the active downstream filter."
+      ]
+    },
+    {
+      "id": "metabase-querying-239",
+      "name": "Accepted nested case/coalesce expression fails to run with Unknown data type \"?\"",
+      "severity": 3,
+      "summary": "Accepted nested case/coalesce expression fails to run with Unknown data type \"?\".",
+      "expected": "The accepted expression returns fallback:nested: for positive Product IDs, or the editor explains any unsupported expression before execution.",
+      "actual": "The question shows 'There was a problem with your question'; expanded details begin 'Unknown data type: \"?\"; SQL statement'. Footer shows 0 rows.",
+      "reproSteps": [
+        "Create a new builder question from Sample Database > Products.",
+        "Add a custom column named QA-EXPR Null and nesting with expression: concat(coalesce(case([ID] < 0, \"unreachable\"), \"fallback\"), \":\", case([ID] > 0, case([ID] >= 1 AND NOT ([ID] = 0), \"nested\", \"bad\"), \"bad\"), \":\", coalesce(\"\", \"not-empty\"))",
+        "Click enabled Done, then Visualize.",
+        "Expand Show error details."
+      ]
+    },
+    {
+      "id": "metabase-querying-191",
+      "name": "Renaming a snippet used twice makes the SQL query fail",
+      "severity": 3,
+      "summary": "Renaming a snippet used twice makes the SQL query fail.",
+      "expected": "Renaming a snippet should preserve all references and the query should continue returning the same result.",
+      "actual": "Before rename, the repeated-snippet query returns count 256. After rename, both displayed snippet names update, but running the query shows “Unable to resolve Snippet: missing `:snippet-id`”.",
+      "reproSteps": [
+        "Sign in and choose New → SQL query; select Sample Database.",
+        "Open SQL Snippets, choose Create snippet, enter TOTAL > 150, and save it with a unique name such as Bash Total Original.",
+        "Enter SELECT COUNT(*) AS n FROM ORDERS WHERE {{snippet: Bash Total Original}} OR {{snippet: Bash Total Original}} and run it; observe count 256.",
+        "In SQL Snippets, expand the snippet's chevron and choose Edit. Rename it to Bash Total Renamed and save.",
+        "Observe both query references update to Bash Total Renamed. Run the SQL again with Ctrl+Enter and observe the missing snippet-id error."
+      ]
+    },
+    {
+      "id": "metabase-querying-195",
+      "name": "Saved SQL selecting a text parameter fails as a query-builder source",
+      "severity": 3,
+      "summary": "Saved SQL selecting a text parameter fails as a query-builder source.",
+      "expected": "A saved SQL question that returns the default text parameter successfully should also return that value when selected as a query-builder source.",
+      "actual": "Direct execution returns one row containing alpha. Selecting the same saved question through New > Question > Our analytics and clicking Visualize fails. For SELECT {{choices}} AS chosen, error details show Unknown data type: \"CHOSEN\" and generated SQL SELECT \"source\".\"CHOSEN\" AS \"CHOSEN\" FROM (SELECT ? AS chosen) AS \"source\" LIMIT 2000.",
+      "reproSteps": [
+        "Sign in as eval@momentic.ai and choose New > SQL query, using Sample Database.",
+        "Enter SELECT {{choices}} AS chosen.",
+        "Configure choices as a Text variable with a single-value dropdown containing alpha, make it required, and set its default to alpha.",
+        "Run the query and verify the result contains alpha. Save it in Our analytics with a unique name.",
+        "Choose New > Question, open Our analytics in the source picker, and select the saved SQL question.",
+        "Click Visualize and inspect the error details. The query fails with Unknown data type: \"CHOSEN\".",
+        "As a control, save a separate SQL question using SELECT CAST({{choices}} AS VARCHAR) AS chosen with the same parameter configuration; repeating the source-selection steps returns alpha successfully."
+      ]
+    },
+    {
+      "id": "metabase-querying-238",
+      "name": "Saving a native query with a shorthand saved-question reference immediately leaves it marked unsaved",
+      "severity": 3,
+      "summary": "Saving a native query with a shorthand saved-question reference immediately leaves it marked unsaved.",
+      "expected": "After saving a native query, the newly created saved question page should be in a saved state without displaying a Save button or prompting beforeunload warnings upon navigating away.",
+      "actual": "Immediately after saving, the question page still displayed a Save button in the header, and attempting to navigate away/reload triggered an unsaved changes confirmation dialog (before the reload cleared the dirty state and revealed the expanded reference in the editor).",
+      "reproSteps": [
+        "Using Sample Database, create and save a SQL source question: SELECT CATEGORY, COUNT(*) + 1 AS PRODUCT_COUNT FROM PRODUCTS GROUP BY CATEGORY ORDER BY CATEGORY. Note its question ID.",
+        "New > SQL query: enter SELECT * FROM {{#<source ID>}} WHERE PRODUCT_COUNT BETWEEN 50 AND 53 (using the actual ID, shorthand without name). Run it.",
+        "Save as a fresh QA-SOURCE-prefixed question.",
+        "Refresh or reopen the newly saved question without editing its query; observe the Save control and attempt navigation away."
+      ]
+    },
+    {
+      "id": "metabase-querying-230",
+      "name": "Running a saved SQL question with a new numeric parameter changes its title to New question",
+      "severity": 3,
+      "summary": "Running a saved SQL question with a new numeric parameter changes its title to New question.",
+      "expected": "Running the saved query with a different filter value keeps the saved question title and identity while updating results.",
+      "actual": "Results update to 2 and 4, but the header changes from PAR-numeric-required-0721 to New question, displaying a Save button and a Started from PAR-numeric-required-0721 breadcrumb.",
+      "reproSteps": [
+        "New > SQL query, select Sample Database.",
+        "Enter SELECT {{amount}} AS entered_amount, {{amount}} * 2 AS doubled.",
+        "Set amount variable type Number, default -1.25, and enable Always require a value.",
+        "Run and save with a unique PAR-prefixed name.",
+        "Reopen the saved question (editor collapsed); change Amount to 2.",
+        "Click the large central blue Run button."
+      ]
+    },
+    {
+      "id": "metabase-querying-237",
+      "name": "Duplicate question dialog asks for a dashboard name in the Name placeholder",
+      "severity": 1,
+      "summary": "Duplicate question dialog asks for a dashboard name in the Name placeholder.",
+      "expected": "The Name placeholder should refer to the question being duplicated, not a dashboard.",
+      "actual": "In the Duplicate question dialog, clearing Name exposes the placeholder “What is the name of your dashboard?” while the dialog title identifies a question.",
+      "reproSteps": [
+        "As Harbor Admin, create a new SQL question on Sample Database: SELECT ID, TOTAL FROM ORDERS ORDER BY ID LIMIT 3.",
+        "Save it with a unique SAVE-prefixed name.",
+        "Open the saved question's ellipsis menu and choose Duplicate.",
+        "Clear the Name field; inspect its placeholder."
+      ]
+    },
+    {
+      "id": "metabase-querying-251",
+      "name": "Clicking 'Back to previous results' and discarding changes restores an outdated question title",
+      "severity": 3,
+      "summary": "Clicking 'Back to previous results' and discarding changes restores an outdated question title.",
+      "expected": "Returning to the saved question retains its renamed title ('QA-SQL-Subquery-Renamed-20261021').",
+      "actual": "The question result returns to 7, but the header title reverts from 'QA-SQL-Subquery-Renamed-20261021' to 'QA-SQL-Subquery-20261021'.",
+      "reproSteps": [
+        "Create a native SQL question on Sample Database: SELECT COUNT(*) AS subquery_count FROM (SELECT ID FROM ORDERS WHERE ID BETWEEN 1 AND 5) subset; save with a QA-SQL-prefixed name.",
+        "Edit bound to 7, run, save replacing original and refresh.",
+        "Rename header to QA-SQL-Subquery-Renamed-20261021, press Enter and refresh; observe renamed title and result 7.",
+        "Open editor and run SELECT ID, TOTAL FROM ORDERS WHERE ID < 0.",
+        "On No results, click Back to previous results and confirm Discard changes.",
+        "Observe header restored to old QA-SQL-Subquery-20261021 instead of renamed title."
+      ]
+    },
+    {
+      "id": "metabase-querying-232",
+      "name": "Explore results fails for a saved SQL question with duplicate column aliases",
+      "severity": 3,
+      "summary": "Explore results fails for a saved SQL question with duplicate column aliases.",
+      "expected": "Explore results should preserve the successful SQL result, disambiguating duplicate columns as needed, or explain any source restriction before creating a failing builder query.",
+      "actual": "Explore results immediately shows 'There was a problem with your question' and0 rows. Error details begin 'Duplicate column name \"Same\"'. The saved SQL itself runs successfully.",
+      "reproSteps": [
+        "As Harbor Admin, choose New > SQL query in Sample Database.",
+        "Enter SELECT 10 AS \"Same\", 20 AS \"Same\", CAST(NULL AS INTEGER) AS \"Nullable\" and run. The SQL result displays one row with10,20 and a blank Nullable cell.",
+        "Save as a unique STAGE Duplicate SQL question, then reload; verify the SQL still returns the row.",
+        "Click Explore results, then Show error details."
+      ]
+    },
+    {
+      "id": "metabase-querying-253",
+      "name": "Reverting SQL conversion to a builder revision leaves the question View-only with editing controls removed",
+      "severity": 3,
+      "summary": "Reverting SQL conversion to a builder revision leaves the question View-only with editing controls removed.",
+      "expected": "Reverting to the editable builder revision restores the builder question and its Filter, Summarize and Editor controls for the same owner.",
+      "actual": "The question shows a lock and “View-only”; Filter, Summarize and Editor controls disappear while the seven-row results remain. Whole-page multimodal assertion confirmed View-only and absence of those controls after closing Info. Before conversion this same owner could edit the question.",
+      "reproSteps": [
+        "Create a builder question from Products with row limit 7 and save it.",
+        "Open Editor, View SQL, Convert this question to SQL.",
+        "Save replacing original question; reload and confirm SQL query retained.",
+        "Open More info > History.",
+        "Revert the immediately preceding builder revision.",
+        "Close Info sidebar and inspect question controls."
+      ]
+    },
+    {
+      "id": "metabase-querying-233",
+      "name": "SQL results table crashes when a column has an empty quoted alias",
+      "severity": 3,
+      "summary": "SQL results table crashes when a column has an empty quoted alias.",
+      "expected": "The valid SQL row should render, using a fallback label for the empty column name if necessary.",
+      "actual": "Footer says 'Showing 1 row' but the table area contains only a warning icon. Hover says 'Something’s gone wrong. Click for more information'; clicking opens 'Oops, something went wrong'. A full-page multimodal assertion confirmed the result table and values are absent.",
+      "reproSteps": [
+        "As Harbor Admin choose New > SQL query, Sample Database.",
+        "Enter SELECT 10 AS \"\", CAST(NULL AS INTEGER) AS \"Nullable\".",
+        "Run with Control+Enter and inspect the result table.",
+        "Hover then click the warning icon in the result area."
+      ]
+    },
+    {
+      "id": "metabase-querying-268",
+      "name": "Remapping a numeric SQL field filter to a date retains the old value and breaks execution",
+      "severity": 3,
+      "summary": "Remapping a numeric SQL field filter to a date retains the old value and breaks execution.",
+      "expected": "Clear or validate the incompatible numeric selection when switching the mapped field to a date, so a valid date selection can be supplied and the query executes.",
+      "actual": "Price >=90 executes with count10. Remapping to Created At retains90 and displays On January1,1990; Run fails: class clojure.lang.PersistentVector cannot be cast to class java.lang.CharSequence. Choosing valid October2026 recovers and returns5.",
+      "reproSteps": [
+        "Choose New → SQL query and Sample Database.",
+        "Enter SELECT COUNT(*) AS n FROM products WHERE {{value_filter}};",
+        "In Variables and parameters set value_filter Variable type to Field Filter, map it to Products → Price, and choose Greater than or equal to as Filter widget type.",
+        "Open the Value Filter chip, enter90, click Add filter, and run. Confirm count10.",
+        "In the parameter settings change Field to map to from Products.Price to Products.Created At.",
+        "Observe Month and Year selected automatically but the chip still shows On January1,1990. Run the query and observe the PersistentVector-to-CharSequence error.",
+        "Choose a valid date such as October2026 and run to confirm the query itself works."
+      ]
+    },
+    {
+      "id": "metabase-querying-315",
+      "name": "Replacing saved right-hand join source silently removes Visualize button after completing join condition",
+      "severity": 3,
+      "summary": "Replacing saved right-hand join source silently removes Visualize button after completing join condition.",
+      "expected": "After selecting a new join table and completing the join condition, the query should be runnable via the Visualize button, or validation messaging should explain why it cannot run.",
+      "actual": "After completing the join condition on the new right-hand table, the Visualize button remains absent from the editor without any error message or explanation.",
+      "reproSteps": [
+        "Create a saved question counting Products self inner join ID>=ID (Count 20100).",
+        "Create Products left join that saved question with Products.ID < joined Count; add custom column [joined Count] - [ID], name Count Minus ID, save and reopen.",
+        "Create another saved aggregate question Accounts left join Invoices ID=Account ID, filter Canceled At is empty, Count (2698).",
+        "In the saved Products question editor, replace right-hand saved join source with the Accounts/Invoices aggregate. Complete Products.ID = joined Count.",
+        "Observe missing bottom Visualize and no validation explanation. Open Count Minus ID; new source Count is displayed. Update without editing to restore ability to run."
+      ]
+    },
+    {
+      "id": "metabase-querying-328",
+      "name": "Replacing a multiline custom expression scrambles entered formula and leaves invalid syntax",
+      "severity": 3,
+      "summary": "Replacing a multiline custom expression scrambles entered formula and leaves invalid syntax.",
+      "expected": "The replacement expression should correctly enter as concat([QACOL Prefix], \"!\") without text scrambling or syntax errors.",
+      "actual": "The editor scrambles the formula into 'L Prefix], \"!\")concat([QACO])' and displays 'Expecting an opening parenthesis'. Update cannot commit the change, and clicking Visualize opens a 'Keep editing your custom expression?' dialog.",
+      "reproSteps": [
+        "Create a fresh QACOL Products question with substring([Title], 1, 4) named QACOL Prefix.",
+        "Add concat(replace([Title], \"Rustic\", \"Modern\"), \" | \", [Category]) named QACOL Label; save/reload.",
+        "Open QACOL Label editor, focus formula, select all with Control+A and type concat([QACOL Prefix], \"!\") quickly (the race shows reliably at ~20 ms per key, or at normal speed on a slowed CPU).",
+        "Inspect expression and attempt Update/Visualize."
+      ]
+    },
+    {
+      "id": "metabase-querying-312",
+      "name": "Typing saved-question reference #70 opens reference details for unrelated question #7",
+      "severity": 3,
+      "summary": "Typing saved-question reference #70 opens reference details for unrelated question #7.",
+      "expected": "Reference sidebar should identify the saved question referenced in the completed SQL (#70 QASQLREUSE_builder_47), including its REUSE_VALUE column.",
+      "actual": "After typing SELECT * FROM {{#70}} and running it, result correctly shows 48 but sidebar remains Product breakdown, ID #7, with TITLE, CATEGORY and count columns. The sidebar shows the question whose ID is the typed ID's first digit.",
+      "reproSteps": [
+        "Create an own SQL question SELECT 48 AS reuse_value and save it.",
+        "Create a builder question using that saved SQL question as starting data and save it.",
+        "Use New > SQL query. Type SELECT * FROM {{#<ID>}} using normal keyboard typing, where <ID> is the multi-digit ID of the builder question (for example #70).",
+        "Run the query and inspect the automatically opened reference sidebar alongside the completed SQL."
+      ]
+    },
+    {
+      "id": "metabase-querying-313",
+      "name": "Replacing a restored SQL question after cycle validation redirects to permission-denied page",
+      "severity": 3,
+      "summary": "Replacing a restored SQL question after cycle validation redirects to permission-denied page.",
+      "expected": "Valid replacement saves the restored question or reports a recoverable validation error in the editor.",
+      "actual": "Saving redirects to a full-page 'Sorry, you don’t have permission to see that.' Reopening the question URL confirms the question remains accessible.",
+      "reproSteps": [
+        "Create a saved SQL question (for example SELECT 48 AS reuse_value) and move it to Trash.",
+        "Open the question from Trash and click Restore in its banner. Do not reload.",
+        "Edit the SQL (or rename the question) and Save, replacing the original.",
+        "Observe the full-page 'Sorry, you don't have permission to see that.' Reloading shows the question unchanged."
+      ]
+    },
+    {
+      "id": "metabase-querying-314",
+      "name": "First Run click after editing field-filter alias retains old results instead of executing changed binding",
+      "severity": 3,
+      "summary": "First Run click after editing field-filter alias retains old results instead of executing changed binding.",
+      "expected": "Clicking Run should commit the edited alias and execute the current binding, displaying the BAD.CATEGORY column-not-found error.",
+      "actual": "First Run click leaves 54 previous successful Widget rows despite BAD.CATEGORY in the alias input. No error appears anywhere; the second Run click executes the change and displays its error.",
+      "reproSteps": [
+        "Create native Sample Database SQL: SELECT P.ID, P.TITLE, P.CATEGORY, COUNT(O.ID) AS ORDER_COUNT FROM PRODUCTS P LEFT JOIN ORDERS O ON O.PRODUCT_ID = P.ID WHERE {{category}} GROUP BY P.ID, P.TITLE, P.CATEGORY ORDER BY P.ID.",
+        "Configure category as Field Filter mapped to Products Category with Table and field alias P.CATEGORY. Select Widget and run, observing 54 grouped rows.",
+        "In Variables sidebar change Table and field alias to BAD.CATEGORY. Without tabbing away, click Run query.",
+        "Observe unchanged successful Widget results and no SQL error. A second Run click produces column-not-found for BAD.CATEGORY."
+      ]
+    },
+    {
+      "id": "metabase-querying-316",
+      "name": "Switching a field-filter input from multiple values to a single value leaves Update filter disabled for a new value",
+      "severity": 3,
+      "summary": "Switching a field-filter input from multiple values to a single value leaves Update filter disabled for a new value.",
+      "expected": "After switching to \"A single value\" and entering Gizmo, Update filter should be enabled so Gizmo can be applied and the question re-run with that category.",
+      "actual": "The popover shows Gizmo, but Update filter stays greyed out and disabled, even more than 30 seconds after Enter and blur. Clicking it does nothing. The chip still says \"Category: 2 selections\" and the results still show only Gadget 4,939 and Widget 5,061.",
+      "reproSteps": [
+        "Open the Category filter, type Widget + Enter and Gadget + Enter, then click Add filter.",
+        "Click OPEN EDITOR, click Run (results: Gadget 4,939 and Widget 5,061), then open Variables.",
+        "Under 'People can pick' select 'A single value'.",
+        "Open the Category filter (chip says '2 selections'); the input shows Widget. Replace it with Gizmo, press Enter, and blur the input."
+      ]
+    },
+    {
+      "id": "metabase-querying-319",
+      "name": "Browser Forward cannot return from discarded SQL results to the People-source notebook/results after Back",
+      "severity": 3,
+      "summary": "Browser Forward cannot return from discarded SQL results to the People-source notebook/results after Back.",
+      "expected": "Forward goes back through the history entries the user just left: first the People-source notebook, then the People results.",
+      "actual": "Neither Forward changes the page. The URL and view stay on the SQL \"New question\" results showing 2 rows (christ, xavier).",
+      "reproSteps": [
+        "Pick Sample Database > People, click Save, name it 'QA People source', and save it to Our analytics",
+        "Click New > SQL query (Sample Database), type SELECT * FROM REVIEWS LIMIT 2, and run it with Ctrl+Enter",
+        "Click New > Question, then click 'Discard changes'",
+        "Click Browse all, find and select 'QA People source', then click Visualize (the People results appear)",
+        "Press browser Back (the notebook appears), then press Back again (the SQL results with christ/xavier appear)",
+        "Press browser Forward twice: the SQL results stay on screen and the People notebook and results never return"
+      ]
+    },
+    {
+      "id": "metabase-querying-320",
+      "name": "LEFT join to a filtered saved summary blanks the original Orders Product ID for unmatched rows",
+      "severity": 3,
+      "summary": "LEFT join to a filtered saved summary blanks the original Orders Product ID for unmatched rows.",
+      "expected": "A LEFT join should preserve original Orders fields regardless of whether the right-side summary has a match. Unmatched joined fields may be blank, but Orders.Product ID should retain its value/display.",
+      "actual": "Changing only the saved right-side summary from Count>100 to >110 makes Order4's base Product ID display change from Awesome Bronze Plate to blank; restoring >100 brings it back. Even restored baseline shows blank base Product ID for other unmatched Orders.",
+      "reproSteps": [
+        "Create a fresh QAJOIN source question: Orders summarized by Count grouped by Product ID, then LEFT join Products on Product ID=Products.ID, then filter Count>100; save separately.",
+        "Create a fresh question from Orders and LEFT join that saved summary, matching Orders.Product ID to the summary's Products.ID; include all fields and visualize/save.",
+        "Observe Order4: base Product ID displays Awesome Bronze Plate and joined Count107, while unmatched orders have blank base Product ID.",
+        "Edit the own summary source filter to Count>110 and replace it. Reopen the downstream question: Order4 remains but its original Product ID cell is now blank as well as joined fields."
+      ]
+    },
+    {
+      "id": "metabase-querying-321",
+      "name": "Maya can run shared SQL referencing Jordan's inaccessible personal question and see its 1,283-row count",
+      "severity": 3,
+      "summary": "Maya can run shared SQL referencing Jordan's inaccessible personal question and see its 1,283-row count.",
+      "expected": "Execution should deny an inaccessible personal-question dependency, consistent with the direct-access permission denial and the requested dependency permission check.",
+      "actual": "Direct access to the personal question is denied, but shared SQL referencing it executes and displays 1,283 (Showing 1 row), including after rerunning.",
+      "reproSteps": [
+        "As jordan@example.test, save an Orders question in your personal collection. Then save a SQL question in Our analytics that counts rows from it (SELECT COUNT(*) FROM the saved-question reference).",
+        "Sign in as maya@example.test and open Jordan's personal question directly; observe permission denial.",
+        "Open the shared SQL question in Our analytics, open the editor, and run it with Control+Enter.",
+        "Observe it returns the personal question's row count (1,283)."
+      ]
+    },
+    {
+      "id": "metabase-querying-322",
+      "name": "Back after cancelling the unsaved-changes warning silently replaces edited SQL/results with an older query",
+      "severity": 3,
+      "summary": "Back after cancelling the unsaved-changes warning silently replaces edited SQL/results with an older query.",
+      "expected": "Cancelling Back should preserve the edited query and navigation state; another Back away from unsaved changes should again offer the discard/cancel choice.",
+      "actual": "With unsaved SELECT 6402 AS tab_b_value returning 6402, Back showed a discard warning. Cancel retained 6402. A second Back immediately replaced the result with 6401 and collapsed the editor, without a discard warning. A whole-page AI assertion confirmed result 6401 and no warning dialog.",
+      "reproSteps": [
+        "As authenticated user, create an own native SQL question on Sample Database; run SELECT 6401 AS tab_b_value and save it.",
+        "Refresh the saved question, open editor, replace SQL with SELECT 6402 AS tab_b_value and run Control+Enter; observe 6402.",
+        "Use browser Back; observe Discard your changes? warning.",
+        "Click Cancel; observe edited SQL/result 6402 retained.",
+        "Use browser Back again; observe old 6401 result without warning."
+      ]
+    },
+    {
+      "id": "metabase-querying-323",
+      "name": "Entering a 21-digit row limit silently changes to scientific notation 1e+21 when returning from visualization",
+      "severity": 3,
+      "summary": "Entering a 21-digit row limit silently changes to scientific notation 1e+21 when returning from visualization.",
+      "expected": "Reject or validate row-limit values exceeding standard integer precision, or retain the exact integer entered.",
+      "actual": "The Row limit field changes to '1e+21' upon returning to the query editor, without any warning or validation message.",
+      "reproSteps": [
+        "Save an Orders question with a sort and open its editor.",
+        "Set row limit to999999999999999999999 and blur.",
+        "Switch to Visualization and reopen Editor."
+      ]
+    },
+    {
+      "id": "metabase-querying-325",
+      "name": "Renaming Count to another aggregate's custom name silently redirects the later-stage sum: 715,301.06 becomes 9,444",
+      "severity": 3,
+      "summary": "Renaming Count to another aggregate's custom name silently redirects the later-stage sum: 715,301.06 becomes 9,444.",
+      "expected": "A name collision should be rejected or disambiguated while preserving existing field references. The later-stage sum of monetary totals should remain 715,301.06; changing another aggregate's label must not redirect it to Count.",
+      "actual": "Both first-stage aggregates remain named QA total, but the later-stage monetary sum now shows 9,444, matching the sum of counts. The complete row changed from 9,444 / 2 / 715,301.06 to 9,444 / 2 / 9,444.",
+      "reproSteps": [
+        "Create an own Orders question from Sample Database. Summarize Count and Sum(Total), grouped by Created At: Year. Give Count a distinct custom name and give Sum(Total) the custom name QA total.",
+        "Sort by the Count aggregate ascending. Add a later-stage range filter on that Count aggregate between 3000 and 6000.",
+        "In the later stage summarize Sum of the Count aggregate, Count of groups, and Sum of QA total. Run as a table; observed row is 9,444, 2, 715,301.06.",
+        "Return to notebook. Edit the first-stage Count expression, leave Count() unchanged, and rename it QA total, matching the existing Sum(Total) aggregate name. Click Update and Visualize.",
+        "Inspect the third later-stage aggregate. Its value changes from 715,301.06 to 9,444 even though only the other aggregate's name was edited."
+      ]
+    },
+    {
+      "id": "metabase-querying-376",
+      "name": "PRODUCTS CATEGORY reference description misspells valid value Doohickey as Doohicky",
+      "severity": 1,
+      "summary": "PRODUCTS CATEGORY reference description misspells valid value Doohickey as Doohicky.",
+      "expected": "Valid value in the description should read Doohickey, matching the listed category.",
+      "actual": "Description says “Doohicky”; the distinct-value list says “Doohickey”.",
+      "reproSteps": [
+        "Open New > SQL query and select Sample Database.",
+        "Open data reference pane, PRODUCTS, then CATEGORY.",
+        "Compare description of valid values with listed distinct values."
+      ]
+    },
+    {
+      "id": "metabase-querying-362",
+      "name": "Don't bin date grouping still returns daily groups: Unbinned selector conflicts with Created At: Day results",
+      "severity": 3,
+      "summary": "Don't bin date grouping still returns daily groups: Unbinned selector conflicts with Created At: Day results.",
+      "expected": "Don't bin should group by original timestamps, not daily truncated dates; its groups cannot be fewer than grouping the same timestamps by Hour.",
+      "actual": "Selector shows Unbinned but table header reads Created At: Day and footer shows 5,140 rows, matching the Day grouping; Hour previously reached the10,000-row display limit. An AI assertion confirmed Unbinned, Day header and5,140rows together.",
+      "reproSteps": [
+        "Create a Sample Database Orders notebook question with Average of Total grouped by Created At and Product Category; visualize and use data table view.",
+        "Change date bucket to Hour: result reaches 10,000 displayed rows.",
+        "Change date bucket to Quarter of year, then choose Don't bin from its bucket dropdown.",
+        "Inspect the settled table and the bottom date-bucket selector."
+      ]
+    },
+    {
+      "id": "metabase-querying-364",
+      "name": "Custom expression rejects quoted square brackets in concat string literals",
+      "severity": 3,
+      "summary": "Custom expression rejects quoted square brackets in concat string literals.",
+      "expected": "Quoted square brackets are ordinary string literals; concatenating them around Title should be accepted and yield values such as [Rustic Paper Wallet].",
+      "actual": "The editor displays “Missing an opening bracket for ” and disables Update for concat(\"[\", [Title], \"]\"). Expressions without square-bracket literals were accepted in the same editor.",
+      "reproSteps": [
+        "Start a Sample Database Products notebook question and add a custom column named QA-EXPR Brackets.",
+        "Enter concat(\"[\", [Title], \"]\") in the custom expression editor.",
+        "Observe the validation error and disabled Done/Update button."
+      ]
+    },
+    {
+      "id": "metabase-querying-365",
+      "name": "Custom date arithmetic rejects now() + timeSpan(1, \"day\") as Invalid expression",
+      "severity": 3,
+      "summary": "Custom date arithmetic rejects now() + timeSpan(1, \"day\") as Invalid expression.",
+      "expected": "Adding a one-day timeSpan to now() should be accepted as valid date arithmetic, consistent with adding it to a datetime literal.",
+      "actual": "The editor displays 'Invalid expression' and disables the Update button for now() + timeSpan(1, \"day\").",
+      "reproSteps": [
+        "Create a new Sample Database Products query and add a custom column.",
+        "Enter datetime(\"2024-02-28T23:30:00Z\") + timeSpan(1, \"day\"), apply and visualize. It returns February 29, 2024, 11:30 PM.",
+        "Reopen the expression and replace it with now() + timeSpan(1, \"day\"). Blur the editor and allow validation to settle."
+      ]
+    },
+    {
+      "id": "metabase-querying-366",
+      "name": "Renaming a computed date column resets its existing Month grouping to Day",
+      "severity": 3,
+      "summary": "Renaming a computed date column resets its existing Month grouping to Day.",
+      "expected": "Renaming the custom column should update its references without changing the selected Month grouping or resulting monthly dates.",
+      "actual": "After only renaming QA-EXPR Tomorrow to QA-EXPR Shifted Date, results changed from QA-EXPR Tomorrow: Month / July 2026 to QA-EXPR Shifted Date: Day / July 20, 2026. Count remained 1; the bottom grouping control changed from Month to Unbinned.",
+      "reproSteps": [
+        "Create a Sample Database Products notebook question with custom date column QA-EXPR Tomorrow = datetimeAdd([Created At], 1, \"day\").",
+        "Filter ID is 1, summarize Count of rows grouped by QA-EXPR Tomorrow: Month. Results show July 2026 with Count 1.",
+        "Save your own QA-EXPR question and reload; verify the monthly result persists.",
+        "Open Editor and edit the custom date column. Change only its name to QA-EXPR Shifted Date and click Update.",
+        "Click Visualize and inspect the grouped date header and value."
+      ]
+    },
+    {
+      "id": "metabase-querying-368",
+      "name": "Metric 'QA-SUM Missing Discount' returns blank instead of 0 when input has no rows",
+      "severity": 3,
+      "summary": "Metric 'QA-SUM Missing Discount' returns blank instead of 0 when input has no rows.",
+      "expected": "QA-SUM Missing Discount should display 0 when there are no matching rows, consistent with Count returning 0.",
+      "actual": "With Total < -1000, Count displays 0 while QA-SUM Missing Discount displays a blank cell.",
+      "reproSteps": [
+        "Create a new QA-SUM question using Sample Database Orders.",
+        "Add a pre-summary filter Total less than -1000.",
+        "Add custom summary CountIf(isNull([Discount])) named QA-SUM Missing Discount, plus Count of rows; leave grouping empty.",
+        "Run and switch to the data table. Compare the two counts."
+      ]
+    },
+    {
+      "id": "metabase-querying-361",
+      "name": "Saved question over Orders + People model changes inherited column labels after refresh",
+      "severity": 1,
+      "summary": "Saved question over Orders + People model changes inherited column labels after refresh.",
+      "expected": "Saving and reopening the same query preserves the model's displayed column labels Customer Email and State.",
+      "actual": "Immediately after save headers are Customer Email and State; after refresh they change to People - User → Email and People - User → State. Rows remain filtered to NE with 535 results.",
+      "reproSteps": [
+        "Select Orders + People model through notebook source search on Sample Database.",
+        "Add State is NE filter and Visualize. Observe Customer Email and State column headers.",
+        "Save as a new QA-SOURCE-prefixed question in Our analytics. Headers still show Customer Email and State.",
+        "Refresh the saved question."
+      ]
+    },
+    {
+      "id": "metabase-querying-373",
+      "name": "Editing a snippet's SQL turns its saved dependent question into 'New question'",
+      "severity": 1,
+      "summary": "Editing a snippet's SQL turns its saved dependent question into 'New question'.",
+      "expected": "Saving changes to a reusable snippet should retain the identity of the saved question currently open.",
+      "actual": "After editing snippet SQL from SELECT 22 AS snippet_value to SELECT 33 AS snippet_value and saving the snippet, the saved question header changes from 'QA-SNIPPET-DEPENDENT-0722' to 'New question' with 'Started from QA-SNIPPET-DEPENDENT-0722' and a Save button.",
+      "reproSteps": [
+        "Open New > SQL query using Sample Database.",
+        "Open SQL Snippets toolbar and Create snippet. Use a fresh QA-SNIPPET name, SQL SELECT 22 AS snippet_value, and save.",
+        "Run the automatically inserted snippet reference and observe 22.",
+        "Save the question with a fresh QA-SNIPPET-DEPENDENT name in Our analytics.",
+        "Expand the snippet and click Edit.",
+        "Replace snippet SQL with SELECT 33 AS snippet_value and Save in the snippet dialog.",
+        "Observe the question header changes from its saved name to New question and Started from the saved question."
+      ]
+    },
+    {
+      "id": "metabase-querying-374",
+      "name": "New parameter added to a snippet is missing from saved dependent question, leaving query unrunnable",
+      "severity": 3,
+      "summary": "New parameter added to a snippet is missing from saved dependent question, leaving query unrunnable.",
+      "expected": "Reopening a saved question using a modified snippet should expose the snippet's new parameter so a user can supply the required value and run the query, as insertion/live editing already does.",
+      "actual": "Saved question QA-SNIPPET-PARAM-DEPENDENT-0722 shows 'Cannot run the query: missing required parameters: #{\"qa_snippet_addend\"}' and no Qa Snippet Addend filter. Live unsaved editor did expose the new filter after snippet edit.",
+      "reproSteps": [
+        "Create fresh SQL query on Sample Database: SELECT {{qa_snippet_number}} AS parameter_value.",
+        "Select SQL and right-click Save as snippet; name it a fresh QA-SNIPPET-PARAM name and save.",
+        "Set qa_snippet_number variable type Number, enter 17 and run.",
+        "Save dependent question with fresh QA-SNIPPET-PARAM-DEPENDENT name.",
+        "Open another new SQL query and insert that snippet from SQL Snippets pane.",
+        "Edit the snippet SQL to SELECT {{qa_snippet_number}} + {{qa_snippet_addend}} AS parameter_value and save.",
+        "Reopen the saved dependent question with qa_snippet_number set to 23.",
+        "Observe error naming missing qa_snippet_addend but only Qa Snippet Number filter is available."
+      ]
+    },
+    {
+      "id": "metabase-querying-375",
+      "name": "Removing a snippet parameter leaves its obsolete filter on the reopened saved question",
+      "severity": 3,
+      "summary": "Removing a snippet parameter leaves its obsolete filter on the reopened saved question.",
+      "expected": "Reopening the saved question reconciles its filter widgets with the snippet's current variables, as the live editor does; removed Third should not remain as a misleading nonfunctional filter.",
+      "actual": "The live editor removes Third after the snippet edit, but reopening the saved question restores Resume Third:4. Changing it to 40 leaves the result at 16; the filter is obsolete.",
+      "reproSteps": [
+        "Create a native SQL snippet with a unique QA-SNIPPET name containing SELECT {{resume_first}} + {{resume_second}} + {{resume_third}} AS added_value.",
+        "Insert only that snippet reference into a native query. Set all three variables to Number, enter 7, 9 and 4, and run; result is 20.",
+        "Save as a new question and reload. Verify all three filters and result 20.",
+        "Edit the snippet SQL to SELECT {{resume_first}} + {{resume_second}} AS added_value and save. The live query removes Third and runs to 16.",
+        "Reopen the saved question without saving the dependent question again. Third reappears with value 4 although SQL no longer uses it.",
+        "Change Third to 40 and press Enter. It remains displayed but the result remains 16."
+      ]
+    },
+    {
+      "id": "metabase-querying-413",
+      "name": "Cumulative sum of a binned grouping field sums bin boundaries instead of actual values",
+      "severity": 3,
+      "summary": "Cumulative sum of a binned grouping field sums bin boundaries instead of actual values.",
+      "expected": "Accumulate the original Price values within each bin. The first cumulative result must equal the first regular Sum of Price result, approximately35.56, and the final cumulative total must equal the ungrouped sum, approximately11,149.28.",
+      "actual": "Cumulative sum produces [[10,20],[20,520],[30,1390],...,[90,10180]]. Regular Sum of Price with identical bins gives 35.560042019698099 for the first bin and totals 11,149.279933584149272. The first cumulative value 20 and final 10,180 are wrong. UI View SQL shows subquery FLOOR((PRICE-10)/10)*10+10 AS PRICE, then outer SUM(SUM(source.PRICE)) OVER, so raw prices are lost.",
+      "reproSteps": [
+        "Sign in and open /question/notebook. Choose Sample Database > Products.",
+        "In Summarize select Cumulative sum of ... > Price.",
+        "Open Pick a column to group by. Hover Price, click Binning strategy (Auto bin), and choose 10 bins.",
+        "Click Visualize and inspect the resulting cumulative totals (first bin20; last10,180). The UI-generated query result and Editor > View SQL show the bin-boundary sums.",
+        "For a control, return to Editor, replace Cumulative sum of Price with Sum of Price, retain the same Price:10 bins grouping, and Visualize. The first bin is approximately35.56, which should also be the first cumulative value."
+      ]
+    },
+    {
+      "id": "metabase-querying-414",
+      "name": "Dismissing saved-question onboarding in one tab leaves another tab blocked",
+      "severity": 3,
+      "summary": "Dismissing saved-question onboarding in one tab leaves another tab blocked.",
+      "expected": "Start exploring should close an already-seen introduction in every tab, even if another tab has recorded its dismissal.",
+      "actual": "Verified as Maya with the saved question open in two tabs: dismissing the dialog in one tab succeeds, but dismissing it in the other tab returns HTTP 500, leaves the introduction visible and blocks the Editor. Repeated clicks and Escape also fail in the stale tab.",
+      "reproSteps": [
+        "Create a Products question through New > Question > Sample Database > Products, and save it with a unique name in Our analytics.",
+        "Open the saved question URL in a tab so 'It's okay to play around with saved questions' appears. Before dismissing it, open the same URL in a second tab.",
+        "Click Start exploring in the second tab; it closes successfully.",
+        "Return to the first tab and click Start exploring. The dialog stays open, blocks question controls, and its dismissal request returns HTTP500."
+      ]
+    },
+    {
+      "id": "metabase-querying-403",
+      "name": "Distinct-value drill-through menu option displays singular 'See this Order' but opens ten orders",
+      "severity": 1,
+      "summary": "Distinct-value drill-through menu option displays singular 'See this Order' but opens ten orders.",
+      "expected": "The drill-through option should not imply a single record ('See this Order') based on a distinct-value count of 1 when multiple underlying orders exist.",
+      "actual": "The menu displays 'See this Order' for a distinct count of 1, but clicking it opens 10 orders matching Product ID 169 and Subtotal 39.69.",
+      "reproSteps": [
+        "Open Sample Database Product169 Small Cotton Chair details and click its117 connected Orders.",
+        "Open Subtotal column menu and choose Distinct values.",
+        "In the summary sidebar Group by Subtotal, change Auto binned to Don't bin, then Done.",
+        "Click the distinct-count1 cell for Subtotal39.69. Observe the menu label “See this Order”.",
+        "Click “See this Order”; the underlying table shows10 Orders."
+      ]
+    },
+    {
+      "id": "metabase-querying-405",
+      "name": "Next 120 minutes shows No results while its advertised absolute interval returns an order",
+      "severity": 3,
+      "summary": "Next 120 minutes shows No results while its advertised absolute interval returns an order.",
+      "expected": "Relative minute range should include the same orders as its advertised absolute interval.",
+      "actual": "At observation, Next 120 minutes preview was October 22, 2026, 7:59 PM–9:58 PM but query showed No results. The equivalent absolute range returned ID 3155 at October 22, 2026, 9:20 PM.",
+      "reproSteps": [
+        "Time-sensitive: preserve comparison with the current preview, not hardcoded clock values. This is a minute-unit omitted-record symptom related to earlier hour/day relative preview mismatches. No database records were changed.",
+        "Open Sample Database Orders in notebook as Harbor Admin.",
+        "Set Created At relative range to Next 120 minutes with Include this minute off; observe advertised date/time range.",
+        "Update and Visualize; observe No results.",
+        "Replace with the exact advertised absolute date/time range and Visualize."
+      ]
+    },
+    {
+      "id": "metabase-querying-406",
+      "name": "Removing a self-join silently transfers its joined LABEL filter to the original source LABEL",
+      "severity": 3,
+      "summary": "Removing a self-join silently transfers its joined LABEL filter to the original source LABEL.",
+      "expected": "A filter on the removed join should be removed or marked invalid, rather than changing to a different source column.",
+      "actual": "The joined filter 'QA-JOIN-SQLKeys-1023 → LABEL contains two' becomes 'LABEL contains two' after removing the join. Running returns only the original 'two' row, whereas the joined filter previously retained original labels 'duplicate' and 'two'.",
+      "reproSteps": [
+        "As primary fixture admin create a fresh uniquely named native SQL question in Sample Database and save it: WITH a AS (SELECT 1 AS k UNION ALL SELECT 2 UNION ALL SELECT 3), b AS (SELECT 2 AS k, 'two' AS label UNION ALL SELECT 2, 'duplicate' UNION ALL SELECT 4, 'four') SELECT a.k AS left_key, b.k AS right_key, b.label FROM a LEFT JOIN b ON a.k = b.k ORDER BY a.k, b.label",
+        "Explore its results and open Editor. Join the same saved SQL question using LEFT_KEY equality. Visualize: six rows.",
+        "In Editor add a filter on the joined question's LABEL, Contains two. Visualize: two rows with original LABEL duplicate and two, both joined LABEL two.",
+        "Open Editor and remove the join with its x control. Observe filter now says LABEL contains two. Visualize: one original row, LEFT_KEY2 RIGHT_KEY2 LABELtwo."
+      ]
+    },
+    {
+      "id": "metabase-querying-404",
+      "name": "View details on an Orders product cell leaves the action menu open without opening product details",
+      "severity": 3,
+      "summary": "View details on an Orders product cell leaves the action menu open without opening product details.",
+      "expected": "View details opens the selected product record so its fields can be inspected.",
+      "actual": "The same cell action menu remains open after both clicks; no product details panel or error appears.",
+      "reproSteps": [
+        "Create a fresh query-builder question using Sample Database Orders.",
+        "Filter ID Is 1,2,3. Add custom filter ([ID] = 1 OR [ID] = 2) AND isNull([Discount]); visualize to show IDs 1 and 2.",
+        "Add Product → Category Is Widget; apply to show only Order ID 1 and product Awesome Concrete Shoes.",
+        "Click the Awesome Concrete Shoes product cell, then click View details in its menu.",
+        "Wait for details; repeat the View details click."
+      ]
+    },
+    {
+      "id": "metabase-querying-423",
+      "name": "Nested self-join fields become indistinguishable in the join-key picker",
+      "severity": 3,
+      "summary": "Nested self-join fields become indistinguishable in the join-key picker.",
+      "expected": "The selector should distinguish the base Product ID from the joined Orders Product ID, as the source result table does with Product ID versus Orders → Product ID.",
+      "actual": "The picker shows two options both named Orders → Product ID under the same saved-source heading, with identical More info descriptions and no source distinction. The choices produce different joins. The same ambiguity occurs for other base/joined fields such as ID.",
+      "reproSteps": [
+        "Create an Orders question in Sample Database. Left-join Orders again on base ID < joined ID, set Row limit5, then save the question.",
+        "Create New → Question and choose that saved question from Our analytics (or the collection where you saved it).",
+        "Click Join data → Sample Database → Products.",
+        "Open the Left column selector and search for Product ID.",
+        "Inspect both results and their More info descriptions. Selecting the first uses base Product ID14; selecting the second uses joined Product IDs123,105,94,132,60."
+      ]
+    },
+    {
+      "id": "metabase-querying-461",
+      "name": "Builder fixed-date input shifts ISO 2026-01-02 to January 1, 2026 on blur",
+      "severity": 3,
+      "summary": "Builder fixed-date input shifts ISO 2026-01-02 to January 1, 2026 on blur.",
+      "expected": "The ISO date 2026-01-02 remains January 2, 2026.",
+      "actual": "After blur the Date field displays January 1, 2026 and the calendar selects day 1.",
+      "reproSteps": [
+        "Use a browser timezone behind UTC, such as America/Los_Angeles.",
+        "Create a fresh QA-DATE question using Sample Database > Orders in the notebook builder.",
+        "Add a Created At filter, choose Fixed date range, then On.",
+        "Type 2026-01-02 into Date and move focus out of the field.",
+        "Observe the Date field and selected calendar day."
+      ]
+    },
+    {
+      "id": "metabase-querying-462",
+      "name": "Custom coalesce filter expression is labeled as a direct 'Discount is equal to 0' filter on the filter chip",
+      "severity": 1,
+      "summary": "Custom coalesce filter expression is labeled as a direct 'Discount is equal to 0' filter on the filter chip.",
+      "expected": "The filter chip reflects the coalesce expression or indicates that null values are coalesced, rather than displaying a direct field equality comparison.",
+      "actual": "After updating the custom expression to 'coalesce([Discount], 0) = 0 AND [Quantity] = 1', the filter chip displays 'Discount is equal to 0 and Quantity is equal to 1', despite reopening the chip confirming the coalesce expression is present.",
+      "reproSteps": [
+        "New > Question > Sample Database > Orders; no table edits are needed.",
+        "Add Filter > Custom Expression: coalesce([Discount], 0) = 0 AND [Quantity] = 1; Done.",
+        "Inspect the resulting filter chip and reopen it.",
+        "Optionally summarize Count of rows: this expression returns 3,072; the genuinely direct expression [Discount] = 0 AND [Quantity] = 1 returns 0."
+      ]
+    },
+    {
+      "id": "metabase-querying-463",
+      "name": "Creation date Today hides a question created minutes earlier from search",
+      "severity": 3,
+      "summary": "Creation date Today hides a question created minutes earlier from search.",
+      "expected": "A question created minutes earlier remains in results when filtering its creation date to Today.",
+      "actual": "The unfiltered search lists the own question (among five QA-LIFECYCLE questions), but Today produces 'Didn't find anything'. History immediately beforehand showed this question was created 26 minutes ago.",
+      "reproSteps": [
+        "Use a browser timezone behind UTC, such as America/Los_Angeles, and create the question after 00:00 GMT has passed for the server but not locally (for PT, after 5 PM).",
+        "As Harbor Admin, create a fresh builder question using Sample Database > Orders, limit 4, and save in Our analytics with a unique QA-LIFECYCLE name.",
+        "Search globally for that unique name and open View and filter all results. Verify the saved question is listed.",
+        "Open the question's More info > History: the observed own fixture displayed 'You created this' 26 minutes ago.",
+        "Return to full search and choose Creation date > Today."
+      ]
+    },
+    {
+      "id": "metabase-querying-466",
+      "name": "Renaming a nested inner snippet removes its parameter widgets, so the query cannot run",
+      "severity": 3,
+      "summary": "Renaming a nested inner snippet removes its parameter widgets, so the query cannot run.",
+      "expected": "After renaming the inner snippet, the native query using the outer snippet still shows the inner snippet's Category and Floor widgets and runs once Category is filled in.",
+      "actual": "Only the outer snippet's Ceiling widget appears. Running shows 'Cannot run the query: missing required parameters: #{\"category\"}', and there is no Category widget to fill in. Renaming in the SQL Snippets sidebar while the query is open makes the Category and Floor widgets disappear immediately.",
+      "reproSteps": [
+        "In the native SQL editor for Sample Database, create snippet QA-inner with SQL: CATEGORY = {{category}} [[AND PRICE >= {{snippet_floor}}]].",
+        "Create snippet QA-outer with SQL: AND ({{snippet: QA-inner}}) [[AND PRICE <= {{snippet_ceiling}}]].",
+        "Enter SELECT ID, TITLE, PRICE, CATEGORY FROM PRODUCTS WHERE 1=1 {{snippet: QA-outer}} ORDER BY ID LIMIT 10 and confirm Category, Floor and Ceiling widgets appear and the query runs with Category = Gadget.",
+        "In the SQL Snippets sidebar, rename QA-inner to QA-inner-renamed.",
+        "Observe the Category and Floor widgets disappear; run the query (or start a new query using QA-outer) and observe the missing required parameters error with no way to enter Category."
+      ]
+    },
+    {
+      "id": "metabase-querying-454",
+      "name": "Nested saved-join expression uses original Quantity despite displaying qualified joined Quantity",
+      "severity": 3,
+      "summary": "Nested saved-join expression uses original Quantity despite displaying qualified joined Quantity.",
+      "expected": "For joined Count5 and joined Quantity13, the qualified joined Count / joined Quantity expression should produce5/13, approximately0.38.",
+      "actual": "QA Ratio is1 for this row and all matched rows, consistent with using original Quantity5 instead of displayed joined Quantity13. Reopened expression still displays [QA-NEST-Quantity-Counts - Quantity → Count] / [QA-NEST-Quantity-Counts - Quantity → Quantity].",
+      "reproSteps": [
+        "Create own saved Orders question; summarize Count by unbinned Quantity with Quantity >4.",
+        "Use summarized question as both sides of a left join, original Quantity = joined Count; filter original Quantity between5 and9, select original Quantity and both joined columns, then save.",
+        "Use saved join question as source for another notebook.",
+        "Add QA Ratio custom column using qualified joined Count divided by qualified joined Quantity. Save and run.",
+        "Observe row original Quantity5, joined Quantity13 and joined Count5; reopen expression and verify qualified joined names."
+      ]
+    },
+    {
+      "id": "metabase-querying-464",
+      "name": "Removing a parent join leaves orphaned Joined Category grouping in Summarize and causes the Visualize button to disappear",
+      "severity": 3,
+      "summary": "Removing a parent join leaves orphaned Joined Category grouping in Summarize and causes the Visualize button to disappear.",
+      "expected": "Removing the Products join should clean up dependent joins and their groupings (or prompt), leaving valid remaining joins and Summarize definitions with an available Visualize action.",
+      "actual": "The Products join and dependent SQL join are removed, but the 'Joined Category' grouping remains orphaned in Summarize and the bottom 'Visualize' button disappears.",
+      "reproSteps": [
+        "As Harbor Admin, create a fresh native SQL question named QA-JOIN-SQL-copy using Sample Database: SELECT p.CATEGORY AS \"Joined category\", COUNT(*) AS \"Order count\", SUM(o.TOTAL) AS \"Joined total\" FROM ORDERS o INNER JOIN PEOPLE u ON o.USER_ID = u.ID LEFT JOIN PRODUCTS p ON o.PRODUCT_ID = p.ID GROUP BY p.CATEGORY ORDER BY p.CATEGORY; run and save.",
+        "New > Question > Sample Database > Orders. LEFT join Products on Orders Product ID = Products ID.",
+        "Add LEFT join to the fresh saved SQL question on Products Category = Joined category. Add independent LEFT People join on Orders User ID = People ID before filtering/summarizing.",
+        "Filter Orders ID is 1. Summarize Count grouped by saved SQL Joined category. Execute (Widget Count 1).",
+        "Edit saved-SQL join comparison to != and execute (Doohickey, Gadget, Gizmo Count 1 each). Edit comparison to < and execute (empty category Count 1).",
+        "Switch saved-SQL join to INNER and execute (No results). Click Back to previous results, which restores prior LEFT notebook. Visualize and inspect table (empty category Count 1).",
+        "Open Editor. Remove the first Products join using its X. Observe Products and its dependent saved-SQL join removed but Joined Category grouping remains and Visualize action is absent."
+      ]
+    },
+    {
+      "id": "metabase-querying-470",
+      "name": "Relative hours input shows 1 after typing 0.5, but preview and applied filter use 5 hours",
+      "severity": 3,
+      "summary": "Relative hours input shows 1 after typing 0.5, but preview and applied filter use 5 hours.",
+      "expected": "The interval shown in the editor, preview, and applied filter should agree; fractional input should be rejected or normalized consistently.",
+      "actual": "After blur the input shows 1 hour, but preview spans October 23, 2026 12:00 PM–4:59 PM (five hours). Update applies previous 5 hours instead of the displayed 1 hour.",
+      "reproSteps": [
+        "Create a fresh question using New > Question > Sample Database > Products; save under a unique QA-FILTER name.",
+        "Add Created At relative date filter for previous 5 hours.",
+        "Reopen the filter, replace Interval with 0.5 and blur the input.",
+        "Observe the displayed interval and preview, then click Update filter."
+      ]
+    },
+    {
+      "id": "metabase-querying-455",
+      "name": "“Back to previous results” opens the notebook editor instead of returning to results",
+      "severity": 3,
+      "summary": "“Back to previous results” opens the notebook editor instead of returning to results.",
+      "expected": "The control labeled Back to previous results returns to the prior query results, or is labeled to describe returning to the editor.",
+      "actual": "It returns to the saved question’s notebook editor with Data, Filter and Visualize. No results table is displayed anywhere; Another Visualize action is needed to see the previous result.",
+      "reproSteps": [
+        "Create a Sample Database Orders question filtered to Created At May 15, 2027 at 8:04 AM; save as a separate QA fixture and inspect the one-row result.",
+        "Open Editor and change the date using the calendar to May 16, 2027 while retaining 8:04 AM; Update filter and Visualize to get No results.",
+        "Click Back to previous results and confirm Discard changes."
+      ]
+    },
+    {
+      "id": "metabase-querying-511",
+      "name": "Changing a self-join's right condition field silently deletes its existing joined-ID filter",
+      "severity": 3,
+      "summary": "Changing a self-join's right condition field silently deletes its existing joined-ID filter.",
+      "expected": "Changing the join comparison field on the same Products table should retain the independently configured joined Products ID=200 filter, which is still a valid field.",
+      "actual": "The Products ID is 200 filter remains after changing the left field to Title, but disappears entirely upon selecting Title on the right.",
+      "reproSteps": [
+        "Create a fresh QA-JOIN question using Sample Database > Products. Join Products again using Right outer join and source ID <= joined ID; add AND source ID=joined ID.",
+        "Add a filter on the joined Products ID equal to 200. Save under a fresh QA-JOIN name, run and reopen the editor (one result).",
+        "Remove the second equality join condition, leaving ID <= ID. Change the left condition field from ID to Title. Observe the joined-ID=200 filter is still present.",
+        "Change the right condition field from ID to Title. Observe the entire filter stage disappears, although the joined table remains Products."
+      ]
+    },
+    {
+      "id": "metabase-querying-512",
+      "name": "Drilling into a nonempty timezone-aware week returns No results",
+      "severity": 3,
+      "summary": "Drilling into a nonempty timezone-aware week returns No results.",
+      "expected": "Drilling into the Count 1 weekly group returns the underlying matching row.",
+      "actual": "Drilling into the Count 1 weekly group applies the filter 'EVENT_AT is Mar 1–7, 2026' and displays 'No results!' with 0 rows.",
+      "reproSteps": [
+        "Create and save a fresh SQL question on Sample Database with: SELECT 'spring_before' AS label, CAST('2026-03-08 01:59:59-05:00' AS TIMESTAMP WITH TIME ZONE) AS event_at UNION ALL SELECT 'spring_after', CAST('2026-03-08 03:00:00-04:00' AS TIMESTAMP WITH TIME ZONE) UNION ALL SELECT 'fall_first', CAST('2026-11-01 01:30:00-04:00' AS TIMESTAMP WITH TIME ZONE) UNION ALL SELECT 'fall_second', CAST('2026-11-01 01:30:00-05:00' AS TIMESTAMP WITH TIME ZONE) UNION ALL SELECT 'day_before', CAST('2026-03-07 23:59:59-05:00' AS TIMESTAMP WITH TIME ZONE) UNION ALL SELECT 'day_after', CAST('2026-03-09 00:00:00-04:00' AS TIMESTAMP WITH TIME ZONE).",
+        "Explore results, Summarize Count and group EVENT_AT by Week; Done shows three groups with counts 1, 3, 2.",
+        "Click the first Count 1 point, then See this QA-DATE DST source.",
+        "Observe the generated EVENT_AT Mar 1–7, 2026 filter and No results."
+      ]
+    },
+    {
+      "id": "metabase-querying-513",
+      "name": "Grouping timezone-aware timestamps by Month produces duplicate March and November groups",
+      "severity": 3,
+      "summary": "Grouping timezone-aware timestamps by Month produces duplicate March and November groups.",
+      "expected": "One March 2026 row with Count 4 and one November 2026 row with Count 2.",
+      "actual": "Preview displays four rows: two March 2026 rows with Count 2 and two November 2026 rows with Count 1, and the chart indicates 4 rows while plotting count 2 for March 2026.",
+      "reproSteps": [
+        "Create and save a fresh SQL question on Sample Database with: SELECT 'spring_before' AS label, CAST('2026-03-08 01:59:59-05:00' AS TIMESTAMP WITH TIME ZONE) AS event_at UNION ALL SELECT 'spring_after', CAST('2026-03-08 03:00:00-04:00' AS TIMESTAMP WITH TIME ZONE) UNION ALL SELECT 'fall_first', CAST('2026-11-01 01:30:00-04:00' AS TIMESTAMP WITH TIME ZONE) UNION ALL SELECT 'fall_second', CAST('2026-11-01 01:30:00-05:00' AS TIMESTAMP WITH TIME ZONE) UNION ALL SELECT 'day_before', CAST('2026-03-07 23:59:59-05:00' AS TIMESTAMP WITH TIME ZONE) UNION ALL SELECT 'day_after', CAST('2026-03-09 00:00:00-04:00' AS TIMESTAMP WITH TIME ZONE).",
+        "Explore results, summarize Count grouped by EVENT_AT Month.",
+        "Open Editor and click the preview triangle beside the Summarize stage."
+      ]
+    },
+    {
+      "id": "metabase-querying-514",
+      "name": "Replacing a post-aggregation join with Reviews corrupts the join configuration and returns all 1,112 reviews for a single product group",
+      "severity": 3,
+      "summary": "Replacing a post-aggregation join with Reviews corrupts the join configuration and returns all 1,112 reviews for a single product group.",
+      "expected": "Joining the aggregated Product ID group to Reviews on Product ID should join only matching reviews for Synergistic Granite Chair (product 3).",
+      "actual": "Configuring the join changes the join card to join Reviews to Reviews on Product ID = Product ID, and running the query returns 1,112 rows repeating the Synergistic Granite Chair group (Count 77) across reviews for all products.",
+      "reproSteps": [
+        "Save Products filtered to ID3 as a fresh question.",
+        "Build Orders inner join that saved source on Orders Product ID=source ID (manually reselect left Product ID if necessary).",
+        "Summarize Count grouped by Orders Product ID; verify one group for product3 Count77.",
+        "Add left join Products after aggregation using Product ID=Products ID; verify one row and optionally add Products Category is Doohickey filter.",
+        "Replace that final joined Products table with Reviews.",
+        "In newly prompted join condition choose Product ID under Summaries as left column and Reviews Product ID as right column.",
+        "Visualize."
+      ]
+    },
+    {
+      "id": "metabase-querying-515",
+      "name": "Query preview continues using old SQL after editing an inserted snippet",
+      "severity": 3,
+      "summary": "Query preview continues using old SQL after editing an inserted snippet.",
+      "expected": "Query preview should expand the snippet's current saved code, SELECT ID, EMAIL FROM ACCOUNTS.",
+      "actual": "The sidebar shows SELECT ID, EMAIL FROM ACCOUNTS, but reopened Query preview still shows SELECT EMAIL FROM ACCOUNTS.",
+      "reproSteps": [
+        "From Home choose New > SQL query using Sample Database.",
+        "Open SQL Snippets and create a fresh uniquely named QA-REF snippet with code SELECT EMAIL FROM ACCOUNTS and description QA reference composition fixture; Save.",
+        "Replace the query editor content with SELECT * FROM ( ) AS qa_ref. Place the cursor inside the parentheses and click the new snippet name to insert its reference.",
+        "Open Query preview using the eye icon; observe SELECT EMAIL FROM ACCOUNTS expanded inside the outer query, then close preview.",
+        "Expand the snippet sidebar row, choose Edit, change code to SELECT ID, EMAIL FROM ACCOUNTS and Save. Sidebar shows the changed code.",
+        "Reopen Query preview. It still expands SELECT EMAIL FROM ACCOUNTS instead of the saved SELECT ID, EMAIL FROM ACCOUNTS."
+      ]
+    },
+    {
+      "id": "metabase-querying-516",
+      "name": "Data Reference shows blank distinct-value rows for INVOICES.EXPECTED_INVOICE",
+      "severity": 1,
+      "summary": "Data Reference shows blank distinct-value rows for INVOICES.EXPECTED_INVOICE.",
+      "expected": "The distinct-values list should display readable values, as it does for category fields, so users can compose SQL predicates from the reference.",
+      "actual": "EXPECTED_INVOICE shows '2 distinct values' but its value rows are empty.",
+      "reproSteps": [
+        "Start fresh from Home > New > SQL query with Sample Database.",
+        "Open Learn about your data (Data Reference) sidebar if closed.",
+        "Open INVOICES table, then EXPECTED_INVOICE field.",
+        "Observe '2 distinct values' followed by blank rows instead of value labels."
+      ]
+    },
+    {
+      "id": "metabase-querying-518",
+      "name": "Equality cell filter on high-precision decimal returns no results for the clicked value",
+      "severity": 3,
+      "summary": "Equality cell filter on high-precision decimal returns no results for the clicked value.",
+      "expected": "The equality filter retains the clicked first row.",
+      "actual": "The derived question shows No results! and Showing 0 rows.",
+      "reproSteps": [
+        "From Home choose New > SQL query with Sample Database. Create an own-named question using SELECT 1 AS row_key, CAST(1234567890.123456789 AS DECIMAL(30,9)) AS precise_number UNION ALL SELECT 2, CAST(-0.000000001 AS DECIMAL(30,9)); run and save it.",
+        "In the result table click the first PRECISE_NUMBER cell, displayed as 1,234,567,890.12.",
+        "Choose = in Filter by this value."
+      ]
+    },
+    {
+      "id": "metabase-querying-519",
+      "name": "Saved SQL question with empty optional filters remains covered by pending-run overlay after running the query",
+      "severity": 3,
+      "summary": "Saved SQL question with empty optional filters remains covered by pending-run overlay after running the query.",
+      "expected": "Running the query removes the pending-run overlay, displaying active query results and the row count.",
+      "actual": "Clicking to run the query triggers execution ('Doing science...'), but the results remain faded underneath the centered play button overlay and no row count is shown.",
+      "reproSteps": [
+        "Home > New > SQL query; select Sample Database. Create SELECT ID, PRICE, CREATED_AT FROM PRODUCTS WHERE 1=1 [[AND {{price_filter}}]] [[AND {{date_filter}}]] ORDER BY ID.",
+        "Map price_filter as Field Filter Products.Price, widget Between. Map date_filter as Field Filter Products.Created At, widget All Options; leave defaults empty.",
+        "Set date January1–31 2026 and price Between29 and45; run and observe four matching rows. Save under a fresh own question name.",
+        "Reload and verify four rows. Reopen the saved question at its clean URL without parameter values.",
+        "Click centered Run button with both parameters empty. Repeat Run and wait for settled results."
+      ]
+    },
+    {
+      "id": "metabase-querying-520",
+      "name": "Removing a join leaves its dependent filter and makes the remaining summary fail",
+      "severity": 3,
+      "summary": "Removing a join leaves its dependent filter and makes the remaining summary fail.",
+      "expected": "Removing the join should remove or explicitly invalidate dependent filters and preserve an executable source-only summary; without the removed filter Sum of Count would be 4.",
+      "actual": "The removed join's filter remains as 'Label is not empty'. Visualize shows 'There was a problem with your question' rather than a result.",
+      "reproSteps": [
+        "Create Left native source via Home > New > SQL query: SELECT 1 AS K, 'L1' AS LABEL UNION ALL SELECT 1, 'L2' UNION ALL SELECT 2, 'L3' UNION ALL SELECT CAST(NULL AS INTEGER), 'LN'. Save with own unique name.",
+        "Create Right native source: SELECT 1 AS K, 'R1' AS LABEL UNION ALL SELECT 1, 'R2' UNION ALL SELECT 3, 'R3' UNION ALL SELECT CAST(NULL AS INTEGER), 'RN'. Save with own unique name.",
+        "Build a question from Left; summarize Count of rows by K, Don't bin; save grouped source. Three rows are null:1, 1:2, 2:1.",
+        "Build a new question from grouped source; left join Right with source K > Right K. Filter joined Right LABEL Not empty. Summarize Sum of source Count. Visualize returns 2.",
+        "Open Editor, hover Join data and click its remove X. The join disappears but 'Label is not empty' remains.",
+        "Click Visualize."
+      ]
+    },
+    {
+      "id": "metabase-querying-496",
+      "name": "Editing a custom column silently deletes dependent alias columns",
+      "severity": 3,
+      "summary": "Editing a custom column silently deletes dependent alias columns.",
+      "expected": "Preserve dependent alias columns, retarget references after rename, and recalculate them after formula edits.",
+      "actual": "Beta QA disappears immediately without warning and is absent from result columns and generated SQL. Before rename row1 showed58.93 in both columns; afterwards only Renamed Alpha QA remains. Changing only the referenced formula from [Price]*2 to [Price]*3 also deletes a direct-reference alias. Arithmetic dependent expressions such as [Alpha QA]*2 survive.",
+      "reproSteps": [
+        "Open /question/notebook and choose Sample Database > Products.",
+        "Add custom column Alpha QA with expression [Price] * 2.",
+        "Add custom column Beta QA with expression [Alpha QA].",
+        "Click Visualize and confirm both columns appear with matching values.",
+        "Open Editor, edit Alpha QA, change its name to Renamed Alpha QA, and click Update.",
+        "Observe the custom column pills, run Visualize, and inspect Editor > View SQL. Repeat with a new direct-reference column and change only the referenced column's formula."
+      ]
+    },
+    {
+      "id": "metabase-querying-545",
+      "name": "Relative one-day offset filter label reads “is in the yesterday”",
+      "severity": 1,
+      "summary": "Relative one-day offset filter label reads “is in the yesterday”.",
+      "expected": "The chip uses grammatical wording such as “previous day, starting 7 days ago.”",
+      "actual": "The chip reads “Created At is in the yesterday, starting 7 days ago.”",
+      "reproSteps": [
+        "Create a fresh Orders query in the notebook editor.",
+        "Add Created At → Relative date range → Previous 1 day → Starting from 7 days ago.",
+        "Apply the filter and inspect its notebook chip."
+      ]
+    },
+    {
+      "id": "metabase-querying-547",
+      "name": "Category Ends with '%' returns all 200 products, including categories with no percent suffix",
+      "severity": 3,
+      "summary": "Category Ends with '%' returns all 200 products, including categories with no percent suffix.",
+      "expected": "Ends with '%' should match categories ending in the entered percent character, not Gadget, Widget, Gizmo or Doohickey.",
+      "actual": "The applied chip reads 'Category ends with %', but Visualize returns 200 rows showing Gadget, Widget, Gizmo and Doohickey.",
+      "reproSteps": [
+        "Create a new Sample Database Products notebook question as the primary test user.",
+        "Add a Category filter, choose Ends with, enter % as the sole value and apply the filter.",
+        "Click Visualize and inspect Category values and the row count."
+      ]
+    },
+    {
+      "id": "metabase-querying-548",
+      "name": "Notebook != join matches a null left key to a null right key",
+      "severity": 3,
+      "summary": "Notebook != join matches a null left key to a null right key.",
+      "expected": "A != join condition between key fields should not match a null left key to a null right key.",
+      "actual": "Visualizing the != join produces 11 rows where the left null key row ('NullLeft') matches the right null key row ('NullRight'), displaying both on the same row.",
+      "reproSteps": [
+        "Create a Sample Database SQL question QA-JOIN-SQL-left: SELECT 1 AS K, ' Alpha ' AS S UNION ALL SELECT 2, 'Beta' UNION ALL SELECT 4, 'Delta' UNION ALL SELECT CAST(NULL AS INTEGER), 'NullLeft'. Save (omit sentence-ending period from SQL).",
+        "Create and save QA-JOIN-SQL-right: SELECT 1 AS K, 'alpha' AS S UNION ALL SELECT 3, 'gamma' UNION ALL SELECT 4, 'delta' UNION ALL SELECT CAST(NULL AS INTEGER), 'NullRight' (no trailing punctuation).",
+        "On left SQL question click Explore results, Editor, Join data and select right SQL question.",
+        "Choose K for both relationship fields. Leave Left outer join; change operator to != and Visualize.",
+        "Inspect the NullLeft rows, including the row whose joined S is NullRight and whose two K values are empty."
+      ]
+    },
+    {
+      "id": "metabase-querying-556",
+      "name": "Fixed On date filter on a saved timezone-aware timestamp question fails with a TIMESTAMP WITH TIME ZONE parse error",
+      "severity": 3,
+      "summary": "Fixed On date filter on a saved timezone-aware timestamp question fails with a TIMESTAMP WITH TIME ZONE parse error.",
+      "expected": "The offered fixed date filter executes successfully and returns the rows whose EVENT_AT falls on November 1, 2026, instead of a query error.",
+      "actual": "The builder shows 'There was a problem with your question' instead of results. Error details begin: Cannot parse \"TIMESTAMP WITH TIME ZONE\" constant \"America/Los_Angeles\".",
+      "reproSteps": [
+        "Create a fresh SQL question on Sample Database with: SELECT row_id, event_utc AT TIME ZONE 'America/Los_Angeles' AS event_at, CAST(event_utc AT TIME ZONE 'America/Los_Angeles' AS VARCHAR) AS local_with_offset, CAST(event_utc AS DATE) AS utc_date, EXTRACT(HOUR FROM event_utc) AS utc_hour FROM (VALUES (1, TIMESTAMP WITH TIME ZONE '2026-11-01 06:59:59+00'), (2, TIMESTAMP WITH TIME ZONE '2026-11-01 07:00:00+00'), (3, TIMESTAMP WITH TIME ZONE '2026-11-01 08:30:00+00'), (4, TIMESTAMP WITH TIME ZONE '2026-11-01 09:30:00+00'), (5, TIMESTAMP WITH TIME ZONE '2026-11-01 10:00:00+00')) AS t(row_id,event_utc)",
+        "Run and verify five rows, then save with a unique date_filters-prefixed name.",
+        "Choose Explore results. Click EVENT_AT header, Filter by this column, Fixed date range, On. Enter November 1, 2026 and apply Add filter.",
+        "Open Show error details."
+      ]
+    },
+    {
+      "id": "metabase-querying-524",
+      "name": "Record details URL loses its query after adding and removing a saved-question filter",
+      "severity": 3,
+      "summary": "Record details URL loses its query after adding and removing a saved-question filter.",
+      "expected": "Record details should retain a reloadable saved-question or serialized-query URL.",
+      "actual": "After View details, the address is /question?objectId=1 with no saved ID or query hash. Reopening that address displays New question / Pick your starting data instead of the record. Reproduced on two saved Products questions.",
+      "reproSteps": [
+        "Create a query-builder question from Sample Database > Products with no filters, save it under a unique name, run it, and reopen the saved question.",
+        "Click a Gizmo value in the Category column and choose '= Is Gizmo'.",
+        "Remove the resulting Category is Gizmo filter chip, returning to all 200 products.",
+        "Click the first product's Title and choose View details.",
+        "Observe the address becomes /question?objectId=1 without the saved question ID or query hash.",
+        "Reopen or reload that address. It shows the empty new-question starting-data screen and loses the record details."
+      ]
+    },
+    {
+      "id": "metabase-querying-553",
+      "name": "Reverting a shared SQL question from an ID field filter to its original category mapping immediately produces a data-conversion query error",
+      "severity": 3,
+      "summary": "Reverting a shared SQL question from an ID field filter to its original category mapping immediately produces a data-conversion query error.",
+      "expected": "Reverting to the previously working category-filter revision should produce an executable question, resetting or validating filter values incompatible with the restored mapping rather than automatically issuing an invalid comparison.",
+      "actual": "The reverted page retains Min Total40 and Product Filter14 and displays 'An error occurred in your query' with 'Data conversion error converting \"Gizmo\"'.",
+      "reproSteps": [
+        "As Maya, create a shared native SQL question in Our analytics: SELECT P.CATEGORY, COUNT(*) AS ORDER_COUNT FROM ORDERS O LEFT JOIN PRODUCTS P ON O.PRODUCT_ID = P.ID WHERE O.TOTAL >= {{min_total}} AND {{product_filter}} GROUP BY P.CATEGORY ORDER BY P.CATEGORY.",
+        "Configure min_total as Number default0. Configure product_filter as Field Filter mapped Products Category, alias P.CATEGORY, default Gizmo. Run and save a new question_collaboration-prefixed question; Gizmo count4784 appears.",
+        "As primary Harbor Admin, open this question, remap product_filter to Products ID, set alias P.ID and default14. Rename SQL variable min_total to minimum_total; retain Number default0. Run and replace original; Widget count95 appears.",
+        "As Maya reopen the saved question, set minimum_total default40, run to Widget count15, then save replacing original.",
+        "Open More info > History and click revert beside the original You created this revision. Inspect the immediate settled result."
+      ]
+    },
+    {
+      "id": "metabase-querying-549",
+      "name": "date() accepts an ISO 8601 datetime string but query fails with Cannot parse DATE constant",
+      "severity": 3,
+      "summary": "date() accepts an ISO 8601 datetime string but query fails with Cannot parse DATE constant.",
+      "expected": "The visible date function description promises conversion of a datetime or ISO 8601 datetime string to a date, discarding time. This valid leap-day timestamp should produce February 2028 month group and Count 18760.",
+      "actual": "Query displays 'There was a problem with your question', zero rows, and details 'Cannot parse \"DATE\" constant \"2028-02-29T23:59:59\"'.",
+      "reproSteps": [
+        "Create an independent QA-EXPR question on Sample Database Orders.",
+        "Add custom column QA-EXPR Date Only with date(\"2028-02-29T23:59:59\"); expression is accepted with Done enabled.",
+        "Summarize Count of rows grouped by Date Only (default Month).",
+        "Click Visualize and Show error details."
+      ]
+    },
+    {
+      "id": "metabase-querying-550",
+      "name": "Changing date grouping from Month to Day silently removes the downstream date filter",
+      "severity": 3,
+      "summary": "Changing date grouping from Month to Day silently removes the downstream date filter.",
+      "expected": "Retain the downstream date filter or warn before discarding it when changing the date grouping granularity.",
+      "actual": "Changing the date grouping granularity from Month to Day immediately removes the downstream filter stage without warning, resulting in 1,421 unfiltered rows when visualized.",
+      "reproSteps": [
+        "Create a fresh Orders question, using a unique date_filters-prefixed fixture name if saving.",
+        "Summarize Count of rows grouped by Created At: Month.",
+        "Add a Filter stage after Summarize on Created At: Month, Fixed date range > On September 1, 2026; visualize. The September 2026 row has count 346.",
+        "Open Editor and change the Created At grouping temporal bucket from Month to Day.",
+        "Observe that the downstream date filter stage disappears without warning, then Visualize."
+      ]
+    },
+    {
+      "id": "metabase-querying-552",
+      "name": "SQL field filter “String starts with” treats % as a wildcard and returns every category",
+      "severity": 3,
+      "summary": "SQL field filter “String starts with” treats % as a wildcard and returns every category.",
+      "expected": "“Starts with %” should match category names beginning with the literal % character, not unrelated names. None of the four category names shown begin with %.",
+      "actual": "With Category Filter: % applied, results contain all categories: Doohickey 42, Gadget 53, Gizmo 51, Widget 54. The filter behaves as a SQL wildcard rather than the visible “Starts with” text match.",
+      "reproSteps": [
+        "From Home choose New > SQL query and Sample Database. Create a fresh worker-prefixed question with SQL: SELECT CATEGORY, COUNT(*) AS TOTAL FROM PRODUCTS WHERE 1=1 [[AND {{category_filter}}]] GROUP BY CATEGORY ORDER BY CATEGORY.",
+        "Open Variables settings. Change category_filter to Field Filter, mapped to Products > Category. Set Filter widget type to String starts with; keep input box.",
+        "Apply G and run: Gadget 53 and Gizmo 51 appear.",
+        "Edit the parameter, remove G, enter %, press Enter, Update filter and run."
+      ]
+    },
+    {
+      "id": "metabase-querying-554",
+      "name": "View SQL is blank after replacing a saved-question join field with a custom expression",
+      "severity": 3,
+      "summary": "View SQL is blank after replacing a saved-question join field with a custom expression.",
+      "expected": "View SQL displays SQL for the current custom-expression join, or an actionable error if the query cannot be generated.",
+      "actual": "SQL for this question panel is entirely blank and Convert this question to SQL is disabled. The visualization continued to show51rows after editing the expression; correctness of those rows is not established.",
+      "reproSteps": [
+        "Create a fresh Sample Database Products question, LEFT JOIN Reviews on Products ID=Reviews Product ID, summarize Average Reviews Rating grouped by Products Category; save with unique joins-prefixed name.",
+        "Create another Products question and LEFT JOIN that saved question on Products Category=joined Category.",
+        "Filter joined Average Reviews Rating between4and5; run (51rows), save as a new question and reopen editor.",
+        "Open left Category join field, choose Custom Expression, replace expression with upper([Category]) and Update.",
+        "Open Visualization, then Editor, then View SQL."
+      ]
+    },
+    {
+      "id": "metabase-querying-523",
+      "name": "Editing a compound join condition silently deletes a custom column",
+      "severity": 3,
+      "summary": "Editing a compound join condition silently deletes a custom column.",
+      "expected": "Editing the join condition to an equivalent expression should retain the custom column and its results.",
+      "actual": "The Margin custom column immediately disappears from the notebook, and it is absent from results after rerunning, without warning. Reproduced twice.",
+      "reproSteps": [
+        "Open /question/notebook and choose Sample Database > Orders.",
+        "Join Products using the automatically selected Orders.Product ID = Products.ID condition, and choose Inner join.",
+        "Add a custom column named Margin using [Total] - [Products → Price].",
+        "Add a second condition to the join: Orders.Total > Products.Price.",
+        "Visualize and confirm Margin is present (the first value is 14.62), then return to Editor.",
+        "On the first join condition, open the left column selector > Custom Expression, change [Product ID] to [Product ID] + 0, and click Update.",
+        "Observe Margin has disappeared. Visualize again and confirm the Margin result column is also missing."
+      ]
+    },
+    {
+      "id": "metabase-querying-551",
+      "name": "Joined Reviews row's View details shows a different review: selecting review 1 displays review 8",
+      "severity": 3,
+      "summary": "Joined Reviews row's View details shows a different review: selecting review 1 displays review 8.",
+      "expected": "View details should show the selected row's review1, reviewer christ, rating5 (or otherwise preserve the selected joined row when presenting Product details).",
+      "actual": "The panel titled Rustic Paper Wallet shows Reviews → ID8, reviewer cristina.balistrieri and rating4 instead. The highlighted row also moves to review8 although review1 was selected.",
+      "reproSteps": [
+        "Create a fresh question using Sample Database Products. Add LEFT JOIN Reviews on Products ID = Reviews Product ID; include all joined fields.",
+        "Summarize Average of Reviews Rating grouped by Products Category. Save under a unique joins-prefixed name.",
+        "Click Gizmo's average 4.02 and choose See these Products.",
+        "In the resulting table, click first-row Reviews → ID 1 (reviewer christ, rating5), then choose View details.",
+        "Compare the displayed joined review values with the selected row."
+      ]
+    },
+    {
+      "id": "metabase-querying-562",
+      "name": "Opening a saved SQL question after renaming its referenced source produces unsaved changes and a discard warning without editing",
+      "severity": 3,
+      "summary": "Opening a saved SQL question after renaming its referenced source produces unsaved changes and a discard warning without editing.",
+      "expected": "Viewing an already-saved dependent question after an upstream rename should not count as user edits or require discarding/saving changes before leaving.",
+      "actual": "The dependent query still returns correct rows, but opening it automatically exposes Save and changes its reference slug. Clicking Our analytics opens “Discard your changes?” with “Your changes haven't been saved, so you'll lose them if you navigate away,” although no edits were made to the dependent question.",
+      "reproSteps": [
+        "Create a distinctly prefixed SQL source question on Sample Database: SELECT CATEGORY, COUNT(*) AS PRODUCT_COUNT FROM PRODUCTS WHERE CATEGORY = 'Gizmo' GROUP BY CATEGORY ORDER BY CATEGORY. Save it.",
+        "Create another SQL question referencing the saved source with SELECT * FROM {{#SOURCE_ID}}; save it. If the reference is normalized to include the source slug and Save remains visible, save the normalized question again; refresh to confirm a clean saved view.",
+        "Rename the source using its editable header title and press Enter. Refresh source to confirm the new name persists.",
+        "Open the saved dependent SQL question without editing its SQL or settings.",
+        "Click Our analytics breadcrumb to leave the dependent question."
+      ]
+    },
+    {
+      "id": "metabase-querying-565",
+      "name": "Combine columns generates an invalid expression when a separator ends with a backslash",
+      "severity": 3,
+      "summary": "Combine columns generates an invalid expression when a separator ends with a backslash.",
+      "expected": "The helper should escape the entered separators into a valid concat expression, allowing the custom column to be completed.",
+      "actual": "The generated concat expression displays an Invalid expression error (pointing at the later separator) and Done is disabled. The helper preview accepted the quote/backslash separator, but its generated expression cannot be added.",
+      "reproSteps": [
+        "As Harbor Admin, start a fresh notebook question on Sample Database > Products.",
+        "Add a custom column and choose Combine columns.",
+        "Keep first column ID and second Ean; click Add column to include Title.",
+        "Click Separated by (space). In the first Separator input enter two characters: double quote followed by backslash. In the second Separator input enter ::.",
+        "Click the helper's Done button. Name the generated expression QAEXG mixed escaped and inspect validation."
+      ]
+    }
+  ]
+}

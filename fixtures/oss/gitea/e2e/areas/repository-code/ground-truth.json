@@ -296,6 +296,248 @@
         "Inspect the ZIP. Its comment is the tag's commit, and branch-only.txt is missing."
       ],
       "severity": 3
+    },
+    {
+      "id": "gitea-branch-file-history-resolves-same-named-tag",
+      "name": "File History returns 404 when a same-named older tag lacks the file",
+      "summary": "When a branch and an older tag share a name, History for a branch file resolves the bare name to the tag. If the tag lacks the file, /commits/branch/<name>/<file> returns a full-page 404; if the tag has it, the page silently lists only the tag's older commits.",
+      "expected": "History opened from a branch's file page lists that branch's commits for the file, as it does for a branch at the same commit without a same-named tag.",
+      "actual": "Clicking History on a file that exists on the branch but not at the same-named older tag returns 404 Page Not Found, from the file page, directory History, and Blame alike. When the file also exists at the tag, History returns 200 but shows only the tag's commits, and the file's RSS and Atom feeds are empty or short the same way. The branch's full commit list, Blame, and history by commit SHA are correct.",
+      "reproSteps": [
+        "Sign in as the fixture account and, in a repository, create a branch and add a new file on it, for example docs/hist.txt.",
+        "Open an earlier commit that lacks the file, choose Operations → Create tag, and name the tag exactly like the branch.",
+        "Open the branch's file page for docs/hist.txt and confirm it renders.",
+        "Click History. Observe a full-page 404 Page Not Found at /commits/branch/<name>/docs/hist.txt.",
+        "As a control, create another branch at the same commit with no same-named tag and confirm its History for the file lists the commits."
+      ],
+      "severity": 5
+    },
+    {
+      "id": "gitea-compare-tag-selection-resolves-same-named-branch",
+      "name": "Selecting a tag in Compare commits compares a same-named branch instead",
+      "summary": "When a branch and a tag share a name, choosing the tag from the Tags tab of the Compare commits selector links to the bare name, and Gitea compares the same-named branch instead of the tag.",
+      "expected": "Choosing a tag from the Tags tab compares that tag, as it does when no branch shares its name and as /compare/main...refs/tags/<name> does.",
+      "actual": "The selection opens /compare/main...<name>, the same URL as the branch, and shows the branch's commits and changed files under a New Pull Request heading. With a tag at main's commit, the page lists the branch-only commit instead of \"These branches are equal.\" Choosing the tag as the base can falsely report that the refs are equal.",
+      "reproSteps": [
+        "Sign in as the fixture account and create a repository with Initialize Repository checked.",
+        "Create a branch named, for example, qa-same from main, and commit a new file branch-only.txt to it.",
+        "Open main's latest commit, choose Operations → Create tag, and name the tag qa-same.",
+        "Open Compare commits with main as the base, open the second selector, switch to its Tags tab, and choose qa-same.",
+        "Observe the page shows the branch-only commit and branch-only.txt. As a control, open /compare/main...refs/tags/qa-same and observe \"These branches are equal.\""
+      ],
+      "severity": 3
+    },
+    {
+      "id": "gitea-editor-preview-rename-shows-no-changes",
+      "name": "Preview Changes reports no changes for a file rename",
+      "summary": "In the web file editor, Preview Changes sends only the file content to the original path and never the new filename, so a rename-only edit previews as 'There are no changes to show.' even though Commit Changes is enabled and commits a rename.",
+      "expected": "Preview Changes for a rename-only edit indicates that the file is renamed, for example showing old path → new path with no content changes, as the resulting commit page does.",
+      "actual": "Changing only the filename of an existing file and opening Preview Changes shows 'There are no changes to show.' while Commit Changes stays enabled. Committing succeeds and the commit page lists the file as renamed (old → new, 1 changed file). Moving the file to another folder behaves the same, and a rename plus a content edit previews only the content change, with no mention of the rename.",
+      "reproSteps": [
+        "Open an existing file in the web editor (Edit File).",
+        "Change only the filename, leaving the content unchanged.",
+        "Click Preview Changes and observe 'There are no changes to show.' while Commit Changes is enabled.",
+        "Commit the change and observe the commit page shows the file renamed."
+      ],
+      "severity": 1
+    },
+    {
+      "id": "gitea-branch-rename-validation-shows-internal-key",
+      "name": "Invalid branch rename error shows an internal field key",
+      "summary": "Renaming a branch to an invalid name shows an error that names the field with the internal key form.To instead of a readable branch name label.",
+      "expected": "The rename validation error names the new branch name field in readable language.",
+      "actual": "Renaming a branch to 'bad name' from the Branches page showed 'form.To must be a well-formed Git reference name.'",
+      "reproSteps": [
+        "Create a branch in a repository and open Branches.",
+        "Choose Rename for that branch, enter bad name as the new name and submit.",
+        "Read the validation error."
+      ],
+      "severity": 1
+    },
+    {
+      "id": "gitea-create-branch-empty-name-dialog-closes-silently",
+      "name": "Confirming an empty name silently closes the Branches page Create new branch dialog",
+      "summary": "On the Branches page, opening a branch's Create new branch dialog and clicking Confirm with the required Branch Name empty closes the dialog with no message, and no branch is created.",
+      "expected": "Confirm with an empty Branch Name keeps the dialog open and shows the required-field prompt so the user can enter a name.",
+      "actual": "The dialog closed immediately with no validation, error or success message, and nothing was created. The browser console logged that the invalid new_branch_name field is not focusable. The same dialog opened from a commit page stays open with the required-field prompt.",
+      "reproSteps": [
+        "Open a repository's Branches page.",
+        "Click Create new branch on a branch row and leave Branch Name empty.",
+        "Click Confirm."
+      ],
+      "severity": 1
+    },
+    {
+      "id": "gitea-code-page-commit-count-stale-after-sync",
+      "name": "Code page shows the old commit count right after Sync fork",
+      "summary": "After Sync fork (or another push made from the web UI), the redirected Code page shows the new head commit and files but the branch's previous 'N Commits' count. History and the next page load show the correct number.",
+      "expected": "The Code page shown right after Sync fork displays the updated commit count for the new head.",
+      "actual": "After syncing a fork branch from 2 to 4 commits, the resulting Code page still read 2 Commits; after syncing 4 to 5 it read 4 Commits next to the new head. History listed all commits, and reloading corrected the count. The same happened after a web-editor file delete.",
+      "reproSteps": [
+        "Fork a repository branch, then add a commit to that branch in the upstream repository.",
+        "In the fork, open the branch and click Sync fork, then confirm.",
+        "Compare the Code page's commit count with the History list, then reload."
+      ],
+      "severity": 1,
+      "matchingGuidance": {
+        "relatedReference": {
+          "id": "gitea-tag-history-count-collides-with-branch-cache",
+          "distinction": "Both involve the cached commit count. That entry is a tag's count using a same-named branch's cache; this entry is a branch's count staying stale right after a sync or web push, until the next load."
+        }
+      }
+    },
+    {
+      "id": "gitea-commit-diff-layout-drops-file-filter",
+      "name": "Changing the commit diff layout drops the selected file filter",
+      "summary": "A commit opened from a file's History via 'View changes to this file in this commit' shows only that file's diff, but clicking Split/Unified view or a whitespace option drops the file filter and shows every file in the commit again.",
+      "expected": "Changing the diff layout or whitespace option keeps the commit view filtered to the selected file.",
+      "actual": "With the commit filtered to docs/releases.md (?files=docs%2freleases.md), clicking Split View changed the URL to ?style=split&whitespace=show-all&show-outdated= and all three of the commit's file diffs reappeared. Typing a URL with both style and files keeps the filter.",
+      "reproSteps": [
+        "Open a file's History and click 'View changes to this file in this commit' on a commit that changed several files.",
+        "Confirm only that file's diff is shown.",
+        "Click Split View (or change the whitespace option) and check which files are shown."
+      ],
+      "severity": 3
+    },
+    {
+      "id": "gitea-revert-cherry-pick-ignores-signoff",
+      "name": "Revert and cherry-pick ignore the Signed-off-by checkbox",
+      "summary": "When reverting or cherry-picking a commit from the web UI with 'Add a Signed-off-by trailer' checked, the resulting commit has no Signed-off-by trailer.",
+      "expected": "A revert or cherry-pick commit made with the Signed-off-by option checked ends with the committer's Signed-off-by trailer, as file edits made in the web editor do.",
+      "actual": "With the option checked, the generated revert commit included the entered description but no Signed-off-by trailer, and a cherry-pick commit also omitted it. A web-editor file edit with the same option added 'Signed-off-by: eval <admin@example.test>'.",
+      "reproSteps": [
+        "Open a commit and choose Operations > Revert (or Cherry-pick), targeting a branch.",
+        "Check 'Add a Signed-off-by trailer by the committer at the end of the commit log message' and commit.",
+        "Open the new commit and look for the Signed-off-by trailer."
+      ],
+      "severity": 3
+    },
+    {
+      "id": "gitea-apply-patch-ignores-signoff",
+      "name": "Apply Patch ignores the Signed-off-by checkbox",
+      "summary": "Committing through Add File > Apply Patch with 'Add a Signed-off-by trailer' checked creates a commit without the Signed-off-by trailer.",
+      "expected": "A commit made through Apply Patch with the Signed-off-by option checked ends with the committer's Signed-off-by trailer, as web-editor file edits do.",
+      "actual": "Applying a new-file patch with the option checked created a commit whose message and .patch view had no Signed-off-by line.",
+      "reproSteps": [
+        "Open a repository branch and choose Add File > Apply Patch.",
+        "Paste a valid patch, enter a commit summary and check 'Add a Signed-off-by trailer by the committer at the end of the commit log message'.",
+        "Commit, then open the new commit and look for the Signed-off-by trailer."
+      ],
+      "severity": 3,
+      "matchingGuidance": {
+        "relatedReference": {
+          "id": "gitea-revert-cherry-pick-ignores-signoff",
+          "distinction": "Same ignored Signed-off-by checkbox on a different page. That entry is Revert and Cherry-pick; this entry is Add File > Apply Patch."
+        }
+      }
+    },
+    {
+      "id": "gitea-upload-dot-git-destination-goes-to-root",
+      "name": "Uploading to a destination containing .git silently commits the file to the repository root",
+      "summary": "In Add File > Upload File, a destination folder containing a .git path segment (such as '.git', 'docs/.git' or '.GIT') is silently ignored: the upload is committed to the repository root instead, with no warning, and can replace a root file with the same name.",
+      "expected": "A destination containing a reserved .git segment is rejected with a clear message, and nothing is committed to a different location.",
+      "actual": "With '.git' as the destination, the upload was accepted and the commit summary said \"Upload files to '/'\"; the file appeared at the repository root with no warning. Uploading a file named like an existing root file replaced it.",
+      "reproSteps": [
+        "Open a branch and choose Add File > Upload File.",
+        "Set the destination folder to .git and upload a file.",
+        "Commit, then check where the file landed and the commit summary."
+      ],
+      "severity": 1
+    },
+    {
+      "id": "gitea-reused-branch-name-keeps-commit-count",
+      "name": "Recreating a branch under a reused name keeps the old branch's commit count",
+      "summary": "After a branch is renamed or deleted and a new branch is created with the same name from a different commit, the Code page and History show the old branch's 'N Commits' total and pagination while listing the new branch's commits, even after reload.",
+      "expected": "A branch created under a reused name shows its own commit count and pagination.",
+      "actual": "A branch with 2 commits was viewed, renamed, and a new branch with the old name was created from main (1 commit). Code and History showed '2 Commits' while History listed one commit, including after reload minutes later. Deleting and recreating at a longer history showed too few: '1 Commit' with two rows listed, and with ?limit=1 the pager disappeared so the older commit couldn't be reached. Never-used names showed correct counts.",
+      "reproSteps": [
+        "Create a branch from a commit with 2 commits of history and open its Code page.",
+        "Rename (or delete) that branch, then create a new branch with the original name from a commit with 1 commit of history.",
+        "Open the new branch's Code page and History and compare the count with the commits listed."
+      ],
+      "severity": 3,
+      "matchingGuidance": {
+        "relatedReference": {
+          "id": "gitea-tag-history-count-collides-with-branch-cache",
+          "distinction": "Same commit-count cache keyed by short name. That entry is a tag reading a same-named branch's cached count; this entry is a branch created under a reused name reading the previous branch's count."
+        }
+      }
+    },
+    {
+      "id": "gitea-upload-file-named-like-directory-deletes-it",
+      "name": "Uploading a file named like an existing directory silently deletes that directory's contents",
+      "summary": "Uploading a file whose name matches an existing directory at the same location (for example a file named 'docs' at the repository root) commits successfully and replaces the directory with the file, deleting every file in it. New File and rename refuse the same name.",
+      "expected": "An upload whose name matches an existing directory is rejected with a clear message, as New File and rename do, rather than deleting the directory.",
+      "actual": "Uploading a file named 'docs' at the repository root committed without warning; the commit replaced the docs directory with the file and deleted all of its files (+1 −12). Creating a new file named 'docs' in the web editor was refused with Gitea's own name-conflict message.",
+      "reproSteps": [
+        "Open a branch that has a directory, such as docs, at the root.",
+        "Choose Add File > Upload File and upload a file named 'docs' to the root.",
+        "Commit, then check the docs directory and the commit's changes."
+      ],
+      "severity": 3,
+      "matchingGuidance": {
+        "relatedReference": {
+          "id": "gitea-upload-dot-git-destination-goes-to-root",
+          "distinction": "Both are Upload File writing somewhere unexpected without a warning. That entry is a .git destination being redirected to the root; this entry is a file named like an existing directory replacing it."
+        }
+      }
+    },
+    {
+      "id": "gitea-file-tree-nav-drops-heading-anchors",
+      "name": "Markdown heading anchor links are missing after opening a file through the file tree",
+      "summary": "When a Markdown file is opened by clicking it in the repository file tree, its rendered headings have no anchor (permalink) links. Opening the same file by a full page load shows them.",
+      "expected": "Headings in a Markdown file opened from the file tree have their anchor links, as on a full page load.",
+      "actual": "After navigating to a Markdown file with the file tree, its headings showed no anchor links; refreshing the page restored them.",
+      "reproSteps": [
+        "Open a repository's code view with the file tree visible.",
+        "Click a Markdown file with headings in the file tree.",
+        "Hover the headings for anchor links, then refresh and compare."
+      ],
+      "severity": 1,
+      "matchingGuidance": {
+        "relatedReference": {
+          "id": "gitea-file-tree-stale-tab-title",
+          "distinction": "Same file-tree navigation that swaps content without a page load. That entry is the browser tab title staying on the previous file; this entry is heading anchor links not being added to the new file."
+        }
+      }
+    },
+    {
+      "id": "gitea-repo-upload-copy-link-404",
+      "name": "Copy link on a repository file upload produces a link that 404s",
+      "summary": "In Add File > Upload File, each uploaded file gets a Copy link button, but the Markdown it copies points to /attachments/<uuid>, which returns 404 Not Found both before and after the files are committed. Repository uploads aren't attachments, so the link can never work.",
+      "expected": "Copy link on a repository upload either produces a working link (for example to the committed file) or isn't offered.",
+      "actual": "After uploading a file in Upload File, Copy link copied Markdown pointing to /attachments/<uuid>; opening that URL returned 404 Not Found before committing and still after committing, while the committed file itself was served normally.",
+      "reproSteps": [
+        "Open a branch and choose Add File > Upload File.",
+        "Upload a file and click Copy link under it.",
+        "Open the copied /attachments/… URL, then commit and open it again."
+      ],
+      "severity": 1,
+      "matchingGuidance": {
+        "relatedReference": {
+          "id": "gitea-upload-dot-git-destination-goes-to-root",
+          "distinction": "Both are in Add File > Upload File. That entry is a .git destination being redirected to the root; this entry is the upload's Copy link pointing to a non-existent attachment URL."
+        }
+      }
+    },
+    {
+      "id": "gitea-deleted-branch-rss-link-404",
+      "name": "Deleted branch rows on the Branches page still offer an RSS Feed link that opens 404",
+      "summary": "On the Branches page, a deleted branch (shown with Restore) still has its RSS Feed icon, and clicking it opens a 404 Not Found page. The row's other actions are hidden for deleted branches.",
+      "expected": "A deleted branch's row doesn't offer the RSS Feed action, or the link leads somewhere useful.",
+      "actual": "After deleting a branch whose RSS Feed opened its commit feed, its deleted row on the Branches page still showed an enabled RSS Feed icon; clicking it opened '404 Not Found'.",
+      "reproSteps": [
+        "Create a branch, open Branches and confirm its RSS Feed icon opens a feed.",
+        "Delete the branch.",
+        "On its deleted row, click the RSS Feed icon."
+      ],
+      "severity": 5,
+      "matchingGuidance": {
+        "relatedReference": {
+          "name": "Main branch RSS channel link points to a 404 route",
+          "distinction": "Both are branch RSS links leading to 404. That entry is the RSS feed's channel link for a live branch; this entry is the RSS icon still offered on a deleted branch's row."
+        }
+      }
     }
   ]
 }
