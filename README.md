@@ -27,9 +27,11 @@ Environment:
 | `OPENAI_API_KEY` | grading, `codex` |
 | `BROWSERBASE_API_KEY` | `codex`, `claude` (not with `--browser local`) |
 | `ANTHROPIC_API_KEY` | `claude` |
+| `MOMENTIC_API_KEY` | `mo` (or sign in with `qa`) |
 
-`mo` needs `qa` 0.24.0 or later, signed in. Set `MO_EVAL_CLI` to use another
-executable.
+`mo` runs on Momentic's hosted service and needs a Momentic account. Install
+the CLI with `npm install -g qa` (0.24.0 or later) and sign in, or set
+`MOMENTIC_API_KEY`. Set `MO_EVAL_CLI` to use another executable.
 
 ## Run
 
@@ -46,6 +48,32 @@ against the union of its area references.
 
 Reports go to `reports/<agent>/<fixture>/<run-id>/`. Each run writes
 `scores.csv`, `grading.json` and a `review.md` queue of unmatched findings.
+
+`--time-limit` is a safety stop. Mo is not told the limit and works to its
+effort preset. Codex and Claude are told how many minutes they have.
+
+## Scoring
+
+A judge model (GPT-6.1 Sol, high reasoning) matches each finding to the area's
+`ground-truth.json` (known bugs) or `known-invalid.json` (known false reports).
+Anything else is unverified and goes to `review.md`.
+
+- Recall: known hits / known bugs in the area.
+- Precision: known hits / (known hits + known invalid). Unverified findings
+  are excluded.
+- Severity sum: each known bug has a severity of 1 (cosmetic), 3 (functional)
+  or 5 (broken page or error dump). The sum counts each bug once.
+- Score: severity sum minus known-invalid and duplicate findings.
+
+The judge is a model, so regrading the same findings can change a few matches.
+`--grade-only` regrades saved runs.
+
+## Cost
+
+Reported costs are directional. Codex and Claude costs are token estimates at
+list prices plus Browserbase time. Mo cost is Momentic's billed session spend.
+E2B sandbox time and grading calls are not included. A 10-minute run on one
+area cost $1 to $5 per agent in our tests; full runs cost much more.
 
 Start a fixture by hand with `pnpm start-fixture gitea --timeout 30m`; stop it
 with `pnpm stop-fixture <sandbox-id>`.

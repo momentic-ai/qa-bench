@@ -18,7 +18,6 @@ import {
   MoReportSchema,
 } from "../../evals/reports";
 import {
-  MIN_MO_SESSION_TIME_BUDGET_MINUTES,
   MoReadSchema,
   MoStatusSchema,
   isMoSessionReportReady,
@@ -48,22 +47,12 @@ export class MoAgent implements EvalAgent {
   ) {
     const brief = `${message}
 
-The evaluation has a ${this.context.timeLimitMs / 60_000}-minute elapsed time limit.
-
 ${fixtureAuthentication(this.context.fixture)}
 
 ${MO_CONCURRENCY_GUIDANCE}`;
-    const timeBudgetMinutes = Math.max(
-      MIN_MO_SESSION_TIME_BUDGET_MINUTES,
-      Math.ceil(this.context.timeLimitMs / 60_000),
-    );
     onReady?.();
-    const startArgs = [
-      "start",
-      brief,
-      "--time-budget",
-      String(timeBudgetMinutes),
-    ];
+    // Mo uses its effort preset budget; the eval time limit is only a safety stop.
+    const startArgs = ["start", brief];
     if (this.context.maxConcurrentSubAgents !== undefined) {
       startArgs.push(
         "--max-concurrency",

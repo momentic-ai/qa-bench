@@ -44,16 +44,8 @@ export const SHARED_QA_OBLIGATIONS = `Report each bug with expected and actual b
 
 Protect shared state: give parallel work separate data where practical, and do not modify data another active agent is using. After checking a change's downstream effects, restore shared data you modified so others can keep testing it.`;
 
-export function bugbashBrief(url: URL, timeLimitMs: number, fixture: Fixture) {
-  let evaluationContext =
-    "This is a long-duration evaluation of your ability to find true bugs.";
-  if (timeLimitMs > 30 * 60_000) {
-    evaluationContext +=
-      "\nExplore product areas end to end with the depth and breadth of a multi-hour test session.";
-  }
+export function bugbashBrief(url: URL, fixture: Fixture) {
   return `Bug bash ${url.href}. Find as many distinct, reproducible product bugs as you can. Do not change account authentication details.
-
-${evaluationContext}
 
 ${explorationGuidance(fixture)}
 

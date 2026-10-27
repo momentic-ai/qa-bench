@@ -151,9 +151,11 @@ async function runFixture({
       agent,
       message:
         agentName === "mo"
-          ? bugbashBrief(url, timeLimitMs, fixture)
+          ? bugbashBrief(url, fixture)
           : basicBugbashBrief(url, timeLimitMs, fixture),
       timeLimitMs,
+      // Mo is not told a deadline, so the time limit stops it without a finalization message.
+      ...(agentName === "mo" ? { finalizationMs: timeLimitMs } : {}),
       signal: resources.signal,
     });
     try {
