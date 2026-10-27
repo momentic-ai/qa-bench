@@ -3,7 +3,7 @@ set -eu
 . /fixture/app/snapshot/lib/environment.sh
 
 test -f /var/lib/postgresql/data/PG_VERSION
-test -f /app/packages/twenty-server/.local-storage/diy-mo-seed-complete
+test -f /fixture/seeded-state
 su-exec postgres pg_ctl -D /var/lib/postgresql/data -l /tmp/postgres.log -o '-h 127.0.0.1 -p 5432 -k /run/postgresql' -w start
 redis-server --daemonize yes --maxmemory-policy noeviction
 # This cluster has already run the pinned revision's migrations; fresh Redis needs normal job registration.
