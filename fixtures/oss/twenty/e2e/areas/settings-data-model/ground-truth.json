@@ -1843,6 +1843,48 @@
           "The inspected newer source retains the pattern; newer runtime was not tested."
         ]
       }
+    },
+    {
+      "id": "settings-data-model-pass3-69cbded5",
+      "name": "Workspace Instructions autosave remounts the editor, closing fullscreen and dropping focus",
+      "severity": 3,
+      "owningArea": "twenty/settings-data-model",
+      "summary": "Successful Workspace Instructions autosave interrupts continued editing by closing the expanded editor or dropping compact-editor focus.",
+      "expected": "Autosave should preserve the editor’s focus and expanded state so the user can continue typing after a pause.",
+      "actual": "After typing and pausing, completed autosave closes the expanded editor after about one second. In compact mode it drops focus, so a second typing burst after a four-second pause does not appear until the user clicks again. Text entered before the reset remains saved.",
+      "reproSteps": [
+        "As workspace administrator, open Settings > AI > Overview and save Workspace Instructions.",
+        "Expand the saved instructions, type additional text and pause long enough for autosave. Observe the expanded editor closing without an explicit close action.",
+        "In the compact editor, click into the content, type, pause four seconds and type a second sentence without clicking again. Observe that focus was lost and the second sentence does not appear.",
+        "Confirm text entered before the reset survives reload. Compare an idle expanded editor and continuous typing, both of which preserve editing state."
+      ],
+      "sourceCause": "Successful debounced updateWorkspace sets originalInstructions, which is also the React key. Remount resets local fullscreen state and focus.",
+      "matchingGuidance": {
+        "relatedReference": "settings-data-model-pass2-f87492a0",
+        "distinction": "This entry covers Workspace Instructions in AI Overview. The related reference covers saved Skill Instructions. Both remount after autosave; the mobile missing-exit cases and reload-before-autosave text persistence cases are separate."
+      },
+      "reviewEvidence": {
+        "basis": "Independent browser/source verification on separate fixtures, coordinator source checks and explicit user acceptance as a related severity-3 entry.",
+        "userAccepted": true,
+        "sourceRevision": "35c645064f72bc4e3180a2c6c506cbbfee170007",
+        "severityReason": "Normal pauses during editing cause focus loss and unexpected fullscreen exit, interrupting subsequent typing. No saved instruction text is erased.",
+        "analysis": [
+          "Both reviewers reproduced twice on dedicated separate fixtures.",
+          "Idle expanded editors remain open and continuous typing works. Aborting the save request prevents the interruption.",
+          "Successful updateWorkspace changes originalInstructions, which is also the React key. The resulting remount resets local fullscreen state and focus.",
+          "The upstream Skill Instructions correction addresses the related Skill caller; it does not establish a Workspace correction."
+        ],
+        "sourceReferences": [
+          "https://github.com/twentyhq/twenty/blob/35c645064f72bc4e3180a2c6c506cbbfee170007/packages/twenty-front/src/pages/settings/ai/components/SettingsAiOverviewTab.tsx#L49-L81",
+          "https://github.com/twentyhq/twenty/blob/35c645064f72bc4e3180a2c6c506cbbfee170007/packages/twenty-front/src/pages/settings/ai/components/SettingsAiOverviewTab.tsx#L130-L151",
+          "https://github.com/twentyhq/twenty/commit/489118f25b44af148937450cc8678b5093200243"
+        ],
+        "limitations": [
+          "Only administrator desktop editing was verified; mobile and other rich-text callers were not established.",
+          "No saved text loss or page crash was observed.",
+          "The inspected newer Workspace source retains the pattern; newer runtime was not tested."
+        ]
+      }
     }
   ]
 }
