@@ -1,0 +1,217 @@
+{
+  "bugs": [
+    {
+      "name": "Drafts creation date filter returns 400 and leaves grid loading",
+      "summary": "Applying the visible Creation date / lower filter with 2026-09-25 12:00 AM returns a 400 error and leaves the Drafts grid loading and blank.",
+      "expected": "Applying the valid Creation date lower-than condition should display matching drafts or a user-visible no-matches state.",
+      "actual": "The filter changed the URL to /orders/drafts?0%5Bs4.createdAt%5D=2026-09-25T00%3A00&sort=number&asc=false, then the grid remained blank with its loading indicator. An Error notification remained visible stating “Response not successful: Received status code 400.” The state persisted after a six-second wait.",
+      "reproSteps": [
+        "Sign in as the fixture Saleor admin.",
+        "Open /orders/drafts?asc=false&sort=number and verify the Drafts list loads.",
+        "Open Filters, select Creation date, and leave the operator as lower.",
+        "Enter 2026-09-25T00:00 in the date-time field (September 25, 2026 at 12:00 AM).",
+        "Select Apply and observe the filtered Drafts page at /orders/drafts?0%5Bs4.createdAt%5D=2026-09-25T00%3A00&sort=number&asc=false.",
+        "Wait six seconds and confirm the grid remains blank/loading and the Error notification reports status code 400."
+      ],
+      "severity": 5
+    },
+    {
+      "name": "Clearing an Orders search reverses the list's order-number sort direction",
+      "summary": "Clearing an Orders search changes the Number sort from descending to ascending instead of restoring the prior list order.",
+      "expected": "After clearing the search, the unfiltered Orders list should retain its previous Number-descending sort (asc=false&sort=number).",
+      "actual": "After clearing the search, the list returned in ascending order, starting with order 1, and the URL changed to /orders?asc=true&sort=number.",
+      "reproSteps": [
+        "Using the authorized admin session (admin@example.com), open Orders at /orders. The page loads at /orders?asc=false&sort=number with the Number column sorted descending.",
+        "Enter 24 in the Search Orders field and confirm the matching order row appears.",
+        "Replace the query with mo-no-order-match-934761 and confirm the page shows “No orders found.”",
+        "Select and delete the entire query, leaving Search Orders empty.",
+        "Observe the full list return in ascending Number order, beginning with order 1, and the URL become /orders?asc=true&sort=number."
+      ],
+      "severity": 3
+    },
+    {
+      "name": "Clicking the Use email suggestion does not select a customer email in Change customer",
+      "summary": "Clicking the visible “Use email” suggestion in Change customer does not select it; Confirm stays disabled until Enter is pressed.",
+      "expected": "Clicking the visible “Use email: [address]” suggestion should select the email and enable Confirm so the admin can assign it to the draft order.",
+      "actual": "Clicking the Use email suggestion closed the dropdown but left Confirm disabled. Re-entering the email and pressing Enter enabled Confirm and assigned the email.",
+      "reproSteps": [
+        "Sign in to the local Saleor fixture as admin@example.com and create a Channel-USD draft order.",
+        "Click Change customer and enter a fresh email address that is not in Customers.",
+        "Click the Use email suggestion; the dropdown closes but Confirm remains disabled.",
+        "Type the email again and press Enter; Confirm becomes enabled and assigns the email."
+      ],
+      "severity": 3
+    },
+    {
+      "name": "Refreshing Return & replace products shows unexpected error",
+      "summary": "Refreshing the open Return & replace products form for a fresh fulfilled order replaces it with the Dashboard unexpected-error screen; retrying the screen’s Refresh page action leaves the error in place.",
+      "expected": "Refreshing the Return & replace products page should reload the form for the same order and leave it usable.",
+      "actual": "The Return & replace products form rendered for a newly fulfilled order. Refreshing that URL replaced it with the We’ve encountered an unexpected error screen.",
+      "reproSteps": [
+        "Sign in to the local Saleor fixture as admin@example.com and create a Channel-USD draft order with a Monospace Tee size S variant.",
+        "Assign a unique customer email, shipping and billing address, and the Default shipping method; finalize the draft.",
+        "Mark the order paid and fulfill its item from Default Warehouse.",
+        "Open Return and confirm the Return & replace products form renders.",
+        "Refresh the browser at the return form URL; the form is replaced by the unexpected-error screen."
+      ],
+      "severity": 5
+    },
+    {
+      "name": "Return reason validation message persists after selecting a valid reason",
+      "summary": "The return form continues to show “Return reason is required” with Damaged Item selected; submission succeeds and changes the fresh order to Returned.",
+      "expected": "Selecting a valid return reason such as Damaged Item clears the “Return reason is required” message and shows the reason as satisfied.",
+      "actual": "On a fresh return form with quantity 1 and Replace unchecked, selecting Damaged Item and entering a note left “Return reason is required” visible beneath the selected value after the form settled. Submitting succeeded, and the order status changed to Returned.",
+      "reproSteps": [
+        "In Configuration > Orders & fulfillment > Refunds & returns settings, select Refund Reason as the Returns Model Type and save.",
+        "Create a Channel-USD order with a physical Monospace Tee size S, a unique customer email, an address, and the Default shipping method.",
+        "Finalize the order, mark it paid, fulfill its item, and open Return.",
+        "Set return quantity to 1, select Damaged Item as the Reason, and enter a reason note.",
+        "The Return reason is required message remains visible beneath the selected reason while Return and Replace products is enabled.",
+        "Submit the return; the order changes to Returned."
+      ],
+      "severity": 3
+    },
+    {
+      "name": "Fulfilled order filter returns partially fulfilled orders",
+      "summary": "The Fulfillment Status filter and Fulfillment status table column use the same label for different concepts: individual shipment status and aggregate order status.",
+      "expected": "Distinguish shipment status from overall order status in the filter and column labels, so users can understand why the displayed status differs from the selected filter.",
+      "actual": "Applying Fulfillment Status is Fulfilled shows Partially fulfilled in the Fulfillment status column. The filter matches individual shipments, while the identically labeled column displays aggregate order status without explaining that distinction.",
+      "reproSteps": [
+        "Open Fulfillment > Orders as the fixture administrator, with an order containing a fulfilled shipment and remaining unfulfilled items.",
+        "Apply Fulfillment Status is Fulfilled.",
+        "Observe Partially fulfilled in the Fulfillment status column despite the Fulfilled filter.",
+        "Open Filters and compare the separate Order Status filter; the table column still uses the Fulfillment status label."
+      ],
+      "severity": 1
+    },
+    {
+      "id": "codex-60m-saleor-3",
+      "name": "Unpaid order return displays a negative previously refunded amount",
+      "summary": "The return page reports an authorized amount equal to the order total and a negative previously refunded amount for orders with no payments or refunds. Reproduced on two USD20 orders.",
+      "expected": "An order with no payments, authorizations, transactions, or refunds shows zero authorized and previously refunded amounts.",
+      "actual": "Order details shows No payment received, No refunds, and No transactions, but Return shows Authorized Amount USD20.00 and Previously refunded USD-20.00.",
+      "reproSteps": [
+        "Sign in and create a draft order in Channel-USD.",
+        "Add one Monospace Tee / S at USD20, assign a customer and address, and select Default shipping.",
+        "Finalize the draft without marking it paid or adding a transaction.",
+        "Verify order details shows No payment received, No refunds, and No transactions.",
+        "Click Return.",
+        "Observe Authorized Amount USD20.00 and Previously refunded USD-20.00."
+      ],
+      "severity": 3
+    },
+    {
+      "id": "codex-60m-saleor-19",
+      "name": "Failed return-and-refund commits the return and corrupts a corrected retry",
+      "summary": "The combined return/refund action returns products before validating the refund amount. When the refund fails, retrying creates an empty second return and loses line-level refund association.",
+      "expected": "Validate the refund amount before committing the return, or retain the returned-line context so a corrected retry grants the refund against the original return without creating an empty return.",
+      "actual": "On paid USD7.20 orders26 and28, refund1000 or8 showed 'Amount cannot be greater than charged amount...' after products were already returned and disappeared from the form. Order26 was Returned with No refunds made. On28, correcting the now-empty form to7.20 created a second empty Returned group and another Products returned event; refund banner says '$7.20 is not tied to a specific line'. Control order29 with valid7.20 on the first attempt produced one return group/event and a refund tied to its MP3 line, with no unlinked banner. Standalone excessive-refund creation correctly failed without returning anything.",
+      "reproSteps": [
+        "Create/finalize a test order with one digital MP3 variant and mark it paid (USD7.20; order28 is retained for evidence).",
+        "Open Return, choose Set maximal quantities, and enable Grant refund.",
+        "Select the charged transaction and a valid refund reason, Damaged Item.",
+        "Change Refund value from7.20 to8 and click Return and Replace products.",
+        "Observe the amount error, but the product line disappears because the return has already committed. The order becomes Returned with no refund granted.",
+        "Correct Refund value to7.20 while the return table is now empty, and click the same action.",
+        "Observe a second empty Returned group, duplicate return history, and an order-level refund not associated with the returned line.",
+        "Compare a fresh equivalent paid order with valid7.20 entered on the first attempt (order29): one return group and the refund tied to the MP3 line."
+      ],
+      "severity": 3
+    },
+    {
+      "id": "codex-60m-saleor-22",
+      "name": "Split fulfillment and replacement rows display the full original line total",
+      "summary": "Order Timeline tables use the original order-line total for every split group even though each group's displayed quantity is smaller.",
+      "expected": "Each group row's Total should correspond to its displayed quantity and price. Two quantity1 groups atUSD7.20 should each show7.20, summing to the order's14.40.",
+      "actual": "After partially fulfilling order31 (quantity2, price7.20), Unfulfilled quantity1 and Fulfilled quantity1 each display Total14.40 after reload. The order summary correctly totals14.40. With order30 quantity3 and replacement2, Unfulfilled quantity1 and Replaced quantity2 both display21.60 instead of7.20 and14.40. The replacement draft itself correctly contains quantity2,total14.40.",
+      "reproSteps": [
+        "Create a USD draft order with Headless + Omnichannel in a pill, MP3 variant, quantity2 at7.20 each, and required billing address.",
+        "Finalize and mark the USD14.40 order paid.",
+        "Click Fulfill, set quantity1, choose a warehouse, uncheck email notification and confirm.",
+        "Switch to Timeline and reload the order (order31 is retained).",
+        "Observe Unfulfilled and Fulfilled rows each show Quantity1, Price7.20, Total14.40.",
+        "As an alternate reproduction, order3units and replace2 with No refund. The remaining1 and replaced2 rows each repeat the full21.60 line total."
+      ],
+      "severity": 3
+    },
+    {
+      "id": "codex-30m-saleor-16",
+      "name": "Fulfill anyway loses the selected shipment warehouse",
+      "summary": "Overriding an out-of-stock fulfillment drops the selected warehouse from the resulting shipment and its cancellation dialog.",
+      "expected": "The shipment retains its selected warehouse, shows where it shipped from, and preselects that warehouse for cancellation/restocking.",
+      "actual": "The shipment has no From warehouse label. Cancel fulfillment says the shipment warehouse is pre-selected, but the warehouse field is blank and Cancel is disabled until a warehouse is manually chosen. Normal Europe fulfillment shows From Europe. Reproduced on two oversell shipments.",
+      "reproSteps": [
+        "Sign in and open a paid, unfulfilled order with a stocked product such as Monospace Tee S.",
+        "Click Fulfill and select a warehouse showing 0 available, such as Default for click and collect.",
+        "Select quantity 1, disable customer email, and click Fulfill.",
+        "In Not enough stock, click Fulfill anyway.",
+        "Open the created shipment's Show more menu and choose Cancel fulfillment."
+      ],
+      "severity": 3
+    },
+    {
+      "id": "mo-30m-saleor-17",
+      "name": "Customer ID filter has no value input on mobile Drafts",
+      "summary": "The Customer ID “is” filter at 390×844 has no value input, leaving Apply disabled and making the filter unusable.",
+      "expected": "After choosing Customer ID and the “is” operator, the filter row should provide a value input so the condition can be applied.",
+      "actual": "The row displays only “Customer ID” and “is”; no value input appears and Apply stays disabled. The condition could not be applied.",
+      "reproSteps": [
+        "Set the browser viewport to 390×844 and open /orders/drafts?asc=false&sort=number as the signed-in admin using the supplied saved session unchanged; no credentials were entered.",
+        "Open Filters.",
+        "Open the first filter-field dropdown and select Customer ID.",
+        "Open the operator dropdown and select “is”.",
+        "Observe that no value input is rendered and Apply remains disabled after the page settles."
+      ],
+      "severity": 3
+    },
+    {
+      "id": "mo-60m-saleor-17",
+      "name": "Removing the only product leaves the former FedEx charge in the draft total",
+      "summary": "Removing the sole Apple Juice line leaves the draft total at the former USD 40.42 FedEx charge even though the product line is gone, subtotal is 0.00, shipping is shown as 0.00, and no shipping methods apply; the mismatch remains after refresh.",
+      "expected": "After the only product is removed and the order summary shows subtotal 0.00, no applicable shipping methods, and shipping 0.00, the total should no longer include the previously selected FedEx charge; it should be USD 0.00.",
+      "actual": "The draft displayed no product lines, subtotal 0.00, “No applicable shipping methods” with shipping 0.00, and taxes 0.00, but the total remained USD 40.42. It remained USD 40.42 after waiting and refreshing the page.",
+      "reproSteps": [
+        "Authenticate as an admin using the provided admin saved authentication state, then open /orders/drafts?asc=false&sort=number.",
+        "Create a new order draft in Channel-USD; the newly created draft detail page was /orders/drafts/T3JkZXI6NTIzZmRmN2ItN2MyZi00Y2RiLWFlNWQtNWExNWNhNGI2M2Y4.",
+        "Add one Apple Juice product variant priced USD 1.99.",
+        "Assign the fresh customer email drafts-momentic-20260615-739184@example.com and enter a shipping address: Drafts Test, 123 Drafts Test Street, New York, NY 10001, United States.",
+        "Set the draft's shipping method to FedEx at the displayed price of USD 40.42; verify the summary initially shows subtotal USD 1.99 and total USD 42.41.",
+        "Open the Apple Juice line actions, choose Remove product, and confirm.",
+        "Observe that the product list is empty, subtotal is 0.00, no applicable shipping methods are shown with shipping 0.00, but the total is USD 40.42. Wait six seconds and refresh; the mismatch remains."
+      ],
+      "severity": 3
+    },
+    {
+      "id": "mo-60m-saleor-29",
+      "name": "Removing a draft filter condition temporarily clears the preceding condition",
+      "summary": "Removing the blank second condition briefly blanks the completed Customer ID condition; applying during that state closes the builder with the draft list unfiltered. The values later reappear, but the loss was visible and actionable before recovery.",
+      "expected": "Removing the x on the blank second condition should remove only that row and leave the first row as Customer ID / is / drafts-explore-bill-96173.",
+      "actual": "After removing the second row, the remaining first row displayed blank field, operator, and value. Applying promptly closed the filter panel and left the full draft list visible. On several observations the original values reappeared after about five seconds, so the reset was transient; it also did not occur on every attempt.",
+      "reproSteps": [
+        "Load the supplied admin saved authentication state (path omitted); no credentials were typed. Navigate to /orders/drafts?asc=false&sort=number.",
+        "Open Filters and select Customer ID for the first condition, leaving the default operator is.",
+        "Enter drafts-explore-bill-96173 in the value field.",
+        "Click Add condition and confirm the blank second row appears.",
+        "Click the x at the right end of the blank second row. The surviving first row can display blank fields immediately afterward.",
+        "On an attempt where the row is blank, click Apply promptly; the builder closes and the full draft list remains visible."
+      ],
+      "severity": 3
+    },
+    {
+      "name": "Negative custom return refund creates a negative draft refund",
+      "summary": "The return form saves a negative custom refund as a draft despite its amount input requiring a minimum of 0 and blocking the minus key. Whole-value negative input remains accepted, the custom submit handler bypasses native minimum validation, and the API checks only the upper bound before storing the amount.",
+      "expected": "Reject a negative custom refund amount before submitting the return or creating a granted refund.",
+      "actual": "Submitting a visible -1 custom refund succeeds and creates a USD -1.00 DRAFT refund. The order becomes Returned and shows a USD -1.00 outstanding balance; the negative draft and balance remain after reload. No refund is sent to a payment gateway.",
+      "reproSteps": [
+        "Sign in as the fixture administrator and create an owned Channel-USD draft order with one Monospace Tee variant priced at USD 10.",
+        "Assign a unique customer email, an address, and the Default shipping method, then finalize the draft.",
+        "Add a USD 10 manual capture and verify the order has a captured transaction. Leave the item unfulfilled.",
+        "Open Return, set the item return quantity to 1, leave Replace unchecked, enable Grant refund for returned items, and select the captured transaction.",
+        "Enter -1 as a whole value in Refund value and confirm the field visibly retains -1. Leave Automatically send granted refund unchecked and select the required refund reason, such as Incorrect Address.",
+        "Click Return and Replace products. Observe the Returned order, USD -1.00 DRAFT refund, and USD -1.00 outstanding balance.",
+        "Reload the order details and confirm the negative draft refund and balance persist."
+      ],
+      "severity": 3
+    }
+  ]
+}
