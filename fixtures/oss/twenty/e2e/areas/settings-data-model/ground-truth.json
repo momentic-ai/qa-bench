@@ -1799,6 +1799,92 @@
           "Newer runtime was not tested."
         ]
       }
+    },
+    {
+      "id": "settings-data-model-pass3-24ad12ec",
+      "name": "Saved relation editor substitutes the inverse field API name for its display label",
+      "severity": 1,
+      "owningArea": "twenty/settings-data-model",
+      "summary": "Reopening a saved ordinary relation displays a capitalized inverse API name instead of its saved display label.",
+      "expected": "The editor shows the saved inverse label “Self children,” matching the list and entered name.",
+      "actual": "The Relations list correctly displays Self children, but reopening Self parent shows SelfChildren in the inverse preview and Field on destination. Saved labels and relationship links remain intact.",
+      "reproSteps": [
+        "As administrator create a fresh custom object.",
+        "Add a relation named Self parent, select Belongs to one and select the same object as the sole destination.",
+        "Set Field on destination to Self children and save.",
+        "At desktop width inspect both self relationship rows, refresh, then open Self parent using its chevron.",
+        "Compare the inverse label in the editor and preview with the saved Relations list. Repeat with a cross-object ordinary relation; a one-word matching label/API-name and a multi-destination relation are passing controls."
+      ],
+      "sourceCause": "Ordinary RELATION branch looks up destination field but selects relation.targetFieldMetadata.name, then capitalize; both destination input and preview consume that default. Neighboring morph branch correctly reads targetFieldMetadata.label.",
+      "matchingGuidance": {
+        "distinctFromReference": "settings-data-model-N23",
+        "distinction": "This entry covers inverse display-label substitution on ordinary relations. N23 covers the wrong cardinality shown when reopening multi-destination relations. No shared cause is established."
+      },
+      "reviewEvidence": {
+        "basis": "Independent browser/source verification, coordinator source checks and explicit user acceptance.",
+        "userAccepted": true,
+        "sourceRevision": "35c645064f72bc4e3180a2c6c506cbbfee170007",
+        "severityReason": "Incorrect editor and preview labels; saved metadata and record links remain correct.",
+        "analysis": [
+          "Both reviewers reproduced twice on fresh objects, including ordinary non-self relations.",
+          "One-word labels whose API name matches and multi-destination relations display correctly.",
+          "The ordinary relation branch selects targetFieldMetadata.name and capitalizes it; the neighboring morph relation branch reads the display label."
+        ],
+        "sourceReferences": [
+          "https://github.com/twentyhq/twenty/blob/35c645064f72bc4e3180a2c6c506cbbfee170007/packages/twenty-front/src/modules/settings/data-model/fields/forms/morph-relation/hooks/useRelationSettingsFormDefaultValuesTargetFieldMetadata.ts#L57-L72",
+          "https://github.com/twentyhq/twenty/blob/a6372e288ade9ed14ac2af1a7e224dabb6cc6021/packages/twenty-front/src/modules/settings/data-model/fields/forms/morph-relation/hooks/useRelationSettingsFormDefaultValuesTargetFieldMetadata.ts#L57-L72",
+          "https://github.com/twentyhq/twenty/blob/35c645064f72bc4e3180a2c6c506cbbfee170007/packages/twenty-front/src/modules/settings/data-model/fields/forms/morph-relation/components/SettingsDataModelFieldRelationFormCard.tsx#L107-L114",
+          "https://github.com/twentyhq/twenty/blob/35c645064f72bc4e3180a2c6c506cbbfee170007/packages/twenty-docs/user-guide/data-model/capabilities/relation-fields.mdx#L50-L61"
+        ],
+        "limitations": [
+          "Only administrator browser sessions were tested.",
+          "No saved-label loss or broken record links were observed.",
+          "A save failure while editing the inverse input was not verified and is excluded.",
+          "The inspected newer source retains the pattern; newer runtime was not tested."
+        ]
+      }
+    },
+    {
+      "id": "settings-data-model-pass3-69cbded5",
+      "name": "Workspace Instructions autosave remounts the editor, closing fullscreen and dropping focus",
+      "severity": 3,
+      "owningArea": "twenty/settings-data-model",
+      "summary": "Successful Workspace Instructions autosave interrupts continued editing by closing the expanded editor or dropping compact-editor focus.",
+      "expected": "Autosave should preserve the editor’s focus and expanded state so the user can continue typing after a pause.",
+      "actual": "After typing and pausing, completed autosave closes the expanded editor after about one second. In compact mode it drops focus, so a second typing burst after a four-second pause does not appear until the user clicks again. Text entered before the reset remains saved.",
+      "reproSteps": [
+        "As workspace administrator, open Settings > AI > Overview and save Workspace Instructions.",
+        "Expand the saved instructions, type additional text and pause long enough for autosave. Observe the expanded editor closing without an explicit close action.",
+        "In the compact editor, click into the content, type, pause four seconds and type a second sentence without clicking again. Observe that focus was lost and the second sentence does not appear.",
+        "Confirm text entered before the reset survives reload. Compare an idle expanded editor and continuous typing, both of which preserve editing state."
+      ],
+      "sourceCause": "Successful debounced updateWorkspace sets originalInstructions, which is also the React key. Remount resets local fullscreen state and focus.",
+      "matchingGuidance": {
+        "relatedReference": "settings-data-model-pass2-f87492a0",
+        "distinction": "This entry covers Workspace Instructions in AI Overview. The related reference covers saved Skill Instructions. Both remount after autosave; the mobile missing-exit cases and reload-before-autosave text persistence cases are separate."
+      },
+      "reviewEvidence": {
+        "basis": "Independent browser/source verification on separate fixtures, coordinator source checks and explicit user acceptance as a related severity-3 entry.",
+        "userAccepted": true,
+        "sourceRevision": "35c645064f72bc4e3180a2c6c506cbbfee170007",
+        "severityReason": "Normal pauses during editing cause focus loss and unexpected fullscreen exit, interrupting subsequent typing. No saved instruction text is erased.",
+        "analysis": [
+          "Both reviewers reproduced twice on dedicated separate fixtures.",
+          "Idle expanded editors remain open and continuous typing works. Aborting the save request prevents the interruption.",
+          "Successful updateWorkspace changes originalInstructions, which is also the React key. The resulting remount resets local fullscreen state and focus.",
+          "The upstream Skill Instructions correction addresses the related Skill caller; it does not establish a Workspace correction."
+        ],
+        "sourceReferences": [
+          "https://github.com/twentyhq/twenty/blob/35c645064f72bc4e3180a2c6c506cbbfee170007/packages/twenty-front/src/pages/settings/ai/components/SettingsAiOverviewTab.tsx#L49-L81",
+          "https://github.com/twentyhq/twenty/blob/35c645064f72bc4e3180a2c6c506cbbfee170007/packages/twenty-front/src/pages/settings/ai/components/SettingsAiOverviewTab.tsx#L130-L151",
+          "https://github.com/twentyhq/twenty/commit/489118f25b44af148937450cc8678b5093200243"
+        ],
+        "limitations": [
+          "Only administrator desktop editing was verified; mobile and other rich-text callers were not established.",
+          "No saved text loss or page crash was observed.",
+          "The inspected newer Workspace source retains the pattern; newer runtime was not tested."
+        ]
+      }
     }
   ]
 }
