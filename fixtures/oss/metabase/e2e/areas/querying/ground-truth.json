@@ -1430,6 +1430,212 @@
         "Open Editor, edit Alpha QA, change its name to Renamed Alpha QA, and click Update.",
         "Observe the custom column pills, run Visualize, and inspect Editor > View SQL. Repeat with a new direct-reference column and change only the referenced column's formula."
       ]
+    },
+    {
+      "id": "metabase-querying-545",
+      "name": "Relative one-day offset filter label reads “is in the yesterday”",
+      "severity": 1,
+      "summary": "Relative one-day offset filter label reads “is in the yesterday”.",
+      "expected": "The chip uses grammatical wording such as “previous day, starting 7 days ago.”",
+      "actual": "The chip reads “Created At is in the yesterday, starting 7 days ago.”",
+      "reproSteps": [
+        "Create a fresh Orders query in the notebook editor.",
+        "Add Created At → Relative date range → Previous 1 day → Starting from 7 days ago.",
+        "Apply the filter and inspect its notebook chip."
+      ]
+    },
+    {
+      "id": "metabase-querying-547",
+      "name": "Category Ends with '%' returns all 200 products, including categories with no percent suffix",
+      "severity": 3,
+      "summary": "Category Ends with '%' returns all 200 products, including categories with no percent suffix.",
+      "expected": "Ends with '%' should match categories ending in the entered percent character, not Gadget, Widget, Gizmo or Doohickey.",
+      "actual": "The applied chip reads 'Category ends with %', but Visualize returns 200 rows showing Gadget, Widget, Gizmo and Doohickey.",
+      "reproSteps": [
+        "Create a new Sample Database Products notebook question as the primary test user.",
+        "Add a Category filter, choose Ends with, enter % as the sole value and apply the filter.",
+        "Click Visualize and inspect Category values and the row count."
+      ]
+    },
+    {
+      "id": "metabase-querying-548",
+      "name": "Notebook != join matches a null left key to a null right key",
+      "severity": 3,
+      "summary": "Notebook != join matches a null left key to a null right key.",
+      "expected": "A != join condition between key fields should not match a null left key to a null right key.",
+      "actual": "Visualizing the != join produces 11 rows where the left null key row ('NullLeft') matches the right null key row ('NullRight'), displaying both on the same row.",
+      "reproSteps": [
+        "Create a Sample Database SQL question QA-JOIN-SQL-left: SELECT 1 AS K, ' Alpha ' AS S UNION ALL SELECT 2, 'Beta' UNION ALL SELECT 4, 'Delta' UNION ALL SELECT CAST(NULL AS INTEGER), 'NullLeft'. Save (omit sentence-ending period from SQL).",
+        "Create and save QA-JOIN-SQL-right: SELECT 1 AS K, 'alpha' AS S UNION ALL SELECT 3, 'gamma' UNION ALL SELECT 4, 'delta' UNION ALL SELECT CAST(NULL AS INTEGER), 'NullRight' (no trailing punctuation).",
+        "On left SQL question click Explore results, Editor, Join data and select right SQL question.",
+        "Choose K for both relationship fields. Leave Left outer join; change operator to != and Visualize.",
+        "Inspect the NullLeft rows, including the row whose joined S is NullRight and whose two K values are empty."
+      ]
+    },
+    {
+      "id": "metabase-querying-556",
+      "name": "Fixed On date filter on a saved timezone-aware timestamp question fails with a TIMESTAMP WITH TIME ZONE parse error",
+      "severity": 3,
+      "summary": "Fixed On date filter on a saved timezone-aware timestamp question fails with a TIMESTAMP WITH TIME ZONE parse error.",
+      "expected": "The offered fixed date filter executes successfully and returns the rows whose EVENT_AT falls on November 1, 2026, instead of a query error.",
+      "actual": "The builder shows 'There was a problem with your question' instead of results. Error details begin: Cannot parse \"TIMESTAMP WITH TIME ZONE\" constant \"America/Los_Angeles\".",
+      "reproSteps": [
+        "Create a fresh SQL question on Sample Database with: SELECT row_id, event_utc AT TIME ZONE 'America/Los_Angeles' AS event_at, CAST(event_utc AT TIME ZONE 'America/Los_Angeles' AS VARCHAR) AS local_with_offset, CAST(event_utc AS DATE) AS utc_date, EXTRACT(HOUR FROM event_utc) AS utc_hour FROM (VALUES (1, TIMESTAMP WITH TIME ZONE '2026-11-01 06:59:59+00'), (2, TIMESTAMP WITH TIME ZONE '2026-11-01 07:00:00+00'), (3, TIMESTAMP WITH TIME ZONE '2026-11-01 08:30:00+00'), (4, TIMESTAMP WITH TIME ZONE '2026-11-01 09:30:00+00'), (5, TIMESTAMP WITH TIME ZONE '2026-11-01 10:00:00+00')) AS t(row_id,event_utc)",
+        "Run and verify five rows, then save with a unique date_filters-prefixed name.",
+        "Choose Explore results. Click EVENT_AT header, Filter by this column, Fixed date range, On. Enter November 1, 2026 and apply Add filter.",
+        "Open Show error details."
+      ]
+    },
+    {
+      "id": "metabase-querying-524",
+      "name": "Record details URL loses its query after adding and removing a saved-question filter",
+      "severity": 3,
+      "summary": "Record details URL loses its query after adding and removing a saved-question filter.",
+      "expected": "Record details should retain a reloadable saved-question or serialized-query URL.",
+      "actual": "After View details, the address is /question?objectId=1 with no saved ID or query hash. Reopening that address displays New question / Pick your starting data instead of the record. Reproduced on two saved Products questions.",
+      "reproSteps": [
+        "Create a query-builder question from Sample Database > Products with no filters, save it under a unique name, run it, and reopen the saved question.",
+        "Click a Gizmo value in the Category column and choose '= Is Gizmo'.",
+        "Remove the resulting Category is Gizmo filter chip, returning to all 200 products.",
+        "Click the first product's Title and choose View details.",
+        "Observe the address becomes /question?objectId=1 without the saved question ID or query hash.",
+        "Reopen or reload that address. It shows the empty new-question starting-data screen and loses the record details."
+      ]
+    },
+    {
+      "id": "metabase-querying-553",
+      "name": "Reverting a shared SQL question from an ID field filter to its original category mapping immediately produces a data-conversion query error",
+      "severity": 3,
+      "summary": "Reverting a shared SQL question from an ID field filter to its original category mapping immediately produces a data-conversion query error.",
+      "expected": "Reverting to the previously working category-filter revision should produce an executable question, resetting or validating filter values incompatible with the restored mapping rather than automatically issuing an invalid comparison.",
+      "actual": "The reverted page retains Min Total40 and Product Filter14 and displays 'An error occurred in your query' with 'Data conversion error converting \"Gizmo\"'.",
+      "reproSteps": [
+        "As Maya, create a shared native SQL question in Our analytics: SELECT P.CATEGORY, COUNT(*) AS ORDER_COUNT FROM ORDERS O LEFT JOIN PRODUCTS P ON O.PRODUCT_ID = P.ID WHERE O.TOTAL >= {{min_total}} AND {{product_filter}} GROUP BY P.CATEGORY ORDER BY P.CATEGORY.",
+        "Configure min_total as Number default0. Configure product_filter as Field Filter mapped Products Category, alias P.CATEGORY, default Gizmo. Run and save a new question_collaboration-prefixed question; Gizmo count4784 appears.",
+        "As primary Harbor Admin, open this question, remap product_filter to Products ID, set alias P.ID and default14. Rename SQL variable min_total to minimum_total; retain Number default0. Run and replace original; Widget count95 appears.",
+        "As Maya reopen the saved question, set minimum_total default40, run to Widget count15, then save replacing original.",
+        "Open More info > History and click revert beside the original You created this revision. Inspect the immediate settled result."
+      ]
+    },
+    {
+      "id": "metabase-querying-549",
+      "name": "date() accepts an ISO 8601 datetime string but query fails with Cannot parse DATE constant",
+      "severity": 3,
+      "summary": "date() accepts an ISO 8601 datetime string but query fails with Cannot parse DATE constant.",
+      "expected": "The visible date function description promises conversion of a datetime or ISO 8601 datetime string to a date, discarding time. This valid leap-day timestamp should produce February 2028 month group and Count 18760.",
+      "actual": "Query displays 'There was a problem with your question', zero rows, and details 'Cannot parse \"DATE\" constant \"2028-02-29T23:59:59\"'.",
+      "reproSteps": [
+        "Create an independent QA-EXPR question on Sample Database Orders.",
+        "Add custom column QA-EXPR Date Only with date(\"2028-02-29T23:59:59\"); expression is accepted with Done enabled.",
+        "Summarize Count of rows grouped by Date Only (default Month).",
+        "Click Visualize and Show error details."
+      ]
+    },
+    {
+      "id": "metabase-querying-550",
+      "name": "Changing date grouping from Month to Day silently removes the downstream date filter",
+      "severity": 3,
+      "summary": "Changing date grouping from Month to Day silently removes the downstream date filter.",
+      "expected": "Retain the downstream date filter or warn before discarding it when changing the date grouping granularity.",
+      "actual": "Changing the date grouping granularity from Month to Day immediately removes the downstream filter stage without warning, resulting in 1,421 unfiltered rows when visualized.",
+      "reproSteps": [
+        "Create a fresh Orders question, using a unique date_filters-prefixed fixture name if saving.",
+        "Summarize Count of rows grouped by Created At: Month.",
+        "Add a Filter stage after Summarize on Created At: Month, Fixed date range > On September 1, 2026; visualize. The September 2026 row has count 346.",
+        "Open Editor and change the Created At grouping temporal bucket from Month to Day.",
+        "Observe that the downstream date filter stage disappears without warning, then Visualize."
+      ]
+    },
+    {
+      "id": "metabase-querying-552",
+      "name": "SQL field filter “String starts with” treats % as a wildcard and returns every category",
+      "severity": 3,
+      "summary": "SQL field filter “String starts with” treats % as a wildcard and returns every category.",
+      "expected": "“Starts with %” should match category names beginning with the literal % character, not unrelated names. None of the four category names shown begin with %.",
+      "actual": "With Category Filter: % applied, results contain all categories: Doohickey 42, Gadget 53, Gizmo 51, Widget 54. The filter behaves as a SQL wildcard rather than the visible “Starts with” text match.",
+      "reproSteps": [
+        "From Home choose New > SQL query and Sample Database. Create a fresh worker-prefixed question with SQL: SELECT CATEGORY, COUNT(*) AS TOTAL FROM PRODUCTS WHERE 1=1 [[AND {{category_filter}}]] GROUP BY CATEGORY ORDER BY CATEGORY.",
+        "Open Variables settings. Change category_filter to Field Filter, mapped to Products > Category. Set Filter widget type to String starts with; keep input box.",
+        "Apply G and run: Gadget 53 and Gizmo 51 appear.",
+        "Edit the parameter, remove G, enter %, press Enter, Update filter and run."
+      ]
+    },
+    {
+      "id": "metabase-querying-554",
+      "name": "View SQL is blank after replacing a saved-question join field with a custom expression",
+      "severity": 3,
+      "summary": "View SQL is blank after replacing a saved-question join field with a custom expression.",
+      "expected": "View SQL displays SQL for the current custom-expression join, or an actionable error if the query cannot be generated.",
+      "actual": "SQL for this question panel is entirely blank and Convert this question to SQL is disabled. The visualization continued to show51rows after editing the expression; correctness of those rows is not established.",
+      "reproSteps": [
+        "Create a fresh Sample Database Products question, LEFT JOIN Reviews on Products ID=Reviews Product ID, summarize Average Reviews Rating grouped by Products Category; save with unique joins-prefixed name.",
+        "Create another Products question and LEFT JOIN that saved question on Products Category=joined Category.",
+        "Filter joined Average Reviews Rating between4and5; run (51rows), save as a new question and reopen editor.",
+        "Open left Category join field, choose Custom Expression, replace expression with upper([Category]) and Update.",
+        "Open Visualization, then Editor, then View SQL."
+      ]
+    },
+    {
+      "id": "metabase-querying-523",
+      "name": "Editing a compound join condition silently deletes a custom column",
+      "severity": 3,
+      "summary": "Editing a compound join condition silently deletes a custom column.",
+      "expected": "Editing the join condition to an equivalent expression should retain the custom column and its results.",
+      "actual": "The Margin custom column immediately disappears from the notebook, and it is absent from results after rerunning, without warning. Reproduced twice.",
+      "reproSteps": [
+        "Open /question/notebook and choose Sample Database > Orders.",
+        "Join Products using the automatically selected Orders.Product ID = Products.ID condition, and choose Inner join.",
+        "Add a custom column named Margin using [Total] - [Products → Price].",
+        "Add a second condition to the join: Orders.Total > Products.Price.",
+        "Visualize and confirm Margin is present (the first value is 14.62), then return to Editor.",
+        "On the first join condition, open the left column selector > Custom Expression, change [Product ID] to [Product ID] + 0, and click Update.",
+        "Observe Margin has disappeared. Visualize again and confirm the Margin result column is also missing."
+      ]
+    },
+    {
+      "id": "metabase-querying-551",
+      "name": "Joined Reviews row's View details shows a different review: selecting review 1 displays review 8",
+      "severity": 3,
+      "summary": "Joined Reviews row's View details shows a different review: selecting review 1 displays review 8.",
+      "expected": "View details should show the selected row's review1, reviewer christ, rating5 (or otherwise preserve the selected joined row when presenting Product details).",
+      "actual": "The panel titled Rustic Paper Wallet shows Reviews → ID8, reviewer cristina.balistrieri and rating4 instead. The highlighted row also moves to review8 although review1 was selected.",
+      "reproSteps": [
+        "Create a fresh question using Sample Database Products. Add LEFT JOIN Reviews on Products ID = Reviews Product ID; include all joined fields.",
+        "Summarize Average of Reviews Rating grouped by Products Category. Save under a unique joins-prefixed name.",
+        "Click Gizmo's average 4.02 and choose See these Products.",
+        "In the resulting table, click first-row Reviews → ID 1 (reviewer christ, rating5), then choose View details.",
+        "Compare the displayed joined review values with the selected row."
+      ]
+    },
+    {
+      "id": "metabase-querying-562",
+      "name": "Opening a saved SQL question after renaming its referenced source produces unsaved changes and a discard warning without editing",
+      "severity": 3,
+      "summary": "Opening a saved SQL question after renaming its referenced source produces unsaved changes and a discard warning without editing.",
+      "expected": "Viewing an already-saved dependent question after an upstream rename should not count as user edits or require discarding/saving changes before leaving.",
+      "actual": "The dependent query still returns correct rows, but opening it automatically exposes Save and changes its reference slug. Clicking Our analytics opens “Discard your changes?” with “Your changes haven't been saved, so you'll lose them if you navigate away,” although no edits were made to the dependent question.",
+      "reproSteps": [
+        "Create a distinctly prefixed SQL source question on Sample Database: SELECT CATEGORY, COUNT(*) AS PRODUCT_COUNT FROM PRODUCTS WHERE CATEGORY = 'Gizmo' GROUP BY CATEGORY ORDER BY CATEGORY. Save it.",
+        "Create another SQL question referencing the saved source with SELECT * FROM {{#SOURCE_ID}}; save it. If the reference is normalized to include the source slug and Save remains visible, save the normalized question again; refresh to confirm a clean saved view.",
+        "Rename the source using its editable header title and press Enter. Refresh source to confirm the new name persists.",
+        "Open the saved dependent SQL question without editing its SQL or settings.",
+        "Click Our analytics breadcrumb to leave the dependent question."
+      ]
+    },
+    {
+      "id": "metabase-querying-565",
+      "name": "Combine columns generates an invalid expression when a separator ends with a backslash",
+      "severity": 3,
+      "summary": "Combine columns generates an invalid expression when a separator ends with a backslash.",
+      "expected": "The helper should escape the entered separators into a valid concat expression, allowing the custom column to be completed.",
+      "actual": "The generated concat expression displays an Invalid expression error (pointing at the later separator) and Done is disabled. The helper preview accepted the quote/backslash separator, but its generated expression cannot be added.",
+      "reproSteps": [
+        "As Harbor Admin, start a fresh notebook question on Sample Database > Products.",
+        "Add a custom column and choose Combine columns.",
+        "Keep first column ID and second Ean; click Add column to include Title.",
+        "Click Separated by (space). In the first Separator input enter two characters: double quote followed by backslash. In the second Separator input enter ::.",
+        "Click the helper's Done button. Name the generated expression QAEXG mixed escaped and inspect validation."
+      ]
     }
   ]
 }

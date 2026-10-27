@@ -431,6 +431,52 @@
         "Cancel editing and optionally save the question. Reload and run it to confirm that the invalid dependent expression persists and the query still fails."
       ],
       "reason": "Works as intended: the user made an incompatible change to the upstream column and the query then fails with a clear error. It can be fixed by editing the downstream formula, unlike a column that silently disappears (querying-496)."
+    },
+    {
+      "id": "metabase-querying-546",
+      "name": "SQL variable settings save an empty default even when Default filter widget value is marked required",
+      "summary": "SQL variable settings save an empty default even when Default filter widget value is marked required.",
+      "expected": "With Always require a value enabled and the default field marked required, saving should require a default or clearly explain that an empty default is allowed.",
+      "actual": "Clearing fallback leaves the default field marked (required), but Save successfully replaces the question.",
+      "reproSteps": [
+        "Using the primary fixture, create a new SQL query on Sample Database: SELECT {{value}} AS PARAM_VALUE.",
+        "Set text variable default to fallback, save a fresh QA-PARAM question.",
+        "Enable Always require a value and save replacing the original.",
+        "Clear fallback using the x in Default filter widget value. The field shows (required).",
+        "Save and confirm replacement.",
+        "Refresh and open the editor's Variables settings."
+      ],
+      "reason": "Works as intended: Metabase treats a required SQL variable as an execution constraint, and its tests cover a required variable with no default. Running the question asks for a value, and entering one runs it normally."
+    },
+    {
+      "id": "metabase-querying-564",
+      "name": "Discarding an unsaved SQL edit via Back to previous results leaves the discarded query and zero-row results visible",
+      "summary": "Discarding an unsaved SQL edit via Back to previous results leaves the discarded query and zero-row results visible.",
+      "expected": "Discarding restores the saved question and its two-row results, rather than continuing to show discarded SQL.",
+      "actual": "Dialog closes and URL becomes the saved question's URL, but header still says New question, editor still contains ID = 999999 and No results/Showing 0 rows remain.",
+      "reproSteps": [
+        "Create a fresh SQL question on Sample Database using SELECT ID, TITLE, CATEGORY, PRICE FROM PRODUCTS WHERE ID <= 2 ORDER BY ID; run and save with a unique QALIFE name.",
+        "Reopen it and Open Editor; replace SQL with SELECT ID, TITLE FROM PRODUCTS WHERE ID = 999999 and run.",
+        "On No results, click Back to previous results.",
+        "In Discard your changes dialog, click Cancel; verify unsaved SQL remains.",
+        "Click Back to previous results again, then Discard changes."
+      ],
+      "reason": "Cannot reproduce on human review: 'Back to previous results' doesn't offer Discard a second time."
+    },
+    {
+      "id": "metabase-querying-561",
+      "name": "Relative date filter silently truncates interval 1.5 to 1 when applied",
+      "summary": "Relative date filter silently truncates interval 1.5 to 1 when applied.",
+      "expected": "Reject unsupported fractional intervals with validation, or preserve and correctly apply the entered value; do not silently replace 1.5 with 1.",
+      "actual": "The interval textbox accepts 1.5 and Update filter remains enabled. Applying it uses one month, and reopening shows 1. A whole-page AI assertion confirmed no validation error or rounding warning. In this session the result remained 264 rows in June 2026.",
+      "reproSteps": [
+        "Create a fresh question via New > Question > Sample Database > Orders.",
+        "Add a Created At relative date filter using Previous 1 month and the Starting from option set to 3 months ago; apply and Visualize. This session previewed June 1–30, 2026.",
+        "Open the date filter chip and replace Interval 1 with 1.5.",
+        "Click Update filter and reopen the filter chip.",
+        "Observe Interval is now 1, not the entered 1.5, with no validation warning."
+      ],
+      "reason": "Works as intended: the preview already shows the whole-number range before the filter is applied, as in dashboards-138."
     }
   ]
 }

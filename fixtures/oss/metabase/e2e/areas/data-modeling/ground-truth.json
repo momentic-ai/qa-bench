@@ -1290,6 +1290,148 @@
         "Switch to the second tab without reloading, change QA Metric A's description to 'second', and click outside to save.",
         "Open QA Metric B, edit its definition, and click Save. Observe 'Save failed'. Changing B's description also fails silently: the new text is gone after reload."
       ]
+    },
+    {
+      "id": "metabase-data-modeling-522",
+      "name": "Duplicated model initially loses customized List columns until refresh",
+      "severity": 3,
+      "summary": "Duplicated model initially loses customized List columns until refresh.",
+      "expected": "A duplicated model should immediately display the source model's saved List layout.",
+      "actual": "Reproduced twice with native Products models. Source List includes RATING; immediately after duplication the new model shows only TITLE, EAN, CATEGORY, VENDOR and PRICE even after 10 seconds. Refreshing the duplicate adds RATING.",
+      "reproSteps": [
+        "Open /browse/models, choose Create a new model, then native query. Select Sample Database and enter SELECT * FROM PRODUCTS.",
+        "Run the query with Ctrl+Enter and Save the model as 'QA Actions Native Products'.",
+        "Open its three-dot menu → Edit metadata. Open the top Settings tab, select List, then Customize List layout.",
+        "Drag RATING from the sidebar into the columns area containing EAN, CATEGORY, VENDOR and PRICE. Click Done and Save changes.",
+        "Reload the model to confirm its List displays RATING.",
+        "Open the three-dot menu → Duplicate; name it 'QA Actions Native Products Copy' and confirm.",
+        "Observe that the duplicate's initial List omits RATING. Refresh the same page and observe that RATING appears."
+      ]
+    },
+    {
+      "id": "metabase-data-modeling-540",
+      "name": "Minimum Created At metric changes from April1 to April26 after refresh",
+      "severity": 3,
+      "summary": "Minimum Created At metric changes from April1 to April26 after refresh.",
+      "expected": "The minimum date result should remain the same after refreshing the saved metric.",
+      "actual": "Immediately after saving Minimum of Created At, result is April1,2025,12:00AM. After refresh, result is April26,2025,7:29PM.",
+      "reproSteps": [
+        "Open a disposable Products metric definition with no filters or default time dimension.",
+        "Choose built-in Minimum of... and Created At.",
+        "Save changes and observe April1,2025,12:00AM.",
+        "Refresh same metric; observe April26,2025,7:29PM."
+      ]
+    },
+    {
+      "id": "metabase-data-modeling-541",
+      "name": "Average Discount metric loses currency formatting after refresh: $5.20 becomes 5.2",
+      "severity": 3,
+      "summary": "Average Discount metric loses currency formatting after refresh: $5.20 becomes 5.2.",
+      "expected": "Currency formatting and decimal precision should persist after refreshing the saved metric",
+      "actual": "Immediately after saving, the metric displays '$5.20', but after refreshing the page it displays '5.2' without the currency symbol or trailing zero",
+      "reproSteps": [
+        "Open an owned Orders metric with Count formula.",
+        "Add Discount Not empty filter and save.",
+        "Change formula via Custom Expression to Average([Discount]); Update and Save changes.",
+        "Observe $5.20; refresh the metric and observe 5.2."
+      ]
+    },
+    {
+      "id": "metabase-data-modeling-542",
+      "name": "Model header rename accepts three spaces, leaving a blank title without validation",
+      "severity": 1,
+      "summary": "Model header rename accepts three spaces, leaving a blank title without validation.",
+      "expected": "Reject a whitespace-only title with clear validation and keep the saved model name visible.",
+      "actual": "Changing ME-Products-1026-A to exactly three spaces and pressing Enter leaves the header blank. Navigating to its collection and reopening restored ME-Products-1026-A silently.",
+      "reproSteps": [
+        "As fixture admin, create an owned model from Models + -> notebook editor -> Sample Database -> Products, Save with a unique ME name.",
+        "Open saved model; replace its editable header title with exactly three spaces.",
+        "Press Enter and inspect the blank header and absence of validation.",
+        "Navigate to Our analytics and reopen the same model: its original title returns."
+      ]
+    },
+    {
+      "id": "metabase-data-modeling-543",
+      "name": "Seeded model History displays “undefined modified this.”",
+      "severity": 1,
+      "summary": "Seeded model History displays “undefined modified this.”.",
+      "expected": "A history entry should show a meaningful actor name or neutral fallback.",
+      "actual": "The visible history entry reads “undefined modified this.”",
+      "reproSteps": [
+        "Open Orders + People from Models.",
+        "Open More info and select History."
+      ]
+    },
+    {
+      "id": "metabase-data-modeling-557",
+      "name": "Whitespace-only segment revision reason enables Save changes, but save silently fails with no feedback",
+      "severity": 1,
+      "summary": "Whitespace-only segment revision reason enables Save changes, but save silently fails with no feedback.",
+      "expected": "Either Save stays disabled for a whitespace-only reason, or the server's validation error is shown to the user.",
+      "actual": "Save changes is enabled. Clicking it returns a 400 validation error that the UI never shows. The page stays unchanged, with no message, for more than 13 seconds.",
+      "reproSteps": [
+        "As an admin, open Admin > Table Metadata > Segments, create a segment on Orders with the filter Created At is in the previous 7 days, save it, then reopen it.",
+        "Click the 'Created At is in the previous 7 days' filter pill, change 7 to 14, and click Update filter.",
+        "Type three spaces in Reason for changes, then blur the field. Save changes becomes enabled.",
+        "Click Save changes. The editor stays open with no feedback. In the network log, the segment update request returned 400 with the error 'revision_message must be a non-blank string'."
+      ]
+    },
+    {
+      "id": "metabase-data-modeling-558",
+      "name": "Data reference silently discards a 255-character field name and exits editing",
+      "severity": 3,
+      "summary": "Data reference silently discards a 255-character field name and exits editing.",
+      "expected": "The entered field name is saved and persisted, or an error/validation message is shown while retaining the input in edit mode.",
+      "actual": "The form exits edit mode, the field name remains 'Region', and no validation or error message appears on the page.",
+      "reproSteps": [
+        "As the primary admin fixture identity, open Data reference → Release operations → Release Requests → Fields in this table.",
+        "Click Edit.",
+        "Replace Region's field name with the 255-character string formed by QA-REF- followed by 1234567890 repeated 24 times, followed by ABCDEFGH.",
+        "Click Save."
+      ]
+    },
+    {
+      "id": "metabase-data-modeling-559",
+      "name": "Navigating to segment reference detail page displays an unhandled 'table_id' error",
+      "severity": 3,
+      "summary": "Navigating to segment reference detail page displays an unhandled 'table_id' error.",
+      "expected": "The segment reference page should display segment details or an appropriate user-facing message instead of an unhandled runtime exception.",
+      "actual": "Opening the segment's reference detail page displays \"Cannot read properties of undefined (reading 'table_id')\" in the main content area.",
+      "reproSteps": [
+        "As an admin, create an active segment on Sample Database > Products with Category = Gadget and note its ID. Keep it active.",
+        "Sign in as the member maya@example.test and open Databases > Learn about our data > Segments.",
+        "Refresh Segments list.",
+        "Open the segment's detail page directly at /reference/segments/<id>."
+      ]
+    },
+    {
+      "id": "metabase-data-modeling-560",
+      "name": "Single-result search link says “View and filter all 1 results”",
+      "severity": 1,
+      "summary": "When a global search returns exactly one item of any type (dashboard, model, question and so on), the results link reads “View and filter all 1 results”.",
+      "expected": "With one result the link uses the singular, for example “View and filter 1 result”.",
+      "actual": "The link reads “View and filter all 1 results” above a single result, for dashboards and models alike.",
+      "reproSteps": [
+        "Open global Search.",
+        "Search for a name that matches exactly one item, such as a uniquely named dashboard or the Orders + People model.",
+        "Read the results-header link."
+      ]
+    },
+    {
+      "id": "metabase-data-modeling-563",
+      "name": "Reverting a metric rename leaves its sidebar bookmark showing the discarded name",
+      "severity": 1,
+      "summary": "Reverting a metric rename leaves its sidebar bookmark showing the discarded name.",
+      "expected": "Bookmark label updates to the restored metric name, as it does when renaming the metric normally.",
+      "actual": "After reverting to creation, header and Info field show the original name but sidebar bookmark still shows the renamed title.",
+      "reproSteps": [
+        "As primary fixture admin, create a fresh uniquely named QA-METRIC metric using Metrics plus > Sample Database > Orders with default Count. Save in Our analytics with a description.",
+        "Bookmark the new metric using its Metrics-list row options; open it through the bookmark.",
+        "Rename via editable header to a unique QA-METRIC name ending Renamed and press Enter; refresh and confirm header and bookmark use new name.",
+        "Edit description in Info Overview and blur to save; refresh. In History revert to the rename revision, restoring the original description.",
+        "Reopen Info > History and click revert icon for You created this.",
+        "Observe restored original title in header/Overview while sidebar bookmark retains Renamed."
+      ]
     }
   ]
 }
