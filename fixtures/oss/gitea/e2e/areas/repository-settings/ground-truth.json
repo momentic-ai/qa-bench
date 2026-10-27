@@ -365,6 +365,48 @@
         "Remove the team (or add another team) and check whether the change is blocked."
       ],
       "severity": 3
+    },
+    {
+      "id": "gitea-rejected-transfer-keeps-recipient-read-access",
+      "name": "Rejecting a private repository transfer leaves the recipient able to read the repository",
+      "summary": "Transferring a private repository to a user with no access to it quietly adds that user as a Read collaborator so they can review the transfer. When the recipient rejects the transfer, that access is never removed, so they can keep reading the private repository's code after the transfer is gone.",
+      "expected": "After a private repository transfer is rejected, a recipient who had no access before the transfer can no longer see the repository.",
+      "actual": "After maya rejected the transfer of alex's private repository ('Repository transfer was rejected.'), the Accept/Reject controls disappeared, but after refresh maya could still open the repository and read its full README. maya had not been a collaborator before the transfer.",
+      "reproSteps": [
+        "As one user, create a private repository with a README and no collaborators; confirm a second user gets 404 on it.",
+        "In Settings > Danger Zone, transfer the repository to the second user.",
+        "As the second user, open the repository and click Reject Transfer.",
+        "Refresh and check whether the second user can still open the repository and read its files."
+      ],
+      "severity": 3
+    },
+    {
+      "id": "gitea-protected-tag-deleted-by-disallowed-user",
+      "name": "A user not allowed by a protected-tag rule can still delete a protected tag",
+      "summary": "With a protected-tag rule (for example release-*) that allows only certain users, a Write collaborator who isn't allowed is correctly blocked from creating a matching tag but can still delete an existing one from the Tags page or the API. The delete check uses the tag's original publisher instead of the person deleting it, so deleting a tag published by an allowed user always passes.",
+      "expected": "Deleting a tag that matches a protected-tag rule is refused for users the rule doesn't allow, and the tag stays listed.",
+      "actual": "With a release-* rule allowing only eval, Write collaborator alex was refused when creating a release-* tag ('The tag name is protected.') but clicking Delete Tag > Yes on eval's release-1 showed 'The tag has been deleted.' and '0 Tags'.",
+      "reproSteps": [
+        "As the owner, create a tag release-1 and add a protected-tag rule release-* allowing only yourself; add a second user as a Write collaborator.",
+        "As the second user, try to create a tag release-2 and confirm it is refused as protected.",
+        "As the second user, open the Tags page and delete release-1.",
+        "Check whether the deletion is refused and release-1 is still listed."
+      ],
+      "severity": 3
+    },
+    {
+      "id": "gitea-rejected-collaborator-role-change-shows-new-role",
+      "name": "Rejected collaborator role change shows the new role with no error",
+      "summary": "On Settings > Collaborators, if a role change is rejected by the server (for example an administrator who lowered their own role to Read then picks Administrator again without refreshing), the role menu still switches to the chosen role and no error appears. The menu updates whatever the server responds; permissions themselves are enforced correctly.",
+      "expected": "When a collaborator role change fails, the page says so and the role menu keeps showing the role that is actually saved.",
+      "actual": "After alex lowered his own role from Administrator to Read, choosing Administrator again from the same menu showed 'Administrator' with no toast or error, while the change request returned 404. Refreshing showed 404 Not Found, and the owner still saw alex as Read.",
+      "reproSteps": [
+        "As the owner, add a second user as an Administrator collaborator on a private repository.",
+        "As the second user, open Settings > Collaborators and change your own role to Read.",
+        "Without refreshing, choose Administrator from the same role menu.",
+        "Check whether an error is shown and what role the menu displays; then refresh."
+      ],
+      "severity": 1
     }
   ]
 }

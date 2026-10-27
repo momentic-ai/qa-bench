@@ -438,6 +438,52 @@
         "Check whether it reopens, and confirm the source branch still exists."
       ],
       "severity": 3
+    },
+    {
+      "id": "gitea-failed-rebase-update-no-error",
+      "name": "Failed rebase update shows no error and leaves the PR unchanged",
+      "summary": "When 'Update branch by rebase' can't rebase a pull request's branch (for example because earlier commits conflict when replayed, even though the current files were reconciled), the page simply reloads: the branch is still out of date, its commits are unchanged, and nothing explains why the update didn't happen. The defect is the missing failure feedback, not that the rebase failed.",
+      "expected": "If updating a pull request branch by rebase fails, the page says so and explains why, instead of appearing to do nothing.",
+      "actual": "On a pull request whose history included an earlier resolved conflict, choosing Update branch by rebase returned to the same page with the same five commits, the out-of-date warning and the default update button, and no error or success message anywhere.",
+      "reproSteps": [
+        "Open a pull request that is behind its base branch and whose head history contains a commit that conflicts with the base when replayed (for example, a conflict that was later resolved by a merge update).",
+        "From the update dropdown choose Update branch by rebase and click it.",
+        "Check whether the branch was updated, and whether any error explains why it wasn't."
+      ],
+      "severity": 1
+    },
+    {
+      "id": "gitea-reenabling-prs-resets-pr-settings",
+      "name": "Re-enabling pull requests silently turns on branch deletion and changes merge defaults",
+      "summary": "Turning a repository's pull requests off and back on in Settings > Advanced Settings doesn't restore the previous pull request settings. While pull requests are disabled, the form shows every merge option checked and every merge style selected, so re-enabling saves those: the default merge style becomes Fast-forward only and Manually merged, Delete pull request branch after merge, and autodetect manual merge all turn on.",
+      "expected": "Re-enabling pull requests keeps the repository's previous pull request settings, or applies the same defaults as a new repository, without silently turning on branch deletion and manual merge options.",
+      "actual": "A repository set to Create merge commit, with Manually merged, delete-branch-after-merge and autodetect manual merge unchecked, came back as Fast-forward only with all three checked after pull requests were disabled and re-enabled. The values stayed after reload, and a new pull request's merge confirmation used Fast-forward only with Delete Branch checked.",
+      "reproSteps": [
+        "In a repository's Settings > Advanced Settings, set Default Merge Style to Create merge commit, uncheck Manually merged, Delete pull request branch after merge by default and Enable autodetect manual merge, and save.",
+        "Uncheck Enable Repository Pull Requests and save.",
+        "Check Enable Repository Pull Requests again, save, and reload.",
+        "Compare the pull request settings with the ones saved in the first step."
+      ],
+      "severity": 3
+    },
+    {
+      "id": "gitea-rebase-to-empty-pr-files-changed-raw-error",
+      "name": "Files Changed shows a bare 'after commit not found in PR commits' error after a rebase update leaves the pull request with no commits",
+      "summary": "When Update branch by rebase succeeds but leaves the pull request with zero commits of its own (its changes are already in the base), opening Files Changed replaces the whole page with the plain text 'after commit not found in PR commits' instead of showing the pull request with an empty diff.",
+      "expected": "After a successful branch update that leaves no commits, Files Changed still shows the pull request page with an empty comparison or a clear message.",
+      "actual": "After Update branch by rebase succeeded and the pull request showed 0 commits, clicking Files Changed opened /pulls/13/files with only the plain text 'after commit not found in PR commits'.",
+      "reproSteps": [
+        "Open a pull request whose head changes are already contained in its base branch (for example after earlier merge updates brought the base into agreement), with the base since advanced.",
+        "From the update dropdown choose Update branch by rebase and run it; confirm the pull request shows 0 commits.",
+        "Click the Files Changed tab."
+      ],
+      "severity": 5,
+      "matchingGuidance": {
+        "relatedReference": {
+          "name": "Files Changed on an empty pull request shows a bare 'after commit not found in PR commits' error",
+          "distinction": "Same raw error page, but this entry reaches the empty pull request through Update branch by rebase leaving zero commits, a different entry point from the related entry."
+        }
+      }
     }
   ]
 }

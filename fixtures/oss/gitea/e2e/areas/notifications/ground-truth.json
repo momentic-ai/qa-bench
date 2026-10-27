@@ -129,6 +129,60 @@
         "Pin one notification and reload: count the unread rows shown and check for page 2."
       ],
       "severity": 3
+    },
+    {
+      "id": "gitea-watching-size-sort-ignored",
+      "name": "Watching list ignores Smallest size and Largest size sorts",
+      "summary": "On Notifications > Watching, choosing Sort > Smallest size or Largest size doesn't sort by repository size: the list stays in Recently updated order, so a large repository can be listed above a small one under Smallest size and both size sorts give the same order. Explore, profile and organization repository lists sort by size correctly.",
+      "expected": "With Smallest size selected, watched repositories are listed from smallest to largest, and Largest size lists them from largest to smallest.",
+      "actual": "Under Smallest size (sort=size), qa-watch-empty (175 KiB) was listed above qa-watch-alpha (23 KiB). The order was identical under Largest size and under the default Recently updated sort.",
+      "reproSteps": [
+        "Watch at least two repositories of clearly different sizes and note each size from its repository sidebar.",
+        "Open Notifications > Watching.",
+        "Choose Sort > Smallest size, then Sort > Largest size.",
+        "Check whether the order follows repository size and differs between the two sorts."
+      ],
+      "severity": 3,
+      "matchingGuidance": {
+        "relatedReference": {
+          "name": "Watching sort menu highlights Recently updated after Largest size is chosen",
+          "distinction": "Same cause (the Watching handler has no size sort and falls back to Recently updated), but that entry is the sort menu highlighting the wrong item; this entry is the list order not following repository size."
+        }
+      }
+    },
+    {
+      "id": "gitea-revoked-collaborator-sees-private-notification",
+      "name": "Notifications still show a private repository's issue to a collaborator who lost access",
+      "summary": "After a user is removed as a collaborator from a private repository, their Notifications list still shows notifications from it, including the private repository's name and the issue's title. Opening one leads to a 404, and the entry stays listed. The list loads repositories and issues without checking whether the user can still read them.",
+      "expected": "Once a user can no longer read a repository, their Notifications don't show that private repository's name or its issue titles, and don't offer links that lead to a 404.",
+      "actual": "After alex was removed from the private repository eval/qa-access-private-0717, alex's Unread notifications still listed 'eval/qa-access-private-0717 #1 – qa-access confidential issue'. Clicking it showed 404 Not Found (not authorized), and going back the entry was still listed as unread.",
+      "reproSteps": [
+        "In a private repository, add a second user as a collaborator and create an issue.",
+        "As the second user, subscribe to the issue; as the owner, comment on it so the second user gets a notification.",
+        "As the owner, remove the second user from Settings > Collaborators.",
+        "As the second user, open Notifications and check whether the private repository's name and issue title are still shown; click the entry."
+      ],
+      "severity": 3
+    },
+    {
+      "id": "gitea-revoked-collaborator-keeps-getting-notified",
+      "name": "A collaborator who lost access to a private repository keeps being notified of new activity there",
+      "summary": "After a user is removed from a private repository, new activity on an issue they were subscribed to still shows up in their Notifications: the issue's entry jumps back to the top as 'now' each time someone comments, telling them there is new private activity they can no longer open.",
+      "expected": "Once a user loses access to a private repository, new activity there no longer reaches their Notifications, and existing entries don't change.",
+      "actual": "After alex was removed from eval/qa-access-private-0717, alex's notification for the confidential issue showed '2 minutes ago'. eval then commented on the issue, and on reload alex's notification showed 'now'. Opening it as alex gave a 404.",
+      "reproSteps": [
+        "In a private repository, add a second user as a collaborator and have them subscribe to an issue; trigger one notification for them.",
+        "As the owner, remove the second user from Settings > Collaborators.",
+        "Wait a few minutes, note the notification's time in the second user's Notifications, then comment on the issue as the owner.",
+        "As the second user, reload Notifications and check whether the entry updated to the new activity."
+      ],
+      "severity": 3,
+      "matchingGuidance": {
+        "relatedReference": {
+          "name": "Notifications still show a private repository's issue to a collaborator who lost access",
+          "distinction": "Same missing access check, but that entry is old notifications from before the removal still being shown; this entry is new activity after the removal still reaching the user's Notifications."
+        }
+      }
     }
   ]
 }
