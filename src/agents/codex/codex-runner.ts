@@ -95,6 +95,7 @@ export abstract class CodexRunner implements EvalAgent {
           model: "gpt-6.1-sol",
           cwd: workspace,
           runtimeWorkspaceRoots: [workspace],
+          approvalPolicy: "never",
           dynamicTools: FINDINGS_TOOLS,
           config: {
             model_reasoning_effort: "medium",

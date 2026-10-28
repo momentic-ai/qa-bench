@@ -107,6 +107,8 @@ export class ClaudeAgent extends CodexAgent {
             reporting: { type: "http", url: this.reporting.url },
           },
         }),
+        "--permission-mode",
+        "bypassPermissions",
         "--allowedTools",
         "mcp__playwright__*",
         "mcp__reporting__*",
