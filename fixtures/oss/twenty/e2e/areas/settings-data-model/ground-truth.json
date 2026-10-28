@@ -413,18 +413,48 @@
     },
     {
       "id": "settings-data-model-N48",
-      "name": "Removing a sidebar folder routes an adjacent external link on the app origin",
-      "summary": "Removing a saved sidebar folder can automatically select an adjacent external link and route its path on Twenty’s own origin, opening a Page Not Found screen.",
+      "name": "Removing a sidebar folder or child link routes an adjacent external link on the app origin",
+      "summary": "Removing a saved sidebar folder or folder child can select an adjacent external link and route its path on Twenty’s origin, displaying Page Not Found.",
       "expected": "Removing a sidebar folder leaves usable app content. If the next selected item is an external link, its configured origin is preserved and it is handled as an external destination.",
-      "actual": "When the next selected sibling is an external link, removing the folder navigates to that link’s path, query and fragment on Twenty’s origin and displays Off the beaten path / Page Not Found. The saved link URL retains its external origin, and ordinary link clicks open the full external URL correctly in a new tab. Back to content recovers usable content and preserves the layout draft; no permanent data loss or runtime crash was established.",
+      "actual": "When the next selected sibling is an external link, removing the folder navigates to that link’s path, query and fragment on Twenty’s origin and displays Off the beaten path / Page Not Found. The saved link URL retains its external origin, and ordinary link clicks open the full external URL correctly in a new tab. Back to content recovers usable content and preserves the layout draft; no permanent data loss or runtime crash was established. Removing a folder child link can produce the same wrong-origin navigation when its adjacent external link is selected.",
       "reproSteps": [
         "In Settings > Layout > Customize, create a disposable external link such as https://example.org/qa-layout?q=one#two and an empty folder immediately after it. Place the folder last among its siblings so removal selects the preceding link; save the layout.",
         "Reenter customization, select the saved empty folder, and choose Remove from sidebar.",
         "Observe that Twenty navigates to its own origin at /qa-layout?q=one#two and shows its Page Not Found screen instead of handling the configured external origin.",
         "Use Back to content to recover and confirm that the layout draft remains available and the link editor still contains the full external URL.",
-        "As controls, use a normal external-link click and verify the full external destination opens, and remove a folder whose selected sibling is an internal object page to verify usable internal navigation."
+        "As controls, use a normal external-link click and verify the full external destination opens, and remove a folder whose selected sibling is an internal object page to verify usable internal navigation.",
+        "Additional verified variation: Remove a folder child link when removal selects an adjacent external link. In Settings > Layout > Customize, create a folder containing link A with a valid external URL such as https://example.org/qa-layout?q=one#two, followed by link B. Save the layout. Reenter customization, select saved link B and choose Remove from sidebar. Observe the app routes to its own origin at /qa-layout?q=one#two and displays Page Not Found. Use Back to content and verify the layout draft is retained and A’s editor still contains its full external URL. Compare removing a sole child or selecting a child without removing it."
       ],
-      "severity": 3
+      "severity": 3,
+      "reviewEvidence": {
+        "additionalReproductions": [
+          {
+            "name": "Removing a folder child link routes its adjacent external link on the app origin",
+            "reproSteps": [
+              "In Settings > Layout > Customize, create a folder containing link A with a valid external URL such as https://example.org/qa-layout?q=one#two, followed by link B. Save the layout.",
+              "Reenter customization, select saved link B and choose Remove from sidebar.",
+              "Observe the app routes to its own origin at /qa-layout?q=one#two and displays Page Not Found.",
+              "Use Back to content and verify the layout draft is retained and A’s editor still contains its full external URL. Compare removing a sole child or selecting a child without removing it."
+            ],
+            "reviewEvidence": {
+              "basis": "Repeated independent browser and source verification with passing controls.",
+              "sourceRevision": "35c645064f72bc4e3180a2c6c506cbbfee170007",
+              "severityReason": "The removal action opens a blocking wrong-origin route; recovery preserves the draft.",
+              "limitations": [
+                "No permanent data loss or runtime crash established.",
+                "Other roles and mobile behavior were not established.",
+                "Newer source no longer navigates after removal; newer runtime was not tested."
+              ],
+              "sourceReferences": [
+                "https://github.com/twentyhq/twenty/blob/35c645064f72bc4e3180a2c6c506cbbfee170007/packages/twenty-front/src/modules/navigation-menu-item/edit/side-panel/hooks/useNavigationMenuItemEditOrganizeActions.ts#L110-L137",
+                "https://github.com/twentyhq/twenty/blob/35c645064f72bc4e3180a2c6c506cbbfee170007/packages/twenty-front/src/modules/navigation-menu-item/display/link/utils/getLinkNavigationMenuItemComputedLink.ts#L3-L11",
+                "https://github.com/twentyhq/twenty/commit/2b90c4453caea4aed382e02c5914eaeb16397f46"
+              ]
+            }
+          }
+        ]
+      },
+      "matchingGuidance": "Count folder removal and folder-child removal once when either automatically selects an adjacent external link, loses its origin and opens Page Not Found on the app origin. Ordinary external-link clicks and internal-sibling removal are passing controls. Recovery preserves the layout draft; no permanent data loss or runtime crash is claimed."
     },
     {
       "id": "codex-30m-twenty-9",
@@ -1991,41 +2021,6 @@
       }
     },
     {
-      "id": "settings-data-model-pass3-1e3b25ee",
-      "name": "Removing a folder child link routes its adjacent external link on the app origin",
-      "severity": 3,
-      "owningArea": "twenty/settings-data-model",
-      "summary": "Removing a saved link inside a sidebar folder automatically routes its adjacent external link on Twenty’s own origin, opening a blocking Page Not Found screen.",
-      "expected": "Removing a folder child link should leave usable customization content and preserve any adjacent external destination’s configured origin.",
-      "actual": "Removing later link B selects preceding external link A and routes A’s path, query and fragment on Twenty’s origin. A valid external URL with a nonexistent app path produces Off the beaten path. Back to content recovers the layout draft; Save or Cancel remain usable after recovery.",
-      "reproSteps": [
-        "In Settings > Layout > Customize, create a folder containing link A with a valid external URL such as https://example.org/qa-layout?q=one#two, followed by link B. Save the layout.",
-        "Reenter customization, select saved link B and choose Remove from sidebar.",
-        "Observe the app routes to its own origin at /qa-layout?q=one#two and displays Page Not Found.",
-        "Use Back to content and verify the layout draft is retained and A’s editor still contains its full external URL. Compare removing a sole child or selecting a child without removing it."
-      ],
-      "sourceCause": "The removal handler chooses the next or previous sibling and passes its computed link directly to the internal router. External-link computation returns an absolute URL, but this path does not handle its external origin.",
-      "matchingGuidance": {
-        "relatedReference": "settings-data-model-N48",
-        "distinction": "This entry removes a link inside a folder; N48 removes the folder itself. Both can select an adjacent external link. Ordinary clicks on an external folder child are a separate trigger and are excluded here."
-      },
-      "reviewEvidence": {
-        "basis": "Repeated independent browser and source verification with passing controls.",
-        "sourceRevision": "35c645064f72bc4e3180a2c6c506cbbfee170007",
-        "severityReason": "The removal action opens a blocking wrong-origin route; recovery preserves the draft.",
-        "limitations": [
-          "No permanent data loss or runtime crash established.",
-          "Other roles and mobile behavior were not established.",
-          "Newer source no longer navigates after removal; newer runtime was not tested."
-        ],
-        "sourceReferences": [
-          "https://github.com/twentyhq/twenty/blob/35c645064f72bc4e3180a2c6c506cbbfee170007/packages/twenty-front/src/modules/navigation-menu-item/edit/side-panel/hooks/useNavigationMenuItemEditOrganizeActions.ts#L110-L137",
-          "https://github.com/twentyhq/twenty/blob/35c645064f72bc4e3180a2c6c506cbbfee170007/packages/twenty-front/src/modules/navigation-menu-item/display/link/utils/getLinkNavigationMenuItemComputedLink.ts#L3-L11",
-          "https://github.com/twentyhq/twenty/commit/2b90c4453caea4aed382e02c5914eaeb16397f46"
-        ]
-      }
-    },
-    {
       "id": "settings-data-model-pass3-52a52c92",
       "name": "Data-model Fit view leaves lower object-card fields clipped",
       "severity": 1,
@@ -2046,7 +2041,7 @@
         "distinction": "Both involve fixed graph-node dimensions and taller visible cards. N21 covers neighboring cards overlapping each other. This entry covers lower canvas-edge clipping after using Fit; overlapping neighboring cards alone is not sufficient. Workflow canvases use separate entry points."
       },
       "reviewEvidence": {
-        "basis": "Both independent reviewers confirmed lower object-card fields remain clipped after using the data-model diagram Fit control, with zoom-out or taller-canvas controls. Coordinator checked full reports, source and fitting contract, independent screenshots and sampled recordings, downloaded original Mo alias evidence and subscription billing.",
+        "basis": "Both independent reviewers confirmed lower object-card fields remain clipped after using the data-model diagram Fit control, with zoom-out or taller-canvas controls. Coordinator checked full reports, source and fitting contract, independent screenshots and sampled recordings.",
         "sourceRevision": "35c645064f72bc4e3180a2c6c506cbbfee170007",
         "severityReason": "Layout-only clipping; manual zooming or panning recovers the content and no saved data is damaged. Both reviewers recommend severity 1.",
         "sourceReferences": [
