@@ -1,10 +1,18 @@
 #!/bin/sh
 set -eu
-schema=$(su-exec postgres psql default --set=ON_ERROR_STOP=1 -Atc "SELECT table_schema FROM information_schema.tables WHERE table_name = 'company' AND table_schema LIKE 'workspace_%' ORDER BY table_schema LIMIT 1")
+psql() {
+  su-exec postgres psql default --set=ON_ERROR_STOP=1 -Atc "$1"
+}
+test "$(psql 'SELECT count(*) FROM core."user"')" -eq 1
+test "$(psql 'SELECT count(*) FROM core.workspace')" -eq 1
+schema=$(psql "SELECT table_schema FROM information_schema.tables WHERE table_name = 'company' AND table_schema LIKE 'workspace_%'")
 case "$schema" in
   workspace_*) ;;
-  *) echo 'No seeded workspace company table.' >&2; exit 1 ;;
+  *) echo 'No workspace company table after installation.' >&2; exit 1 ;;
 esac
-count=$(su-exec postgres psql default --set=ON_ERROR_STOP=1 -Atc "SELECT count(*) FROM \"$schema\".company")
-test "$count" -gt 0
-printf 'Seeded companies: %s\n' "$count"
+test ! -f /app/packages/twenty-server/.local-storage/diy-mo-seed-complete
+for table in company person opportunity task note; do
+  count=$(psql "SELECT count(*) FROM \"$schema\".\"$table\"")
+  printf 'Native %s records: %s\n' "$table" "$count"
+done
+printf 'Unseeded Twenty verified: one account and workspace, development seed not run.\n'
