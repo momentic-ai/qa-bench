@@ -61,6 +61,7 @@ export async function runFullAppFixtures({
             reportsDirectory: options.outputDirectory,
             runId,
             timeLimitMs: options.timeLimitMs,
+            moTimeBudgetMs: options.moTimeBudgetMs,
             maxConcurrentSubAgents: options.maxConcurrentSubAgents,
             resources,
           });
@@ -100,6 +101,7 @@ async function runFixture({
   reportsDirectory,
   runId,
   timeLimitMs,
+  moTimeBudgetMs,
   maxConcurrentSubAgents,
   resources,
 }: {
@@ -109,6 +111,7 @@ async function runFixture({
   reportsDirectory: string;
   runId: string;
   timeLimitMs: number;
+  moTimeBudgetMs: number | undefined;
   maxConcurrentSubAgents: number | undefined;
   resources: FixtureExecution;
 }) {
@@ -141,6 +144,7 @@ async function runFixture({
         fixture,
         targetUrl: url,
         timeLimitMs,
+        moTimeBudgetMs,
         maxConcurrentSubAgents,
         reportDirectory,
         runDirectory,

@@ -5,6 +5,7 @@ export type AgentContext = {
   fixture: Fixture;
   targetUrl?: URL;
   timeLimitMs: number;
+  moTimeBudgetMs?: number;
   maxConcurrentSubAgents?: number;
   reportDirectory: string;
   runDirectory: string;
