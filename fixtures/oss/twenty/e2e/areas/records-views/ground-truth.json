@@ -1642,6 +1642,43 @@
           "Newer source removes the hourly implementation in a broad rewrite. This is not a targeted fix or newer-runtime verification."
         ]
       }
+    },
+    {
+      "id": "records-views-pass5-22ce5ea4",
+      "name": "People summaries ignore Company Is not when combined with Search any field",
+      "severity": 3,
+      "owningArea": "twenty/records-views",
+      "summary": "Company Is not correctly excludes People rows, but the view count and column-footer aggregates discard that exclusion when Search any field is active.",
+      "expected": "The view count and footer calculations describe the same filtered People as the table rows.",
+      "actual": "With two uniquely searchable People, one linked to the excluded Company and one unlinked, Search any field plus Company Is not shows only the unlinked Person but the view count says 2. Footer calculations also include the excluded Person. Saving and reloading retains the mismatch. Company Is with search and an ordinary Name Contains filter with the exclusion report matching totals.",
+      "reproSteps": [
+        "Create two disposable People sharing a unique searchable prefix. Link one to a Company and leave the other unlinked.",
+        "In an ungrouped People table, search that prefix with Search any field and apply Company Is not the linked Company.",
+        "Compare the visible row with the view-header count and a suitable column calculation. Save the view and reload.",
+        "Compare Company Is with search, and replace Search any field with a basic Name Contains filter while retaining Company Is not."
+      ],
+      "sourceCause": "A single Company Is not filter compiles to a root OR combining the exclusion with a null-company case. Search any field also returns a root OR. The summary hooks merge these objects with a shallow spread, replacing the Company condition with search. The row query combines them with AND and returns the correct rows.",
+      "matchingGuidance": {
+        "distinction": "Match an ungrouped People table using a basic Company Is not relation filter with Search any field, where rows honor the exclusion but the header/footer aggregates ignore it. Distinguish the separate Name Contains, Amount Is empty and advanced-OR triggers, stale rows after edits and incomplete-pagination claims.",
+        "relatedReferenceId": "records-views-fresh-9960e144"
+      },
+      "reviewEvidence": {
+        "basis": "Both independent browser/source reviewers accept the same Company Is not plus Any-field aggregate mismatch at severity 3. Coordinator checked complete reports/source audits, independent retained images and request/readback controls, sampled original Mo video and exact subscription billing.",
+        "sourceRevision": "35c645064f72bc4e3180a2c6c506cbbfee170007",
+        "severityReason": "The saved view presents incorrect summaries and column calculations for its correctly filtered rows.",
+        "sourceReferences": [
+          "https://github.com/twentyhq/twenty/blob/35c645064f72bc4e3180a2c6c506cbbfee170007/packages/twenty-front/src/modules/views/hooks/internal/useGetRecordIndexTotalCount.ts#L60-L67",
+          "https://github.com/twentyhq/twenty/blob/35c645064f72bc4e3180a2c6c506cbbfee170007/packages/twenty-front/src/modules/object-record/record-table/record-table-footer/hooks/useAggregateRecordsForRecordTableColumnFooter.tsx#L117-L126",
+          "https://github.com/twentyhq/twenty/blob/35c645064f72bc4e3180a2c6c506cbbfee170007/packages/twenty-shared/src/utils/filter/turnRecordFilterIntoGqlOperationFilter.ts#L661-L680",
+          "https://github.com/twentyhq/twenty/blob/35c645064f72bc4e3180a2c6c506cbbfee170007/packages/twenty-shared/src/utils/filter/computeRecordGqlOperationFilter.ts#L56-L73",
+          "https://github.com/twentyhq/twenty/blob/35c645064f72bc4e3180a2c6c506cbbfee170007/packages/twenty-front/src/modules/object-record/record-index/hooks/useFindManyRecordIndexTableParams.ts#L80-L88"
+        ],
+        "limitations": [
+          "Joint scope is basic Company Is not plus Search any field on an ungrouped People table, including saved-view reload. Codex checked Count all and Earliest Creation date; Claude checked Unique of Emails. These are independent examples of the shared aggregate error, not an identical calculation repeated by both.",
+          "Other objects, relation predicates, Actor filters, grouped layouts and all caller combinations are outside joint scope. No records are missing or stored business values changed.",
+          "Inspected newer source retains the shallow merge, but newer runtime was not tested. No exhaustive history or universal no-fix claim."
+        ]
+      }
     }
   ]
 }
