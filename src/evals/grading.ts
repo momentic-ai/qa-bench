@@ -39,8 +39,8 @@ import { BenchmarkAgent, Fixture } from "./types";
 const root = path.resolve(import.meta.dirname, "../..");
 const RUNNERS: Record<Agent, BenchmarkAgent> = {
   mo: moRunner,
-  codex: codexRunner,
-  claude: claudeRunner,
+  "codex-playwright-mcp": codexRunner,
+  "claude-playwright-mcp": claudeRunner,
 };
 
 export async function gradeFixture(

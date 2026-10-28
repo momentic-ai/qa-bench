@@ -1,4 +1,4 @@
-import { mkdir, mkdtemp, realpath, rm } from "node:fs/promises";
+import { mkdir, mkdtemp, rm } from "node:fs/promises";
 import { createRequire } from "node:module";
 import { tmpdir } from "node:os";
 import path from "node:path";
@@ -11,13 +11,11 @@ import {
 import { BrowserbaseSessions } from "./browserbase";
 import { CodexRunner } from "./codex-runner";
 
-const packageDirectory = path.resolve(import.meta.dirname, "../../..");
 const require = createRequire(import.meta.url);
 
 type BrowserConnection = {
   args: string[];
   env: Record<string, string>;
-  filesystem: Record<string, string>;
 };
 
 export class CodexAgent extends CodexRunner {
@@ -25,18 +23,8 @@ export class CodexAgent extends CodexRunner {
   private browsers: BrowserbaseSessions | undefined;
   private browserTemporaryDirectory: string | undefined;
 
-  protected async prepare(
-    _workspace: string,
-    resolverFiles: Record<string, string>,
-  ) {
-    return {
-      mcpServers: await this.prepareBrowserMcp(resolverFiles),
-      subagents: false,
-      filesystem: {
-        [path.join(this.context.runDirectory, "browser-artifacts")]: "read",
-      },
-      instructions: "",
-    };
+  protected async prepare() {
+    return { mcpServers: await this.prepareBrowserMcp() };
   }
 
   protected async collectBrowserCost() {
@@ -45,6 +33,8 @@ export class CodexAgent extends CodexRunner {
 
   protected async cleanup() {
     await this.browsers?.stop();
+    if (this.temporaryWorkspace)
+      await rm(this.temporaryWorkspace, { recursive: true, force: true });
     if (this.browserTemporaryDirectory) {
       await rm(this.browserTemporaryDirectory, {
         recursive: true,
@@ -62,12 +52,10 @@ export class CodexAgent extends CodexRunner {
     return {
       args: [],
       env: { PLAYWRIGHT_MCP_CDP_ENDPOINT: await this.browsers.start() },
-      filesystem: {},
     };
   }
 
-  private async prepareBrowserMcp(resolverFiles: Record<string, string>) {
-    // Deep workspace paths exceed Unix socket limits; mount a short, run-owned temporary directory.
+  private async prepareBrowserMcp() {
     const browserTemporaryDirectory = await mkdtemp(
       path.join(tmpdir(), "pw-eval-"),
     );
@@ -77,57 +65,17 @@ export class CodexAgent extends CodexRunner {
       "browser-artifacts",
     );
     await mkdir(browserOutputDirectory, { recursive: true });
-    const nodeExecutable = await realpath(process.execPath);
-    const nodeModulesDirectory = await realpath(
-      path.join(packageDirectory, "node_modules"),
-    );
-    const playwrightConfig = path.join(
-      packageDirectory,
-      "playwright-config.json",
-    );
     const browser = await this.connectBrowser();
     const playwrightCommand = path.join(
       path.dirname(require.resolve("@playwright/mcp/package.json")),
       "cli.js",
     );
-    const browserPermissions = `permissions.browser={filesystem={${Object.entries(
-      {
-        ":minimal": "read",
-        ":workspace_roots": "read",
-        [browserOutputDirectory]: "write",
-        [browserTemporaryDirectory]: "write",
-        [path.join(this.codexHome, "tmp", "arg0")]: "read",
-        [nodeExecutable]: "read",
-        [nodeModulesDirectory]: "read",
-        ...resolverFiles,
-        [playwrightConfig]: "read",
-        ...browser.filesystem,
-      },
-    )
-      .map(
-        ([file, permission]) =>
-          `${JSON.stringify(file)}=${JSON.stringify(permission)}`,
-      )
-      .join(",")}},network={enabled=true}}`;
     return {
       playwright: {
         command: process.execPath,
         cwd: browserOutputDirectory,
         args: [
-          // MCP runs outside Codex's shell sandbox; give it its own filesystem boundary.
-          this.command,
-          "sandbox",
-          "--permission-profile",
-          "browser",
-          "--cd",
-          browserOutputDirectory,
-          "-c",
-          browserPermissions,
-          "--",
-          nodeExecutable,
           playwrightCommand,
-          "--config",
-          playwrightConfig,
           ...browser.args,
           "--output-dir",
           browserOutputDirectory,
@@ -137,7 +85,6 @@ export class CodexAgent extends CodexRunner {
         tool_timeout_sec: 120,
         default_tools_approval_mode: "approve",
         required: true,
-        disabled_tools: ["browser_run_code_unsafe"],
       },
     };
   }
@@ -145,8 +92,8 @@ export class CodexAgent extends CodexRunner {
 
 export function codexAgent(browser: Browser): EvalAgentDefinition {
   return {
-    name: "Codex",
-    reportSubdirectory: "codex",
+    name: "codex-playwright-mcp",
+    reportSubdirectory: "codex-playwright-mcp",
     concurrency: browser === "local" ? 2 : Infinity,
     config: { browser },
     async validateEnvironment() {

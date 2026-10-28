@@ -3,6 +3,6 @@ import { codexRunner } from "../codex/runner";
 
 export const claudeRunner: BenchmarkAgent = {
   ...codexRunner,
-  name: "Claude",
-  reportDirectory: "claude",
+  name: "claude-playwright-mcp",
+  reportDirectory: "claude-playwright-mcp",
 };

@@ -4,7 +4,11 @@ import path from "node:path";
 import { Readable } from "node:stream";
 import { z } from "zod";
 
-export const AgentSchema = z.enum(["mo", "codex", "claude"]);
+export const AgentSchema = z.enum([
+  "mo",
+  "codex-playwright-mcp",
+  "claude-playwright-mcp",
+]);
 export type Agent = z.infer<typeof AgentSchema>;
 export const AGENTS = AgentSchema.options;
 const count = z.number().int().nonnegative();
