@@ -787,6 +787,68 @@
           "distinction": "Same cause (the search index doesn't store current assignees) on the same page, but that entry is the Assignee dropdown; this entry is the Type → Assigned to you control."
         }
       }
+    },
+    {
+      "id": "gitea-stale-comment-editor-deletes-new-attachment",
+      "name": "Saving a stale comment editor deletes attachments added in another tab",
+      "summary": "If an attachment is added to a comment and saved in one tab, then a comment editor opened earlier in another tab is saved (for example after removing an original attachment, or with only a text change), the newer attachment is deleted from the comment and from storage without any warning. Text-only conflicts are detected, but attachment-only changes don't update the comment's version.",
+      "expected": "Saving a comment editor that's out of date warns that the comment changed, as it does for text changes, and doesn't delete attachments it never showed.",
+      "actual": "After tab A added and saved a file to a comment, saving the stale editor in tab B left the comment with none of the newer attachments, showed no warning, and the newer file's download link returned 404.",
+      "reproSteps": [
+        "Post a comment with one attachment, then open its Edit form in two tabs.",
+        "In tab A, add a second file and save.",
+        "In tab B, remove the original attachment (or change only the text) and save.",
+        "Reload and check the comment's attachments and the second file's download link."
+      ],
+      "severity": 3
+    },
+    {
+      "id": "gitea-reenabling-issues-resets-issue-settings",
+      "name": "Re-enabling the issue tracker silently turns time tracking and dependencies back on",
+      "summary": "Turning a repository's issue tracker off and back on in Settings doesn't restore its previous options: Enable Time Tracking and Enable Dependencies come back checked even if they were saved unchecked. The settings page greys these options out, rather than hiding them, while the feature is off, which tells the user they'll be kept and simply inactive; saving actually deletes them.",
+      "expected": "Re-enabling the issue tracker keeps the previously saved time tracking and dependency settings, as the greyed-out options shown while the tracker is disabled suggest.",
+      "actual": "With Enable Time Tracking and Enable Dependencies saved unchecked, disabling the issue tracker and saving, then re-enabling it and saving without touching the options, left both options checked. The Time Tracker appeared on issues again.",
+      "reproSteps": [
+        "In a repository's Settings > Advanced Settings, uncheck Enable Time Tracking and Enable Dependencies For Issues and Pull Requests, and save.",
+        "Uncheck Enable Repository Issue Tracker (the issue options are greyed out, not removed) and save.",
+        "Check Enable Repository Issue Tracker again and save without changing the issue options.",
+        "Reload Settings and check the time tracking and dependency options."
+      ],
+      "severity": 3,
+      "matchingGuidance": {
+        "relatedReference": {
+          "name": "Re-enabling pull requests silently turns on branch deletion and changes merge defaults",
+          "distinction": "Same cause (saving with the feature off deletes its settings while the page only greys them out), but that entry is the pull request merge settings; this entry is the issue tracker's time tracking and dependency options."
+        }
+      }
+    },
+    {
+      "id": "gitea-dependency-timeline-leaks-private-issue",
+      "name": "Dependency timeline events reveal a private issue's title to users who can't access it",
+      "summary": "When an issue in a repository is linked as depending on (or blocking) an issue in a private repository, the issue's timeline shows the private repository's name and the private issue's title to every reader, including users with no access to the private repository. The sidebar on the same page correctly hides the dependency, and the API timeline also returns the private issue.",
+      "expected": "Readers who can't access the private repository don't see its name or the private issue's title in the timeline, as the sidebar already hides the dependency from them.",
+      "actual": "Viewing the public issue as a user without access to the private repository, the sidebar said \"You do not have permission to read 1 dependency\", but the timeline's \"added a new dependency\" event showed the private repository name and issue title, linking to a 404. The API timeline returned the private issue, including its body.",
+      "reproSteps": [
+        "As a user with access to both, create an issue in a private repository and an issue in a public repository.",
+        "On the public issue, add the private issue as a dependency.",
+        "Sign in as a user who can read the public repository but not the private one, and open the public issue.",
+        "Compare the sidebar's Dependencies section with the dependency event in the timeline."
+      ],
+      "severity": 3
+    },
+    {
+      "id": "gitea-running-timer-unstoppable-after-time-tracking-disabled",
+      "name": "A running timer can't be stopped after time tracking is disabled for its repository",
+      "summary": "If time tracking is disabled in a repository's settings while a user's timer is running on one of its issues, the header still shows the active timer, but Stop and Discard fail with \"Network error SyntaxError: … 'Not found.' is not valid JSON\", and the timer can never be stopped.",
+      "expected": "After time tracking is disabled, a running timer can still be stopped or discarded, or it's stopped automatically, with no raw error.",
+      "actual": "The active timer stayed in the header. Clicking Stop Timer (or Discard) showed a red network error that \"Not found.\" isn't valid JSON, and the timer kept running.",
+      "reproSteps": [
+        "In a repository with time tracking enabled, start a timer on an issue.",
+        "In the repository's settings, disable time tracking and save.",
+        "Open the active timer from the header and click Stop Timer.",
+        "Check the message and whether the timer stopped."
+      ],
+      "severity": 3
     }
   ]
 }
