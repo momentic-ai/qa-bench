@@ -2611,6 +2611,56 @@
           "Exact state replacement is inferred from source and controls; no fresh independent UI-only reproduction was completed."
         ]
       }
+    },
+    {
+      "id": "native-agent-browser-twenty-profile-name-navigation-loss",
+      "name": "Navigating away from Profile cancels a pending valid name edit without feedback",
+      "severity": 3,
+      "owningArea": "twenty/settings-data-model",
+      "summary": "A valid nonempty Profile name edit is discarded when ordinary settings navigation occurs before the 500ms autosave debounce completes. Returning to Profile shows the previous saved name without a warning about the lost edit.",
+      "expected": "Ordinary settings navigation should save a pending valid name edit or clearly warn before discarding it.",
+      "actual": "After replacing First Name with a new nonempty value and immediately selecting Data model in the settings sidebar, returning to Profile shows the previous saved name. There is no explicit Save action, pending-save indicator, or unsaved-change warning. Waiting before navigating allows the same valid edit to persist.",
+      "reproSteps": [
+        "Open Settings > Profile with saved nonempty First Name and Last Name. Record the saved First Name as a baseline.",
+        "Replace First Name with a different valid nonempty value using ordinary keyboard input. Keep Last Name nonempty.",
+        "Immediately select Data model in the settings sidebar, without refreshing the browser.",
+        "After Data model loads, return to Profile and observe that First Name has reverted to the saved baseline without a warning that the edit would be discarded.",
+        "As a control, enter a different nonempty First Name and wait at least one second before selecting Data model. Return to Profile and confirm the waited edit persists."
+      ],
+      "matchingGuidance": {
+        "relatedReference": "settings-data-model-fresh-41e07e8c",
+        "distinction": "The related severity-1 entry covers missing feedback when an empty required Last Name is intentionally not saved. This severity-3 entry uses a valid nonempty name and ordinary navigation, which cancels its pending autosave. It does not require allowing empty names.",
+        "boundaries": "Require the valid edit, ordinary settings navigation during the pending debounce, and restored old name on return, with a waited-save control. Do not match hard-refresh interruptions, clearing a required name, or a completed save later being overwritten. The missing-feedback-only and valid-edit-loss claims remain distinct."
+      },
+      "sourceReport": {
+        "agent": "codex-agent-browser",
+        "effort": "30m",
+        "name": "Profile name edits are silently lost when navigating away",
+        "referenceRevision": "2dd3db766ee964794297d292a77c0f430b155f22"
+      },
+      "reviewEvidence": {
+        "basis": "User acceptance after native Codex report and pinned-source review. The report describes keyboard and fill repetitions plus a passing wait-before-navigation control. No fresh coordinator browser run or Claude comparison is represented.",
+        "userAccepted": true,
+        "sourceRevision": "35c645064f72bc4e3180a2c6c506cbbfee170007",
+        "severityReason": "Ordinary in-app navigation silently discards a valid edit, rather than only omitting feedback for an invalid empty draft.",
+        "analysis": [
+          "NameFields queues a valid nonempty change through a 500ms debounced update. Its effect cleanup cancels the pending callback rather than flushing it.",
+          "Profile mounts NameFields with autosave enabled. Leaving that route unmounts the editor; navigation before the debounce fires can cancel the mutation entirely.",
+          "The waited control permits updateWorkspaceMemberSettings to run and preserves the new name. No server-acknowledged change is claimed to be lost.",
+          "Debouncing explains reachability but does not establish maintainer approval of silently discarding valid edits during ordinary navigation. The flush-or-warning expectation is an inferred interaction contract accepted by the user, not an explicit maintainer statement."
+        ],
+        "sourceReferences": [
+          "https://github.com/twentyhq/twenty/blob/35c645064f72bc4e3180a2c6c506cbbfee170007/packages/twenty-front/src/pages/settings/profile/SettingsProfile.tsx#L48-L67",
+          "https://github.com/twentyhq/twenty/blob/35c645064f72bc4e3180a2c6c506cbbfee170007/packages/twenty-front/src/modules/settings/profile/components/NameFields.tsx#L27-L95",
+          "https://github.com/twentyhq/twenty/blob/35c645064f72bc4e3180a2c6c506cbbfee170007/packages/twenty-front/src/modules/settings/profile/components/NameFields.tsx#L100-L121",
+          "https://github.com/twentyhq/twenty/blob/35c645064f72bc4e3180a2c6c506cbbfee170007/packages/twenty-front/src/modules/settings/profile/hooks/useUpdateWorkspaceMemberSettings.ts#L39-L61"
+        ],
+        "limitations": [
+          "This is the valid First Name edit and sidebar-navigation path. Other Profile settings, browser closure, and a claimed post-acknowledgement persistence failure were not established.",
+          "Screenshots referenced by the original report were not available locally; this review checked the report and source without independently replaying it.",
+          "Source revision follows the fixture recipe; the runtime image was not re-attested during this review."
+        ]
+      }
     }
   ]
 }
