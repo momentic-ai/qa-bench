@@ -2487,6 +2487,44 @@
           "Other roles, object pairs, upsert triggers and newer runtime were not tested."
         ]
       }
+    },
+    {
+      "id": "workflows-pass4-2cac3855",
+      "name": "Changing Workflow Runs grouping silently restores saved filters over pending edits",
+      "severity": 3,
+      "owningArea": "twenty/workflows",
+      "summary": "Choosing Group by in a saved Workflow Runs view replaces its active unsaved filters with saved filters, silently changing which runs are shown.",
+      "expected": "Changing grouping in the same view should retain its valid active filters and pending changes, or warn before discarding them.",
+      "actual": "Removing a saved Failed status chip shows three mixed-status runs and Reset/Update view. Selecting Workflow run status grouping restores the Failed chip, hides pending-change controls and leaves only the failed run. Unsaved added filters are also discarded. Saving the filter edit before grouping preserves results.",
+      "reproSteps": [
+        "Create harmless workflow runs with Failed, Completed and Stopped statuses and a disposable Workflow Runs Table view.",
+        "Save a Name filter isolating those runs together with Workflow run status = Failed.",
+        "Remove only the Failed chip without saving. Confirm all three runs and Reset/Update view are visible.",
+        "Choose Options > Group > Workflow run status. Observe the Failed filter return, the count drop to one and pending-change controls disappear.",
+        "Compare saving the filter removal before grouping, and opening/dismissing Options without selecting grouping; these preserve the intended mixed-status results."
+      ],
+      "sourceCause": "The grouping handler saves only mainGroupByFieldMetadataId, then loads the entire returned saved view. The response contains saved filters, and the state loader unconditionally overwrites active filters and sorts from that saved configuration.",
+      "matchingGuidance": {
+        "relatedReference": "records-views-N03",
+        "distinction": "This entry changes Group by in a Workflow Runs table without leaving the current view. N03 changes Layout to Kanban. Both reload saved filter state over pending edits. Hard-refresh loss of unsaved filters, required relation-group setup and stale Group by None presentation remain distinct."
+      },
+      "reviewEvidence": {
+        "basis": "Independent browser and source verification on two fresh views per reviewer with passing controls.",
+        "sourceRevision": "35c645064f72bc4e3180a2c6c506cbbfee170007",
+        "severityReason": "An ordinary grouping action silently replaces valid active criteria and shows a different set of runs.",
+        "sourceReferences": [
+          "https://github.com/twentyhq/twenty/blob/35c645064f72bc4e3180a2c6c506cbbfee170007/packages/twenty-front/src/modules/object-record/record-index/hooks/useHandleRecordGroupField.ts#L58-L70",
+          "https://github.com/twentyhq/twenty/blob/35c645064f72bc4e3180a2c6c506cbbfee170007/packages/twenty-front/src/modules/object-record/record-index/hooks/useLoadRecordIndexStates.ts#L245-L257",
+          "https://github.com/twentyhq/twenty/blob/35c645064f72bc4e3180a2c6c506cbbfee170007/packages/twenty-front/src/modules/object-record/record-index/hooks/useLoadRecordIndexStates.ts#L317-L329",
+          "https://github.com/twentyhq/twenty/blob/35c645064f72bc4e3180a2c6c506cbbfee170007/packages/twenty-front/src/modules/views/graphql/fragments/viewFragment.ts#L45-L55"
+        ],
+        "limitations": [
+          "No saved run records or saved filter configuration were deleted.",
+          "Preservation of pending filters across grouping is inferred from separate controls and established layout-change precedent; no grouping-specific maintainer promise was found.",
+          "Other objects, roles, unsaved sorts and advanced filter groups were not browser-established.",
+          "Newer source retains the mechanism; newer runtime was not tested."
+        ]
+      }
     }
   ]
 }
