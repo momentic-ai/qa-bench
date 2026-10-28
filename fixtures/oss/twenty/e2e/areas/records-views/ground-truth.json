@@ -1605,6 +1605,43 @@
           "Newer source removes the hourly implementation in a broader rewrite. No newer runtime or targeted fix is established; exact auto-scroll timing is inferred."
         ]
       }
+    },
+    {
+      "id": "records-views-loop-4418228e",
+      "name": "Late-night Task cards fall outside the Day and Week calendar grid",
+      "severity": 3,
+      "owningArea": "twenty/records-views",
+      "summary": "A Task due at 23:59 loads in the calendar but its card is positioned below the clipped hourly grid on its own start day.",
+      "expected": "Tasks on the displayed day remain visible and usable in Day and Week, including tasks due near midnight.",
+      "actual": "A Task due at 23:59 appears in Month and the table but cannot be seen in its own Day grid even after scrolling fully down. Week also clips the card. Earlier-time controls remain visible; the Task and its saved Due Date remain intact.",
+      "reproSteps": [
+        "Create a disposable Tasks calendar using Due Date with no end field and filter to uniquely named test Tasks.",
+        "Create two Tasks due at 23:59 on separate dates and an earlier-time control. Verify their saved Due Dates and Month cards.",
+        "Switch to Day for each late Task date and scroll fully to the bottom. Compare the earlier control.",
+        "Switch to Week covering a late Task date and inspect its day column."
+      ],
+      "sourceCause": "The hourly metrics cap the event end at the 1152-pixel grid boundary but retain a minimum 24-pixel card. Rendering adds a 4-pixel top gap, placing a 23:59 card entirely below the day column. That column hides overflow, so the loaded record has no visible card.",
+      "matchingGuidance": {
+        "distinction": "Match a loaded late-night Task card clipped from its own start day in the hourly Day/Week grid. Distinguish missing preceding-day overnight continuations at a query boundary, crowded-date display caps, absent calendar grids and toolbar drops that alter saved times.",
+        "relatedReferenceId": "records-views-loop-7dc923b9"
+      },
+      "reviewEvidence": {
+        "basis": "Independent browser/source reviews agree on severity 3 for late-night Task cards hidden from their own Day/Week grids. Coordinator checked full reports and source audits, independent retained screenshots and exact geometry readbacks, sampled original Mo video and subscription billing.",
+        "sourceRevision": "35c645064f72bc4e3180a2c6c506cbbfee170007",
+        "severityReason": "Saved Tasks cannot be seen through the affected Day/Week calendar cards; Month and the table retain access.",
+        "sourceReferences": [
+          "https://github.com/twentyhq/twenty/blob/35c645064f72bc4e3180a2c6c506cbbfee170007/packages/twenty-front/src/modules/object-record/record-calendar/week/utils/getRecordCalendarWeekTimedEventMetrics.ts#L17-L26",
+          "https://github.com/twentyhq/twenty/blob/35c645064f72bc4e3180a2c6c506cbbfee170007/packages/twenty-front/src/modules/object-record/record-calendar/week/utils/getRecordCalendarWeekTimedEventMetrics.ts#L61-L77",
+          "https://github.com/twentyhq/twenty/blob/35c645064f72bc4e3180a2c6c506cbbfee170007/packages/twenty-front/src/modules/object-record/record-calendar/week/components/RecordCalendarWeekEvent.tsx#L39-L56",
+          "https://github.com/twentyhq/twenty/blob/35c645064f72bc4e3180a2c6c506cbbfee170007/packages/twenty-front/src/modules/object-record/record-calendar/time-grid/components/RecordCalendarTimeGrid.tsx#L151-L168"
+        ],
+        "limitations": [
+          "Joint scope is Tasks Due Date without an end field in the hourly Day/Week calendar. Two late dates and earlier-time controls were checked; exact cutoff minutes and every viewport/time zone were not tested.",
+          "The visibility contract combines calendar behavior, passing controls and minimum-card/late-range tests. Those tests do not directly assert rendered 23:59 card containment.",
+          "Tasks were created through ordinary fixture APIs in Claude controls; calendar configuration and inspection used the rendered UI. No record loss, saved-time corruption or keyboard unreachability is claimed.",
+          "Newer source removes the hourly implementation in a broad rewrite. This is not a targeted fix or newer-runtime verification."
+        ]
+      }
     }
   ]
 }
