@@ -3390,7 +3390,8 @@
       ],
       "sourceCause": "The selected currencyCode null reaches UpdateRecordService, whose recursive cleanup drops null values before the composite update. The omitted currency subfield therefore retains its existing value.",
       "matchingGuidance": {
-        "distinction": "This entry covers currencyCode clearing, distinct from clearing the revenue amount. No universal nullable-field or newer-runtime claim."
+        "distinction": "This entry covers currencyCode clearing, distinct from clearing the revenue amount. No universal nullable-field or newer-runtime claim.",
+        "relatedReferenceId": "workflows-loop-e6baef60"
       },
       "reviewEvidence": {
         "basis": "Codex-only approval under the user’s updated authorization: completed official Codex Pro review plus coordinator-checked actual evidence, source and contract. Claude agreement is not required by this policy; existing comparison history is preserved.",
@@ -3400,7 +3401,9 @@
           "https://github.com/twentyhq/twenty/blob/35c645064f72bc4e3180a2c6c506cbbfee170007/packages/twenty-docs/user-guide/workflows/capabilities/workflow-actions.mdx#L30-L41",
           "https://github.com/twentyhq/twenty/blob/35c645064f72bc4e3180a2c6c506cbbfee170007/packages/twenty-front/src/modules/object-record/record-field/ui/form-types/components/FormCurrencyFieldInput.tsx#L29-L53",
           "https://github.com/twentyhq/twenty/blob/35c645064f72bc4e3180a2c6c506cbbfee170007/packages/twenty-front/src/modules/object-record/record-field/ui/form-types/components/FormSelectFieldInput.tsx#L73-L84",
-          "https://github.com/twentyhq/twenty/blob/35c645064f72bc4e3180a2c6c506cbbfee170007/packages/twenty-front/src/modules/workflow/workflow-steps/workflow-actions/components/WorkflowEditActionUpdateRecord.tsx#L69-L80"
+          "https://github.com/twentyhq/twenty/blob/35c645064f72bc4e3180a2c6c506cbbfee170007/packages/twenty-front/src/modules/workflow/workflow-steps/workflow-actions/components/WorkflowEditActionUpdateRecord.tsx#L69-L80",
+          "https://github.com/twentyhq/twenty/blob/35c645064f72bc4e3180a2c6c506cbbfee170007/packages/twenty-server/src/engine/core-modules/record-crud/utils/remove-undefined-from-record.util.ts#L12-L29",
+          "https://github.com/twentyhq/twenty/blob/35c645064f72bc4e3180a2c6c506cbbfee170007/packages/twenty-shared/src/utils/validation/isDefined.ts#L1-L5"
         ],
         "limitations": [
           "One manually built workflow was exercised with fresh Company data; independent workflow construction is not claimed.",
@@ -3436,13 +3439,52 @@
           "https://github.com/twentyhq/twenty/blob/35c645064f72bc4e3180a2c6c506cbbfee170007/packages/twenty-front/src/modules/workflow/workflow-diagram/components/WorkflowDiagramCanvasBase.tsx#L438-L459",
           "https://github.com/twentyhq/twenty/blob/35c645064f72bc4e3180a2c6c506cbbfee170007/packages/twenty-front/src/modules/workflow/workflow-diagram/components/WorkflowDiagramCanvasEditable.tsx#L133-L138",
           "https://github.com/twentyhq/twenty/blob/35c645064f72bc4e3180a2c6c506cbbfee170007/packages/twenty-front/src/modules/workflow/workflow-diagram/workflow-edges/components/WorkflowDiagramDefaultEdgeEditable.tsx#L80-L89",
-          "https://github.com/twentyhq/twenty/blob/35c645064f72bc4e3180a2c6c506cbbfee170007/packages/twenty-front/src/modules/workflow/workflow-diagram/workflow-edges/utils/getConnectionOptionsForSourceHandle.ts#L9-L20"
+          "https://github.com/twentyhq/twenty/blob/35c645064f72bc4e3180a2c6c506cbbfee170007/packages/twenty-front/src/modules/workflow/workflow-diagram/workflow-edges/utils/getConnectionOptionsForSourceHandle.ts#L9-L20",
+          "https://github.com/twentyhq/twenty/blob/35c645064f72bc4e3180a2c6c506cbbfee170007/packages/twenty-server/src/modules/workflow/workflow-builder/workflow-version-edge/workflow-version-edge.workspace-service.ts#L458-L465",
+          "https://github.com/twentyhq/twenty/blob/35c645064f72bc4e3180a2c6c506cbbfee170007/packages/twenty-server/src/modules/workflow/workflow-builder/workflow-version-edge/workflow-version-edge.workspace-service.ts#L543-L568"
         ],
         "limitations": [
           "Persistent highlighting did not reproduce; the returned connection is gray and unselected.",
           "Two fresh workflows share one fixture. No node loss, other loop target or role, or newer-runtime behavior was established.",
           "Approved under the Codex-only policy; no completed independent Claude comparison is claimed.",
           "Source inspected at the pinned revision; newer runtime was not tested."
+        ]
+      }
+    },
+    {
+      "id": "workflows-loop-ff4e3502",
+      "name": "Open Delay Output stays empty after its run completes",
+      "severity": 1,
+      "owningArea": "twenty/workflows",
+      "summary": "A Delay Output inspector opened while a test run is pending stays at Empty Object after successful completion; reopening reveals the saved result.",
+      "expected": "An already-open run-step Output should reflect the completed step’s result, as the full run-page inspector does.",
+      "actual": "On two fresh workflows, holding the test side-panel Delay Output open leaves Empty Object after the run has completed. Returning to Flow shows Completed; reopening the same Delay shows result.success true. Opening the pending Output from the full run page updates live without reopening.",
+      "reproSteps": [
+        "Create a disposable owned manual workflow with a duration Delay, save it, and click Test.",
+        "While the Delay is pending, open its Output in the test side panel and leave it open beyond completion.",
+        "Observe Empty Object remains; return to Flow to see Completed, then reopen the same step to see result.success true.",
+        "Repeat with a separate workflow. As controls, first open Output after completion and hold pending Output open from the full run page; both show the successful result."
+      ],
+      "sourceCause": "The Flow card owns the run-update subscriber. Opening the step inspector replaces that card, while the inspector reads the run without mounting a replacement subscriber. Reopening fetches the saved result.",
+      "matchingGuidance": {
+        "relatedReferenceId": "workflows-N73",
+        "distinction": "This entry concerns an already-open Delay Output inspector. Home/Flow status remaining Running and execution failure are different claims."
+      },
+      "reviewEvidence": {
+        "basis": "Completed official Codex Pro P1 review, actual original stills and exact same-run completion readbacks checked by coordinator, with full source/contract audit. User authorized Codex-only approval; prior comparison history is preserved.",
+        "sourceRevision": "35c645064f72bc4e3180a2c6c506cbbfee170007",
+        "severityReason": "Stale inspection display only; execution and saved output succeed.",
+        "sourceReferences": [
+          "https://github.com/twentyhq/twenty/blob/35c645064f72bc4e3180a2c6c506cbbfee170007/packages/twenty-docs/user-guide/workflows/capabilities/workflow-runs.mdx#L33-L47",
+          "https://github.com/twentyhq/twenty/blob/35c645064f72bc4e3180a2c6c506cbbfee170007/packages/twenty-front/src/modules/side-panel/components/SidePanelRouter.tsx#L51-L61",
+          "https://github.com/twentyhq/twenty/blob/35c645064f72bc4e3180a2c6c506cbbfee170007/packages/twenty-front/src/modules/side-panel/pages/workflow/hooks/useSidePanelWorkflowNavigation.ts#L187-L241",
+          "https://github.com/twentyhq/twenty/blob/35c645064f72bc4e3180a2c6c506cbbfee170007/packages/twenty-front/src/modules/side-panel/pages/workflow/step/view-run/components/SidePanelWorkflowRunViewStep.tsx#L6-L18"
+        ],
+        "limitations": [
+          "Codex-only approval under the user’s updated policy; no independent Claude agreement is claimed.",
+          "Two fresh workflows share one fixture; tested duration Delays of 15 and 30 seconds. Other action types, scheduled-date input and member execution are excluded.",
+          "Execution succeeds and stored results remain available. Full run-page Output updates live; this entry concerns the test side-panel inspector kept open across completion.",
+          "No continuous recording review or newer-runtime result is claimed. The missing inspector subscription is source-supported; exact lifecycle causality is inferred."
         ]
       }
     }
