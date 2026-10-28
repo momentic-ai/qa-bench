@@ -876,6 +876,59 @@
         "Look below the attachment list, then reload and compare."
       ],
       "severity": 1
+    },
+    {
+      "id": "gitea-empty-inline-issue-title-no-validation-feedback",
+      "name": "Saving an empty issue title closes the editor without validation feedback",
+      "severity": 1,
+      "owningArea": "gitea/issues",
+      "summary": "Clearing an existing issue title and clicking Save closes the editor and restores the saved title without explaining that the empty value was not saved.",
+      "expected": "An empty or whitespace-only title edit shows visible validation feedback so the user can correct it. Keeping the existing required title is valid; silently ignoring the attempted edit is the defect.",
+      "actual": "Save sends no title update request, reloads the page and restores the previous title without a toast, inline message or browser validation warning. A valid nonempty replacement saves and records a title-change event.",
+      "reproSteps": [
+        "Create a disposable issue with a nonempty title in a writable repository.",
+        "Open the issue and click Edit beside its title.",
+        "Clear the title completely and click Save.",
+        "Observe that the editor closes and the original title returns without validation feedback.",
+        "As a control, enter a valid nonempty replacement and save; confirm the heading changes."
+      ],
+      "sourceReport": {
+        "sessionId": "618c98cb-51c1-5897-9f68-369bcd12e205",
+        "webUrl": "https://app.momentic.ai/mo/sessions/618c98cb-51c1-5897-9f68-369bcd12e205?tab=bug%3AEmpty%20title%20edit%20exits%20without%20validation%20feedback",
+        "recording": {
+          "startedAt": 1793224438098,
+          "finishedAt": 1793224467500,
+          "agentId": "618c98cb-51c1-5897-9f68-369bcd12e205:sandbox-bugbash-v2:create-edit",
+          "windowId": "b88af789-f93b-4c7d-821d-925725ad6a35",
+          "artifactId": "06189c71-8451-405b-9b08-0983b42e579f"
+        }
+      },
+      "matchingGuidance": {
+        "scope": "Covers missing validation feedback after Save of an empty or whitespace-only inline issue title. Do not require an empty title to be saved, and do not describe the preserved original title as lost data.",
+        "distinction": "Cancel followed by reopening a stale title draft and WIP-prefix removal failing to leave draft have separate triggers."
+      },
+      "reviewEvidence": {
+        "basis": "Explicit user approval after reviewing the report, independent Codex and Claude recommendations, and coordinator-checked source. Both agents recommended rejection; the user overrode their contract judgment because missing visible feedback counts as a bug.",
+        "userAccepted": true,
+        "sourceRevision": "99053ce4fa2b45f1bca5837418c0c57f793ca824",
+        "severityReason": "Severity 1: missing validation feedback; valid title changes work and the saved original remains intact.",
+        "analysis": [
+          "Claude reproduced empty-title Save twice on fresh issues, tested whitespace input, and confirmed a valid nonempty rename saves with a timeline event.",
+          "Codex reviewed source and stopped at its bug bar without independent browser reproduction.",
+          "The inline input is not required; the client skips empty updates then reloads. The server also treats an empty title as a no-op. These guards explain the behavior but do not establish that silent feedback is acceptable.",
+          "Latest inspected source retains the nonempty guard; latest runtime was not tested."
+        ],
+        "sourceReferences": [
+          "https://github.com/go-gitea/gitea/blob/99053ce4fa2b45f1bca5837418c0c57f793ca824/templates/repo/issue/view_title.tmpl#L29-L40",
+          "https://github.com/go-gitea/gitea/blob/99053ce4fa2b45f1bca5837418c0c57f793ca824/web_src/js/features/repo-issue.ts#L469-L490",
+          "https://github.com/go-gitea/gitea/blob/99053ce4fa2b45f1bca5837418c0c57f793ca824/routers/web/repo/issue.go#L292-L295",
+          "https://github.com/go-gitea/gitea/blob/965d7522e0b3d323ea2da6615e7d4b39684d16e5/web_src/js/features/repo-issue.ts#L410-L431"
+        ],
+        "limitations": [
+          "No maintainer statement establishing the intended validation feedback was found.",
+          "Pull-request title behavior and other roles were not independently browser-tested."
+        ]
+      }
     }
   ]
 }
