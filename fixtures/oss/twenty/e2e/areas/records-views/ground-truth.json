@@ -1376,6 +1376,43 @@
           "The inspected newer source retains state-only group sorting; newer runtime and exhaustive fix status were not established."
         ]
       }
+    },
+    {
+      "id": "records-views-pass5-0760a788",
+      "name": "Editing a Person’s matching Job Title leaves a stale row under Search any field",
+      "severity": 3,
+      "owningArea": "twenty/records-views",
+      "summary": "An existing Person edited out of an ungrouped any-field search remains visible while the count correctly becomes zero.",
+      "expected": "A searched table should remove an existing record once a saved edit makes it stop matching the active search.",
+      "actual": "Changing the only matching Person’s Job Title to a nonmatching value saves successfully and changes the header count to zero, but the row remains with its new value. Leaving the editor and waiting does not remove it. Reload shows the correct empty result. An equivalent Job Title field-filter control removes the row immediately.",
+      "reproSteps": [
+        "Create a Person with a unique Job Title and search for that value with Search any field in an ungrouped People table.",
+        "Edit the matching Person’s Job Title to a nonmatching value and commit the edit.",
+        "Observe the count becomes zero while the nonmatching row remains visible after leaving the editor and waiting.",
+        "Reload and confirm the table becomes empty. Compare a normal Job Title field filter, which removes the edited row immediately."
+      ],
+      "sourceCause": "The virtualized table checks explicit field filters, sorts and position when deciding whether an update requires resetting its row list. It omits the separate any-field search value. The count can update while the existing virtualized row remains; resetting would refetch with the search applied.",
+      "matchingGuidance": {
+        "relatedReferenceId": "records-views-pass2-a60508f6",
+        "distinction": "This entry covers editing an existing Person in an ungrouped any-field search. The related reference covers creation of a nonmatching Company in a populated filtered group. Incorrect aggregate counts with correctly filtered rows have a different direction and mechanism."
+      },
+      "reviewEvidence": {
+        "basis": "Both independent reviewers reproduced the same narrowed defect and passing control. Coordinator checked full reports, source/contract audits, original Mo video samples, independent screenshots or sampled recordings, executed browser readbacks and actual subscription billing.",
+        "sourceRevision": "35c645064f72bc4e3180a2c6c506cbbfee170007",
+        "severityReason": "A successful saved edit leaves incorrect records displayed under the active search until reload.",
+        "sourceReferences": [
+          "https://github.com/twentyhq/twenty/blob/35c645064f72bc4e3180a2c6c506cbbfee170007/packages/twenty-front/src/modules/object-record/record-table/virtualization/hooks/useGetShouldResetTableVirtualizationForUpdateInputs.ts#L21-L76",
+          "https://github.com/twentyhq/twenty/blob/35c645064f72bc4e3180a2c6c506cbbfee170007/packages/twenty-front/src/modules/object-record/record-table/virtualization/components/RecordTableVirtualizedDataChangedEffect.tsx#L28-L52",
+          "https://github.com/twentyhq/twenty/blob/35c645064f72bc4e3180a2c6c506cbbfee170007/packages/twenty-front/src/modules/object-record/record-table/virtualization/hooks/useResetVirtualizationBecauseDataChanged.ts#L30-L42",
+          "https://github.com/twentyhq/twenty/blob/35c645064f72bc4e3180a2c6c506cbbfee170007/packages/twenty-front/src/modules/object-record/record-index/hooks/useFindManyRecordIndexTableParams.ts#L63-L86"
+        ],
+        "limitations": [
+          "Joint scope is existing Person Job Title edits in an ungrouped table with any-field search, including a reloaded saved search view.",
+          "No stored record data was lost. Refresh restores the correct result.",
+          "Other objects, grouped tables and other field types are not established; explicit filters or sorts can cause a reset.",
+          "The inspected newer source retains the update-reset omission; newer runtime was not tested."
+        ]
+      }
     }
   ]
 }
