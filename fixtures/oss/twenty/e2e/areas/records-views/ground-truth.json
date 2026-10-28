@@ -1789,6 +1789,45 @@
           "These are applied draft filters. No saved-view persistence, stored business-data change or newer-runtime test is claimed."
         ]
       }
+    },
+    {
+      "id": "records-views-loop-2cd1030b",
+      "name": "Calendar Date field checks Creation date while cards still use Due Date",
+      "severity": 3,
+      "owningArea": "twenty/records-views",
+      "summary": "Returning a Due Date Tasks Calendar through Kanban leaves the selected Date field and card placement using different fields.",
+      "expected": "The calendar Date field checkmark and the field used to place its cards stay consistent after layout changes.",
+      "actual": "After Calendar→Kanban→Calendar, the saved view and Date field menu select Creation date, but the existing cards remain on their Due Date days. A fresh Table-only round trip keeps the menu and placement consistent; reload makes the affected calendar follow the saved field.",
+      "reproSteps": [
+        "Create own Tasks whose Due Dates differ clearly from their Creation dates. Create a fresh Tasks Calendar using Due Date and verify matching placement/checkmark.",
+        "Switch through a Kanban layout grouped by Status, then return to Calendar without reloading.",
+        "Open Options → Date field and compare the checked Creation date with cards still placed on Due Dates. Repeat on another fresh view.",
+        "Compare a fresh Calendar→Table→Calendar round trip and a full reload of the affected view."
+      ],
+      "sourceCause": "Calendar entry sets a new date-field state and saves the view. When grouping changes, updateCurrentView reloads index states from its captured pre-save view, restoring the older Due Date into live calendar state. The pinned field menu reads the saved view while calendar placement reads live state, producing the disagreement.",
+      "matchingGuidance": {
+        "relatedReferenceName": "Switching a grouped view to Calendar hides all events until reload",
+        "distinction": "Match nonempty calendar placement by an old non-default field while the Date field menu checks a different saved field. Distinguish a null-field blank calendar, Table-only saved configuration reset and direct field-selection save races."
+      },
+      "reviewEvidence": {
+        "basis": "Both independent browser/source reviewers accept the same Tasks Calendar field-menu/card-placement disagreement after a grouped-layout round trip at severity 3. Coordinator checked complete source/contract audits, independent original images and saved-field/live-placement/consistent-layout controls, plus both official subscription billing records.",
+        "sourceRevision": "35c645064f72bc4e3180a2c6c506cbbfee170007",
+        "severityReason": "The calendar misrepresents which date field its visible schedule uses; reload or reselecting the field provides a workaround.",
+        "sourceReferences": [
+          "https://github.com/twentyhq/twenty/blob/35c645064f72bc4e3180a2c6c506cbbfee170007/packages/twenty-front/src/modules/object-record/object-options-dropdown/hooks/useSetViewTypeFromLayoutOptionsMenu.ts#L86-L115",
+          "https://github.com/twentyhq/twenty/blob/35c645064f72bc4e3180a2c6c506cbbfee170007/packages/twenty-front/src/modules/views/hooks/useUpdateCurrentView.ts#L105-L147",
+          "https://github.com/twentyhq/twenty/blob/35c645064f72bc4e3180a2c6c506cbbfee170007/packages/twenty-front/src/modules/object-record/record-index/hooks/useLoadRecordIndexStates.ts#L336-L345",
+          "https://github.com/twentyhq/twenty/blob/35c645064f72bc4e3180a2c6c506cbbfee170007/packages/twenty-front/src/modules/object-record/object-options-dropdown/components/ObjectOptionsDropdownCalendarFieldsContent.tsx#L48-L52",
+          "https://github.com/twentyhq/twenty/blob/35c645064f72bc4e3180a2c6c506cbbfee170007/packages/twenty-front/src/modules/object-record/record-calendar/hooks/useRecordCalendarGroupByRecords.ts#L30-L60"
+        ],
+        "limitations": [
+          "Joint scope is a Tasks Calendar with non-default Due Date taken through a grouped Kanban layout and back: Creation date is checked while nonempty cards still follow Due Date. Wrong-field drag writes and Kanban-born blank calendars are excluded.",
+          "The saved field and live calendar state disagree until reload. Persistent saved-field reset alone and a Table-only round trip are related existing behavior, not this joint mismatch.",
+          "Claude created three own Tasks through ordinary API and tested fresh views. No other objects, native mobile or roles are established.",
+          "The inspected source snapshots have divergent ancestry. Commit 0d639 is absent from pinned source and present in newer source; its date predates the pinned commit, so no linear landed-after-pin claim is made.",
+          "Newer menu/drop readers use live state in inspected code, but newer runtime and a complete targeted fix for this layout transition were not verified."
+        ]
+      }
     }
   ]
 }
