@@ -3187,6 +3187,44 @@
           "No downstream execution damage is claimed. Newer source and the maintainer Tab fix support the source explanation; newer runtime was not tested."
         ]
       }
+    },
+    {
+      "id": "workflows-loop-cfeab2ff",
+      "name": "Workflow Update Record ignores saved No record for a Person’s Company",
+      "severity": 3,
+      "owningArea": "twenty/workflows",
+      "summary": "An Update Record action saves Company as No record but a successful run leaves the Person linked to the previous Company.",
+      "expected": "A completed Update Record action applies its saved No record choice by clearing the selected Person’s Company relation.",
+      "actual": "The saved action contains companyId:null with Company selected for update. The run and step report success, but the output and refreshed Person retain the old Company. Assigning a different Company works; another selected field can update in the same step while Company remains unchanged.",
+      "reproSteps": [
+        "Create disposable Companies and People with existing Company links. Build a manual workflow with Update Record targeting one Person.",
+        "Select Company under Fields to update and choose No record in its picker. Close the editor, reload and confirm the saved choice.",
+        "Run the workflow and compare the Update Record result and refreshed Person’s Company with the requested clear.",
+        "Repeat for a fresh Person. Compare a non-null Company assignment and an ordinary record clear control."
+      ],
+      "sourceCause": "The picker emits null, which survives the saved workflow input, relation formatting and selected-field filtering. UpdateRecordService calls removeUndefinedFromRecord before the write. The pinned helper uses isDefined and removes null as well as undefined, so the Company clear is absent from the submitted update.",
+      "matchingGuidance": {
+        "distinction": "Match Update Record on People with a saved Company No record/null choice that is ignored during a successful run. Distinguish Create Record defaults, Task Status clears, Company revenue clears, unsaved relation edits and unrelated Upsert formatting failures.",
+        "relatedReferenceId": "workflows-loop-94d24a87"
+      },
+      "reviewEvidence": {
+        "basis": "Both independent browser/source reviewers accept the same saved Company clear ignored by Update Record at severity 3. Coordinator checked full reports/source audits, retained independent images and exact saved-input/run-result/record readbacks, passing assignments and subscription billing.",
+        "sourceRevision": "35c645064f72bc4e3180a2c6c506cbbfee170007",
+        "severityReason": "A supported saved workflow update silently produces the wrong Company relation despite reporting success.",
+        "sourceReferences": [
+          "https://github.com/twentyhq/twenty/blob/35c645064f72bc4e3180a2c6c506cbbfee170007/packages/twenty-front/src/modules/object-record/record-field/ui/form-types/components/FormSingleRecordPicker.tsx#L141-L153",
+          "https://github.com/twentyhq/twenty/blob/35c645064f72bc4e3180a2c6c506cbbfee170007/packages/twenty-front/src/modules/workflow/workflow-steps/workflow-actions/components/WorkflowEditActionUpdateRecord.tsx#L69-L81",
+          "https://github.com/twentyhq/twenty/blob/35c645064f72bc4e3180a2c6c506cbbfee170007/packages/twenty-server/src/modules/workflow/workflow-executor/workflow-actions/record-crud/update-record.workflow-action.ts#L85-L127",
+          "https://github.com/twentyhq/twenty/blob/35c645064f72bc4e3180a2c6c506cbbfee170007/packages/twenty-server/src/engine/core-modules/record-crud/services/update-record.service.ts#L78-L101",
+          "https://github.com/twentyhq/twenty/blob/35c645064f72bc4e3180a2c6c506cbbfee170007/packages/twenty-server/src/engine/core-modules/record-crud/utils/remove-undefined-from-record.util.ts#L3-L15"
+        ],
+        "limitations": [
+          "Joint scope is People Company relation clearing through a saved Update Record action. Other nullable fields, Upsert and bulk/create paths are not covered by this entry.",
+          "Both checked fresh People and repeats; Codex’s second workflow was duplicated and remapped, while Claude built two workflows. These are not two independently built workflows per reviewer.",
+          "Claude’s sibling clear control used the ordinary record API. Claude also used API fixture setup and renamed a workflow through the API; the No record configuration and run inspection used the rendered editor.",
+          "The shared helper’s newer null-preservation change is source evidence only. No newer-runtime or exact deployment chronology claim."
+        ]
+      }
     }
   ]
 }
