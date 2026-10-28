@@ -1491,6 +1491,43 @@
           "Updates that trigger a full query can repair the board; this is not a claim that every incremental update fails. The related upstream List change is not an explicit acknowledgment or fix of this board defect."
         ]
       }
+    },
+    {
+      "id": "records-views-pass4-c89c6daa",
+      "name": "Starting a row drag in grouped Opportunities or Tasks tables crashes the record content",
+      "severity": 5,
+      "owningArea": "twenty/records-views",
+      "summary": "Activating a grouped Table row drag renders its preview without the required body context and crashes the table page.",
+      "expected": "The offered row drag grip should allow grouping and reordering interactions without replacing the table with an error page.",
+      "actual": "Dragging an Opportunity row by its grip in a Table grouped by Stage replaces the table content with Sorry, something went wrong and Reload. It occurs during drag activation before release. Tasks grouped by Status show the same failure. The sidebar remains, and reload restores the table.",
+      "reproSteps": [
+        "Create a disposable Opportunities Table view with multiple own records, grouped by Stage.",
+        "Grab a row’s drag grip and move far enough to activate dragging. Observe the error page before releasing or reaching an empty group.",
+        "Reload, repeat on another row, and compare an ungrouped Table where row dragging works and the new order persists.",
+        "Repeat in a disposable Tasks Table grouped by Status to observe the same drag-start error."
+      ],
+      "sourceCause": "Grouped table bodies put their per-group RecordTableBodyContext providers inside the outer drag provider. The drag overlay is rendered alongside those children, outside their contexts, but renders real table cells that require the context. The required-context hook throws. Ungrouped tables wrap the drag provider with the needed context.",
+      "matchingGuidance": {
+        "distinction": "Match grouped Table row-grip drag activation throwing the missing RecordTableBodyContext error and replacing record content. Do not require an empty destination or actual drop. Exclude Kanban card dragging, sorting-only errors and unrelated page crashes."
+      },
+      "reviewEvidence": {
+        "basis": "Both independent reviewers reproduced the grouped-table page crash during row-grip drag activation, including Opportunities and Tasks, with working ungrouped drag and reload controls. Coordinator checked complete source/contract and maintainer-fix audits, original Mo video samples, independent actual crash/control screenshots, dedicated fixture independence and exact subscription billing.",
+        "sourceRevision": "35c645064f72bc4e3180a2c6c506cbbfee170007",
+        "severityReason": "Both independent reviewers recommend severity 5 under the page-crash convention: normal supported dragging replaces record content with an error page, recoverable by reload.",
+        "sourceReferences": [
+          "https://github.com/twentyhq/twenty/blob/35c645064f72bc4e3180a2c6c506cbbfee170007/packages/twenty-front/src/modules/object-record/record-table/record-table-body/components/RecordTableRecordGroupsBody.tsx#L39-L56",
+          "https://github.com/twentyhq/twenty/blob/35c645064f72bc4e3180a2c6c506cbbfee170007/packages/twenty-front/src/modules/object-record/record-table/record-table-body/components/RecordTableBodyRecordGroupDragDropContextProvider.tsx#L113-L124",
+          "https://github.com/twentyhq/twenty/blob/35c645064f72bc4e3180a2c6c506cbbfee170007/packages/twenty-front/src/modules/object-record/record-table/record-table-row/components/RecordTableRowDragOverlayContent.tsx#L176-L194",
+          "https://github.com/twentyhq/twenty/blob/35c645064f72bc4e3180a2c6c506cbbfee170007/packages/twenty-front/src/modules/object-record/record-table/record-table-cell/hooks/useOpenRecordTableCellFromCell.ts#L10-L22",
+          "https://github.com/twentyhq/twenty/commit/17ff17bdec9b6abf826216c9dbe95f425ce76d59"
+        ],
+        "limitations": [
+          "Both reviewers reproduced grouped Opportunities-by-Stage drag activation and a Tasks-by-Status variation, with passing ungrouped row-drag and reload controls. Other objects and arbitrary roles/layouts are not established.",
+          "The crash starts when the row drag activates, before release or an empty destination is reached. Empty destination, Company/Owner history and a prior Kanban layout are not required.",
+          "The table content is replaced by an error page while the sidebar survives. Reload recovers; no saved-record loss or permanent application outage is claimed.",
+          "Inspected newer source wraps the overlay in the missing context and a maintainer fix explicitly addresses grouped-row dragging. Newer runtime was not tested; this does not establish unrelated post-fix drop behavior."
+        ]
+      }
     }
   ]
 }
