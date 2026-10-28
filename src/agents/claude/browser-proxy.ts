@@ -39,7 +39,6 @@ export type BrowserLaunch = {
   disabledTools: string[];
 };
 
-/** One Playwright MCP process (and so one Browserbase session) for a single agent. */
 class PlaywrightProcess {
   private child: ChildProcessWithoutNullStreams;
   private exit: Promise<void>;
@@ -75,7 +74,6 @@ class PlaywrightProcess {
       try {
         message = JSON.parse(line);
       } catch {
-        // Stray diagnostics must not throw from the stream callback and crash every fixture.
         this.stderr = `${this.stderr}${line}\n`.slice(-2000);
         return;
       }
@@ -116,7 +114,6 @@ class PlaywrightProcess {
           process.kill(-this.child.pid, signal);
         else if (this.child.exitCode === null) this.child.kill(signal);
       } catch (err) {
-        // A process that just exited is harmless; permission and other failures are not.
         if (!(err instanceof Error && "code" in err && err.code === "ESRCH"))
           throw err;
       }
@@ -125,7 +122,6 @@ class PlaywrightProcess {
     const forceKill = setTimeout(() => kill("SIGKILL"), 1000);
     try {
       await this.exit;
-      // The sandbox wrapper can exit before its Playwright child.
       kill("SIGKILL");
     } finally {
       clearTimeout(forceKill);
@@ -167,11 +163,6 @@ class PlaywrightProcess {
   }
 }
 
-/**
- * Claude Code shares an MCP server across agents, while Codex starts one per thread.
- * This loopback MCP endpoint gives each calling agent its own Playwright process,
- * identified through the PreToolUse hook's tool-use ID.
- */
 export class BrowserProxy {
   private browsers = new Map<string, PlaywrightProcess>();
   private callers = new Map<string, string>();
@@ -182,12 +173,10 @@ export class BrowserProxy {
 
   constructor(private launch: BrowserLaunch) {}
 
-  /** Record which agent issued a tool call; the hook runs before the MCP request. */
   assign(toolUseId: string, agentId: string | undefined) {
     this.callers.set(toolUseId, agentId ?? PARENT);
   }
 
-  /** Close a finished subagent's browser so idle sessions stop accruing cost. */
   async release(agentId: string) {
     const browser = this.browsers.get(agentId);
     this.browsers.delete(agentId);
@@ -260,7 +249,6 @@ export class BrowserProxy {
       case "ping":
         return {};
       case "tools/list": {
-        // Listing does not open a page; the broker allocates a session on first browser use.
         this.tools ??= this.browser(PARENT)
           .call("tools/list", {})
           .catch((err: unknown) => {
@@ -295,7 +283,6 @@ export class BrowserProxy {
   private browser(agent: string) {
     if (this.closing) throw new Error("The browser is shutting down.");
     let browser = this.browsers.get(agent);
-    // A crashed Playwright process is replaced, so one failure does not end that agent's testing.
     if (!browser || browser.failed) {
       browser
         ?.close()

@@ -31,17 +31,14 @@ import { BrowserProxy } from "./browser-proxy";
 import { startReportingServer } from "./reporting";
 
 const require = createRequire(import.meta.url);
-// The package's install script places its native CLI here; the SDK launches it directly.
 const CLAUDE_COMMAND = path.join(
   path.dirname(require.resolve("@anthropic-ai/claude-code/package.json")),
   "bin",
   "claude.exe",
 );
-// Matches Codex, whose Playwright MCP disables this tool.
 const DISABLED_BROWSER_TOOL = "browser_run_code_unsafe";
 // Claude Code builds name the subagent tool "Agent" or "Task".
 const SUBAGENT_TOOLS = ["Agent", "Task"];
-// Browser and reporting tools only, plus subagents; no shell or file access on the eval host.
 const ORCHESTRATION_TOOLS = [...SUBAGENT_TOOLS, "SendMessage", "TaskStop"];
 const PlaywrightServerSchema = z.object({
   command: z.string(),
@@ -115,7 +112,6 @@ export class ClaudeAgent extends CodexAgent {
   private observer: Promise<void> | undefined;
   private stopping = false;
   private modelCost: number | null = null;
-  // A turn still running at termination has spend that no result reported.
   private turnOpen = false;
   private sessionId: string | undefined;
 
@@ -138,7 +134,6 @@ export class ClaudeAgent extends CodexAgent {
     const playwright = PlaywrightServerSchema.parse(
       setup.mcpServers.playwright,
     );
-    // Claude Code shares one MCP connection across agents; the proxy gives each agent its own browser.
     this.browserProxy = new BrowserProxy({
       command: playwright.command,
       args: playwright.args,
@@ -180,7 +175,6 @@ export class ClaudeAgent extends CodexAgent {
             {
               hooks: [
                 async (input) => {
-                  // A finished subagent's browser stops accruing cost.
                   if (input.hook_event_name === "SubagentStop")
                     await this.browserProxy?.release(input.agent_id);
                   return {};
@@ -219,7 +213,6 @@ export class ClaudeAgent extends CodexAgent {
     this.findings.seal();
     this.input.close();
     try {
-      // Kill the CLI's process group so it cannot outlive the deadline.
       await this.stopProcessGroup();
     } finally {
       this.session?.close();
@@ -263,7 +256,6 @@ export class ClaudeAgent extends CodexAgent {
       type: "user",
       uuid,
       parent_tool_use_id: null,
-      // Join a running turn at the next tool boundary, as Codex steers an active turn.
       priority: "next",
       message: { role: "user", content: text },
     });
@@ -330,7 +322,6 @@ export class ClaudeAgent extends CodexAgent {
         throw new Error(
           `Claude turn failed (${message.subtype}): ${message.errors.join("; ")}`,
         );
-      // Queued messages and running subagents start another turn on their own.
       if (this.undelivered.size === 0 && this.backgroundTasks.size === 0)
         this.input.close();
     }
@@ -348,7 +339,6 @@ export class ClaudeAgent extends CodexAgent {
       path.join(this.context.reportDirectory, "subagent-failures.json"),
       this.childFailures,
     );
-    // Codex sends the parent the same recovery guidance when a child turn fails.
     this.enqueue(
       `Subagent ${taskId} failed: ${summary}\nDecide whether to recover this task within the remaining budget. Do not retry or reassign policy-refused work. Continue unaffected testing and record unfinished coverage as limitations.`,
     );
@@ -361,7 +351,6 @@ export class ClaudeAgent extends CodexAgent {
       return {};
     }
     if (input.agent_id && input.tool_name.startsWith("mcp__reporting__")) {
-      // The parent accepts/deduplicates subagent evidence before it becomes a scored finding.
       return denyTool(
         "Send your findings to the parent; only the root agent accepts eval results.",
       );
@@ -416,7 +405,6 @@ export function claudeAgent(browser: Browser): EvalAgentDefinition {
     name: "claude-playwright-mcp",
     reportSubdirectory: "claude-playwright-mcp",
     concurrency: browser === "local" ? 2 : Infinity,
-    // One local browser cannot be shared, so local runs stay single-agent.
     config: { browser, subagents: browser !== "local" },
     async validateEnvironment() {
       if (!process.env.ANTHROPIC_API_KEY)

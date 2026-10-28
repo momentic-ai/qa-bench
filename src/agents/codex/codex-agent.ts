@@ -26,7 +26,6 @@ export class CodexAgent extends CodexRunner {
   protected async prepare() {
     return {
       mcpServers: await this.prepareBrowserMcp(),
-      // Each Codex subagent starts its own Playwright MCP, and the broker gives it its own Browserbase session.
       subagents: !this.localBrowser,
     };
   }
@@ -100,7 +99,6 @@ export function codexAgent(browser: Browser): EvalAgentDefinition {
     name: "codex-playwright-mcp",
     reportSubdirectory: "codex-playwright-mcp",
     concurrency: browser === "local" ? 2 : Infinity,
-    // One local browser cannot be shared, so local runs stay single-agent.
     config: { browser, subagents: browser !== "local" },
     async validateEnvironment() {
       if (!process.env.OPENAI_API_KEY)

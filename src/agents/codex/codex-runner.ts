@@ -86,7 +86,6 @@ export abstract class CodexRunner implements EvalAgent {
       env,
       async (threadId, tool, args) => {
         if (threadId !== this.threadId) {
-          // The parent accepts/deduplicates subagent evidence before it becomes a scored finding.
           throw new Error(
             "Send your findings to the parent; only the root agent accepts eval results.",
           );
