@@ -2641,6 +2641,87 @@
           "Newer source retains the relevant history selection; newer runtime was not tested."
         ]
       }
+    },
+    {
+      "id": "workflows-pass5-2dec64fe",
+      "name": "Workflow Form submits a previous valid date while displaying an incomplete replacement",
+      "severity": 3,
+      "owningArea": "twenty/workflows",
+      "summary": "Editing a previously valid Form Date to an impossible or incomplete date leaves that new text visible, but Submit silently stores the previous valid date as the answer.",
+      "expected": "Submitting a Form should represent the displayed response, or visibly reject or revert an incomplete edit before submitting a different value.",
+      "actual": "After entering 11/12/2026, replacing it with 02/30/2026 leaves 02/30/202_ visible without an error. Dismissing the calendar and clicking Submit completes the run with the stale 2026-11-12 response, which remains after reload.",
+      "reproSteps": [
+        "Create a manual workflow with a Form containing one Date input. Test the saved workflow.",
+        "Enter a valid date such as 11/12/2026 and click the Form title to close the calendar.",
+        "Replace the date with 02/30/2026. Observe the incomplete 02/30/202_ text and no explanatory validation message.",
+        "Click outside to close the calendar, then click Submit. Inspect the completed Form Output and persisted run state; the prior valid 2026-11-12 is submitted.",
+        "Control: replace the original date with a valid new date and verify that new answer submits. An invalid date entered into an initially empty optional field should be distinguished from this stale-previous-answer claim."
+      ],
+      "sourceCause": "The date mask calls its parent only on completion. An incomplete replacement remains locally visible without updating the Form value or error state. The Form submits its retained previous value, which the server stores as the response.",
+      "matchingGuidance": {
+        "relatedReference": "workflows-N70",
+        "distinction": "Shares the completion-only date-input pattern with keyboard-clearing a saved workflow date, but this entry covers Form filling and a completed stored stale answer. Rejected N58 explicitly excludes stale-previous-date submission; open-calendar first-click dismissal and invalid local workflow configuration are separate claims."
+      },
+      "reviewEvidence": {
+        "basis": "Independent browser/source verification with two stale-response repetitions per reviewer, valid-date and initially-empty controls, submitted-response and stored-result checks; coordinator inspected both reviewers’ invalid-input/output screenshots and audited pinned/latest source.",
+        "sourceRevision": "35c645064f72bc4e3180a2c6c506cbbfee170007",
+        "severityReason": "The completed run stores a different date from the visible edited answer.",
+        "sourceReferences": [
+          "https://github.com/twentyhq/twenty/blob/35c645064f72bc4e3180a2c6c506cbbfee170007/packages/twenty-front/src/modules/ui/input/components/internal/date/components/DatePickerInput.tsx#L79-L121",
+          "https://github.com/twentyhq/twenty/blob/35c645064f72bc4e3180a2c6c506cbbfee170007/packages/twenty-front/src/modules/object-record/record-field/ui/form-types/components/FormDateFieldInput.tsx#L165-L205",
+          "https://github.com/twentyhq/twenty/blob/35c645064f72bc4e3180a2c6c506cbbfee170007/packages/twenty-front/src/modules/workflow/workflow-steps/workflow-actions/form-action/components/WorkflowEditActionFormFiller.tsx#L42-L91",
+          "https://github.com/twentyhq/twenty/blob/35c645064f72bc4e3180a2c6c506cbbfee170007/packages/twenty-server/src/modules/workflow/workflow-runner/workspace-services/workflow-runner.workspace-service.ts#L138-L199",
+          "https://github.com/twentyhq/twenty/blob/35c645064f72bc4e3180a2c6c506cbbfee170007/packages/twenty-docs/user-guide/workflows/capabilities/workflow-actions.mdx#L178-L198"
+        ],
+        "limitations": [
+          "The calendar was deliberately dismissed before Submit; this is not a first click consumed by an open popup.",
+          "No downstream record creation or external action was tested; observed impact is the persisted incorrect Form response.",
+          "An invalid answer entered into an initially empty optional Date field submits no value and is not this defect.",
+          "Other date-input callers and roles are not established runtime scope.",
+          "Newer source retains the relevant completion-only path; newer runtime was not tested."
+        ]
+      }
+    },
+    {
+      "id": "workflows-pass5-4443bcda",
+      "name": "Group by None does not clear Workflow Runs relation grouping even after reload",
+      "severity": 3,
+      "owningArea": "twenty/workflows",
+      "summary": "Choosing None in a Workflow Runs Table grouped by Workflow version or Workflow leaves the saved relation grouping intact across reload.",
+      "expected": "The supported Group by None action should remove the selected grouping, including when a relation grouping currently has no configured groups.",
+      "actual": "None closes the menu but Workflow version or Workflow remains selected. The saved view retains that grouping field and reload does not clear it. Switching first to Workflow run status and then None successfully clears grouping after reload.",
+      "reproSteps": [
+        "Create a fresh Workflow Runs Table view and choose Group by Workflow version. Leave its relation groups unconfigured.",
+        "Choose Group by None, reopen Options and observe the previous grouping still selected.",
+        "Reload the same view and verify the relation grouping remains selected.",
+        "Repeat on a fresh view or with Workflow relation grouping.",
+        "Control: switch to Workflow run status grouping, then None. Confirm the saved grouping clears after reload, distinguishing a persistent no-op from the separate transient stale-page problem."
+      ],
+      "sourceCause": "The reset handler returns early when the saved viewGroups array is empty. Workflow and Workflow version are nonnullable relation fields that can legitimately have a selected grouping with no generated groups, so the clearing mutation is never reached.",
+      "matchingGuidance": {
+        "relatedReference": "records-views-pass2-41907c24",
+        "distinction": "The existing Opportunities/Tasks reference saves null successfully and only leaves the open page stale until reload. This entry covers Workflow Runs nonnullable relations whose empty group list makes None skip saving, so reload still retains grouping. The older Workflow Versions/status reference is a different collection/field and does not establish the cause or persistent-reload scope; no claim about its reload recovery is made."
+      },
+      "reviewEvidence": {
+        "basis": "Both independent reviewers reproduced persistent None removal failure on two fresh Workflow Runs views with relation and select-field controls, then verified source and explicit maintainer repair. Coordinator checked billing, saved-view identities/readbacks, retained screenshots and the captured Codex recording.",
+        "sourceRevision": "35c645064f72bc4e3180a2c6c506cbbfee170007",
+        "severityReason": "An offered grouping-removal action does not remove the saved grouping; switching through a select field is required as a workaround.",
+        "sourceReferences": [
+          "https://github.com/twentyhq/twenty/blob/35c645064f72bc4e3180a2c6c506cbbfee170007/packages/twenty-front/src/modules/object-record/object-options-dropdown/components/ObjectOptionsDropdownRecordGroupFieldsContent.tsx#L85-L95",
+          "https://github.com/twentyhq/twenty/blob/35c645064f72bc4e3180a2c6c506cbbfee170007/packages/twenty-front/src/modules/object-record/object-options-dropdown/components/ObjectOptionsDropdownRecordGroupFieldsContent.tsx#L130-L145",
+          "https://github.com/twentyhq/twenty/blob/35c645064f72bc4e3180a2c6c506cbbfee170007/packages/twenty-front/src/modules/object-record/record-index/hooks/useHandleRecordGroupField.ts#L134-L156",
+          "https://github.com/twentyhq/twenty/blob/35c645064f72bc4e3180a2c6c506cbbfee170007/packages/twenty-server/src/engine/metadata-modules/flat-view-group/utils/compute-flat-view-groups-on-view-create.util.ts#L37-L74",
+          "https://github.com/twentyhq/twenty/commit/5effee7754b9b00d3558197a4c19cbee4b2d7e72"
+        ],
+        "limitations": [
+          "No workflow run records were lost or changed.",
+          "Missing automatically populated relation groups is intentional and is not the proposed defect; failure of the explicit None action is.",
+          "The select-field control clears saved grouping even if the open page remains stale before reload; that transient display issue is existing coverage.",
+          "The absence of a clearing request is inferred from the early return and unchanged saved state, not a reliable request-interception trace.",
+          "One reviewer’s retained recording is truncated; retained screenshots and saved-state readbacks plus the other reviewer’s complete captured recording substantiate the checks.",
+          "Newer source contains a guard/state correction; newer runtime and branch chronology were not tested or inferred."
+        ]
+      }
     }
   ]
 }
