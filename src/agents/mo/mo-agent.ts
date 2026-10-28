@@ -64,6 +64,7 @@ ${MO_CONCURRENCY_GUIDANCE}`;
         String(Math.max(MIN_MO_SESSION_TIME_BUDGET_MINUTES, minutes)),
       );
     }
+    if (this.context.effort) startArgs.push("--effort", this.context.effort);
     if (this.context.maxConcurrentSubAgents !== undefined) {
       startArgs.push(
         "--max-concurrency",

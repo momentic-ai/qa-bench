@@ -1,5 +1,8 @@
 import { Fixture } from "./types";
 
+export const MO_EFFORTS = ["low", "medium", "high", "max"] as const;
+export type MoEffort = (typeof MO_EFFORTS)[number];
+
 export type AgentContext = {
   agentName?: string;
   fixture: Fixture;
@@ -7,6 +10,7 @@ export type AgentContext = {
   /** Set only when --time-limit or --minutes is passed. */
   timeLimitMs?: number;
   maxConcurrentSubAgents?: number;
+  effort?: MoEffort;
   reportDirectory: string;
   runDirectory: string;
 };

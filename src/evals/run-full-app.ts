@@ -6,7 +6,7 @@ import {
   DEFAULT_TIME_LIMIT_MS,
   FullAppOptions,
 } from "../tasks/full-app/options";
-import { EvalAgentDefinition } from "./agent";
+import { EvalAgentDefinition, MoEffort } from "./agent";
 import { basicBugbashBrief } from "./basic-brief";
 import { bugbashBrief } from "./bugbash-brief";
 import { selectComparisonFixtures } from "./fixture-selection";
@@ -68,6 +68,7 @@ export async function runFullAppFixtures({
             runId,
             timeLimitMs: options.timeLimitMs,
             maxConcurrentSubAgents: options.maxConcurrentSubAgents,
+            effort: options.effort,
             resources,
           });
           if (!resources.signal.aborted) {
@@ -107,6 +108,7 @@ async function runFixture({
   runId,
   timeLimitMs,
   maxConcurrentSubAgents,
+  effort,
   resources,
 }: {
   agentName: string | undefined;
@@ -116,6 +118,7 @@ async function runFixture({
   runId: string;
   timeLimitMs: number | undefined;
   maxConcurrentSubAgents: number | undefined;
+  effort: MoEffort | undefined;
   resources: FixtureExecution;
 }) {
   resources.signal.throwIfAborted();
@@ -149,6 +152,7 @@ async function runFixture({
         targetUrl: url,
         timeLimitMs,
         maxConcurrentSubAgents,
+        ...(effort ? { effort } : {}),
         reportDirectory,
         runDirectory,
       },
@@ -175,6 +179,7 @@ async function runFixture({
     }
     await writeJson(path.join(reportDirectory, "duration.json"), {
       ...definition.config,
+      ...(effort ? { effort } : {}),
       startedAt: run.startedAt,
       duration: run.duration,
       startupDuration: run.startupDuration,
