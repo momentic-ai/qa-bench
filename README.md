@@ -52,6 +52,9 @@ Reports go to `reports/<agent>/<fixture>/<run-id>/`. Each run writes
 Agents have no time limit. Each one stops when it is done, or after a 2-hour
 hard timeout.
 
+Every agent gets the same brief, built in `src/evals/bugbash-brief.ts`: the app
+URL, test accounts, the area's scope and entry points, and the reporting rules.
+
 ## Scoring
 
 A judge model (GPT-6.1 Sol, high reasoning) matches each finding to the area's

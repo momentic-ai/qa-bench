@@ -8,7 +8,6 @@ import {
   EvalAgent,
   EvalAgentDefinition,
 } from "../../evals/agent";
-import { fixtureAuthentication } from "../../evals/bugbash-brief";
 import { getMoCost } from "../../evals/cost";
 import { writeJson } from "../../evals/json-file";
 import { runMoCommand, validateMoCli } from "../../evals/mo-cli";
@@ -22,10 +21,6 @@ import {
   MoStatusSchema,
   isMoSessionReportReady,
 } from "./cli-schemas";
-
-// User-provided comparison guidance (spec §5) for Mo's eval input only; Codex chooses its own allocation.
-export const MO_CONCURRENCY_GUIDANCE =
-  "Maximize testing value and bug-finding efficiency. Concurrency should be utilized maximally as long as budget and relatively distinct areas, features, or flows remain, so that there is not too much concurrent modification.";
 
 const SessionSchema = z.object({ sessionId: z.string().min(1) });
 
@@ -44,14 +39,9 @@ export class MoAgent implements EvalAgent {
     _deadlineMs?: number,
     onReady?: () => number,
   ) {
-    const brief = `${message}
-
-${fixtureAuthentication(this.context.fixture)}
-
-${MO_CONCURRENCY_GUIDANCE}`;
     onReady?.();
-    // Mo uses its effort preset budget; the eval time limit is only a safety stop.
-    const startArgs = ["start", brief];
+    // Mo uses its effort preset budget.
+    const startArgs = ["start", message];
     if (this.context.maxConcurrentSubAgents !== undefined) {
       startArgs.push(
         "--max-concurrency",

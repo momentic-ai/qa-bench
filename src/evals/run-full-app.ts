@@ -4,7 +4,6 @@ import path from "node:path";
 import { FixtureExecution } from "../fixtures/execution";
 import { FullAppOptions } from "../tasks/full-app/options";
 import { EvalAgentDefinition } from "./agent";
-import { basicBugbashBrief } from "./basic-brief";
 import { bugbashBrief } from "./bugbash-brief";
 import { selectComparisonFixtures } from "./fixture-selection";
 import { writeJson } from "./json-file";
@@ -145,10 +144,7 @@ async function runFixture({
     );
     const run = await runAgent({
       agent,
-      message:
-        agentName === "mo"
-          ? bugbashBrief(url, fixture)
-          : basicBugbashBrief(url, fixture),
+      message: bugbashBrief(url, fixture),
       signal: resources.signal,
     });
     try {
