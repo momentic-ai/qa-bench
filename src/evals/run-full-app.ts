@@ -2,7 +2,10 @@ import { mkdir } from "node:fs/promises";
 import path from "node:path";
 
 import { FixtureExecution } from "../fixtures/execution";
-import { FullAppOptions } from "../tasks/full-app/options";
+import {
+  DEFAULT_TIME_LIMIT_MS,
+  FullAppOptions,
+} from "../tasks/full-app/options";
 import { EvalAgentDefinition } from "./agent";
 import { basicBugbashBrief } from "./basic-brief";
 import { bugbashBrief } from "./bugbash-brief";
@@ -34,7 +37,10 @@ export async function runFullAppFixtures({
     // Fail before allocating fixtures when provisioning cannot authenticate.
     throw new Error("E2B_API_KEY is required.");
   }
-  await definition.validateEnvironment(options.timeLimitMs, fixtures);
+  await definition.validateEnvironment(
+    options.timeLimitMs ?? DEFAULT_TIME_LIMIT_MS,
+    fixtures,
+  );
   await using resources = new FixtureExecution();
   const results = new Array<PromiseSettledResult<string>>(fixtures.length);
   try {
@@ -61,7 +67,6 @@ export async function runFullAppFixtures({
             reportsDirectory: options.outputDirectory,
             runId,
             timeLimitMs: options.timeLimitMs,
-            moTimeBudgetMs: options.moTimeBudgetMs,
             maxConcurrentSubAgents: options.maxConcurrentSubAgents,
             resources,
           });
@@ -101,7 +106,6 @@ async function runFixture({
   reportsDirectory,
   runId,
   timeLimitMs,
-  moTimeBudgetMs,
   maxConcurrentSubAgents,
   resources,
 }: {
@@ -110,12 +114,12 @@ async function runFixture({
   fixture: Fixture;
   reportsDirectory: string;
   runId: string;
-  timeLimitMs: number;
-  moTimeBudgetMs: number | undefined;
+  timeLimitMs: number | undefined;
   maxConcurrentSubAgents: number | undefined;
   resources: FixtureExecution;
 }) {
   resources.signal.throwIfAborted();
+  const stopAfterMs = timeLimitMs ?? DEFAULT_TIME_LIMIT_MS;
   const reportDirectory = path.join(
     reportsDirectory,
     definition.reportSubdirectory,
@@ -134,7 +138,7 @@ async function runFixture({
   let sandbox: BenchmarkSandbox | undefined;
   try {
     resources.signal.throwIfAborted();
-    const setup = await resources.provision(fixture, timeLimitMs);
+    const setup = await resources.provision(fixture, stopAfterMs);
     sandbox = setup.sandbox;
     const url = setup.url;
     resources.signal.throwIfAborted();
@@ -144,7 +148,6 @@ async function runFixture({
         fixture,
         targetUrl: url,
         timeLimitMs,
-        moTimeBudgetMs,
         maxConcurrentSubAgents,
         reportDirectory,
         runDirectory,
@@ -155,9 +158,9 @@ async function runFixture({
       agent,
       message:
         agentName === "mo"
-          ? bugbashBrief(url, timeLimitMs, fixture)
-          : basicBugbashBrief(url, timeLimitMs, fixture),
-      timeLimitMs,
+          ? bugbashBrief(url, stopAfterMs, fixture)
+          : basicBugbashBrief(url, stopAfterMs, fixture),
+      timeLimitMs: stopAfterMs,
       signal: resources.signal,
     });
     try {

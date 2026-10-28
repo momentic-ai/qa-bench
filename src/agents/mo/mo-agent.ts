@@ -46,11 +46,10 @@ export class MoAgent implements EvalAgent {
     _deadlineMs?: number,
     onReady?: () => number,
   ) {
-    const budgetMs = this.context.moTimeBudgetMs;
-    const timeLimit =
-      budgetMs === undefined
-        ? ""
-        : `The evaluation has a ${budgetMs / 60_000}-minute elapsed time limit.\n\n`;
+    const { timeLimitMs } = this.context;
+    const timeLimit = timeLimitMs
+      ? `The evaluation has a ${timeLimitMs / 60_000}-minute elapsed time limit.\n\n`
+      : "";
     const brief = `${message}
 
 ${timeLimit}${fixtureAuthentication(this.context.fixture)}
@@ -58,15 +57,11 @@ ${timeLimit}${fixtureAuthentication(this.context.fixture)}
 ${MO_CONCURRENCY_GUIDANCE}`;
     onReady?.();
     const startArgs = ["start", brief];
-    if (budgetMs !== undefined) {
+    if (timeLimitMs) {
+      const minutes = Math.ceil(timeLimitMs / 60_000);
       startArgs.push(
         "--time-budget",
-        String(
-          Math.max(
-            MIN_MO_SESSION_TIME_BUDGET_MINUTES,
-            Math.ceil(budgetMs / 60_000),
-          ),
-        ),
+        String(Math.max(MIN_MO_SESSION_TIME_BUDGET_MINUTES, minutes)),
       );
     }
     if (this.context.maxConcurrentSubAgents !== undefined) {

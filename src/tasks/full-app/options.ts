@@ -17,9 +17,7 @@ export type FullAppOptions = {
   fixtures?: string;
   concurrency?: number;
   maxConcurrentSubAgents?: number;
-  timeLimitMs: number;
-  /** Mo's time budget; omitted unless --time-limit or --minutes is passed. */
-  moTimeBudgetMs?: number;
+  timeLimitMs?: number;
   outputDirectory: string;
   browser: Browser;
 };
@@ -67,8 +65,7 @@ export function parseFullAppOptions(args: string[]): FullAppOptions {
     fixtures: values.fixtures,
     concurrency,
     maxConcurrentSubAgents,
-    timeLimitMs: timeLimitMs ?? DEFAULT_TIME_LIMIT_MS,
-    moTimeBudgetMs: timeLimitMs,
+    timeLimitMs,
     outputDirectory: outputDirectory ?? REPORTS_DIRECTORY,
     gradeOnly: values["grade-only"],
     runIds: parseRunIds(values["run-id"]),
