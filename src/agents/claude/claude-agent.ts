@@ -227,6 +227,7 @@ export class ClaudeAgent extends CodexAgent {
       ...(setup.subagents ? ORCHESTRATION_TOOLS : []),
       ...FILE_TOOLS,
       "Bash",
+      "TodoWrite",
     ];
     this.session = query({
       prompt: this.input,

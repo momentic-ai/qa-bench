@@ -296,11 +296,10 @@ export async function readOptionalCost(directory: string): Promise<unknown> {
 }
 
 /** Agent name plus any non-default run settings recorded in duration.json. */
-export async function runLabel(agent: string, runDirectory: string) {
-  const file = path.join(runDirectory, "duration.json");
-  const config = existsSync(file)
-    ? JSON.parse(await readFile(file, "utf8"))
-    : {};
+export async function runLabel(agent: string, runDirectory?: string) {
+  const file = runDirectory && path.join(runDirectory, "duration.json");
+  const config =
+    file && existsSync(file) ? JSON.parse(await readFile(file, "utf8")) : {};
   const settings: string[] = [];
   if (config.browser === "local") settings.push("local browser");
   // Codex and Claude runs from before subagents were enabled did not record the setting.
