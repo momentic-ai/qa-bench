@@ -309,5 +309,7 @@ export async function runLabel(agent: string, runDirectory: string) {
     (config.subagents === undefined && agent !== "mo")
   )
     settings.push("no subagents");
+  if (config.effort && config.effort !== "medium")
+    settings.push(`${config.effort} effort`);
   return settings.length ? `${agent} (${settings.join(", ")})` : agent;
 }
