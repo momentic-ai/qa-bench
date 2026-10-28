@@ -1679,6 +1679,43 @@
           "Inspected newer source retains the shallow merge, but newer runtime was not tested. No exhaustive history or universal no-fix claim."
         ]
       }
+    },
+    {
+      "id": "records-views-pass4-e5950c93",
+      "name": "Relative Close Date amount remounts its input and drops later digits",
+      "severity": 3,
+      "owningArea": "twenty/records-views",
+      "summary": "Changing the relative-date amount can remount its input after the first digit, dropping focus and applying a shorter range than the user typed.",
+      "expected": "The relative Close Date Number input retains focus and accepts the complete valid multi-digit amount during ordinary keyboard entry.",
+      "actual": "When a digit changes the resolved day/week/year range, the Number input is replaced and focus moves to the page body. Later digits do not reach it: typing 45 can apply Next 4 days, with the table filtered to that range. Hour/Minute entry and a complete-value input control work.",
+      "reproSteps": [
+        "On an Opportunities table, add a Close Date Is relative filter using Next and Days.",
+        "Focus Number, select its text and type a different valid multi-digit amount such as 45 with ordinary keystrokes.",
+        "Inspect the input value, focus and applied filter chip after each digit; repeat from a fresh filter amount.",
+        "Compare Hour/Minute units, refocusing before each extra digit, or setting the complete value in one input event."
+      ],
+      "sourceCause": "Each valid amount change updates the relative filter and resolves a new range. DateTimePicker uses that range as the ReactDatePicker key and renders RelativeDatePickerHeader inside it. A changed key remounts the header/input, losing focus and local draft state before subsequent keystrokes. Sub-day units render the header outside the keyed calendar.",
+      "matchingGuidance": {
+        "distinction": "Match ordinary valid multi-digit relative Close Date keyboard entry interrupted by a range-key remount. Distinguish invalid numeric-prefix retention, stale field identifiers and unrelated rich-text autosave remounts."
+      },
+      "reviewEvidence": {
+        "basis": "Both independent browser/source reviewers accept the same Close Date relative-filter keyboard focus loss at severity 3. Coordinator checked full source/contract audits, independent retained images and exact focus/input/chip/working multi-digit controls, plus both official subscription billing records.",
+        "sourceRevision": "35c645064f72bc4e3180a2c6c506cbbfee170007",
+        "severityReason": "Ordinary entry silently applies a different date range and filters the table incorrectly; refocusing or a complete-value input provides a workaround.",
+        "sourceReferences": [
+          "https://github.com/twentyhq/twenty/blob/35c645064f72bc4e3180a2c6c506cbbfee170007/packages/twenty-front/src/modules/ui/input/components/internal/date/components/RelativeDatePickerHeader.tsx#L140-L161",
+          "https://github.com/twentyhq/twenty/blob/35c645064f72bc4e3180a2c6c506cbbfee170007/packages/twenty-front/src/modules/object-record/object-filter-dropdown/components/ObjectFilterDropdownDateTimeInput.tsx#L57-L97",
+          "https://github.com/twentyhq/twenty/blob/35c645064f72bc4e3180a2c6c506cbbfee170007/packages/twenty-front/src/modules/ui/input/components/internal/date/components/DateTimePicker.tsx#L248-L283",
+          "https://github.com/twentyhq/twenty/blob/35c645064f72bc4e3180a2c6c506cbbfee170007/packages/twenty-front/src/modules/ui/input/components/internal/date/components/DateTimePicker.tsx#L320-L358",
+          "https://github.com/twentyhq/twenty/blob/35c645064f72bc4e3180a2c6c506cbbfee170007/packages/twenty-front/src/modules/ui/input/components/internal/date/utils/getRelativeDatePickerCalendarRange.ts#L23-L26"
+        ],
+        "limitations": [
+          "Joint scope is keyboard editing of the unsaved Close Date relative filter on an Opportunities table. No saved-view persistence, stored record damage, DATE-only filters or workflow Form behavior is claimed.",
+          "Focus loss depends on changing the effective calendar range. An unchanged first digit can preserve focus, so this is not a universal one-digit cap. Refocusing or setting the complete value in one input event provides a workaround.",
+          "Claude used seeded Opportunities and repeated typing trials on one view; the evidence does not establish multiple fresh fixtures per reviewer. Hour/Minute controls keep multiple digits.",
+          "The newer picker rewrite removes the keyed structure in inspected source. Newer runtime and a targeted fix for this symptom were not verified."
+        ]
+      }
     }
   ]
 }
