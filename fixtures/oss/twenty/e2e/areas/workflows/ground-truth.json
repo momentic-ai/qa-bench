@@ -3038,6 +3038,43 @@
           "Exact callback timing and behavior of the pinned graph-library version are inferred; the inspected newer source adds a reconnect guard, but newer runtime was not tested."
         ]
       }
+    },
+    {
+      "id": "workflows-loop-e140fa50",
+      "name": "Rejected Workflow Run status drag leaves the card in the destination column",
+      "severity": 1,
+      "owningArea": "twenty/workflows",
+      "summary": "A forbidden Workflow Run status change is rejected by the server, but Kanban retains the optimistic column placement until reload.",
+      "expected": "After a rejected status drag, the run card should return to its saved status column.",
+      "actual": "Dragging a Failed workflow run into Completed displays a permission error, but the card remains under Completed. Its badge can disagree with the column or retain the optimistic label. Reload returns the card to Failed; the stored status was not changed.",
+      "reproSteps": [
+        "Create a manual workflow that produces two Failed runs. Open Workflow Runs in a Kanban view grouped by run status.",
+        "Drag one owned Failed run into Completed and wait for the permission error.",
+        "Observe the card remains in Completed after the rejection and a settled wait. Repeat with the second failed run.",
+        "Reload and confirm both return to Failed. Compare an allowed Opportunity stage drag, which saves and remains in its destination after reload."
+      ],
+      "sourceCause": "The board optimistically moves the record ID between column lists before updating the record. The run-update hook rejects status edits. Record field rollback does not restore the separately maintained board-column membership, so the rejected move remains visible.",
+      "matchingGuidance": {
+        "relatedReferenceId": "workflows-N04",
+        "distinction": "This entry covers Workflow Runs and its run-update permission rejection. N04 covers Workflow Versions and its distinct version-status rejection. Do not match an actual saved status change, delayed execution, or a rejected delete banner."
+      },
+      "reviewEvidence": {
+        "basis": "Both independent reviewers reproduced two rejected failed-run drags leaving the card in Completed, with reload restoring Failed and a permitted Opportunity stage-drag control. Coordinator checked full reports, source and read-only run-status contract, original Mo video samples, independent screenshots and controls, and actual subscription billing.",
+        "sourceRevision": "35c645064f72bc4e3180a2c6c506cbbfee170007",
+        "severityReason": "The server preserves the correct status while the board displays a false placement until refresh. Both independent reviewers recommend GUI severity 1.",
+        "sourceReferences": [
+          "https://github.com/twentyhq/twenty/blob/35c645064f72bc4e3180a2c6c506cbbfee170007/packages/twenty-front/src/modules/object-record/record-drag/hooks/useUpdateDroppedRecordOnBoard.ts#L118-L180",
+          "https://github.com/twentyhq/twenty/blob/35c645064f72bc4e3180a2c6c506cbbfee170007/packages/twenty-front/src/modules/object-record/hooks/useUpdateOneRecord.ts#L195-L264",
+          "https://github.com/twentyhq/twenty/blob/35c645064f72bc4e3180a2c6c506cbbfee170007/packages/twenty-server/src/modules/workflow/common/query-hooks/workflow-run-update-one.pre-query.hook.ts#L19-L29"
+        ],
+        "limitations": [
+          "Joint scope is Workflow Runs Kanban status-column placement after a rejected Failed-to-Completed drag. No persisted run-status change or execution failure is claimed.",
+          "The badge varies between attempts and may show Failed or the optimistic destination status; the stable defect is placement in the wrong column.",
+          "Both reviewers used two failed runs in one owned workflow, rather than two independently constructed workflows.",
+          "Exact cache/mount ordering is inferred. Newer source adds drag restrictions to some dashboard and record-page relation widgets; no newer-runtime result is claimed.",
+          "Same-column reorder, other destinations, grouped-table/calendar callers and broader object behavior are excluded."
+        ]
+      }
     }
   ]
 }
