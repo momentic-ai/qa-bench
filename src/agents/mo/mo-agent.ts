@@ -8,7 +8,6 @@ import {
   EvalAgent,
   EvalAgentDefinition,
 } from "../../evals/agent";
-import { fixtureAuthentication } from "../../evals/bugbash-brief";
 import { getMoCost } from "../../evals/cost";
 import { writeJson } from "../../evals/json-file";
 import { runMoCommand, validateMoCli } from "../../evals/mo-cli";
@@ -47,12 +46,7 @@ export class MoAgent implements EvalAgent {
     onReady?: () => number,
   ) {
     const { timeLimitMs } = this.context;
-    const timeLimit = timeLimitMs
-      ? `The evaluation has a ${timeLimitMs / 60_000}-minute elapsed time limit.\n\n`
-      : "";
     const brief = `${message}
-
-${timeLimit}${fixtureAuthentication(this.context.fixture)}
 
 ${MO_CONCURRENCY_GUIDANCE}`;
     onReady?.();

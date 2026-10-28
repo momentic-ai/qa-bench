@@ -7,7 +7,6 @@ import {
   FullAppOptions,
 } from "../tasks/full-app/options";
 import { EvalAgentDefinition } from "./agent";
-import { basicBugbashBrief } from "./basic-brief";
 import { bugbashBrief } from "./bugbash-brief";
 import { selectComparisonFixtures } from "./fixture-selection";
 import { writeJson } from "./json-file";
@@ -158,8 +157,8 @@ async function runFixture({
       agent,
       message:
         agentName === "mo"
-          ? bugbashBrief(url, stopAfterMs, fixture)
-          : basicBugbashBrief(url, stopAfterMs, fixture),
+          ? bugbashBrief(url, timeLimitMs, fixture)
+          : `${bugbashBrief(url, timeLimitMs, fixture)}\n\nUse Playwright MCP.`,
       timeLimitMs: stopAfterMs,
       signal: resources.signal,
     });
