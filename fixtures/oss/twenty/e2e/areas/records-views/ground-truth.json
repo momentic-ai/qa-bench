@@ -2243,29 +2243,94 @@
       }
     },
     {
-      "name": "Changing Kanban Group by and back to Stage permanently loses all columns after reload",
-      "summary": "On the Opportunities 'By Stage' Kanban, change Group by to Owner and then back to Stage. The columns come back right away but in alphabetical order (Customer, Meeting, New, Proposal, Screening), even though group Sort is 'Manual' and the original order was New, Screening, Meeting, Proposal, Customer. After a page reload the board is blank: no columns or cards, although the header says '· 150'. Options > Group shows no 'Visible groups' list. The GroupBy queries still return data for all 5 stages, so the view's groups were not saved.",
-      "expected": "Switching Group by back to Stage should recreate the stage columns in the field's option order (New, Screening, Meeting, Proposal, Customer). They should still render after a reload.",
-      "actual": "Columns first come back in alphabetical order. After reload the Kanban is empty (no columns, no cards), Options > Group shows no visible groups, and the header count is 150.",
+      "name": "Adding a Company Kanban group resets grouping to Stage and empties the board",
+      "summary": "In Opportunities → By Stage, changing Group by to Company works until a company group is added. Selecting Google in New group resets the grouping field to Stage while retaining incompatible group configuration, leaving the board blank. Reproduced twice.",
+      "expected": "Google should appear as a Company column containing its two opportunities, and Group should remain Company after adding the group and reloading.",
+      "actual": "After selecting Google the entire board disappears. Options shows Group: Stage instead of Company. Reload retains the broken blank board (view count becomes 2). Selecting Group by Stage again restores stage columns.",
       "reproSteps": [
-        "Sign in as tim@apple.dev and open /objects/opportunities, then switch to the 'By Stage' view",
-        "Options > Group > Group by > Owner",
-        "Options > Group > Group by > Stage",
-        "Note the column order is now Customer, Meeting, New, Proposal, Screening while Sort is still 'Manual'",
-        "Reload the page",
-        "The board is blank (header 'By Stage · 150'), and Options > Group lists no visible groups"
+        "Sign in as tim@apple.dev and open Opportunities.",
+        "Select the By Stage Kanban view.",
+        "Open Options → Group → Group by and select Company; close the menu.",
+        "Click New group, search Google, and select the Google option.",
+        "Observe the empty board; open Options and inspect Group. Reload to confirm persistence."
+      ],
+      "id": "native-twenty-u08",
+      "owningArea": "twenty/records-views",
+      "reviewEvidence": {
+        "basis": "Explicit reviewer decision U08. Group-field reset observed; custom-board control passes.",
+        "userAccepted": true,
+        "sourceRevision": "35c645064f72bc4e3180a2c6c506cbbfee170007"
+      },
+      "severity": 3
+    },
+    {
+      "name": "Changing a Kanban aggregate silently clears active filters",
+      "summary": "On Tasks → By Status, changing the column aggregation discards an applied Title filter and expands the board from 150 matching tasks to all 1,800. Reproduced with Count all and Count empty → Title.",
+      "expected": "Changing the aggregation preserves the active Title filter and the 150 matching records. Saving an unrelated view setting must not silently discard the current filter.",
+      "actual": "The Title filter chip and Update view disappear, and the board expands to all 1,800 tasks. Count all shows 1,050 / 525 / 225 across columns instead of the filtered 150 / 0 / 0. Reapplying the filter and choosing Count empty → Title clears it again.",
+      "reproSteps": [
+        "Open Tasks and choose the By Status Kanban view.",
+        "Apply Filter → Title → Contains → Schedule follow-up call, then close the filter. The board shows 150 records, a Title filter chip, and Update view.",
+        "Click the aggregate beside the To do column heading. Choose Count → Count all. If Count all is already selected, choose Count → Count empty → Title.",
+        "Observe the board and filter bar after the aggregation updates."
+      ],
+      "id": "native-twenty-u10",
+      "owningArea": "twenty/records-views",
+      "reviewEvidence": {
+        "basis": "Explicit reviewer decision U10. Fresh filter disappears; results expand from 150 to 1,800.",
+        "userAccepted": true,
+        "sourceRevision": "35c645064f72bc4e3180a2c6c506cbbfee170007"
+      },
+      "severity": 3
+    },
+    {
+      "name": "Saved Opportunity Stage board reopens with no columns or cards",
+      "summary": "The existing Opportunities → By Stage saved board shows a record count of 150 but renders an empty board after reload. Switching Group by from Stage to Owner and back to Stage restores populated columns only until the next reload. Reproduced after a fresh sign-in; a newly created board did not reproduce this failure.",
+      "expected": "The saved Stage grouping should reopen with its five populated columns and allow browsing the 150 matching opportunities.",
+      "actual": "The toolbar shows By Stage · 150, while the board is completely blank with no columns, cards, or empty-state explanation. Cycling Group by temporarily restores the board; reload loses it again. The same blank state remained after a fresh browser session and sign-in.",
+      "reproSteps": [
+        "Open Opportunities and select the existing By Stage saved view (viewId=<record-id>). It currently displays 150 records but no columns or cards.",
+        "Choose Options → Group → Group by → Owner.",
+        "Choose Options → Group → Group by → Stage.",
+        "Observe the five populated columns Customer, Meeting, New, Proposal, and Screening. Their Amount totals include 7.7m, 37.8m, 16.4m, 31.1m, and 13.1m respectively.",
+        "Reload the page and wait for the By Stage · 150 toolbar to finish loading.",
+        "Observe that every column and card disappears again. Switching off Hide empty groups does not restore them."
       ],
       "id": "native-twenty-u11",
       "owningArea": "twenty/records-views",
       "reviewEvidence": {
-        "basis": "Explicit reviewer adjudication of collapsed unmatched group U11. No fresh independent verification is claimed.",
+        "basis": "Explicit reviewer decision U11. Fresh reproduction, passing custom control, exact maintainer fix.",
         "userAccepted": true,
-        "sourceRevision": "35c645064f72bc4e3180a2c6c506cbbfee170007",
-        "severityReason": "Broken functionality: saved board, selection toolbar, view creation, or workflow execution fails."
+        "sourceRevision": "35c645064f72bc4e3180a2c6c506cbbfee170007"
       },
       "severity": 3,
       "matchingGuidance": {
-        "distinction": "Match the existing saved Opportunities By Stage board losing ALL columns and cards after grouping away from Stage, restoring Stage and reloading. Fresh disposable boards retaining their labels (negative N39), relation groups requiring explicit creation, temporary loading and aggregate dashes are distinct. Do not match a claim solely about alphabetical order."
+        "distinction": "Saved Stage board losing columns/cards after changing grouping back to Stage and reloading. Distinct from fresh-board N39 and relation group creation resetting the grouping field (U08)."
+      }
+    },
+    {
+      "name": "People 'Search any field' with several words returns records that match any word, not all words",
+      "summary": "On the People list, a 'Search any field' filter with more than one word returns the union of matches for each word. Searching 'John Gonzalez' returns 50 people, including Debbie Johnson and John Cook, when only John Gonzalez matches the full term.",
+      "expected": "Searching 'John Gonzalez' should narrow results to records that match the whole term (or all words), i.e. John Gonzalez (1 record).",
+      "actual": "The view shows '· 50' records. That is exactly the 42 'john' matches plus the 9 'gonzalez' matches, minus the 1 overlap. Results include Debbie Johnson, John Guerrero, Theodore Gonzalez, John Cook, Nathaniel Johnson, etc. Likewise 'Red Hat' returns Meredith Gregory, who matches only the substring 'red'.",
+      "reproSteps": [
+        "Sign in as tim@apple.dev and open /objects/people (All People, 1,200 records)",
+        "Click Filter > Search any field",
+        "Type 'Gonzalez' and note the count is 9",
+        "Replace the text with 'john' and note the count (Name filter 'john' = 42)",
+        "Replace the text with 'John Gonzalez'",
+        "Observe the count is 50 and the list includes people without 'Gonzalez' (e.g. Debbie Johnson, John Cook)"
+      ],
+      "id": "native-twenty-u13",
+      "owningArea": "twenty/records-views",
+      "reviewEvidence": {
+        "basis": "Explicit reviewer decision U13. Fresh counts reproduce; known full-name fix applies to this search branch.",
+        "userAccepted": true,
+        "sourceRevision": "35c645064f72bc4e3180a2c6c506cbbfee170007"
+      },
+      "severity": 3,
+      "matchingGuidance": {
+        "distinction": "Related to full-name search references; this entry covers Search any field multiword name matching any word instead of the whole name."
       }
     },
     {
@@ -2282,15 +2347,34 @@
       "id": "native-twenty-u14",
       "owningArea": "twenty/records-views",
       "reviewEvidence": {
-        "basis": "Explicit reviewer adjudication of collapsed unmatched group U14. No fresh independent verification is claimed.",
+        "basis": "Explicit reviewer decision U14. Cards become checked but actions remain unavailable; Kanban control works.",
         "userAccepted": true,
-        "sourceRevision": "35c645064f72bc4e3180a2c6c506cbbfee170007",
-        "severityReason": "Broken functionality: saved board, selection toolbar, view creation, or workflow execution fails."
+        "sourceRevision": "35c645064f72bc4e3180a2c6c506cbbfee170007"
       },
       "severity": 3,
       "matchingGuidance": {
-        "distinction": "Calendar card checkboxes become checked but selected count and bulk-action toolbar never appear. Do not match generic checkboxes that never toggle, or Kanban checkbox failures; those claims remain unadjudicated."
+        "distinction": "Checked Calendar cards without selected count or bulk actions. Distinct from checkboxes failing to toggle (U09)."
       }
+    },
+    {
+      "name": "Existing saved views lose their record area after layout or grouping changes",
+      "summary": "Existing Tasks By Status and Opportunities By Stage views become blank after changing their layout/grouping. The views retain record counts and settings but lose all visible records and groups after reload. Newly created custom views render successfully.",
+      "expected": "Changing layout or grouping should preserve a usable saved view. Calendar should render its grid; a Stage Kanban should regenerate and persist stage columns.",
+      "actual": "Tasks By Status shows 1,800 records but a completely blank record area, including after reload. Opportunities By Stage shows 150 records but no columns/cards after the grouping round trip and reload; its Group settings show Stage but no visible groups. Newly created custom views can render these layouts. By Stage's saved groups are empty, as are the affected By Status groups. Screenshot of Tasks failure: tasks-calendar-blank.png.",
+      "reproSteps": [
+        "Tasks case: open the existing By Status view, choose Options > Layout > Calendar, and close the menu. Reload and change the date field from Creation date to Due Date.",
+        "Observe that no calendar grid or records appear. Switching the affected view back to Kanban also leaves it blank after reload.",
+        "Opportunities case: open the existing By Stage view, choose Options > Group > Group by > Company, then change Group by back to Stage.",
+        "Reload By Stage (<record-id>). Open Options > Group."
+      ],
+      "id": "native-twenty-u15",
+      "owningArea": "twenty/records-views",
+      "reviewEvidence": {
+        "basis": "Explicit reviewer decision U15. Fresh persistent blank Calendar; custom Calendar passes.",
+        "userAccepted": true,
+        "sourceRevision": "35c645064f72bc4e3180a2c6c506cbbfee170007"
+      },
+      "severity": 3
     },
     {
       "name": "Save as new view fails when changing a table to Kanban",
@@ -2307,10 +2391,9 @@
       "id": "native-twenty-u16",
       "owningArea": "twenty/records-views",
       "reviewEvidence": {
-        "basis": "Explicit reviewer adjudication of collapsed unmatched group U16. No fresh independent verification is claimed.",
+        "basis": "Explicit reviewer decision U16. Form displays Stage but sends null grouping; ordinary Add view works.",
         "userAccepted": true,
-        "sourceRevision": "35c645064f72bc4e3180a2c6c506cbbfee170007",
-        "severityReason": "Broken functionality: saved board, selection toolbar, view creation, or workflow execution fails."
+        "sourceRevision": "35c645064f72bc4e3180a2c6c506cbbfee170007"
       },
       "severity": 3
     }

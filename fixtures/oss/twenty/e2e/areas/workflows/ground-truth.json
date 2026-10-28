@@ -4191,6 +4191,71 @@
       }
     },
     {
+      "name": "Stored Company mapping appears empty in the Create Record editor",
+      "summary": "The editor displays a stored Company relation mapping as empty despite working execution.",
+      "expected": "The editor displays the stored Company mapping.",
+      "actual": "Historical mapping displays empty despite working execution. Cannot edit remains unproved.",
+      "reproSteps": [
+        "Sign in as tim@apple.dev",
+        "Go to /objects/workflows and open 'Quick Lead'",
+        "Click the 'Create Person' node",
+        "Look at the Company field: it shows 'Select' (empty)",
+        "Click Test, fill the form, and submit. Open the run in Workflow Runs: the State JSON shows Create Person input companyId = {{<CreateCompanyStepId>.id}}, and the output person has companyId equal to the created company's id"
+      ],
+      "id": "native-twenty-u22",
+      "owningArea": "twenty/workflows",
+      "reviewEvidence": {
+        "basis": "Explicit reviewer decision U22. Historical mapping displays empty despite working execution. Cannot edit remains unproved.",
+        "userAccepted": true,
+        "sourceRevision": "35c645064f72bc4e3180a2c6c506cbbfee170007"
+      },
+      "severity": 1,
+      "matchingGuidance": {
+        "distinction": "Display-only approval. Do not credit inability to edit or failed execution."
+      }
+    },
+    {
+      "name": "Editing two Delay duration fields quickly silently loses the second change",
+      "summary": "Rapidly updating two numeric duration fields in a Delay action causes the second input to revert to its previously saved value. Waiting between edits allows each value to save.",
+      "expected": "Both entered duration values should persist when moving normally between fields, without silently dropping the second change.",
+      "actual": "Second field edits are overwritten by an earlier field's save/re-render. Reproduced twice with different values, confirmed in saved run input and after reopening the action. Editing the second field alone and waiting saves it correctly.",
+      "reproSteps": [
+        "Open QA Flow Actions workflow <record-id> and its Delay action <record-id>.",
+        "Start with Minutes 0 and Seconds 3. Change Minutes to 1, immediately change Seconds to 0, then click Days to blur.",
+        "Observe Seconds revert to 3. Test run <record-id> contains duration minutes:1, seconds:3 rather than requested seconds:0.",
+        "Change Seconds to 0 alone and let it save. Then change Minutes to 2, immediately change Seconds to 4, and click Days.",
+        "Close and reopen Delay: Minutes is 2, Seconds is still 0."
+      ],
+      "id": "native-twenty-u24",
+      "owningArea": "twenty/workflows",
+      "reviewEvidence": {
+        "basis": "Explicit reviewer decision U24. Original actions and persisted readbacks prove loss. Fresh attempts passed; intermittent race.",
+        "userAccepted": true,
+        "sourceRevision": "35c645064f72bc4e3180a2c6c506cbbfee170007"
+      },
+      "severity": 3
+    },
+    {
+      "name": "A duplicated workflow shows 'Created by: System' instead of the user who duplicated it",
+      "summary": "When the signed-in user duplicates a workflow, the new workflow's Created by column shows 'System'. Its createdBy value is internally inconsistent: source MANUAL, but name 'System' and workspaceMemberId null. A workflow the same user creates with 'New Workflow' correctly shows 'Tim Apple'.",
+      "expected": "Created by should be the user who ran Duplicate Workflow (Tim Apple, with workspaceMemberId set), like a workflow created via New Workflow.",
+      "actual": "The Workflows list shows 'Created by: System' for 'QA Bench Flow (Duplicate)'. GraphQL returns createdBy {source: MANUAL, name: 'System', workspaceMemberId: null}.",
+      "reproSteps": [
+        "Sign in as tim@apple.dev and open a workflow you created (its Created by shows Tim Apple).",
+        "Command Menu (⋯) > Duplicate Workflow.",
+        "Go to /objects/workflows: the '(Duplicate)' row's Created by column shows 'System'.",
+        "Query workflows { name createdBy { source name workspaceMemberId } }: the duplicate has source MANUAL, name System, workspaceMemberId null."
+      ],
+      "id": "native-twenty-u25",
+      "owningArea": "twenty/workflows",
+      "reviewEvidence": {
+        "basis": "Explicit reviewer decision U25. Fresh duplicate misattributes creator; ordinary creation credits Tim.",
+        "userAccepted": true,
+        "sourceRevision": "35c645064f72bc4e3180a2c6c506cbbfee170007"
+      },
+      "severity": 1
+    },
+    {
       "name": "Restoring and reactivating a workflow makes one event execute twice",
       "summary": "After deleting, restoring, and reactivating an active Record-created workflow, a single matching record creation launches two runs and duplicates action output.",
       "expected": "A single matching record-created event should start exactly one run after restore/reactivation.",
@@ -4205,12 +4270,57 @@
       "id": "native-twenty-u26",
       "owningArea": "twenty/workflows",
       "reviewEvidence": {
-        "basis": "Explicit reviewer adjudication of collapsed unmatched group U26. No fresh independent verification is claimed.",
+        "basis": "Explicit reviewer decision U26. One event produces two completed runs with distinct output Notes.",
         "userAccepted": true,
-        "sourceRevision": "35c645064f72bc4e3180a2c6c506cbbfee170007",
-        "severityReason": "Broken functionality: saved board, selection toolbar, view creation, or workflow execution fails."
+        "sourceRevision": "35c645064f72bc4e3180a2c6c506cbbfee170007"
       },
       "severity": 3
+    },
+    {
+      "name": "Update Record editor misleadingly displays an unsaved Stage=New value",
+      "summary": "The editor displays New while the stored stage remains unchanged.",
+      "expected": "The displayed stage reflects the saved configuration.",
+      "actual": "Fresh misleading display; explicitly selecting New saves correctly.",
+      "reproSteps": [
+        "Create a workflow that first creates an Opportunity with Stage explicitly set to Proposal.",
+        "Add Update Record for Opportunities and use the previous Create Record ID as its Record.",
+        "In Fields to update, check Stage and Name. Leave the displayed Stage=New unchanged and set Name to a new value.",
+        "Test the workflow and inspect the Update Record output."
+      ],
+      "id": "native-twenty-u27",
+      "owningArea": "twenty/workflows",
+      "reviewEvidence": {
+        "basis": "Explicit reviewer decision U27. Fresh misleading display; explicitly selecting New saves correctly.",
+        "userAccepted": true,
+        "sourceRevision": "35c645064f72bc4e3180a2c6c506cbbfee170007"
+      },
+      "severity": 1,
+      "matchingGuidance": {
+        "distinction": "Display-only approval. Explicitly selecting New saves correctly; no general Stage update failure is approved."
+      }
+    },
+    {
+      "name": "Restored workflow run remains pending beyond Delay while healthy control completes",
+      "summary": "A workflow deleted while its Delay is pending retains a Running execution indefinitely. Restoring the workflow does not resume or terminate the expired delay.",
+      "expected": "Deleting a workflow should either stop its in-flight run explicitly or allow it to complete. Restoring it must not leave an expired delay permanently Running.",
+      "actual": "Fresh bounded stall; healthy same-version control completes. No indefinite-duration claim.",
+      "reproSteps": [
+        "Create a manual workflow with Delay 15 seconds followed by Create Note.",
+        "Test it and immediately soft-delete the workflow while the delay is pending.",
+        "Wait more than 15 seconds, restore the workflow, then open and reload the original run.",
+        "Test the restored workflow again without deleting it as a control."
+      ],
+      "id": "native-twenty-u29",
+      "owningArea": "twenty/workflows",
+      "reviewEvidence": {
+        "basis": "Explicit reviewer decision U29. Fresh bounded stall; healthy same-version control completes. No indefinite-duration claim.",
+        "userAccepted": true,
+        "sourceRevision": "35c645064f72bc4e3180a2c6c506cbbfee170007"
+      },
+      "severity": 3,
+      "matchingGuidance": {
+        "distinction": "Bounded stall relative to a healthy same-version control; no indefinite duration claim."
+      }
     }
   ]
 }

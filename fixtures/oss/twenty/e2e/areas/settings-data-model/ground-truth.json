@@ -2491,6 +2491,47 @@
       "matchingGuidance": {
         "distinction": "Match the custom-object New action failing with an error and no record-creation panel in the reported field-metadata context. Do not infer that structured fields always cause the failure or that matching fresh objects must fail. A Number edit failing on an already-created record is a different operation; no shared cause is established."
       }
+    },
+    {
+      "name": "Workspace instruction edits are silently discarded when switching AI tabs",
+      "summary": "Editing Workspace Instructions and immediately opening Skills loses the edit without a save prompt or warning. Returning to Overview restores the previous instructions.",
+      "expected": "The latest instructions should be saved when leaving the editor, or the app should warn that unsaved changes will be lost.",
+      "actual": "The editor shows 'QA saved instruction one'; the new instructions are silently lost. Reproduced through Playwright fill followed by an ordinary Skills tab click, with no reload or forced navigation.",
+      "reproSteps": [
+        "Sign in as tim@apple.dev and open Settings > AI > Overview.",
+        "Enter 'QA saved instruction one' in Workspace Instructions, click the heading, and wait for it to save.",
+        "Replace the text with 'QA saved instruction two' and immediately click the Skills tab.",
+        "Return to Overview."
+      ],
+      "id": "native-twenty-u17",
+      "owningArea": "twenty/settings-data-model",
+      "reviewEvidence": {
+        "basis": "Explicit reviewer decision U17. Original repeated captures plus debounce/unmount source chain.",
+        "userAccepted": true,
+        "sourceRevision": "35c645064f72bc4e3180a2c6c506cbbfee170007"
+      },
+      "severity": 3
+    },
+    {
+      "name": "Editing any select field option overwrites empty record values with the field's default option",
+      "summary": "When a Select field has a default option, saving any change to its options in Settings > Data model (even renaming an unrelated option) sets every record whose value was empty (null) to the default option. Data the user never touched is silently changed.",
+      "expected": "Records whose select value is empty stay empty. Only records using the renamed option should change to the new value.",
+      "actual": "After renaming the unrelated option 'Red' to 'Crimson' (no record used Red), record W3null went from null to 'LIME' (the default option). W4blue (BLUE_SKY) was unchanged. Earlier, renaming the default option Green to Lime also turned W1, which was empty before, into LIME.",
+      "reproSteps": [
+        "In Settings > Data model, create a custom object (e.g. Widgets) with a Select field 'Stage' that has options Red, Lime, Blue Sky, and set Lime as the default",
+        "Create a record with Stage empty (e.g. via REST: POST /rest/widgets {name:'W3null', widgetStage:null}) and one with Stage = Blue Sky",
+        "Confirm with GET /rest/widgets that W3null has widgetStage null",
+        "Open Settings > Data model > Widgets > Stage, rename option 'Red' to 'Crimson', and click Save",
+        "GET /rest/widgets again: W3null now has widgetStage 'LIME', and the record list shows 'Lime' for it"
+      ],
+      "id": "native-twenty-u20",
+      "owningArea": "twenty/settings-data-model",
+      "reviewEvidence": {
+        "basis": "Explicit reviewer decision U20. Original readbacks plus migration code explain unintended record changes.",
+        "userAccepted": true,
+        "sourceRevision": "35c645064f72bc4e3180a2c6c506cbbfee170007"
+      },
+      "severity": 3
     }
   ]
 }
