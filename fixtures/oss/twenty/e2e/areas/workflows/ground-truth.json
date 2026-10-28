@@ -3112,6 +3112,43 @@
           "The inspected newer source retains initialization-only editor content with the selector reset; newer runtime was not tested."
         ]
       }
+    },
+    {
+      "id": "workflows-loop-aab29232",
+      "name": "A stale schedule hour from valid typing is persisted by a later minute edit",
+      "severity": 3,
+      "owningArea": "twenty/workflows",
+      "summary": "Typing a valid two-digit schedule hour can restore a stale prefix; editing only minutes then saves the wrong hour.",
+      "expected": "A valid configured hour should remain consistent with the completed input, and editing minutes should preserve that hour.",
+      "actual": "Fast entry of 23 can leave the hour field and preview at 2/02:00 even while a saved readback still holds 23. Changing only Minutes then saves hour 2 with the new minute. Reloading and reopening retains the wrong hour and preview.",
+      "reproSteps": [
+        "Create a manual workflow, switch to a daily scheduled trigger, and configure an hour.",
+        "Replace the hour with 23 using fast ordinary typing; wait for saves. Repeat if needed until the field and preview show 2/02:00.",
+        "Change only Minutes, wait for the save, then reload and reopen the trigger. The hour remains 2 with the new minute.",
+        "Compare normal-speed entry, a one-digit hour edit, and retyping the intended hour; these controls preserve the intended setting."
+      ],
+      "sourceCause": "Hour changes dispatch saves per keystroke. A completed response updates the flow using its captured submitted trigger, and the controlled input synchronizes to that echoed value. An older response can restore a stale prefix; the minute handler copies that stale hour into its next save. Exact server commit ordering is not independently traced.",
+      "matchingGuidance": {
+        "relatedReferenceId": "workflows-N52",
+        "distinction": "This entry requires a VALID completed hour such as 23 reverting to a stale prefix and an ordinary later minute edit persisting that wrong hour. N52 and the invalid-minute prefix negative concern out-of-range input and do not establish a defect from rejected invalid input or prefix retention alone."
+      },
+      "reviewEvidence": {
+        "basis": "Both independent reviewers reproduced valid hour entry leaving a stale displayed hour, then a later minute-only edit persisting that wrong hour. Coordinator checked source/contract and preceding negative scopes, original evidence and independent actual browser readbacks/screenshots, natural timing provenance without injected responses, passing controls and exact subscription billing.",
+        "sourceRevision": "35c645064f72bc4e3180a2c6c506cbbfee170007",
+        "severityReason": "Both independent reviewers observed an unintended saved schedule hour after a valid edit and later minute-only change, and recommend severity 3.",
+        "sourceReferences": [
+          "https://github.com/twentyhq/twenty/blob/35c645064f72bc4e3180a2c6c506cbbfee170007/packages/twenty-front/src/modules/workflow/workflow-trigger/components/WorkflowEditTriggerCronForm.tsx#L193-L282",
+          "https://github.com/twentyhq/twenty/blob/35c645064f72bc4e3180a2c6c506cbbfee170007/packages/twenty-front/src/modules/workflow/workflow-trigger/hooks/useUpdateWorkflowVersionTrigger.ts#L54-L83",
+          "https://github.com/twentyhq/twenty/blob/35c645064f72bc4e3180a2c6c506cbbfee170007/packages/twenty-front/src/modules/ui/field/input/components/TextInput.tsx#L79-L85"
+        ],
+        "limitations": [
+          "Joint scope is valid hour typing that leaves stale hour 2 visible after entering 23, followed by an ordinary minute-only edit persisting hour 2 across reload/reopen.",
+          "Both reviewers support the later-minute propagation. Plain-reload-only wrong persistence was additionally observed by one reviewer; it is not required or claimed as independently reproduced by both.",
+          "The reviewed original browser calls used normal keyboard timing and observational request/response logging, with no response interception or injected delay. Repeated fast typing is timing-sensitive; observed frequencies are not production prevalence estimates.",
+          "Saved schedule and preview are affected. Actual scheduled execution, all Cron fields, decimal editing and sibling minute-digit loss are not in joint scope.",
+          "The inspected newer source changes trigger updates; no newer runtime success or precise server commit-order trace is claimed."
+        ]
+      }
     }
   ]
 }
