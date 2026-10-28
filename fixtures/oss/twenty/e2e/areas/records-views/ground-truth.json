@@ -1255,6 +1255,43 @@
           "The inspected newer source retains the relevant ordering path; newer runtime was not tested."
         ]
       }
+    },
+    {
+      "id": "records-views-pass4-5f069814",
+      "name": "A Company-name advanced filter prevents creating People",
+      "severity": 3,
+      "owningArea": "twenty/records-views",
+      "summary": "On a People view with an advanced Company → Name text condition, New Person and Add New fail with an error instead of creating a record and opening its drawer.",
+      "expected": "A supported relation-traversal filter should not prevent creating a Person; it should not be interpreted as a literal Company ID to prefill.",
+      "actual": "New Person leaves the list unchanged and opens no drawer. Error feedback varies between a generic error, unexpected UUID filter, or invalid Company UUID. The failure repeats after saving the filter and reloading. Removing the advanced relation condition, or a fresh-page basic Company selection control, restores creation.",
+      "reproSteps": [
+        "Create a fresh People table view and apply an advanced Company → Name → Contains condition with an existing Company-name text.",
+        "Optionally combine it with a Name Contains condition or a supported OR group. Save and reload.",
+        "Click New Person and the table Add New row. Observe an error, unchanged list and no creation drawer.",
+        "Repeat the attempted create after a fresh reload.",
+        "Control: remove the advanced relation condition, or reload a view with a basic Company is selection. New Person creates a record and opens its drawer with a valid Company reference."
+      ],
+      "sourceCause": "Creation-default conversion treats a relation-traversal text value as the source relation foreign key. Separately, the optimistic list matcher treats a nested relation filter as a UUID filter. Depending on the cached-query/filter shape, creation aborts in that client matcher or reaches server UUID validation with the wrong Company ID.",
+      "matchingGuidance": {
+        "distinction": "Covers People creation blocked by an advanced Company-name traversal filter. Exact toast text is not required. It is distinct from date-prefill, failing custom-object metadata and linked-name search omissions. Other objects and board/calendar creation callers remain unverified."
+      },
+      "reviewEvidence": {
+        "basis": "Both independent reviewers repeatedly verified the blocked People creation on their own fresh views and saved/reloaded filters, with passing creation controls. Coordinator checked original Mo video and distinct error path, independent screenshots/recording files, subscription billing, source and explicit upstream fixes for relation defaults and nested matching.",
+        "sourceRevision": "35c645064f72bc4e3180a2c6c506cbbfee170007",
+        "severityReason": "An enabled ordinary record-creation action is unusable under a supported view filter.",
+        "sourceReferences": [
+          "https://github.com/twentyhq/twenty/blob/35c645064f72bc4e3180a2c6c506cbbfee170007/packages/twenty-front/src/modules/object-record/record-table/utils/buildRecordInputFromFilter.ts#L24-L48",
+          "https://github.com/twentyhq/twenty/blob/35c645064f72bc4e3180a2c6c506cbbfee170007/packages/twenty-front/src/modules/object-record/record-table/hooks/useCreateNewIndexRecord.ts#L77-L99",
+          "https://github.com/twentyhq/twenty/blob/35c645064f72bc4e3180a2c6c506cbbfee170007/packages/twenty-front/src/modules/object-record/record-filter/utils/isRecordMatchingFilter.ts#L418-L440",
+          "https://github.com/twentyhq/twenty/blob/35c645064f72bc4e3180a2c6c506cbbfee170007/packages/twenty-server/src/engine/api/common/common-args-processors/data-arg-processor/validator-utils/validate-uuid-field-or-throw.util.ts#L12-L26"
+        ],
+        "limitations": [
+          "The two independently observed failure stages differ; no claim that every attempt reaches the server or uses the same toast text.",
+          "A basic Company control failed after a poisoned advanced-filter session but worked after reload; that spillover cause is inferred and excluded from the label.",
+          "Other objects, relation operators, roles beyond checked controls and board/calendar/RLS callers are not jointly established.",
+          "The inspected newer source fixes both paths; newer runtime was not tested."
+        ]
+      }
     }
   ]
 }
