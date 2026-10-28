@@ -3,11 +3,11 @@
 Runs QA agents against seeded open-source apps and grades their bug reports
 against labeled ground truth.
 
-Agents: `mo` (through the `qa` CLI), `codex` and `claude`. Each fixture runs in
+Agents: `mo` (through the `qa` CLI), `codex-playwright-mcp` and `claude-playwright-mcp`. Each fixture runs in
 its own E2B sandbox. Codex and Claude drive a browser through Playwright MCP:
 Browserbase by default, or a headless Chromium on the eval host with
 `--browser local`. The run records its browser in `duration.json`, and `merge`
-labels those rows, e.g. `codex (local browser)`.
+labels those rows, e.g. `codex-playwright-mcp (local browser)`.
 
 ## Setup
 
@@ -24,25 +24,30 @@ Environment:
 | Variable | Used by |
 | --- | --- |
 | `E2B_API_KEY` | all runs |
-| `OPENAI_API_KEY` | grading, `codex` |
-| `BROWSERBASE_API_KEY` | `codex`, `claude` (not with `--browser local`) |
-| `ANTHROPIC_API_KEY` | `claude` |
+| `OPENAI_API_KEY` | grading, `codex-playwright-mcp` |
+| `BROWSERBASE_API_KEY` | `codex-playwright-mcp`, `claude-playwright-mcp` (not with `--browser local`) |
+| `ANTHROPIC_API_KEY` | `claude-playwright-mcp` |
 
-`mo` needs `qa` 0.24.0 or later, signed in. Set `MO_EVAL_CLI` to use another
-executable.
+`mo` needs `qa` 0.27.0 or later, signed in. Set `MO_EVAL_CLI` to use another
+executable. Use `--effort low|medium|high|max` to set Mo's effort preset
+(default: medium). An explicit `--effort` is recorded in `duration.json`.
 
 ## Run
 
 ```bash
 pnpm eval --agent mo --fixtures gitea --time-limit 2h
-pnpm eval --agent codex --fixtures gitea/areas --time-limit 30m
-pnpm eval --agent claude --grade-only --fixtures gitea
+pnpm eval --agent codex-playwright-mcp --fixtures gitea/areas --time-limit 30m
+pnpm eval --agent claude-playwright-mcp --grade-only --fixtures gitea
 pnpm merge --fixtures gitea
 ```
 
 `--fixtures` takes app names (`gitea`), one area (`gitea/areas/issues`), all
 areas of an app (`gitea/areas`), or `oss-areas`. A whole-app run is graded
 against the union of its area references.
+
+Runs stop after 2h unless `--time-limit` or `--minutes` sets another limit.
+Mo gets that limit as its time budget only when one is passed; otherwise it
+uses its default budget.
 
 Reports go to `reports/<agent>/<fixture>/<run-id>/`. Each run writes
 `scores.csv`, `grading.json` and a `review.md` queue of unmatched findings.

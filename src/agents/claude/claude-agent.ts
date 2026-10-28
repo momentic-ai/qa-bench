@@ -4,7 +4,7 @@ import {
   spawn,
 } from "node:child_process";
 import { WriteStream, createWriteStream } from "node:fs";
-import { mkdir, realpath } from "node:fs/promises";
+import { mkdir } from "node:fs/promises";
 import { createRequire } from "node:module";
 import path from "node:path";
 import { createInterface } from "node:readline";
@@ -62,18 +62,14 @@ export class ClaudeAgent extends CodexAgent {
   ) {
     onReady?.();
     await this.findings.initialize();
-    const workspace = path.join(this.context.runDirectory, "workspace");
+    const workspace = await this.createWorkspace();
     const configDirectory = path.join(this.context.runDirectory, "claude-home");
     await Promise.all([
       mkdir(workspace, { recursive: true }),
       mkdir(configDirectory, { recursive: true }),
       mkdir(this.codexHome, { recursive: true }),
     ]);
-    const resolverFiles =
-      process.platform === "linux"
-        ? { [await realpath("/etc/resolv.conf")]: "read" }
-        : {};
-    const setup = await this.prepare(workspace, resolverFiles);
+    const setup = await this.prepare();
     this.reporting = await startReportingServer(this.findings);
     const browser = z
       .object({
@@ -91,7 +87,6 @@ export class ClaudeAgent extends CodexAgent {
       [
         this.claudeCommand,
         "--print",
-        "--bare",
         "--verbose",
         "--input-format",
         "stream-json",
@@ -101,9 +96,6 @@ export class ClaudeAgent extends CodexAgent {
         "claude-opus-5-5",
         "--effort",
         "medium",
-        "--tools",
-        "",
-        "--disable-slash-commands",
         "--strict-mcp-config",
         "--mcp-config",
         JSON.stringify({
@@ -111,18 +103,15 @@ export class ClaudeAgent extends CodexAgent {
             playwright: {
               type: "stdio",
               ...browser,
-              env: { ...browser.env, CODEX_HOME: this.codexHome },
             },
             reporting: { type: "http", url: this.reporting.url },
           },
         }),
         "--permission-mode",
-        "dontAsk",
+        "bypassPermissions",
         "--allowedTools",
         "mcp__playwright__*",
         "mcp__reporting__*",
-        "--disallowedTools",
-        "mcp__playwright__browser_run_code_unsafe",
         "--setting-sources",
         "",
       ],
@@ -243,8 +232,8 @@ export class ClaudeAgent extends CodexAgent {
 
 export function claudeAgent(browser: Browser): EvalAgentDefinition {
   return {
-    name: "Claude",
-    reportSubdirectory: "claude",
+    name: "claude-playwright-mcp",
+    reportSubdirectory: "claude-playwright-mcp",
     concurrency: browser === "local" ? 2 : Infinity,
     config: { browser },
     async validateEnvironment() {
