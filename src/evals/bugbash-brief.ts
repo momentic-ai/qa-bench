@@ -1,6 +1,6 @@
 import { Fixture, FixtureAccount } from "./types";
 
-export const EXPLORATION_GUIDANCE = `Continue while meaningful exploration remains. Aim to find every distinct, reproducible bug you can by exhausting all discoverable application flows, including alternate paths. Keep exploring after each finding. Finish once those flows are exhausted and findings are verified, or when instructed to finalize.
+export const EXPLORATION_GUIDANCE = `Continue while meaningful exploration remains. Aim to find every distinct, reproducible bug you can by exhausting all discoverable application flows, including alternate paths. Keep exploring after each finding. Finish once those flows are exhausted and findings are verified.
 
 Untested areas and failed jobs belong in coverage metadata, never in bug findings.`;
 

@@ -230,12 +230,6 @@ export function buildComparison(scores: LabeledScore[]) {
           `Known invalid findings differ between agents for ${score.fixture}.`,
         );
       }
-      if (previous.time_limit_ms !== score.time_limit_ms) {
-        // A comparison cannot mix recorded budgets with unknown or different budgets.
-        throw new Error(
-          `Mismatched time limits for ${score.fixture}; rerun all agents with the same --time-limit.`,
-        );
-      }
       if (
         previous.outside_area_ground_truth_sha256 !==
           score.outside_area_ground_truth_sha256 ||
@@ -391,14 +385,9 @@ export function renderComparison(
         "Cost / verified bug",
         "Cost complete",
         "Partial",
-        "Time limit (s)",
         "Grading method",
       ],
       ...rows.map((score) => {
-        let timeLimit: string | number = "Unknown/mixed";
-        if (score.time_limit_ms !== null) {
-          timeLimit = score.time_limit_ms / 1000;
-        }
         return [
           score.fixture,
           score.label,
@@ -410,7 +399,6 @@ export function renderComparison(
           cost(costPerVerifiedBug(score)),
           String(score.cost_complete),
           String(score.partial),
-          timeLimit,
           score.grading_method_sha256 ?? "Unknown/mixed",
         ];
       }),

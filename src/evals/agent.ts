@@ -4,7 +4,6 @@ export type AgentContext = {
   agentName?: string;
   fixture: Fixture;
   targetUrl?: URL;
-  timeLimitMs: number;
   maxConcurrentSubAgents?: number;
   reportDirectory: string;
   runDirectory: string;
@@ -32,8 +31,6 @@ export interface EvalAgent {
     deadlineMs?: number,
     onReady?: () => number,
   ): Promise<AgentExecution | void>;
-  /** Resolve on delivery, without waiting for the model to comply. */
-  send(message: string, signal: AbortSignal): Promise<void>;
   /** Request parent/child stop; await local persistence needed for collection, not hosted child drain. */
   terminate(): Promise<void>;
   /** Read/export saved results only. Never invoke a model to produce a report. */
@@ -48,10 +45,7 @@ export type EvalAgentDefinition = {
   concurrency: number;
   /** Run settings recorded once in duration.json; merge labels and separates runs by them. */
   config?: Record<string, string | boolean>;
-  validateEnvironment(
-    timeLimitMs: number,
-    fixtures?: Fixture[],
-  ): void | Promise<void>;
+  validateEnvironment(fixtures?: Fixture[]): void | Promise<void>;
   create(
     context: AgentContext,
     signal: AbortSignal,

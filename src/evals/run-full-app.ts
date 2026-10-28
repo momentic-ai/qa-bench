@@ -34,7 +34,7 @@ export async function runFullAppFixtures({
     // Fail before allocating fixtures when provisioning cannot authenticate.
     throw new Error("E2B_API_KEY is required.");
   }
-  await definition.validateEnvironment(options.timeLimitMs, fixtures);
+  await definition.validateEnvironment(fixtures);
   await using resources = new FixtureExecution();
   const results = new Array<PromiseSettledResult<string>>(fixtures.length);
   try {
@@ -60,7 +60,6 @@ export async function runFullAppFixtures({
             fixture,
             reportsDirectory: options.outputDirectory,
             runId,
-            timeLimitMs: options.timeLimitMs,
             maxConcurrentSubAgents: options.maxConcurrentSubAgents,
             resources,
           });
@@ -99,7 +98,6 @@ async function runFixture({
   fixture,
   reportsDirectory,
   runId,
-  timeLimitMs,
   maxConcurrentSubAgents,
   resources,
 }: {
@@ -108,7 +106,6 @@ async function runFixture({
   fixture: Fixture;
   reportsDirectory: string;
   runId: string;
-  timeLimitMs: number;
   maxConcurrentSubAgents: number | undefined;
   resources: FixtureExecution;
 }) {
@@ -131,7 +128,7 @@ async function runFixture({
   let sandbox: BenchmarkSandbox | undefined;
   try {
     resources.signal.throwIfAborted();
-    const setup = await resources.provision(fixture, timeLimitMs);
+    const setup = await resources.provision(fixture);
     sandbox = setup.sandbox;
     const url = setup.url;
     resources.signal.throwIfAborted();
@@ -140,7 +137,6 @@ async function runFixture({
         agentName,
         fixture,
         targetUrl: url,
-        timeLimitMs,
         maxConcurrentSubAgents,
         reportDirectory,
         runDirectory,
@@ -152,10 +148,7 @@ async function runFixture({
       message:
         agentName === "mo"
           ? bugbashBrief(url, fixture)
-          : basicBugbashBrief(url, timeLimitMs, fixture),
-      timeLimitMs,
-      // Mo is not told a deadline, so the time limit stops it without a finalization message.
-      ...(agentName === "mo" ? { finalizationMs: timeLimitMs } : {}),
+          : basicBugbashBrief(url, fixture),
       signal: resources.signal,
     });
     try {
@@ -174,8 +167,6 @@ async function runFixture({
       duration: run.duration,
       startupDuration: run.startupDuration,
       cleanupDuration: run.cleanupDuration,
-      timeLimitMs: run.timeLimitMs,
-      finalizationDuration: run.finalizationDuration,
       partial: run.partial || run.errors.length > 0,
       stopReason,
       sessionId: run.results?.sessionId,

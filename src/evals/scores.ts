@@ -83,7 +83,6 @@ export const ScoreSchema = z
     cost_usd: z.number().nonnegative().nullable(),
     cost_complete: z.boolean(),
     partial: z.boolean(),
-    time_limit_ms: z.number().int().positive().nullable(),
     review_path: z.string(),
   })
   .strict()
@@ -223,12 +222,7 @@ export async function readScores(file: string) {
           return [key, z.enum(["true", "false"]).parse(value) === "true"];
         }
         if (
-          [
-            "cost_usd",
-            "time_limit_ms",
-            "precision",
-            "outside_area_precision",
-          ].includes(key) &&
+          ["cost_usd", "precision", "outside_area_precision"].includes(key) &&
           value === ""
         ) {
           // Unknown costs and undefined precision must not silently become zero.
@@ -288,8 +282,6 @@ export function totalScores(scores: Score[], agent: Agent): Score {
         sum.grading_method_sha256 === score.grading_method_sha256
           ? sum.grading_method_sha256
           : null,
-      time_limit_ms:
-        sum.time_limit_ms === score.time_limit_ms ? sum.time_limit_ms : null,
     }),
     {
       ...scores[0],

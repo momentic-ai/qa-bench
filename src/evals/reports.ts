@@ -65,7 +65,6 @@ export const MoReportSchema = z
 export const DurationSchema = z
   .object({
     duration: z.number(),
-    timeLimitMs: z.number().int().positive().optional(),
     partial: z.boolean().optional(),
     errors: z.array(z.string()).optional(),
     valid: z.boolean().optional(),

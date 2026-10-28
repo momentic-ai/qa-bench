@@ -1,16 +1,7 @@
 import { setTimeout as delay } from "node:timers/promises";
 
+import { TIMEOUT_MS } from "../tasks/full-app/options";
 import { AgentResults, EvalAgent } from "./agent";
-
-const FINALIZATION_MS = 60_000;
-
-export const FINALIZE_MESSAGE =
-  "The evaluation is ending. Stop starting new journeys or assigning new work. " +
-  "Tell active children to finalize immediately, collect their findings, and terminate all subagents. " +
-  "Persist every already verified bug now, reconcile and review pending reports, " +
-  "deduplicate findings, and record unfinished coverage as limitations. " +
-  "Leave remaining unstarted coverage incomplete and finish as soon as possible. " +
-  "Execution will be forcibly stopped at the evaluation deadline; a final chat reply is not the result artifact.";
 
 export type AgentRun = {
   results: AgentResults | null;
@@ -19,26 +10,20 @@ export type AgentRun = {
   duration: number;
   startupDuration: number;
   cleanupDuration: number;
-  timeLimitMs: number;
-  finalizationDuration: number;
   partial: boolean;
-  stopReason: "completed" | "time_limit" | "cancelled" | "failed";
+  stopReason: "completed" | "timeout" | "cancelled" | "failed";
   errors: unknown[];
 };
 
 export async function runAgent({
   agent,
   message,
-  timeLimitMs,
   signal,
-  finalizationMs = FINALIZATION_MS,
   startupTimeoutMs = 900_000,
 }: {
   agent: EvalAgent;
   message: string;
-  timeLimitMs: number;
   signal: AbortSignal;
-  finalizationMs?: number;
   startupTimeoutMs?: number;
 }): Promise<AgentRun> {
   const startupStartedAt = Date.now();
@@ -62,7 +47,6 @@ export async function runAgent({
     startupTimeoutMs,
   );
   const errors: unknown[] = [];
-  let finalizationStartedAt: number | undefined;
   let completed = false;
   let onReady: () => number;
   const ready = new Promise<number>((resolve, reject) => {
@@ -76,10 +60,10 @@ export async function runAgent({
         startupFinishedAt = startedAt;
         clearTimeout(startupTimeout);
         runSignal.removeEventListener("abort", aborted);
-        timeout = setTimeout(() => budget.abort(), timeLimitMs);
-        resolve(startedAt + timeLimitMs);
+        timeout = setTimeout(() => budget.abort(), TIMEOUT_MS);
+        resolve(startedAt + TIMEOUT_MS);
       }
-      return startedAt + timeLimitMs;
+      return startedAt + TIMEOUT_MS;
     };
   });
   const deadline = ready.then(async (deadlineMs) => {
@@ -107,34 +91,6 @@ export async function runAgent({
     }
     return deadline;
   });
-  const finalization = (async () => {
-    if (timeLimitMs <= finalizationMs) return;
-    const deadlineMs = await ready;
-    await delay(
-      Math.max(0, deadlineMs - finalizationMs - Date.now()),
-      undefined,
-      {
-        signal: runSignal,
-      },
-    );
-    await started;
-    runSignal.throwIfAborted();
-    finalizationStartedAt = Date.now();
-    const remainingSeconds = Math.max(
-      0,
-      Math.ceil((deadlineMs - Date.now()) / 1000),
-    );
-    await agent.send(
-      `You will be terminated in ${remainingSeconds} seconds. Submit all completed results now. ${FINALIZE_MESSAGE}`,
-      runSignal,
-    );
-  })().catch((err: unknown) => {
-    if (!runSignal.aborted) {
-      // Steering is best effort; failed delivery must not disable the deadline.
-      errors.push(err);
-    }
-  });
-
   try {
     // Completion observers may only settle after termination; they cannot gate the cutoff.
     await Promise.race([completion, deadline]);
@@ -160,9 +116,8 @@ export async function runAgent({
     stopReason = "cancelled";
   } else if (budget.signal.aborted) {
     // Budget exhaustion is a comparable partial result, not a provider failure.
-    stopReason = "time_limit";
+    stopReason = "timeout";
   } else if (completed) {
-    // Natural completion may happen before the finalization window.
     stopReason = "completed";
   }
 
@@ -171,8 +126,8 @@ export async function runAgent({
   } catch (err) {
     errors.push(err);
   }
-  // Begin termination at the deadline even if an aborted send is still reaping its CLI.
-  await Promise.allSettled([completion, finalization, deadline]);
+  // Let execution observers settle after termination.
+  await Promise.allSettled([completion, deadline]);
   const finishedAt = Date.now();
   let results: AgentResults | null = null;
   const collection = new AbortController();
@@ -217,11 +172,6 @@ export async function runAgent({
     duration: startedAt === undefined ? 0 : (stoppedAt - startedAt) / 1000,
     startupDuration: (startupFinishedAt - startupStartedAt) / 1000,
     cleanupDuration: (finishedAt - stoppedAt) / 1000,
-    timeLimitMs,
-    finalizationDuration:
-      finalizationStartedAt === undefined
-        ? 0
-        : (stoppedAt - finalizationStartedAt) / 1000,
     partial: errors.length > 0 || stopReason !== "completed",
     stopReason: errors.length > 0 ? "failed" : stopReason,
     errors,

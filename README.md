@@ -36,8 +36,8 @@ the CLI with `npm install -g qa` (0.24.0 or later) and sign in, or set
 ## Run
 
 ```bash
-pnpm eval --agent mo --fixtures gitea --time-limit 2h
-pnpm eval --agent codex --fixtures gitea/areas --time-limit 30m
+pnpm eval --agent mo --fixtures gitea
+pnpm eval --agent codex --fixtures gitea/areas
 pnpm eval --agent claude --grade-only --fixtures gitea
 pnpm merge --fixtures gitea
 ```
@@ -49,8 +49,8 @@ against the union of its area references.
 Reports go to `reports/<agent>/<fixture>/<run-id>/`. Each run writes
 `scores.csv`, `grading.json` and a `review.md` queue of unmatched findings.
 
-`--time-limit` is a safety stop. Mo is not told the limit and works to its
-effort preset. Codex and Claude are told how many minutes they have.
+Agents have no time limit. Each one stops when it is done, or after a 2-hour
+hard timeout.
 
 ## Scoring
 
@@ -72,8 +72,8 @@ The judge is a model, so regrading the same findings can change a few matches.
 
 Reported costs are directional. Codex and Claude costs are token estimates at
 list prices plus Browserbase time. Mo cost is Momentic's billed session spend.
-E2B sandbox time and grading calls are not included. A 10-minute run on one
-area cost $1 to $5 per agent in our tests; full runs cost much more.
+E2B sandbox time and grading calls are not included. Short test runs on one
+area cost $1 to $5 per agent; full runs cost much more.
 
 Start a fixture by hand with `pnpm start-fixture gitea --timeout 30m`; stop it
 with `pnpm stop-fixture <sandbox-id>`.

@@ -8,7 +8,8 @@ import {
 import { parseRunIds } from "../../evals/report-files";
 import { REPORTS_DIRECTORY } from "../../evals/scores";
 
-export const DEFAULT_TIME_LIMIT_MS = 120 * 60_000;
+// Agents are not given a time limit; this hard timeout only stops runaway runs.
+export const TIMEOUT_MS = 120 * 60_000;
 
 export type FullAppOptions = {
   agent?: string;
@@ -17,7 +18,6 @@ export type FullAppOptions = {
   fixtures?: string;
   concurrency?: number;
   maxConcurrentSubAgents?: number;
-  timeLimitMs: number;
   outputDirectory: string;
   browser: Browser;
 };
@@ -36,8 +36,7 @@ export function parseFullAppOptions(args: string[]): FullAppOptions {
     },
     strict: true,
   });
-  const { concurrency, timeLimitMs, outputDirectory } =
-    parseExecutionOptions(values);
+  const { concurrency, outputDirectory } = parseExecutionOptions(values);
   let maxConcurrentSubAgents: number | undefined;
   if (values["max-concurrent-sub-agents"] !== undefined) {
     maxConcurrentSubAgents = Number(values["max-concurrent-sub-agents"]);
@@ -65,7 +64,6 @@ export function parseFullAppOptions(args: string[]): FullAppOptions {
     fixtures: values.fixtures,
     concurrency,
     maxConcurrentSubAgents,
-    timeLimitMs: timeLimitMs ?? DEFAULT_TIME_LIMIT_MS,
     outputDirectory: outputDirectory ?? REPORTS_DIRECTORY,
     gradeOnly: values["grade-only"],
     runIds: parseRunIds(values["run-id"]),

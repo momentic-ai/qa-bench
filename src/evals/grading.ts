@@ -251,7 +251,6 @@ export async function gradeFixture(
     cost_usd: report.costUsd,
     cost_complete: report.costComplete,
     partial: duration.partial ?? false,
-    time_limit_ms: duration.timeLimitMs ?? null,
   });
   await writeScores(path.join(directory, "scores.csv"), [score]);
   process.stdout.write(
