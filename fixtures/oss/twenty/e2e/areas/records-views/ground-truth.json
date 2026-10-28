@@ -1213,6 +1213,48 @@
           "No saved People or Company data was lost. Newer runtime was not tested."
         ]
       }
+    },
+    {
+      "id": "records-views-pass5-623d24aa",
+      "name": "Dragging a Task across Kanban columns ignores its active Title sort until reload",
+      "severity": 3,
+      "owningArea": "twenty/records-views",
+      "summary": "A cross-column Task drag changes Status correctly but reorders the destination using manual position, contradicting the still-active saved Title sort.",
+      "expected": "An allowed cross-column move on a sorted board should change Status while keeping the destination in the active sort order.",
+      "actual": "After dragging a Task into To do on a Title-descending board, the destination settles into manual-position order while the Title sort chip and filter remain. Reload restores Title-descending order and retains the new Status. The saved sort is not deleted.",
+      "reproSteps": [
+        "Create three fresh Tasks with distinct Alpha, Beta and Gamma titles; put Alpha and Gamma in To do and Beta in No Value.",
+        "Open a Status-grouped Kanban, filter to those Tasks and save Title descending. Reload and confirm Gamma precedes Alpha.",
+        "Drag Beta across columns into To do without confirming removal of sorting.",
+        "Wait for the update to settle. Observe a destination order inconsistent with descending Title while its sort chip remains.",
+        "Reload: Gamma, Beta, Alpha is restored and Beta remains To do. Repeat with a fresh setup.",
+        "Controls: an unsorted board retains its consistent manual order; same-column dragging on a sorted board offers Remove sorting, and Cancel preserves sorting."
+      ],
+      "sourceCause": "Sorted cross-column drops intentionally omit position updates. The Status-only update selects the reposition-records path, whose destination ordering uses position ascending without consulting active Title sorts. A fresh query on reload restores the saved sort.",
+      "matchingGuidance": {
+        "relatedReferenceId": "records-views-N08",
+        "relatedReferenceName": "Moving an opportunity between Kanban columns breaks its active sort",
+        "distinction": "This entry covers Tasks grouped by Status and mouse cross-column dragging. The related Opportunity entry uses Stage changes through keyboard/side-panel controls. Match settled displayed ordering with the active sort retained; exclude saved-sort deletion or a missing sort chip."
+      },
+      "reviewEvidence": {
+        "basis": "Both independent reviewers reproduced the narrowed ordering defect twice with fresh Tasks and passing saved-sort/reload, unsorted and same-column controls. Coordinator verified subscription billing, source and explicit maintainer destination-sort contract, original Mo linkage, actual settled/reload screenshots, official order/mutation readbacks and retained recording files.",
+        "sourceRevision": "35c645064f72bc4e3180a2c6c506cbbfee170007",
+        "severityReason": "The active sort ceases governing board order during ordinary supported cross-column editing.",
+        "sourceReferences": [
+          "https://github.com/twentyhq/twenty/blob/35c645064f72bc4e3180a2c6c506cbbfee170007/packages/twenty-front/src/modules/object-record/record-board/utils/getBoardCardDropBehavior.ts#L10-L16",
+          "https://github.com/twentyhq/twenty/blob/35c645064f72bc4e3180a2c6c506cbbfee170007/packages/twenty-front/src/modules/object-record/record-board/record-board-dnd/hooks/useRecordBoardDndKit.ts#L157-L196",
+          "https://github.com/twentyhq/twenty/blob/35c645064f72bc4e3180a2c6c506cbbfee170007/packages/twenty-front/src/modules/object-record/record-board/hooks/useGetRecordBoardEffectsForUpdateInputs.ts#L60-L92",
+          "https://github.com/twentyhq/twenty/blob/35c645064f72bc4e3180a2c6c506cbbfee170007/packages/twenty-front/src/modules/object-record/record-board/hooks/useRepositionRecordsOnBoard.ts#L119-L139",
+          "https://github.com/twentyhq/twenty/commit/011afa6011a14d05b08a8ad0338b8205b4a18d97"
+        ],
+        "limitations": [
+          "The original headline that the saved sort or its chip disappears did not reproduce and is excluded.",
+          "Exact wrong orders differ with manual positions; the shared verified defect is ordering inconsistent with the retained active Title sort.",
+          "Other objects, roles, bulk updates and side-panel/keyboard Task entry points are not jointly browser established.",
+          "Some update shapes refetch instead of repositioning; this is not a claim that every sorted board update fails.",
+          "The inspected newer source retains the relevant ordering path; newer runtime was not tested."
+        ]
+      }
     }
   ]
 }
