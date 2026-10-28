@@ -682,18 +682,50 @@
     },
     {
       "id": "workflows-N67",
-      "name": "Restoring a previously active workflow leaves a false Active badge until refetch",
-      "summary": "After successful deletion and restoration of an active workflow, the editor retains an Active badge although deletion deactivated the workflow; reloading or reopening corrects it.",
-      "expected": "After Restore completes, the activation badge should reflect the workflow's saved Deactivated state.",
-      "actual": "After successful Restore and waits of five to ten seconds or more, the editor still shows green Active. Reloading or reopening the same workflow shows Deactivated. Deletion intentionally deactivates the workflow; this report concerns the stale badge, not an expectation that Restore reactivates it. No execution failure or data loss was demonstrated.",
+      "name": "Deleting an active workflow leaves a false Active badge before or after Restore until refetch",
+      "summary": "Deletion deactivates an active workflow on the server, but its open record can retain the Active badge both while deleted and after restoration until refetched.",
+      "expected": "After deletion or restoration, the workflow activation badge should reflect the saved Deactivated state.",
+      "actual": "After successful Restore and waits of five to ten seconds or more, the editor still shows green Active. Reloading or reopening the same workflow shows Deactivated. Deletion intentionally deactivates the workflow; this report concerns the stale badge, not an expectation that Restore reactivates it. No execution failure or data loss was demonstrated. The stale Active badge is also visible with the deleted banner before Restore. Deleting an already deactivated workflow displays Deactivated correctly.",
       "reproSteps": [
         "Sign in as Tim Apple and create a uniquely named workflow with Launch manually and a one-second Delay. Activate it and confirm Active remains after a normal reload.",
         "Open its command menu and choose Delete Workflow. Confirm the deletion.",
         "Choose Restore Workflow and confirm the restoration. Observe that the graph returns and the editor still displays Active.",
         "Wait at least ten seconds. Confirm the badge remains Active rather than correcting itself.",
-        "Reload or leave and reopen the workflow. Observe the badge now reads Deactivated. Repeat on a fresh workflow; both desktop and tablet width reproduce the stale badge."
+        "Reload or leave and reopen the workflow. Observe the badge now reads Deactivated. Repeat on a fresh workflow; both desktop and tablet width reproduce the stale badge.",
+        "Additional verified variation: Inspect the stale Active badge immediately after deleting the active workflow, before Restore. Create and activate a disposable owned workflow. Delete it from its open record and inspect the deleted banner and activation badge. Restore, reload and inspect its deactivated state. Compare ordinary Deactivate and deletion of an already deactivated workflow."
       ],
-      "severity": 1
+      "severity": 1,
+      "reviewEvidence": {
+        "additionalReproductions": [
+          {
+            "name": "Deleted active workflow keeps an Active badge until refresh",
+            "reproSteps": [
+              "Create and activate a disposable owned workflow.",
+              "Delete it from its open record and inspect the deleted banner and activation badge.",
+              "Restore, reload and inspect its deactivated state.",
+              "Compare ordinary Deactivate and deletion of an already deactivated workflow."
+            ],
+            "reviewEvidence": {
+              "basis": "Codex-only approval under the user’s updated authorization: completed official Codex Pro review plus coordinator-checked actual evidence, source and contract. Claude agreement is not required by this policy; existing comparison history is preserved.",
+              "sourceRevision": "35c645064f72bc4e3180a2c6c506cbbfee170007",
+              "severityReason": "Completed Codex assigns severity 1 to the narrowly described observed failure.",
+              "sourceReferences": [
+                "https://github.com/twentyhq/twenty/blob/35c645064f72bc4e3180a2c6c506cbbfee170007/packages/twenty-front/src/modules/command-menu-item/engine-command/record/components/DeleteRecordsCommand.tsx#L35-L75",
+                "https://github.com/twentyhq/twenty/blob/35c645064f72bc4e3180a2c6c506cbbfee170007/packages/twenty-front/src/modules/object-record/hooks/useIncrementalDeleteManyRecords.ts#L77-L179",
+                "https://github.com/twentyhq/twenty/blob/35c645064f72bc4e3180a2c6c506cbbfee170007/packages/twenty-front/src/modules/object-record/hooks/useIncrementalDeleteManyRecords.ts#L223-L250",
+                "https://github.com/twentyhq/twenty/blob/35c645064f72bc4e3180a2c6c506cbbfee170007/packages/twenty-front/src/modules/object-record/hooks/useDeleteManyRecordsMutation.ts#L28-L36"
+              ],
+              "limitations": [
+                "Three owned workflows share one fixture. No continued execution or backend-active state after deletion was established.",
+                "This entry covers the still-deleted record, not an Active badge appearing only after Restore.",
+                "Approved under the Codex-only policy; no completed independent Claude comparison is claimed.",
+                "Source inspected at the pinned revision; newer runtime was not tested."
+              ]
+            }
+          }
+        ]
+      },
+      "matchingGuidance": "One stale-activation reference covers the same Active badge continuing across successful deletion and restoration of a previously active workflow. Either lifecycle observation is sufficient; do not require both or infer continued execution, backend activation or record loss."
     },
     {
       "id": "workflows-N69",
@@ -1255,16 +1287,17 @@
       "name": "Resizing the workflow Test form clears saved answers and submits empty output",
       "severity": 3,
       "owningArea": "twenty/workflows",
-      "summary": "Crossing the mobile breakpoint with a desktop workflow-editor Test form open clears already-saved Text, Number and Company Record answers; Submit can complete with an empty result.",
+      "summary": "Crossing the mobile breakpoint with a pending workflow-editor Test form clears saved Text, Number, Company Record or Task Status Select answers; Submit can complete with empty output.",
       "expected": "Changing the viewport layout of the same pending Form should retain its saved answers and submit those answers.",
-      "actual": "After valid answers had autosaved, crossing 769 to 768 pixels cleared all three fields without warning. Returning to desktop left them blank, and Submit completed with {}. No-resize controls submitted populated results; the full Workflow Run page retained saved valid answers across resizing.",
+      "actual": "After valid answers had autosaved, crossing 769 to 768 pixels cleared all three fields without warning. Returning to desktop left them blank, and Submit completed with {}. No-resize controls submitted populated results; the full Workflow Run page retained saved valid answers across resizing. The same breakpoint reset reproduces with a saved Task Status Select answer: In progress becomes No Status, and submission can complete empty although a fresh run readback still retains the earlier draft answer.",
       "reproSteps": [
         "Create a fresh manual workflow with a Form containing Text, Number and a Company Record field.",
         "At desktop width, run Test from the workflow editor so the pending form opens in the side panel.",
         "Enter a unique Text answer, a valid Number and a selected Company. Wait several seconds for autosave.",
         "Narrow the window from above 768 CSS pixels to 768 or less without navigation. Observe every answer reset without a warning; returning to desktop does not restore them.",
         "Click Submit and inspect Form output. Observe successful completion with an empty object instead of the earlier answers.",
-        "As controls, submit populated answers without crossing the breakpoint, resize within the same layout, or open the full Workflow Run record page and resize after saving valid answers."
+        "As controls, submit populated answers without crossing the breakpoint, resize within the same layout, or open the full Workflow Run record page and resize after saving valid answers.",
+        "Additional verified variation: Use a saved Task Status Select answer in the same pending Test side panel and cross the 768px breakpoint. Create a manual workflow containing a Form with a Select sourced from Task Status. Open Test at desktop width. Select In progress, wait at least four seconds, and confirm saving completes. Resize from 769px to 768px and observe No Status. Return to desktop and observe the answer remains cleared. Submit and inspect completed Form output: it can be empty. Compare submitting without resizing and opening the full Workflow Run page, which retain the selected answer."
       ],
       "sourceCause": "The layout switches between different desktop and mobile panel trees. Remounting initializes local answers from a stale separate flow snapshot; autosave updates the run and cache but not that snapshot. The full-run-page visualizer synchronizes flow and preserves saved values.",
       "reviewEvidence": {
@@ -1294,12 +1327,38 @@
           "Scope is the workflow-editor Test side panel after valid answers have saved. Fast edits before autosave on the full run page and untested field types are excluded.",
           "A shared root cause with recovered-13 is inferred, not established for that older report.",
           "Latest was source-inspected only."
+        ],
+        "additionalReproductions": [
+          {
+            "name": "Resizing a pending workflow form clears its saved Status selection",
+            "reproSteps": [
+              "Create a manual workflow containing a Form with a Select sourced from Task Status. Open Test at desktop width.",
+              "Select In progress, wait at least four seconds, and confirm saving completes.",
+              "Resize from 769px to 768px and observe No Status. Return to desktop and observe the answer remains cleared.",
+              "Submit and inspect completed Form output: it can be empty. Compare submitting without resizing and opening the full Workflow Run page, which retain the selected answer."
+            ],
+            "reviewEvidence": {
+              "basis": "Completed official Codex Pro positive, retained actual evidence and coordinator source/contract checks under the user-authorized Codex-only approval policy. Claude comparison history remains private and is not required for approval.",
+              "sourceRevision": "35c645064f72bc4e3180a2c6c506cbbfee170007",
+              "severityReason": "Completed Codex assigns severity 3 to the stated observed failure.",
+              "sourceReferences": [
+                "https://github.com/twentyhq/twenty/blob/35c645064f72bc4e3180a2c6c506cbbfee170007/packages/twenty-docs/user-guide/workflows/capabilities/workflow-actions.mdx#L178-L196",
+                "https://github.com/twentyhq/twenty/blob/35c645064f72bc4e3180a2c6c506cbbfee170007/packages/twenty-front/src/modules/ui/layout/page/components/MainAppLayoutWithSidePanel.tsx#L129-L140",
+                "https://github.com/twentyhq/twenty/blob/35c645064f72bc4e3180a2c6c506cbbfee170007/packages/twenty-front/src/modules/ui/utilities/responsive/hooks/useIsMobile.ts#L1-L5",
+                "https://github.com/twentyhq/twenty/blob/35c645064f72bc4e3180a2c6c506cbbfee170007/packages/twenty-front/src/modules/workflow/hooks/useRunWorkflowRunOpeningInSidePanelEffects.ts#L40-L115",
+                "https://github.com/twentyhq/twenty/blob/35c645064f72bc4e3180a2c6c506cbbfee170007/packages/twenty-front/src/modules/side-panel/pages/workflow/step/view-run/components/SidePanelWorkflowRunViewStepContent.tsx#L51-L87"
+              ],
+              "limitations": [
+                "Scope is Task Status Select in the pending side-panel form. Text-only resizing is already covered by the related entry.",
+                "Saved draft storage remains intact after resizing; the reset local form can submit an empty response. No claim that resizing itself erases durable draft data.",
+                "Two fresh workflows share one fixture. Other Select sources, member roles and downstream effects were not tested.",
+                "Codex-only approval; no independent Claude agreement is represented. Latest runtime was not tested."
+              ]
+            }
+          }
         ]
       },
-      "matchingGuidance": {
-        "relatedReference": "workflows-recovered-13",
-        "distinction": "Recovered-13 loses pending answers after opening the selected Company and returning with panel Back. This entry loses saved answers solely by crossing the desktop/mobile layout breakpoint, with no record navigation, and confirms empty submitted Form output."
-      }
+      "matchingGuidance": "Count answer loss from the pending Test side panel crossing the mobile breakpoint once, regardless of which verified field type demonstrates it. Text, Number, Company Record and Task Status Select are covered; do not require every field type. Exclude ordinary unsaved hard-refresh interruptions and unsupported source selection."
     },
     {
       "id": "workflows-pass2-b67946f7",
@@ -3339,42 +3398,6 @@
       }
     },
     {
-      "id": "workflows-loop-644dd61d",
-      "name": "Deleted active workflow keeps an Active badge until refresh",
-      "severity": 1,
-      "owningArea": "twenty/workflows",
-      "summary": "Deleting an active workflow leaves its open record showing both a deleted banner and an Active badge.",
-      "expected": "The workflow record should reflect the deactivation performed by deletion rather than continuing to display Active.",
-      "actual": "After deleting active workflows, the open record displays a deleted-record banner together with Active. After Restore and reload, the version shows Deactivated. Deleting an already deactivated workflow displays Deactivated correctly.",
-      "reproSteps": [
-        "Create and activate a disposable owned workflow.",
-        "Delete it from its open record and inspect the deleted banner and activation badge.",
-        "Restore, reload and inspect its deactivated state.",
-        "Compare ordinary Deactivate and deletion of an already deactivated workflow."
-      ],
-      "sourceCause": "Deletion deactivates the workflow on the server, but the open workflow activation presentation is not refreshed consistently. Missing client invalidation is inferred from the display and source paths.",
-      "matchingGuidance": {
-        "distinction": "This entry covers the still-deleted record, not an Active badge appearing only after Restore."
-      },
-      "reviewEvidence": {
-        "basis": "Codex-only approval under the user’s updated authorization: completed official Codex Pro review plus coordinator-checked actual evidence, source and contract. Claude agreement is not required by this policy; existing comparison history is preserved.",
-        "sourceRevision": "35c645064f72bc4e3180a2c6c506cbbfee170007",
-        "severityReason": "Completed Codex assigns severity 1 to the narrowly described observed failure.",
-        "sourceReferences": [
-          "https://github.com/twentyhq/twenty/blob/35c645064f72bc4e3180a2c6c506cbbfee170007/packages/twenty-front/src/modules/command-menu-item/engine-command/record/components/DeleteRecordsCommand.tsx#L35-L75",
-          "https://github.com/twentyhq/twenty/blob/35c645064f72bc4e3180a2c6c506cbbfee170007/packages/twenty-front/src/modules/object-record/hooks/useIncrementalDeleteManyRecords.ts#L77-L179",
-          "https://github.com/twentyhq/twenty/blob/35c645064f72bc4e3180a2c6c506cbbfee170007/packages/twenty-front/src/modules/object-record/hooks/useIncrementalDeleteManyRecords.ts#L223-L250",
-          "https://github.com/twentyhq/twenty/blob/35c645064f72bc4e3180a2c6c506cbbfee170007/packages/twenty-front/src/modules/object-record/hooks/useDeleteManyRecordsMutation.ts#L28-L36"
-        ],
-        "limitations": [
-          "Three owned workflows share one fixture. No continued execution or backend-active state after deletion was established.",
-          "This entry covers the still-deleted record, not an Active badge appearing only after Restore.",
-          "Approved under the Codex-only policy; no completed independent Claude comparison is claimed.",
-          "Source inspected at the pinned revision; newer runtime was not tested."
-        ]
-      }
-    },
-    {
       "id": "workflows-loop-af546766",
       "name": "Update Record ignores a saved No currency selection",
       "severity": 3,
@@ -3596,21 +3619,23 @@
     },
     {
       "id": "workflows-loop-b6c92626",
-      "name": "Adding a disconnected Filter after Iterator conversion crashes the editor",
+      "name": "Adding an action after converting an existing placeholder to Iterator crashes the workflow editor",
       "severity": 5,
       "owningArea": "twenty/workflows",
-      "summary": "After replacing an existing If/Else Else placeholder with Iterator, adding a disconnected Filter through header Add a Node replaces the workflow editor with Sorry, something went wrong / Please refresh the page. Two fresh workflows reproduce; reload retains the saved Filter and restores editable configuration.",
-      "expected": "Adding a supported Filter should preserve the editor and create a usable node.",
-      "actual": "After replacing an existing If/Else Else placeholder with Iterator, adding a disconnected Filter through header Add a Node replaces the workflow editor with Sorry, something went wrong / Please refresh the page. Two fresh workflows reproduce; reload retains the saved Filter and restores editable configuration.",
+      "summary": "After converting an existing Else or Iterator-child placeholder to Iterator, subsequent Filter or Create Record insertion can replace the workflow editor with a recoverable page error.",
+      "expected": "Adding an offered action after placeholder-to-Iterator conversion should keep the editor usable.",
+      "actual": "After replacing an existing If/Else Else placeholder with Iterator, adding a disconnected Filter through header Add a Node replaces the workflow editor with Sorry, something went wrong / Please refresh the page. Two fresh workflows reproduce; reload retains the saved Filter and restores editable configuration. Connected Filter insertion through the converted Iterator loop connector also crashes before reload. Converting an outer Iterator child placeholder to a nested Iterator and choosing Create Record from its loop handle produces the same editor crash on two fresh workflows; reload recovers.",
       "reproSteps": [
         "Create an owned manual workflow containing Code and If/Else.",
         "Replace the existing Else branch placeholder with Iterator, preserving the live diagram without reload.",
         "Use the header Add a Node action to add a disconnected Filter. Observe the main editor crash while the navigation sidebar remains.",
-        "Reload to recover and configure the saved Filter; compare connected branch Filter insertion and header insertion after reload."
+        "Reload to recover and configure the saved Filter; compare connected branch Filter insertion and header insertion after reload.",
+        "Additional verified variation: After converting an Else placeholder to Iterator, insert Filter from the loop connector instead of the header. Create a manual workflow with an If/Else action. Configure a condition and change its Else placeholder action to Iterator. Set Iterator items to Alpha and Beta and leave the editor to save. Without reloading the workflow, drag the Iterator loop connector onto blank canvas and choose Filter. Observe the page-content error instead of Filter Conditions. Reload; the saved Filter can then be opened and edited. Compare a fresh Iterator created directly from Add Node: dragging its loop connector and choosing Filter opens Conditions successfully, including with saved Alpha and Beta items.",
+        "Additional verified variation: Convert an outer Iterator child placeholder into a nested Iterator, then insert Create Record from its loop handle. Create a manual workflow with an outer Iterator and two literal items. Select its existing Add an Action child placeholder and change its action type to Iterator. Drag from the inner Iterator’s loop handle to open Select Action, then choose Create Record. Observe the full-page error. Reload to recover. Compare a fresh nested Iterator created through the outer loop edge’s plus insertion control; adding its Create Record action keeps the editor usable."
       ],
       "matchingGuidance": {
-        "distinction": "Iterator conversion is the new related trigger; ordinary If/Else conversion crashes remain existing N45 coverage and add no separate yield.",
-        "relatedReferenceId": "workflows-N45"
+        "relatedReferenceId": "workflows-N45",
+        "distinction": "One reference covers editor crashes after converting an existing Else or Iterator-child placeholder to Iterator, then adding a Filter through the header or loop connector, or Create Record through the nested loop handle. These are compatible insertion variations, not separate discovery targets. Do not require every route. Ordinary If/Else conversion remains N45 coverage; missing loop returns and execution after one item remain N51 coverage. No shared exact crash mechanism across all routes is established."
       },
       "reviewEvidence": {
         "basis": "Completed official Codex Pro positive, retained actual evidence and coordinator source/contract checks under the user-authorized Codex-only approval policy. Claude comparison history remains private and is not required for approval.",
@@ -3627,6 +3652,66 @@
           "Iterator conversion is the new related trigger; ordinary If/Else conversion crashes remain existing N45 coverage and add no separate yield.",
           "Two fresh workflows share one fixture. No execution failure, lost mappings or direct sparse-memory observation is claimed.",
           "Codex-only approval; no independent Claude agreement is represented. Latest runtime was not tested."
+        ],
+        "additionalReproductions": [
+          {
+            "name": "Adding a loop Filter after Iterator conversion crashes the workflow editor",
+            "reproSteps": [
+              "Create a manual workflow with an If/Else action. Configure a condition and change its Else placeholder action to Iterator.",
+              "Set Iterator items to Alpha and Beta and leave the editor to save. Without reloading the workflow, drag the Iterator loop connector onto blank canvas and choose Filter.",
+              "Observe the page-content error instead of Filter Conditions. Reload; the saved Filter can then be opened and edited.",
+              "Compare a fresh Iterator created directly from Add Node: dragging its loop connector and choosing Filter opens Conditions successfully, including with saved Alpha and Beta items."
+            ],
+            "reviewEvidence": {
+              "basis": "Completed official Codex Pro positive, retained actual evidence and coordinator source/contract checks under the user-authorized Codex-only approval policy. Claude comparison history remains private and is not required for approval.",
+              "sourceRevision": "35c645064f72bc4e3180a2c6c506cbbfee170007",
+              "severityReason": "Completed Codex assigns severity 5 to the stated observed failure.",
+              "sourceReferences": [
+                "https://github.com/twentyhq/twenty/blob/35c645064f72bc4e3180a2c6c506cbbfee170007/packages/twenty-docs/user-guide/workflows/capabilities/use-iterator.mdx#L118-L128",
+                "https://github.com/twentyhq/twenty/blob/35c645064f72bc4e3180a2c6c506cbbfee170007/packages/twenty-front/src/modules/side-panel/pages/workflow/step/edit/components/SidePanelWorkflowEditStepTypeContent.tsx#L45-L61",
+                "https://github.com/twentyhq/twenty/blob/35c645064f72bc4e3180a2c6c506cbbfee170007/packages/twenty-front/src/modules/workflow/workflow-steps/hooks/useUpdateStep.ts#L7-L21",
+                "https://github.com/twentyhq/twenty/blob/35c645064f72bc4e3180a2c6c506cbbfee170007/packages/twenty-front/src/modules/workflow/workflow-steps/hooks/useUpdateWorkflowVersionStep.ts#L49-L93",
+                "https://github.com/twentyhq/twenty/blob/35c645064f72bc4e3180a2c6c506cbbfee170007/packages/twenty-server/src/engine/core-modules/workflow/resolvers/workflow-version-step.resolver.ts#L79-L101",
+                "https://github.com/twentyhq/twenty/blob/35c645064f72bc4e3180a2c6c506cbbfee170007/packages/twenty-front/src/modules/workflow/workflow-steps/hooks/useApplyWorkflowVersionStepChanges.ts#L42-L65",
+                "https://github.com/twentyhq/twenty/blob/35c645064f72bc4e3180a2c6c506cbbfee170007/packages/twenty-shared/src/utils/applyDiff.ts#L123-L140",
+                "https://github.com/twentyhq/twenty/blob/35c645064f72bc4e3180a2c6c506cbbfee170007/packages/twenty-front/src/modules/workflow/utils/findStepPosition.ts#L23-L24"
+              ],
+              "limitations": [
+                "The full page-content crash is recoverable with Reload. No workflow execution was attempted and no permanent configuration loss or execution failure is claimed.",
+                "The client-array gap and causal synchronization sequence are inferred from source, returned indexed changes and the matching console stack; client memory was not instrumented. Two fresh original trials share one fixture. Other roles, mobile and all conversion paths are not generalized.",
+                "Codex-only approval; no independent Claude agreement is represented. Latest runtime was not tested."
+              ]
+            }
+          },
+          {
+            "name": "Adding Create Record to a converted nested Iterator crashes the editor",
+            "reproSteps": [
+              "Create a manual workflow with an outer Iterator and two literal items.",
+              "Select its existing Add an Action child placeholder and change its action type to Iterator.",
+              "Drag from the inner Iterator’s loop handle to open Select Action, then choose Create Record. Observe the full-page error.",
+              "Reload to recover. Compare a fresh nested Iterator created through the outer loop edge’s plus insertion control; adding its Create Record action keeps the editor usable."
+            ],
+            "reviewEvidence": {
+              "basis": "Completed official Codex Pro positive, retained actual evidence and coordinator source/contract checks under the user-authorized Codex-only approval policy. Claude comparison history remains private and is not required for approval.",
+              "sourceRevision": "35c645064f72bc4e3180a2c6c506cbbfee170007",
+              "severityReason": "Completed Codex assigns severity 5 to the stated observed failure.",
+              "sourceReferences": [
+                "https://github.com/twentyhq/twenty/blob/35c645064f72bc4e3180a2c6c506cbbfee170007/packages/twenty-docs/user-guide/workflows/capabilities/use-iterator.mdx#L20-L24",
+                "https://github.com/twentyhq/twenty/blob/35c645064f72bc4e3180a2c6c506cbbfee170007/packages/twenty-front/src/modules/side-panel/pages/workflow/step/edit/components/SidePanelWorkflowEditStepTypeContent.tsx#L40-L61",
+                "https://github.com/twentyhq/twenty/blob/35c645064f72bc4e3180a2c6c506cbbfee170007/packages/twenty-front/src/modules/workflow/workflow-steps/hooks/useUpdateWorkflowVersionStep.ts#L46-L96",
+                "https://github.com/twentyhq/twenty/blob/35c645064f72bc4e3180a2c6c506cbbfee170007/packages/twenty-server/src/engine/core-modules/workflow/resolvers/workflow-version-step.resolver.ts#L91-L101",
+                "https://github.com/twentyhq/twenty/blob/35c645064f72bc4e3180a2c6c506cbbfee170007/packages/twenty-server/src/modules/workflow/workflow-builder/workflow-version-step/workflow-version-step.workspace-service.ts#L38-L53",
+                "https://github.com/twentyhq/twenty/blob/35c645064f72bc4e3180a2c6c506cbbfee170007/packages/twenty-server/src/modules/workflow/workflow-builder/workflow-version-step/workflow-version-step-update.workspace-service.ts#L120-L143",
+                "https://github.com/twentyhq/twenty/blob/35c645064f72bc4e3180a2c6c506cbbfee170007/packages/twenty-server/src/modules/workflow/workflow-builder/workflow-version-step/workflow-version-step-operations.workspace-service.ts#L596-L618"
+              ],
+              "limitations": [
+                "The same converted graphs also contain a missing loop return and fail after one item; that execution defect is already covered by workflows-N51 and adds no separate finding here.",
+                "Two fresh workflows at desktop widths 1280 and 1700, one owned admin fixture. Both executed error-page snapshots were checked; one original crash screenshot was retained. Reload recovers. Other roles and creation paths were not tested.",
+                "A missing generated child in local state is a source-supported explanation, but the minified crash stack was not mapped and exact client event ordering was not traced.",
+                "Codex-only approval; no independent Claude agreement is represented. Latest runtime was not tested."
+              ]
+            }
+          }
         ]
       }
     },
@@ -3699,43 +3784,6 @@
         "limitations": [
           "The failure depends on intermediate input updates: whole-value replacement and some faster typing controls preserve the sign. It is not a universal prohibition on negative numbers.",
           "Primary scope is saved numeric Filter configuration, distinct from runtime Form answers and Code parameters. Two fresh workflows share one fixture; no member-role or newer-runtime claim.",
-          "Codex-only approval; no independent Claude agreement is represented. Latest runtime was not tested."
-        ]
-      }
-    },
-    {
-      "id": "workflows-loop-9e1b932b",
-      "name": "Resizing a pending workflow form clears its saved Status selection",
-      "severity": 3,
-      "owningArea": "twenty/workflows",
-      "summary": "After a Task Status Select answer is saved as In progress, resizing the pending Test form from desktop to 768px resets it to No Status. Returning to desktop does not recover the answer, and submitting can complete with empty Form output. Two fresh workflows reproduce. A fresh run readback still retains the saved draft answer after the visible reset.",
-      "expected": "Changing the layout of the same pending form should preserve its successfully saved Status answer and submit that answer.",
-      "actual": "After a Task Status Select answer is saved as In progress, resizing the pending Test form from desktop to 768px resets it to No Status. Returning to desktop does not recover the answer, and submitting can complete with empty Form output. Two fresh workflows reproduce. A fresh run readback still retains the saved draft answer after the visible reset.",
-      "reproSteps": [
-        "Create a manual workflow containing a Form with a Select sourced from Task Status. Open Test at desktop width.",
-        "Select In progress, wait at least four seconds, and confirm saving completes.",
-        "Resize from 769px to 768px and observe No Status. Return to desktop and observe the answer remains cleared.",
-        "Submit and inspect completed Form output: it can be empty. Compare submitting without resizing and opening the full Workflow Run page, which retain the selected answer."
-      ],
-      "matchingGuidance": {
-        "distinction": "Scope is Task Status Select in the pending side-panel form. Text-only resizing is already covered by the related entry.",
-        "relatedReferenceId": "workflows-fresh-e7933534"
-      },
-      "reviewEvidence": {
-        "basis": "Completed official Codex Pro positive, retained actual evidence and coordinator source/contract checks under the user-authorized Codex-only approval policy. Claude comparison history remains private and is not required for approval.",
-        "sourceRevision": "35c645064f72bc4e3180a2c6c506cbbfee170007",
-        "severityReason": "Completed Codex assigns severity 3 to the stated observed failure.",
-        "sourceReferences": [
-          "https://github.com/twentyhq/twenty/blob/35c645064f72bc4e3180a2c6c506cbbfee170007/packages/twenty-docs/user-guide/workflows/capabilities/workflow-actions.mdx#L178-L196",
-          "https://github.com/twentyhq/twenty/blob/35c645064f72bc4e3180a2c6c506cbbfee170007/packages/twenty-front/src/modules/ui/layout/page/components/MainAppLayoutWithSidePanel.tsx#L129-L140",
-          "https://github.com/twentyhq/twenty/blob/35c645064f72bc4e3180a2c6c506cbbfee170007/packages/twenty-front/src/modules/ui/utilities/responsive/hooks/useIsMobile.ts#L1-L5",
-          "https://github.com/twentyhq/twenty/blob/35c645064f72bc4e3180a2c6c506cbbfee170007/packages/twenty-front/src/modules/workflow/hooks/useRunWorkflowRunOpeningInSidePanelEffects.ts#L40-L115",
-          "https://github.com/twentyhq/twenty/blob/35c645064f72bc4e3180a2c6c506cbbfee170007/packages/twenty-front/src/modules/side-panel/pages/workflow/step/view-run/components/SidePanelWorkflowRunViewStepContent.tsx#L51-L87"
-        ],
-        "limitations": [
-          "Scope is Task Status Select in the pending side-panel form. Text-only resizing is already covered by the related entry.",
-          "Saved draft storage remains intact after resizing; the reset local form can submit an empty response. No claim that resizing itself erases durable draft data.",
-          "Two fresh workflows share one fixture. Other Select sources, member roles and downstream effects were not tested.",
           "Codex-only approval; no independent Claude agreement is represented. Latest runtime was not tested."
         ]
       }
@@ -3895,46 +3943,6 @@
       }
     },
     {
-      "id": "workflows-loop-120fe257",
-      "name": "Adding a loop Filter after Iterator conversion crashes the workflow editor",
-      "severity": 5,
-      "owningArea": "twenty/workflows",
-      "summary": "After converting an existing Else placeholder to Iterator, dragging its loop connector onto the canvas and selecting Filter replaces the editor with Sorry, something went wrong and Reload. Two fresh workflows reproduce. A settled-input variation also fails with saved Alpha and Beta items. Reload reveals the saved Filter and restores Conditions.",
-      "expected": "Choosing an offered Filter through an Iterator loop connector should preserve a usable editor and open its Conditions.",
-      "actual": "After converting an existing Else placeholder to Iterator, dragging its loop connector onto the canvas and selecting Filter replaces the editor with Sorry, something went wrong and Reload. Two fresh workflows reproduce. A settled-input variation also fails with saved Alpha and Beta items. Reload reveals the saved Filter and restores Conditions.",
-      "reproSteps": [
-        "Create a manual workflow with an If/Else action. Configure a condition and change its Else placeholder action to Iterator.",
-        "Set Iterator items to Alpha and Beta and leave the editor to save. Without reloading the workflow, drag the Iterator loop connector onto blank canvas and choose Filter.",
-        "Observe the page-content error instead of Filter Conditions. Reload; the saved Filter can then be opened and edited.",
-        "Compare a fresh Iterator created directly from Add Node: dragging its loop connector and choosing Filter opens Conditions successfully, including with saved Alpha and Beta items."
-      ],
-      "matchingGuidance": {
-        "distinction": "This entry covers connected insertion through the Iterator loop connector after converting an existing Else placeholder. The related b6 entry covers disconnected Filter insertion through the header Add Node control.",
-        "relatedReferenceId": "workflows-loop-b6c92626"
-      },
-      "reviewEvidence": {
-        "basis": "Completed official Codex Pro positive, retained actual evidence and coordinator source/contract checks under the user-authorized Codex-only approval policy. Claude comparison history remains private and is not required for approval.",
-        "sourceRevision": "35c645064f72bc4e3180a2c6c506cbbfee170007",
-        "severityReason": "Completed Codex assigns severity 5 to the stated observed failure.",
-        "sourceReferences": [
-          "https://github.com/twentyhq/twenty/blob/35c645064f72bc4e3180a2c6c506cbbfee170007/packages/twenty-docs/user-guide/workflows/capabilities/use-iterator.mdx#L118-L128",
-          "https://github.com/twentyhq/twenty/blob/35c645064f72bc4e3180a2c6c506cbbfee170007/packages/twenty-front/src/modules/side-panel/pages/workflow/step/edit/components/SidePanelWorkflowEditStepTypeContent.tsx#L45-L61",
-          "https://github.com/twentyhq/twenty/blob/35c645064f72bc4e3180a2c6c506cbbfee170007/packages/twenty-front/src/modules/workflow/workflow-steps/hooks/useUpdateStep.ts#L7-L21",
-          "https://github.com/twentyhq/twenty/blob/35c645064f72bc4e3180a2c6c506cbbfee170007/packages/twenty-front/src/modules/workflow/workflow-steps/hooks/useUpdateWorkflowVersionStep.ts#L49-L93",
-          "https://github.com/twentyhq/twenty/blob/35c645064f72bc4e3180a2c6c506cbbfee170007/packages/twenty-server/src/engine/core-modules/workflow/resolvers/workflow-version-step.resolver.ts#L79-L101",
-          "https://github.com/twentyhq/twenty/blob/35c645064f72bc4e3180a2c6c506cbbfee170007/packages/twenty-front/src/modules/workflow/workflow-steps/hooks/useApplyWorkflowVersionStepChanges.ts#L42-L65",
-          "https://github.com/twentyhq/twenty/blob/35c645064f72bc4e3180a2c6c506cbbfee170007/packages/twenty-shared/src/utils/applyDiff.ts#L123-L140",
-          "https://github.com/twentyhq/twenty/blob/35c645064f72bc4e3180a2c6c506cbbfee170007/packages/twenty-front/src/modules/workflow/utils/findStepPosition.ts#L23-L24"
-        ],
-        "limitations": [
-          "This entry covers connected insertion through the Iterator loop connector after converting an existing Else placeholder. The related b6 entry covers disconnected Filter insertion through the header Add Node control.",
-          "The full page-content crash is recoverable with Reload. No workflow execution was attempted and no permanent configuration loss or execution failure is claimed.",
-          "The client-array gap and causal synchronization sequence are inferred from source, returned indexed changes and the matching console stack; client memory was not instrumented. Two fresh original trials share one fixture. Other roles, mobile and all conversion paths are not generalized.",
-          "Codex-only approval; no independent Claude agreement is represented. Latest runtime was not tested."
-        ]
-      }
-    },
-    {
       "id": "workflows-loop-00ad1c24",
       "name": "Discarded workflow versions offer a Restore action that always fails",
       "severity": 3,
@@ -4049,46 +4057,6 @@
           "This entry covers automatic placement after deleting the sole Iterator loop body and adding Create Record from the empty loop edge. Workflow duplication and Else-if route layout have different triggers.",
           "GUI-only overlap: action settings remain accessible and a Note-creation test completes. No workflow execution failure, data loss or independent impact from deletion toasts is claimed.",
           "Two fresh workflows on one fixture, admin at 1280×720 and 1600×1000. Other replacement action types, roles and newer runtime were not tested; relevant newer source presence is not runtime proof.",
-          "Codex-only approval; no independent Claude agreement is represented. Latest runtime was not tested."
-        ]
-      }
-    },
-    {
-      "id": "workflows-loop-3faca6f5",
-      "name": "Adding Create Record to a converted nested Iterator crashes the editor",
-      "severity": 5,
-      "owningArea": "twenty/workflows",
-      "summary": "After converting an outer Iterator’s existing child placeholder into an inner Iterator, dragging from the inner loop handle and selecting Create Record opens a full-page error. The sequence reproduced on two fresh workflows; reloading recovers the editor.",
-      "expected": "Adding a supported action inside a nested Iterator should keep the workflow editor usable.",
-      "actual": "After converting an outer Iterator’s existing child placeholder into an inner Iterator, dragging from the inner loop handle and selecting Create Record opens a full-page error. The sequence reproduced on two fresh workflows; reloading recovers the editor.",
-      "reproSteps": [
-        "Create a manual workflow with an outer Iterator and two literal items.",
-        "Select its existing Add an Action child placeholder and change its action type to Iterator.",
-        "Drag from the inner Iterator’s loop handle to open Select Action, then choose Create Record. Observe the full-page error.",
-        "Reload to recover. Compare a fresh nested Iterator created through the outer loop edge’s plus insertion control; adding its Create Record action keeps the editor usable."
-      ],
-      "matchingGuidance": {
-        "distinction": "This entry covers the editor crash after converting an outer Iterator child placeholder to Iterator and choosing Create Record from its loop handle. The related Else-placeholder conversion followed by Filter insertion has a different starting graph and action.",
-        "relatedReferenceId": "workflows-loop-120fe257"
-      },
-      "reviewEvidence": {
-        "basis": "Completed official Codex Pro positive, retained actual evidence and coordinator source/contract checks under the user-authorized Codex-only approval policy. Claude comparison history remains private and is not required for approval.",
-        "sourceRevision": "35c645064f72bc4e3180a2c6c506cbbfee170007",
-        "severityReason": "Completed Codex assigns severity 5 to the stated observed failure.",
-        "sourceReferences": [
-          "https://github.com/twentyhq/twenty/blob/35c645064f72bc4e3180a2c6c506cbbfee170007/packages/twenty-docs/user-guide/workflows/capabilities/use-iterator.mdx#L20-L24",
-          "https://github.com/twentyhq/twenty/blob/35c645064f72bc4e3180a2c6c506cbbfee170007/packages/twenty-front/src/modules/side-panel/pages/workflow/step/edit/components/SidePanelWorkflowEditStepTypeContent.tsx#L40-L61",
-          "https://github.com/twentyhq/twenty/blob/35c645064f72bc4e3180a2c6c506cbbfee170007/packages/twenty-front/src/modules/workflow/workflow-steps/hooks/useUpdateWorkflowVersionStep.ts#L46-L96",
-          "https://github.com/twentyhq/twenty/blob/35c645064f72bc4e3180a2c6c506cbbfee170007/packages/twenty-server/src/engine/core-modules/workflow/resolvers/workflow-version-step.resolver.ts#L91-L101",
-          "https://github.com/twentyhq/twenty/blob/35c645064f72bc4e3180a2c6c506cbbfee170007/packages/twenty-server/src/modules/workflow/workflow-builder/workflow-version-step/workflow-version-step.workspace-service.ts#L38-L53",
-          "https://github.com/twentyhq/twenty/blob/35c645064f72bc4e3180a2c6c506cbbfee170007/packages/twenty-server/src/modules/workflow/workflow-builder/workflow-version-step/workflow-version-step-update.workspace-service.ts#L120-L143",
-          "https://github.com/twentyhq/twenty/blob/35c645064f72bc4e3180a2c6c506cbbfee170007/packages/twenty-server/src/modules/workflow/workflow-builder/workflow-version-step/workflow-version-step-operations.workspace-service.ts#L596-L618"
-        ],
-        "limitations": [
-          "This entry covers the editor crash after converting an outer Iterator child placeholder to Iterator and choosing Create Record from its loop handle. The related Else-placeholder conversion followed by Filter insertion has a different starting graph and action.",
-          "The same converted graphs also contain a missing loop return and fail after one item; that execution defect is already covered by workflows-N51 and adds no separate finding here.",
-          "Two fresh workflows at desktop widths 1280 and 1700, one owned admin fixture. Both executed error-page snapshots were checked; one original crash screenshot was retained. Reload recovers. Other roles and creation paths were not tested.",
-          "A missing generated child in local state is a source-supported explanation, but the minified crash stack was not mapped and exact client event ordering was not traced.",
           "Codex-only approval; no independent Claude agreement is represented. Latest runtime was not tested."
         ]
       }
