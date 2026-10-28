@@ -1885,6 +1885,79 @@
           "The inspected newer Workspace source retains the pattern; newer runtime was not tested."
         ]
       }
+    },
+    {
+      "id": "settings-data-model-pass3-cc217943",
+      "name": "Object Settings autosave resets newer edits in another field and persists a corrupted name",
+      "severity": 3,
+      "owningArea": "twenty/settings-data-model",
+      "summary": "Completion of an earlier object-settings save resets the whole form, overwriting newer Plural or Description typing.",
+      "expected": "Saving one field should preserve newer edits already being entered into another field.",
+      "actual": "After editing Singular and immediately typing Plural, the earlier save completion resets Plural to its generated value during typing. Remaining characters append and the mixed label/API name persists after saving and reload. Description edits also reproduce.",
+      "reproSteps": [
+        "Create a fresh custom object and open its Settings tab.",
+        "Change Singular, leave that field and immediately type a manual Plural before the earlier save finishes.",
+        "Observe Plural reset during typing; finish typing, allow saves to complete and reload to confirm the mixed persisted value.",
+        "Compare waiting for the Singular save before editing Plural and the New Object form; both preserve the intended input. Repeat with Description as the second field."
+      ],
+      "sourceCause": "Blur starts save with captured whole formValues; after mutation and awaited metadata query, formConfig.reset(formValues) restores older snapshot over live edits. Following blur stores altered value.",
+      "reviewEvidence": {
+        "basis": "Independent browser/source verification, coordinator checks and explicit user acceptance at severity 3.",
+        "userAccepted": true,
+        "sourceRevision": "35c645064f72bc4e3180a2c6c506cbbfee170007",
+        "severityReason": "Ordinary sequential field editing overwrites newer input and persists corrupted object labels/API names.",
+        "analysis": [
+          "Both reviewers reproduced on two fresh objects using ordinary keyboard input; mouse and Description variations also reproduce.",
+          "Waited-save and New Object controls pass. Reload confirms already-completed saved corruption rather than interrupting a pending save."
+        ],
+        "limitations": [
+          "No record loss or downstream workflow execution failure was established.",
+          "Distinct from cross-tab draft loss and the navigation-URL clear/append defect.",
+          "The inspected newer source retains the mechanism; newer runtime was not tested."
+        ],
+        "sourceReferences": [
+          "https://github.com/twentyhq/twenty/blob/35c645064f72bc4e3180a2c6c506cbbfee170007/packages/twenty-front/src/modules/settings/data-model/object-details/components/SettingsUpdateDataModelObjectAboutForm.tsx#L74-L125",
+          "https://github.com/twentyhq/twenty/blob/a6372e288ade9ed14ac2af1a7e224dabb6cc6021/packages/twenty-front/src/modules/settings/data-model/object-details/hooks/useSaveUpdateDataModelObjectAboutForm.ts#L100-L144",
+          "https://github.com/twentyhq/twenty/commit/d16b94bde64132b6d06815288d8cb1512944ce9e"
+        ]
+      }
+    },
+    {
+      "id": "settings-data-model-pass3-d76f5f6b",
+      "name": "Net-zero keyboard editing of Select options silently erases saved selections",
+      "severity": 3,
+      "owningArea": "twenty/settings-data-model",
+      "summary": "Correcting a transient typo in Bulk edit changes an existing Select or Multi-select option’s internal identity and erases records’ saved selections despite unchanged final labels.",
+      "expected": "Restoring the original option label before saving should preserve the option identity and existing record selections.",
+      "actual": "Typing Firstx and then deleting x leaves the final label First unchanged, but Save/reload clears records selecting First. Untouched Delta retains its saved selections.",
+      "reproSteps": [
+        "Create a Select or Multi-select field with options First and Delta and save records selecting each.",
+        "Open the field’s Bulk edit, place the caret after First, type x, then press Backspace so the final list matches the original.",
+        "Save the field and reload the records. Observe the First selection is empty while Delta remains.",
+        "Compare deleting only an unused option and performing the same corrected typo in Single edit; both preserve saved selections."
+      ],
+      "sourceCause": "Bulk textarea reparses each intermediate change against the latest draft options, losing original option identities. Restoring the original label generates another UUID. Server enum migration maps old values only by matching UUID and drops unmapped old storage values.",
+      "reviewEvidence": {
+        "basis": "Independent Claude and Codex browser/source reviews, focused Mo reproduction, coordinator review and explicit user acceptance at severity 3.",
+        "userAccepted": true,
+        "sourceRevision": "35c645064f72bc4e3180a2c6c506cbbfee170007",
+        "severityReason": "Ordinary editing of unchanged final option labels persistently erases saved record selections.",
+        "analysis": [
+          "Claude and independent Codex follow-up each reproduced ordinary keyboard First→Firstx→First on existing Select/Multi-select options. Final labels/API values are unchanged, option UUID changes, and saved First selection disappears after Save/reload while untouched Delta survives. Fresh focused Mo independently reproduced on Select and saved a completed reproduction window.",
+          "Both judges preserve IDs/selections when removing only an unused line and when performing the same net-zero edit in Single edit. Codex per-character full-list retyping additionally erased both saved Multi-select records.",
+          "The original unused-option-removal trigger did not reproduce and is excluded. The defect is unintended option identity replacement, not intended removal of a used option."
+        ],
+        "sourceReferences": [
+          "https://github.com/twentyhq/twenty/blob/35c645064f72bc4e3180a2c6c506cbbfee170007/packages/twenty-front/src/modules/settings/data-model/fields/forms/select/components/SettingsDataModelFieldSelectForm.tsx#L410-L421",
+          "https://github.com/twentyhq/twenty/blob/35c645064f72bc4e3180a2c6c506cbbfee170007/packages/twenty-front/src/modules/settings/data-model/fields/forms/select/utils/convertBulkTextToOptions.ts#L25-L41",
+          "https://github.com/twentyhq/twenty/blob/35c645064f72bc4e3180a2c6c506cbbfee170007/packages/twenty-server/src/engine/workspace-manager/workspace-migration/workspace-migration-runner/action-handlers/field/services/update-field-action-handler.service.ts#L658-L704"
+        ],
+        "limitations": [
+          "No direct database query; persisted API reads and UI reloads confirm loss.",
+          "Other roles/viewports untested.",
+          "Latest source retains mechanism; latest runtime untested."
+        ]
+      }
     }
   ]
 }

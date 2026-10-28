@@ -1019,6 +1019,119 @@
           "Newer runtime and exhaustive fix status were not established."
         ]
       }
+    },
+    {
+      "id": "records-views-pass3-1eb89be5",
+      "name": "Full-name Contains and Does not contain filters use incorrect per-word Boolean logic",
+      "severity": 3,
+      "owningArea": "twenty/records-views",
+      "summary": "Multi-word full-name filtering matches any entered word instead of requiring every word, causing overinclusion and overexclusion.",
+      "expected": "Each entered word should match either name component, regardless of word order. Contains should require every word; Does not contain should negate that complete match.",
+      "actual": "For Alpha Quartz, Alpha Onyx and Beta Quartz, Contains Alpha Quartz includes all three and Does not contain Alpha Quartz excludes all three. Single-word Name and ordinary Job Title controls work.",
+      "reproSteps": [
+        "Create fresh People named Alpha Quartz, Alpha Onyx and Beta Quartz.",
+        "Apply Name Contains Alpha Quartz and observe all three records rather than only Alpha Quartz.",
+        "Change to Does not contain Alpha Quartz and observe all three excluded rather than retaining Alpha Onyx and Beta Quartz.",
+        "Compare single-word Name filtering and a plain-text Job Title filter."
+      ],
+      "sourceCause": "Helper flattens token×name-component clauses; Contains ORs all clauses, negative operator ANDs each separate negation. Corrected helper ANDs per-token OR groups.",
+      "reviewEvidence": {
+        "basis": "Independent browser/source verification, maintainer fix evidence and explicit user acceptance at severity 3.",
+        "userAccepted": true,
+        "sourceRevision": "35c645064f72bc4e3180a2c6c506cbbfee170007",
+        "severityReason": "Ordinary multi-word Name filters return incorrect record sets for both inclusion and exclusion.",
+        "analysis": [
+          "Both reviewers repeated both operators on fresh records with passing single-word and text-field controls.",
+          "Captured requests establish the incorrect Boolean logic.",
+          "The older OR-per-word behavior was deliberate, but merged maintainer fix #24380 identifies partial-name matches as incorrect and requires all tokens.",
+          "The accepted contract allows either token order and does not require a literal phrase match."
+        ],
+        "limitations": [
+          "No crash or saved-data loss was observed.",
+          "Newer source and tests include the correction; newer runtime was not tested."
+        ],
+        "sourceReferences": [
+          "https://github.com/twentyhq/twenty/commit/17b690940053468fb2810ea1a10d05093d95d454",
+          "https://github.com/twentyhq/twenty/blob/35c645064f72bc4e3180a2c6c506cbbfee170007/packages/twenty-shared/src/utils/filter/turnRecordFilterIntoGqlOperationFilter.ts#L774-L803",
+          "https://github.com/twentyhq/twenty/blob/a6372e288ade9ed14ac2af1a7e224dabb6cc6021/packages/twenty-shared/src/utils/filter/utils/generateILikeFiltersForCompositeFields.ts#L32-L62"
+        ]
+      }
+    },
+    {
+      "id": "records-views-pass3-a753a406",
+      "name": "Switching a saved Calendar view to Table and back overwrites its date and layout settings",
+      "severity": 3,
+      "owningArea": "twenty/records-views",
+      "summary": "Returning a saved view to Calendar replaces its retained date-field, layout and end-field choices with defaults.",
+      "expected": "Returning the same saved view to Calendar should preserve its saved Calendar choices rather than overwrite them with defaults.",
+      "actual": "A saved Tasks Calendar using Due Date and Week resets to Creation date, Month and no end field after a Table round trip. Defaults are saved and survive reload. Task records themselves remain unchanged.",
+      "reproSteps": [
+        "Create a fresh Tasks Calendar view, select Due Date and Week, save and reload to confirm settings persist.",
+        "Switch that same view to Table and then back to Calendar.",
+        "Observe Creation date, Month and no end field, then reload to verify the new defaults persisted.",
+        "Compare reload alone, re-clicking the already-selected Calendar and the dashboard Calendar widget, which preserve settings."
+      ],
+      "sourceCause": "Calendar entry unconditionally chooses availableFieldsForCalendar[0], Month, null end; frontend persists replacement values to same saved view. Table does not clear saved calendar settings.",
+      "reviewEvidence": {
+        "basis": "Independent browser/source checks, coordinator review and explicit user acceptance at severity 3.",
+        "userAccepted": true,
+        "sourceRevision": "35c645064f72bc4e3180a2c6c506cbbfee170007",
+        "severityReason": "Previously saved view configuration is overwritten, changing the dates and records shown by the Calendar.",
+        "analysis": [
+          "Both reviewers reproduced on two fresh views.",
+          "Server metadata preserves the Calendar settings while the view is Table; switching back explicitly overwrites them.",
+          "Reload-only and already-selected Calendar controls pass.",
+          "Preservation is inferred from saved state, documentation and dashboard sibling behavior; no explicit maintainer round-trip guarantee or intentional-reset requirement was found."
+        ],
+        "limitations": [
+          "No task data loss was observed.",
+          "Distinct from unfinished filter saves and blank Calendar rendering.",
+          "Newer source retains the mechanism; newer runtime and mobile were not tested."
+        ],
+        "sourceReferences": [
+          "https://github.com/twentyhq/twenty/blob/35c645064f72bc4e3180a2c6c506cbbfee170007/packages/twenty-front/src/modules/object-record/object-options-dropdown/hooks/useSetViewTypeFromLayoutOptionsMenu.ts#L76-L115",
+          "https://github.com/twentyhq/twenty/blob/35c645064f72bc4e3180a2c6c506cbbfee170007/packages/twenty-front/src/modules/page-layout/widgets/record-table/hooks/useRecordTableWidgetLayoutCallbacks.ts#L136-L158"
+        ]
+      }
+    },
+    {
+      "id": "records-views-pass3-d23f9fb3",
+      "name": "Task record pagination excludes undated tasks from a Due Date-sorted view",
+      "severity": 3,
+      "owningArea": "twenty/records-views",
+      "summary": "Record-page navigation skips undated Tasks and reports incorrect totals when the parent view sorts by Due Date.",
+      "expected": "Next/Previous navigation and breadcrumb positions should include all Tasks matching the parent view, including Tasks without a Due Date.",
+      "actual": "A view with two dated Tasks and one undated Task lists all three, but dated record pages show 1/2 or 2/2 and cycle between only those Tasks. The undated record shows 1/1.",
+      "reproSteps": [
+        "Create three Tasks with a shared marker: give two distinct Due Dates and leave the third undated.",
+        "Save a Tasks view filtered to the marker and sorted by Due Date; verify all three appear.",
+        "Open a dated Task and use Next/Previous. Observe totals of two and navigation skipping the undated Task.",
+        "Open the undated Task from the table and observe a total of one. Remove the Due Date sort and confirm navigation includes all three."
+      ],
+      "sourceCause": "Client before/after filters use date gt/lt without a NULL alternative, excluding undated tasks despite DescNullsLast ordering. Summed neighbor counts understate total and wrap navigation prematurely. The server applies these explicit filters and ordinary SQL date comparisons.",
+      "reviewEvidence": {
+        "basis": "Independent Codex and Claude browser/source checks, coordinator review and explicit user acceptance.",
+        "userAccepted": true,
+        "sourceRevision": "35c645064f72bc4e3180a2c6c506cbbfee170007",
+        "severityReason": "Navigation omits matching records, requiring a return to the table to access them.",
+        "analysis": [
+          "Each created an independent fresh three-task dataset: two dates plus one empty date. View shows three, but dated-task breadcrumbs show1/2 and2/2, empty-date task1/1. Next cycles between dated tasks and skips the undated one. No-date-sort control passes; Claude additionally dated the empty task and all counts then passed.",
+          "Existing Search any field navigation entry omits search context, while this includes its parent filter but mishandles null boundaries. Existing Calendar Previous tied-position case has a different trigger; shared cause unestablished. No exact covered reference identified.",
+          "Both reviewers reproduced at desktop and tablet widths without requiring grouping."
+        ],
+        "sourceReferences": [
+          "https://github.com/twentyhq/twenty/blob/35c645064f72bc4e3180a2c6c506cbbfee170007/packages/twenty-front/src/modules/object-record/graphql/utils/computeCursorArgFilter.ts#L85-L113",
+          "https://github.com/twentyhq/twenty/blob/35c645064f72bc4e3180a2c6c506cbbfee170007/packages/twenty-front/src/modules/object-record/record-show/hooks/useRecordShowPagePagination.ts#L186-L210",
+          "https://github.com/twentyhq/twenty/commit/e04eef0461bb6b8fd0fb582a09ac4f3725819cef",
+          "https://github.com/twentyhq/twenty/commit/2dd348285e902377086b4ee2594e9ed9ce5a5d68"
+        ],
+        "limitations": [
+          "Other object types and nullable sort fields not browser-tested.",
+          "Codex repeated as another member and ascending; Claude did not.",
+          "Historical Mo video and latest runtime not tested.",
+          "No saved Task content lost."
+        ]
+      }
     }
   ]
 }
