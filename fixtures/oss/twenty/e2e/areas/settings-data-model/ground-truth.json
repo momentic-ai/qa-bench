@@ -413,18 +413,48 @@
     },
     {
       "id": "settings-data-model-N48",
-      "name": "Removing a sidebar folder routes an adjacent external link on the app origin",
-      "summary": "Removing a saved sidebar folder can automatically select an adjacent external link and route its path on Twenty’s own origin, opening a Page Not Found screen.",
+      "name": "Removing a sidebar folder or child link routes an adjacent external link on the app origin",
+      "summary": "Removing a saved sidebar folder or folder child can select an adjacent external link and route its path on Twenty’s origin, displaying Page Not Found.",
       "expected": "Removing a sidebar folder leaves usable app content. If the next selected item is an external link, its configured origin is preserved and it is handled as an external destination.",
-      "actual": "When the next selected sibling is an external link, removing the folder navigates to that link’s path, query and fragment on Twenty’s origin and displays Off the beaten path / Page Not Found. The saved link URL retains its external origin, and ordinary link clicks open the full external URL correctly in a new tab. Back to content recovers usable content and preserves the layout draft; no permanent data loss or runtime crash was established.",
+      "actual": "When the next selected sibling is an external link, removing the folder navigates to that link’s path, query and fragment on Twenty’s origin and displays Off the beaten path / Page Not Found. The saved link URL retains its external origin, and ordinary link clicks open the full external URL correctly in a new tab. Back to content recovers usable content and preserves the layout draft; no permanent data loss or runtime crash was established. Removing a folder child link can produce the same wrong-origin navigation when its adjacent external link is selected.",
       "reproSteps": [
         "In Settings > Layout > Customize, create a disposable external link such as https://example.org/qa-layout?q=one#two and an empty folder immediately after it. Place the folder last among its siblings so removal selects the preceding link; save the layout.",
         "Reenter customization, select the saved empty folder, and choose Remove from sidebar.",
         "Observe that Twenty navigates to its own origin at /qa-layout?q=one#two and shows its Page Not Found screen instead of handling the configured external origin.",
         "Use Back to content to recover and confirm that the layout draft remains available and the link editor still contains the full external URL.",
-        "As controls, use a normal external-link click and verify the full external destination opens, and remove a folder whose selected sibling is an internal object page to verify usable internal navigation."
+        "As controls, use a normal external-link click and verify the full external destination opens, and remove a folder whose selected sibling is an internal object page to verify usable internal navigation.",
+        "Additional verified variation: Remove a folder child link when removal selects an adjacent external link. In Settings > Layout > Customize, create a folder containing link A with a valid external URL such as https://example.org/qa-layout?q=one#two, followed by link B. Save the layout. Reenter customization, select saved link B and choose Remove from sidebar. Observe the app routes to its own origin at /qa-layout?q=one#two and displays Page Not Found. Use Back to content and verify the layout draft is retained and A’s editor still contains its full external URL. Compare removing a sole child or selecting a child without removing it."
       ],
-      "severity": 3
+      "severity": 3,
+      "reviewEvidence": {
+        "additionalReproductions": [
+          {
+            "name": "Removing a folder child link routes its adjacent external link on the app origin",
+            "reproSteps": [
+              "In Settings > Layout > Customize, create a folder containing link A with a valid external URL such as https://example.org/qa-layout?q=one#two, followed by link B. Save the layout.",
+              "Reenter customization, select saved link B and choose Remove from sidebar.",
+              "Observe the app routes to its own origin at /qa-layout?q=one#two and displays Page Not Found.",
+              "Use Back to content and verify the layout draft is retained and A’s editor still contains its full external URL. Compare removing a sole child or selecting a child without removing it."
+            ],
+            "reviewEvidence": {
+              "basis": "Repeated independent browser and source verification with passing controls.",
+              "sourceRevision": "35c645064f72bc4e3180a2c6c506cbbfee170007",
+              "severityReason": "The removal action opens a blocking wrong-origin route; recovery preserves the draft.",
+              "limitations": [
+                "No permanent data loss or runtime crash established.",
+                "Other roles and mobile behavior were not established.",
+                "Newer source no longer navigates after removal; newer runtime was not tested."
+              ],
+              "sourceReferences": [
+                "https://github.com/twentyhq/twenty/blob/35c645064f72bc4e3180a2c6c506cbbfee170007/packages/twenty-front/src/modules/navigation-menu-item/edit/side-panel/hooks/useNavigationMenuItemEditOrganizeActions.ts#L110-L137",
+                "https://github.com/twentyhq/twenty/blob/35c645064f72bc4e3180a2c6c506cbbfee170007/packages/twenty-front/src/modules/navigation-menu-item/display/link/utils/getLinkNavigationMenuItemComputedLink.ts#L3-L11",
+                "https://github.com/twentyhq/twenty/commit/2b90c4453caea4aed382e02c5914eaeb16397f46"
+              ]
+            }
+          }
+        ]
+      },
+      "matchingGuidance": "Count folder removal and folder-child removal once when either automatically selects an adjacent external link, loses its origin and opens Page Not Found on the app origin. Ordinary external-link clicks and internal-sibling removal are passing controls. Recovery preserves the layout draft; no permanent data loss or runtime crash is claimed."
     },
     {
       "id": "codex-30m-twenty-9",
@@ -1957,6 +1987,509 @@
           "Other roles/viewports untested.",
           "Latest source retains mechanism; latest runtime untested."
         ]
+      }
+    },
+    {
+      "id": "settings-data-model-pass3-123a9af8",
+      "name": "Semantically empty Skill Instructions bypass required-content validation",
+      "severity": 3,
+      "owningArea": "twenty/settings-data-model",
+      "summary": "Clearing Skill Instructions saves empty rich-text markup as required content, leaving the Skill active with a blank editor.",
+      "expected": "Required Skill Instructions should reject semantically empty rich-text content consistently with the initially empty form.",
+      "actual": "Clearing saved Instructions persists <p></p> and leaves the Skill active after reload. On creation, typing then deleting the Instructions enables Save and creates a blank active Skill, although an untouched empty form disables Save.",
+      "reproSteps": [
+        "Create a fresh Skill with nonempty Instructions and save it.",
+        "Select and delete all Instructions, wait for autosave, and reload.",
+        "Verify the Instructions remain blank and the Skill remains active.",
+        "In a new Skill form, compare disabled Save with untouched empty Instructions against typing text and deleting it before saving."
+      ],
+      "sourceCause": "The rich-text editor emits HTML, so an empty document becomes the nonempty string <p></p>. Client trim().length checks and server isNonEmptyString validation accept the markup without checking semantic editor emptiness.",
+      "matchingGuidance": "Includes saved Instructions clearing and creation after typing then clearing or leaving only whitespace in the rich-text editor. Distinct from optional Skill description clearing failures and Instructions editor remount interruptions. Do not infer AI invocation failures, downstream output damage, or equivalent validation bypasses in optional Workspace Instructions.",
+      "reviewEvidence": {
+        "basis": "Independent browser and source verification with repeated fresh-data reproductions and passing controls.",
+        "sourceRevision": "35c645064f72bc4e3180a2c6c506cbbfee170007",
+        "limitations": [
+          "No AI invocation or downstream output was tested.",
+          "Newer runtime was not tested."
+        ],
+        "sourceReferences": [
+          "https://github.com/twentyhq/twenty/blob/35c645064f72bc4e3180a2c6c506cbbfee170007/packages/twenty-front/src/pages/settings/ai/SettingsSkillForm.tsx#L203-L253",
+          "https://github.com/twentyhq/twenty/blob/35c645064f72bc4e3180a2c6c506cbbfee170007/packages/twenty-front/src/modules/object-record/record-field/ui/form-types/components/FormAdvancedTextFieldInput.tsx#L144-L156",
+          "https://github.com/twentyhq/twenty/blob/35c645064f72bc4e3180a2c6c506cbbfee170007/packages/twenty-server/src/engine/workspace-manager/workspace-migration/workspace-migration-builder/validators/utils/validate-skill-required-properties.util.ts#L26-L41",
+          "https://github.com/twentyhq/twenty/blob/35c645064f72bc4e3180a2c6c506cbbfee170007/packages/twenty-server/test/integration/metadata/suites/skill/failing-skill-update.integration-spec.ts#L89-L113"
+        ]
+      }
+    },
+    {
+      "id": "settings-data-model-pass3-52a52c92",
+      "name": "Data-model Fit view leaves lower object-card fields clipped",
+      "severity": 1,
+      "owningArea": "twenty/settings-data-model",
+      "summary": "Fitting the data-model diagram can leave the lower part of an object card outside the canvas, even though zooming out reveals the complete card.",
+      "expected": "The diagram’s Fit control should frame the full visible object cards within the canvas.",
+      "actual": "At a desktop viewport, repeated Fit clicks leave the lowest card’s field rows below the canvas edge. The control keeps the same framing, while zooming out or using a taller canvas reveals the missing content.",
+      "reproSteps": [
+        "Open Settings → Data model → Visualize at a desktop viewport such as 1440×1000. Use a diagram with a tall object card near its lower boundary; creating a fresh custom object or expanding an object’s fields can provide this layout.",
+        "Click the four-corners Fit control and inspect the lowest visible object card’s field rows at the canvas bottom.",
+        "Click Fit again. The card’s lower field rows remain clipped at the edge.",
+        "Control: zoom out once or increase the canvas height, and confirm the complete card is visible. Repeat after reopening Visualize."
+      ],
+      "sourceCause": "The overview assigns every graph node a fixed 220×100 size, while the rendered object card grows with its field rows. Fit uses the graph’s node framing without accounting for the taller visible content. The exact library bounds computation is inferred from the observed node dimensions and fitting behavior.",
+      "matchingGuidance": {
+        "relatedReferenceId": "settings-data-model-N21",
+        "relatedReferenceName": "Data-model diagram initially overlaps object cards and obscures their rows",
+        "distinction": "Both involve fixed graph-node dimensions and taller visible cards. N21 covers neighboring cards overlapping each other. This entry covers lower canvas-edge clipping after using Fit; overlapping neighboring cards alone is not sufficient. Workflow canvases use separate entry points."
+      },
+      "reviewEvidence": {
+        "basis": "Both independent reviewers confirmed lower object-card fields remain clipped after using the data-model diagram Fit control, with zoom-out or taller-canvas controls. Coordinator checked full reports, source and fitting contract, independent screenshots and sampled recordings.",
+        "sourceRevision": "35c645064f72bc4e3180a2c6c506cbbfee170007",
+        "severityReason": "Layout-only clipping; manual zooming or panning recovers the content and no saved data is damaged. Both reviewers recommend severity 1.",
+        "sourceReferences": [
+          "https://github.com/twentyhq/twenty/blob/35c645064f72bc4e3180a2c6c506cbbfee170007/packages/twenty-front/src/modules/settings/data-model/graph-overview/components/SettingsDataModelOverviewEffect.tsx#L32-L41",
+          "https://github.com/twentyhq/twenty/blob/35c645064f72bc4e3180a2c6c506cbbfee170007/packages/twenty-front/src/modules/settings/data-model/graph-overview/components/SettingsDataModelOverviewEffect.tsx#L87-L100",
+          "https://github.com/twentyhq/twenty/blob/35c645064f72bc4e3180a2c6c506cbbfee170007/packages/twenty-front/src/modules/settings/data-model/graph-overview/components/SettingsDataModelOverviewObject.tsx#L29-L39",
+          "https://github.com/twentyhq/twenty/blob/35c645064f72bc4e3180a2c6c506cbbfee170007/packages/twenty-front/src/modules/settings/data-model/graph-overview/components/SettingsDataModelOverviewObject.tsx#L153-L180",
+          "https://github.com/twentyhq/twenty/blob/35c645064f72bc4e3180a2c6c506cbbfee170007/packages/twenty-front/src/modules/settings/data-model/graph-overview/components/SettingsDataModelOverview.tsx#L199-L224"
+        ],
+        "limitations": [
+          "Only lower-edge clipping of visible object-card content is jointly confirmed. Top-edge clipping and the larger-layout minimum-zoom limit are not part of this entry.",
+          "Card placement, field expansion and diagram size affect whether clipping appears; not every viewport or layout fails. Manual zooming or panning can recover the content.",
+          "Neighboring-card overlap remains separately covered. No object metadata or saved records were lost.",
+          "The inspected newer source retains fixed node sizing and fitting calls; newer runtime was not tested."
+        ]
+      }
+    },
+    {
+      "id": "settings-data-model-pass3-f7e91002",
+      "name": "Inactive custom-object list deletion bypasses the typed confirmation safeguard",
+      "severity": 3,
+      "owningArea": "twenty/settings-data-model",
+      "summary": "The Objects list permanently removes a deactivated custom object directly, while its Settings page requires typed confirmation.",
+      "expected": "The destructive object deletion should retain the explicit confirmation used by the same object’s Settings flow.",
+      "actual": "After deactivating a custom object, choosing Delete from its Objects list row menu immediately removes it without a confirmation prompt. The removal persists after reload. Opening a deactivated object’s Settings directly and choosing Delete instead displays the warning requiring yes; Cancel preserves the object.",
+      "reproSteps": [
+        "Create a disposable custom object and open its Settings page. Choose Delete and confirm the typed-yes warning appears; cancel.",
+        "Deactivate the object and return to the Objects list.",
+        "Open its inactive row menu and choose Delete. Observe immediate removal without a confirmation dialog; reload and confirm it remains absent.",
+        "Repeat on a fresh object. As a control, open another deactivated object’s Settings directly and choose Delete; the typed-yes confirmation appears and Cancel preserves it."
+      ],
+      "sourceCause": "The inactive row-menu callback calls the object deletion hook directly. The object-detail Settings flow opens a confirmation dialog before calling the same deletion hook, so the destructive list entry point skips that safeguard.",
+      "matchingGuidance": {
+        "distinction": "Requires the inactive custom-object Objects-list Delete entry point. Do not match reversible deactivation, standard-object deletion restrictions, or unverified field/relation menu behavior."
+      },
+      "reviewEvidence": {
+        "basis": "Both independent reviewers reproduced immediate custom-object removal from the inactive list with no confirmation on fresh objects, including desktop/mobile variants, and observed typed-yes confirmation on the detail-page control. Coordinator checked full reports, source/confirmation contract and contrary history, original Mo samples, retained independent browser images and actual subscription billing.",
+        "sourceRevision": "35c645064f72bc4e3180a2c6c506cbbfee170007",
+        "severityReason": "A destructive custom-object operation immediately proceeds without the explicit confirmation present in the same feature’s detail flow. Both independent reviewers recommend severity 3.",
+        "sourceReferences": [
+          "https://github.com/twentyhq/twenty/blob/35c645064f72bc4e3180a2c6c506cbbfee170007/packages/twenty-front/src/modules/settings/data-model/objects/components/SettingsObjectInactiveMenuDropDown.tsx#L33-L62",
+          "https://github.com/twentyhq/twenty/blob/35c645064f72bc4e3180a2c6c506cbbfee170007/packages/twenty-front/src/pages/settings/data-model/SettingsObjectTable.tsx#L264-L283",
+          "https://github.com/twentyhq/twenty/blob/35c645064f72bc4e3180a2c6c506cbbfee170007/packages/twenty-front/src/modules/settings/data-model/object-details/components/tabs/ObjectSettings.tsx#L81-L100",
+          "https://github.com/twentyhq/twenty/blob/35c645064f72bc4e3180a2c6c506cbbfee170007/packages/twenty-front/src/modules/settings/data-model/object-details/components/tabs/ObjectSettings.tsx#L184-L193"
+        ],
+        "limitations": [
+          "Joint scope is deleting a deactivated custom object through the Objects list row menu. Field/relation deletion and other backend callers are excluded.",
+          "Object removal persists after reload. Physical database rows were not independently inspected by both reviewers; no broader database-loss measurement is claimed.",
+          "Confirmation consistency is supported by an inactive-object detail-page control. The maintainer confirmation change is an unmerged proposal, not a merged fix or final contract decision.",
+          "The inspected newer main-source path still differs between list and detail; newer runtime and other roles were not established."
+        ]
+      }
+    },
+    {
+      "id": "settings-data-model-pass3-b7781cae",
+      "name": "Invisible diagram SVG blocks Back to Objects pointer clicks",
+      "severity": 3,
+      "owningArea": "twenty/settings-data-model",
+      "summary": "The data-model diagram renders an invisible SVG over the mobile Back to Objects link, so pointer clicks leave the diagram open.",
+      "expected": "Clicking Back to Objects on the data-model diagram navigates to the object settings list.",
+      "actual": "At the tested mobile/tablet widths, repeated ordinary and coordinate clicks leave /settings/objects/overview open without the object list. Hit tests identify the marker SVG above the link. Keyboard activation reaches the list, and a desktop Objects breadcrumb outside the overlay works.",
+      "reproSteps": [
+        "Open Settings → Data model and choose Visualize.",
+        "Use a 390px-wide viewport, including resizing the open diagram from tablet width; click Back to Objects repeatedly.",
+        "Observe the diagram remains open. Compare focusing the same link and pressing Enter, and the ordinary Back to Objects link on a Company detail settings page."
+      ],
+      "sourceCause": "The relation-marker SVG is absolutely positioned at top:0/left:0 without explicit dimensions or disabled pointer events. Its diagram container is not positioned. The observed SVG occupies the viewport’s top-left 300×150 area and receives pointer events over the breadcrumb instead of its working link.",
+      "matchingGuidance": {
+        "distinction": "Match the data-model diagram’s mobile Back to Objects pointer obstruction by its marker SVG. Distinguish wrong destinations from object-title clicks, absent mobile navigation controls and unrelated editor Back buttons."
+      },
+      "reviewEvidence": {
+        "basis": "Both independent browser/source reviewers accept the same mobile diagram Back to Objects pointer failure at severity 3. Coordinator checked full source/contract audits, original Mo samples, independent retained images and exact interception/navigation controls, plus both official subscription billing records.",
+        "sourceRevision": "35c645064f72bc4e3180a2c6c506cbbfee170007",
+        "severityReason": "A visible navigation link cannot be activated by pointer; keyboard activation, another route or browser Back provides a workaround.",
+        "sourceReferences": [
+          "https://github.com/twentyhq/twenty/blob/35c645064f72bc4e3180a2c6c506cbbfee170007/packages/twenty-front/src/modules/settings/data-model/graph-overview/components/SettingsDataModelOverviewRelationMarkers.tsx#L7",
+          "https://github.com/twentyhq/twenty/blob/35c645064f72bc4e3180a2c6c506cbbfee170007/packages/twenty-front/src/modules/settings/data-model/graph-overview/components/SettingsDataModelOverview.tsx#L39-L70",
+          "https://github.com/twentyhq/twenty/blob/35c645064f72bc4e3180a2c6c506cbbfee170007/packages/twenty-front/src/modules/settings/data-model/graph-overview/components/SettingsDataModelOverview.tsx#L187-L198",
+          "https://github.com/twentyhq/twenty/blob/35c645064f72bc4e3180a2c6c506cbbfee170007/packages/twenty-front/src/modules/ui/navigation/bread-crumb/components/MobileBreadcrumb.tsx#L52-L71"
+        ],
+        "limitations": [
+          "Joint scope is pointer activation of Back to Objects on the data-model diagram at the tested mobile/tablet widths, including 390px and resize entry. Desktop Workspace/Settings exit and close-button overlap are excluded.",
+          "Both reviewers observed hit-test/click interception and working keyboard or desktop breadcrumb controls. Computed SVG geometry supports the mechanism; source markup alone does not establish its viewport placement.",
+          "Claude’s temporary pointer-events change is a diagnostic control, not a shipped fix. The tested ordinary settings control is the Company detail page, not every settings page.",
+          "Latest source retains the relevant rendering pattern; newer runtime, native touch and exhaustive history were not verified."
+        ]
+      }
+    },
+    {
+      "id": "settings-data-model-pass3-a63b4310",
+      "name": "Inactive object details still offer an enabled Deactivate action",
+      "severity": 1,
+      "owningArea": "twenty/settings-data-model",
+      "summary": "Opening an inactive custom object’s settings shows an enabled Deactivate action that leaves it inactive and returns to the object list.",
+      "expected": "An already inactive object’s detail settings do not present an enabled action that misleadingly offers to deactivate it again.",
+      "actual": "After an object is deactivated, its duplicate-name Open link or direct settings URL still renders Deactivate object and enabled Deactivate. Clicking redirects to the list with the object still Deactivated. The active-object control deactivates normally.",
+      "reproSteps": [
+        "Create a disposable custom object and deactivate it from its Settings tab; verify the Objects list marks it Deactivated.",
+        "Start creating an object with the same name and use the duplicate-name notice’s Open button to reach the inactive object’s detail Settings.",
+        "Inspect the enabled Deactivate control and click it. Verify the list still marks the same object Deactivated.",
+        "Repeat with another fresh object and compare the initial active-object settings control."
+      ],
+      "sourceCause": "ObjectSettings renders the Danger zone without consulting objectMetadataItem.isActive, and its Deactivate handler always sends isActive:false before navigating to the list. The inactive-inclusive detail lookup and duplicate-name Open path allow the same component to render for an inactive object.",
+      "matchingGuidance": {
+        "relatedReferenceId": "settings-data-model-pass3-f7e91002",
+        "distinction": "Match the misleading enabled Deactivate control on inactive custom-object detail settings. Distinguish inactive-list Delete confirmation and unrelated activation persistence or access failures."
+      },
+      "reviewEvidence": {
+        "basis": "Both independent browser/source reviewers accept the same misleading enabled Deactivate action on inactive custom-object details at severity 1. Coordinator checked complete source/contract audits, independent retained images and inactive-state/duplicate-Open/active-control readbacks, plus both official subscription billing records.",
+        "sourceRevision": "35c645064f72bc4e3180a2c6c506cbbfee170007",
+        "severityReason": "The page presents an inappropriate redundant action; activation state remains intact and list reactivation remains available.",
+        "sourceReferences": [
+          "https://github.com/twentyhq/twenty/blob/35c645064f72bc4e3180a2c6c506cbbfee170007/packages/twenty-front/src/modules/settings/data-model/object-details/components/tabs/ObjectSettings.tsx#L70-L79",
+          "https://github.com/twentyhq/twenty/blob/35c645064f72bc4e3180a2c6c506cbbfee170007/packages/twenty-front/src/modules/settings/data-model/object-details/components/tabs/ObjectSettings.tsx#L156-L183",
+          "https://github.com/twentyhq/twenty/blob/35c645064f72bc4e3180a2c6c506cbbfee170007/packages/twenty-front/src/pages/settings/data-model/SettingsObjectDetailPage.tsx#L51-L59",
+          "https://github.com/twentyhq/twenty/blob/35c645064f72bc4e3180a2c6c506cbbfee170007/packages/twenty-front/src/modules/settings/data-model/objects/forms/components/SettingsDataModelObjectAboutForm.tsx#L259-L272"
+        ],
+        "limitations": [
+          "Joint scope is an enabled Deactivate control on an already inactive custom-object detail page. It does not establish inability to reactivate from the Objects list, missing Activate as a separately promised detail feature, or Delete as a defect.",
+          "Clicking can still send a metadata request, invalidate caches and redirect. The unchanged activation state does not mean no request or no metadata mutation occurred.",
+          "The contract is inferred from the same entity’s active-state/list controls and state-appropriate UI. Later maintainer language that inactive details were fine addresses editability/reachability, not explicit approval of this button.",
+          "Both reviewers used fresh own custom objects; Claude also checked direct/mobile entry. Newer source was inspected without newer-runtime or exhaustive-history proof."
+        ]
+      }
+    },
+    {
+      "id": "settings-data-model-pass3-a78c7f36",
+      "name": "Deleting one inverse hides the surviving multi-destination relation until refresh",
+      "severity": 3,
+      "owningArea": "twenty/settings-data-model",
+      "summary": "Deleting one destination’s inverse can remove a surviving multi-destination relation from its source settings and leave the remaining inverse incomplete until refresh.",
+      "expected": "Deleting one destination’s inverse preserves visible management of the remaining source relation and its surviving inverse.",
+      "actual": "When the deleted inverse corresponds to the source representative loaded by the client, the source displays No relations found and the remaining inverse loses its destination/type label. Metadata still contains the surviving pair. Refresh restores the source’s 1 Object relation and the inverse’s destination and Has many type.",
+      "reproSteps": [
+        "Create three disposable custom objects and a Belongs to one relation from the source to both destinations, with Has many inverses. Reload and verify one settled source row and complete inverse rows.",
+        "Delete one destination inverse from its field editor, using the normal typed confirmation. Exercise the inverse paired with the client-loaded source representative.",
+        "Navigate in-app to the source and surviving destination: inspect the missing source relation and incomplete inverse row. Compare a full refresh and retained metadata.",
+        "Repeat on a fresh set and compare ordinary single-destination inverse deletion."
+      ],
+      "sourceCause": "The metadata query collapses per-destination rows to one representative, which inverse relation lookups also reference. Deletion removes only the chosen inverse and paired source leg, while client per-row cleanup does not promote or reload the surviving collapsed leg. A missing representative makes the remaining relation lookup incomplete until metadata reload.",
+      "matchingGuidance": {
+        "relatedReferenceName": "Creating a multi-destination relation shows duplicate rows until refresh",
+        "distinction": "Match post-inverse-deletion loss of surviving relation management until refresh. Distinguish creation-time duplicate rows, saved editor type mismatches and actual deletion of the whole relation."
+      },
+      "reviewEvidence": {
+        "basis": "Both independent browser/source reviewers accept the same loss of the surviving relation’s management entry after inverse deletion at severity 3. Coordinator checked full source/contract audits, independent retained images and exact surviving metadata/reload/single-relation controls, plus both official subscription billing records.",
+        "sourceRevision": "35c645064f72bc4e3180a2c6c506cbbfee170007",
+        "severityReason": "The remaining relationship cannot be correctly found and managed through the source relation list until refresh, while saved metadata survives.",
+        "sourceReferences": [
+          "https://github.com/twentyhq/twenty/blob/35c645064f72bc4e3180a2c6c506cbbfee170007/packages/twenty-front/src/modules/object-metadata/hooks/useDeleteOneFieldMetadataItem.ts#L62-L69",
+          "https://github.com/twentyhq/twenty/blob/35c645064f72bc4e3180a2c6c506cbbfee170007/packages/twenty-front/src/modules/metadata-store/effect-components/MetadataStoreSSEEffect.tsx#L50-L60",
+          "https://github.com/twentyhq/twenty/blob/35c645064f72bc4e3180a2c6c506cbbfee170007/packages/twenty-front/src/modules/object-metadata/hooks/useGetRelationMetadata.ts#L33-L37",
+          "https://github.com/twentyhq/twenty/blob/35c645064f72bc4e3180a2c6c506cbbfee170007/packages/twenty-front/src/modules/settings/data-model/object-details/components/SettingsObjectRelationItemTableRow.tsx#L115-L140",
+          "https://github.com/twentyhq/twenty/blob/35c645064f72bc4e3180a2c6c506cbbfee170007/packages/twenty-shared/src/utils/fieldMetadata/pick-morph-group-survivor-or-throw.ts#L24-L31"
+        ],
+        "limitations": [
+          "Joint scope is deletion of an inverse corresponding to the loaded representative of a settled two-destination Belongs to one relation. Other inverse deletion can leave a stale destination count instead of hiding the relation; complete disappearance is not universal.",
+          "The retained source leg and inverse are returned by metadata queries and reappear correctly after refresh. No physical relation/record data loss, link execution failure or page crash was established.",
+          "Which destination supplied the original Mo representative and the exact SSE/local-store event ordering remain inferred. Representative selection uses active/non-system ranking with an ID tie-break, not unconditionally the lowest ID.",
+          "Claude-only record-table column disappearance lacked a before-deletion capture and is excluded from joint scope. Three-plus destinations, mobile and other roles are untested.",
+          "Newer source introduces a stable relation head and different event handling, a plausible source fix only. Newer runtime and exhaustive history were not verified."
+        ]
+      }
+    },
+    {
+      "id": "settings-data-model-pass3-caadfffb",
+      "name": "Approved-domain length feedback contradicts its inclusive boundary",
+      "severity": 1,
+      "owningArea": "twenty/settings-data-model",
+      "summary": "The approved-domain form says the value must be smaller than 256 characters, but a 256-character domain produces no domain-length error. The separate required email control still prevents saving the tested blank-email form.",
+      "expected": "The stated numeric length restriction and the domain validation boundary should agree.",
+      "actual": "The approved-domain form says the value must be smaller than 256 characters, but a 256-character domain produces no domain-length error. The separate required email control still prevents saving the tested blank-email form.",
+      "reproSteps": [
+        "Open the approved-access-domain form and inspect its numeric length feedback.",
+        "Compare 255-character and 256-character domain values with the same form controls.",
+        "Observe that 256 is accepted by domain validation despite the smaller-than 256 wording; distinguish the separate required email validation."
+      ],
+      "reviewEvidence": {
+        "basis": "Completed official Codex Pro positive review plus previously completed coordinator actual, subscription billing and source/contract gates. User explicitly authorized Codex-only approval; prior comparison records and factual limitations are preserved.",
+        "sourceRevision": "35c645064f72bc4e3180a2c6c506cbbfee170007",
+        "severityReason": "Codex assigned severity 1 to this narrowed observed behavior.",
+        "sourceReferences": [
+          "https://github.com/twentyhq/twenty/blob/35c645064f72bc4e3180a2c6c506cbbfee170007/packages/twenty-front/src/pages/settings/security/SettingsSecurityApprovedAccessDomain.tsx#L30-L45",
+          "https://github.com/twentyhq/twenty/blob/35c645064f72bc4e3180a2c6c506cbbfee170007/packages/twenty-front/src/pages/settings/security/SettingsSecurityApprovedAccessDomain.tsx#L56-L85",
+          "https://github.com/twentyhq/twenty/blob/35c645064f72bc4e3180a2c6c506cbbfee170007/packages/twenty-front/src/modules/settings/security/components/approvedAccessDomains/SettingsApprovedAccessDomainsListCard.tsx#L54-L86",
+          "https://github.com/twentyhq/twenty/blob/35c645064f72bc4e3180a2c6c506cbbfee170007/packages/twenty-front/src/modules/app/components/SettingsRoutes.tsx#L1015-L1028"
+        ],
+        "limitations": [
+          "Only missing client validation feedback at exactly 256 is the shared established claim. No saved oversized domain, verification delivery or access change is established.",
+          "Specific 255/256 values with a filled email prefix were refused; do not generalize to all possible domains or claim never stored.",
+          "Unverified DNS limits and email-validator internal maximums are not authority for the decision.",
+          "The sibling public/custom-domain schema was source-inspected only.",
+          "The inspected newer schema retains the mismatch; newer runtime was not tested.",
+          "Approved under the user’s Codex-only policy at Codex severity 1. The prior Claude comparison is preserved privately and is not represented as agreement.",
+          "No broader original or adjacent claim is included beyond the actual behavior described here."
+        ]
+      },
+      "sourceCause": "The approved-domain form states smaller than 256 but applies inclusive max256. A separate required email guard blocks the original empty-email submission.",
+      "matchingGuidance": {
+        "distinction": "Match this entry’s stated entry point, trigger and visible failure. Shared source mechanisms alone do not establish broader caller or operation coverage."
+      }
+    },
+    {
+      "id": "settings-data-model-pass4-3ba72880",
+      "name": "Mobile API playground breadcrumb omits its destination",
+      "severity": 1,
+      "owningArea": "twenty/settings-data-model",
+      "summary": "GraphQL and REST playgrounds show only Back to on narrow layouts. Desktop and the mobile API-key creation control show MCP & APIs. The incomplete playground link still navigates back.",
+      "expected": "The breadcrumb should preserve the destination label supplied by the playground page.",
+      "actual": "GraphQL and REST playgrounds show only Back to on narrow layouts. Desktop and the mobile API-key creation control show MCP & APIs. The incomplete playground link still navigates back.",
+      "reproSteps": [
+        "Open Core GraphQL from MCP & APIs at a narrow viewport.",
+        "Observe Back to without its destination; repeat with REST and a separate fresh launch.",
+        "Compare desktop rendering and the mobile Create API key breadcrumb."
+      ],
+      "matchingGuidance": {
+        "distinction": "GUI label loss only; the return link works."
+      },
+      "reviewEvidence": {
+        "basis": "Completed official Codex Pro positive, retained actual evidence and coordinator source/contract checks under the user-authorized Codex-only approval policy. Claude comparison history remains private and is not required for approval.",
+        "sourceRevision": "35c645064f72bc4e3180a2c6c506cbbfee170007",
+        "severityReason": "Completed Codex assigns severity 1 to the stated observed failure.",
+        "sourceReferences": [
+          "https://github.com/twentyhq/twenty/blob/35c645064f72bc4e3180a2c6c506cbbfee170007/packages/twenty-front/src/modules/settings/mcp-and-apis/components/PlaygroundSetupForm.tsx#L38-L48",
+          "https://github.com/twentyhq/twenty/blob/35c645064f72bc4e3180a2c6c506cbbfee170007/packages/twenty-front/src/modules/settings/mcp-and-apis/hooks/useOpenPlayground.ts#L38-L54",
+          "https://github.com/twentyhq/twenty/blob/35c645064f72bc4e3180a2c6c506cbbfee170007/packages/twenty-front/src/modules/app/components/SettingsRoutes.tsx#L899-L939",
+          "https://github.com/twentyhq/twenty/blob/35c645064f72bc4e3180a2c6c506cbbfee170007/packages/twenty-front/src/pages/settings/developers/playground/SettingsGraphQLPlayground.tsx#L37-L54",
+          "https://github.com/twentyhq/twenty/blob/35c645064f72bc4e3180a2c6c506cbbfee170007/packages/twenty-front/src/pages/settings/developers/playground/SettingsRestPlayground.tsx#L39-L56"
+        ],
+        "limitations": [
+          "GUI label loss only; the return link works.",
+          "Core and metadata playgrounds were checked, while other callers and member execution remain unverified. No newer-runtime claim.",
+          "Codex-only approval; no independent Claude agreement is represented. Latest runtime was not tested."
+        ]
+      }
+    },
+    {
+      "id": "settings-data-model-pass3-6cbdcbad",
+      "name": "Renaming an object to an allowed long name fails related-field validation",
+      "severity": 3,
+      "owningArea": "twenty/settings-data-model",
+      "summary": "With label and API-name synchronization enabled, renaming an existing custom object to a permitted long singular label generates an overlong related-field name and fails. The attempted rename remains a draft; a generic related-field validation error appears and reload restores the previous saved name.",
+      "expected": "Renaming with names within the form’s allowed limit should succeed, or the form should explain and enforce the actual supported limit before generating invalid companion fields.",
+      "actual": "With label and API-name synchronization enabled, renaming an existing custom object to a permitted long singular label generates an overlong related-field name and fails. The attempted rename remains a draft; a generic related-field validation error appears and reload restores the previous saved name.",
+      "reproSteps": [
+        "As a workspace administrator, create a uniquely named custom object with short valid singular and plural names, then open its Settings.",
+        "Keep Synchronize Objects Labels and API Names enabled. Replace Singular with P2OBJ Boundary ABCDEFGHIJKLMNOPQRSTUVWXYZABCDEFGHIJKLMNOPQRSTU and blur the field. Its generated plural has 63 characters and its singular API name has 60.",
+        "Observe the related-field validation error and unchanged saved header. Reload and confirm the previous saved names remain.",
+        "Compare a shorter synchronized name, or disable synchronization while retaining short API names and enter the same long display labels; these save successfully."
+      ],
+      "matchingGuidance": {
+        "distinction": "This entry covers synchronized singular-label renaming of an existing custom object. The related N56 entry covers object creation with explicitly supplied long API names; creation adds no separate finding here.",
+        "relatedReferenceId": "settings-data-model-N56"
+      },
+      "reviewEvidence": {
+        "basis": "Completed official Codex Pro positive, retained actual evidence and coordinator source/contract checks under the user-authorized Codex-only approval policy. Claude comparison history remains private and is not required for approval.",
+        "sourceRevision": "35c645064f72bc4e3180a2c6c506cbbfee170007",
+        "severityReason": "Completed Codex assigns severity 3 to the stated observed failure.",
+        "sourceReferences": [
+          "https://github.com/twentyhq/twenty/blob/35c645064f72bc4e3180a2c6c506cbbfee170007/packages/twenty-front/src/modules/settings/data-model/objects/forms/components/SettingsDataModelObjectAboutForm.tsx#L108-L137",
+          "https://github.com/twentyhq/twenty/blob/35c645064f72bc4e3180a2c6c506cbbfee170007/packages/twenty-front/src/modules/settings/data-model/object-details/components/SettingsUpdateDataModelObjectAboutForm.tsx#L74-L125",
+          "https://github.com/twentyhq/twenty/blob/35c645064f72bc4e3180a2c6c506cbbfee170007/packages/twenty-server/src/engine/metadata-modules/object-metadata/object-metadata.resolver.ts#L249-L267",
+          "https://github.com/twentyhq/twenty/blob/35c645064f72bc4e3180a2c6c506cbbfee170007/packages/twenty-server/src/engine/metadata-modules/object-metadata/object-metadata.service.ts#L151-L198",
+          "https://github.com/twentyhq/twenty/blob/35c645064f72bc4e3180a2c6c506cbbfee170007/packages/twenty-server/src/engine/metadata-modules/metadata-side-effect/handlers/object-metadata/services/object-system-relations-on-update-side-effect-handler.service.ts#L56-L100",
+          "https://github.com/twentyhq/twenty/blob/35c645064f72bc4e3180a2c6c506cbbfee170007/packages/twenty-server/src/engine/metadata-modules/flat-object-metadata/utils/rename-related-morph-field-on-object-names-update.util.ts#L95-L159",
+          "https://github.com/twentyhq/twenty/blob/35c645064f72bc4e3180a2c6c506cbbfee170007/packages/twenty-server/src/engine/metadata-modules/field-metadata/utils/compute-morph-relation-flat-field-name.util.ts#L16-L28",
+          "https://github.com/twentyhq/twenty/blob/35c645064f72bc4e3180a2c6c506cbbfee170007/packages/twenty-server/src/engine/metadata-modules/flat-field-metadata/validators/utils/validate-flat-field-metadata-name.util.ts#L25-L31"
+        ],
+        "limitations": [
+          "This entry covers synchronized singular-label renaming of an existing custom object. The related N56 entry covers object creation with explicitly supplied long API names; creation adds no separate finding here.",
+          "The reproduced singular API name has 60 characters; automatically generated target-prefixed relation fields have 66 and exceed their 63-character limit. A 63-character display plural or plural API name alone is not sufficient to trigger this failure.",
+          "Two fresh owned objects under one administrator account at desktop widths 1280 and 1440. Other roles and mobile were not tested.",
+          "The error toast is visible. Failed changes remain drafts until reload, and previously saved metadata survives; no saved object or record loss was observed.",
+          "The supported-name expectation follows from the form and validator limits and passing controls; no literal promise that every 63-character display label must save was found.",
+          "Codex-only approval; no independent Claude agreement is represented. Latest runtime was not tested."
+        ]
+      }
+    },
+    {
+      "id": "settings-data-model-pass3-41354bc7",
+      "name": "Trailing spaces in an object singular name produce a malformed saved plural",
+      "severity": 1,
+      "owningArea": "twenty/settings-data-model",
+      "summary": "Adding trailing spaces to a custom object’s singular label generates a plural such as County s. Saving trims the singular but retains the malformed plural in Settings and the heading after reload. Padded object creation also reproduces the malformed plural.",
+      "expected": "Surrounding spaces removed during saving should not change the automatically generated grammatical plural.",
+      "actual": "Adding trailing spaces to a custom object’s singular label generates a plural such as County s. Saving trims the singular but retains the malformed plural in Settings and the heading after reload. Padded object creation also reproduces the malformed plural.",
+      "reproSteps": [
+        "Create a uniquely named custom object whose singular label ends in County, such as Review County. Confirm its automatically generated plural ends in Counties.",
+        "In the object Settings, replace Singular with the same name surrounded by two leading and two trailing spaces, such as \"  Review County  \". Leave the automatically generated plural unchanged.",
+        "Blur the input and wait for saving and navigation to settle. Reopen Settings and reload. Observe trimmed Review County but saved Review County s in the plural and heading.",
+        "Compare a leading-spaces-only edit or manually correct the plural to Review Counties; these save normally. A new object created with padded Singular also saves the malformed plural."
+      ],
+      "matchingGuidance": {
+        "distinction": "This entry covers trailing-whitespace automatic pluralization in custom-object creation and Settings editing. The related autosave corruption entry requires an earlier save overwriting concurrent typing in another field.",
+        "relatedReferenceId": "settings-data-model-pass3-cc217943"
+      },
+      "reviewEvidence": {
+        "basis": "Completed official Codex Pro positive, retained actual evidence and coordinator source/contract checks under the user-authorized Codex-only approval policy. Claude comparison history remains private and is not required for approval.",
+        "sourceRevision": "35c645064f72bc4e3180a2c6c506cbbfee170007",
+        "severityReason": "Completed Codex assigns severity 1 to the stated observed failure.",
+        "sourceReferences": [
+          "https://github.com/twentyhq/twenty/blob/35c645064f72bc4e3180a2c6c506cbbfee170007/packages/twenty-front/src/modules/settings/data-model/objects/forms/components/SettingsDataModelObjectAboutForm.tsx#L108-L118",
+          "https://github.com/twentyhq/twenty/blob/35c645064f72bc4e3180a2c6c506cbbfee170007/packages/twenty-front/src/modules/settings/data-model/objects/forms/components/SettingsDataModelObjectAboutForm.tsx#L201-L205",
+          "https://github.com/twentyhq/twenty/blob/35c645064f72bc4e3180a2c6c506cbbfee170007/packages/twenty-front/src/modules/settings/data-model/object-details/components/SettingsUpdateDataModelObjectAboutForm.tsx#L74-L125",
+          "https://github.com/twentyhq/twenty/blob/35c645064f72bc4e3180a2c6c506cbbfee170007/packages/twenty-front/src/modules/object-metadata/graphql/mutations.ts#L192-L215",
+          "https://github.com/twentyhq/twenty/blob/35c645064f72bc4e3180a2c6c506cbbfee170007/packages/twenty-server/src/engine/metadata-modules/object-metadata/object-metadata.resolver.ts#L249-L265",
+          "https://github.com/twentyhq/twenty/blob/35c645064f72bc4e3180a2c6c506cbbfee170007/packages/twenty-server/src/engine/metadata-modules/flat-object-metadata/utils/sanitize-raw-update-object-input.ts#L19-L40",
+          "https://github.com/twentyhq/twenty/blob/35c645064f72bc4e3180a2c6c506cbbfee170007/packages/twenty-shared/src/utils/trim-and-remove-duplicated-whitespaces-from-string.ts#L1-L4",
+          "https://github.com/twentyhq/twenty/blob/35c645064f72bc4e3180a2c6c506cbbfee170007/packages/twenty-server/src/engine/workspace-manager/workspace-migration/workspace-migration-runner/action-handlers/object/services/update-object-action-handler.service.ts#L133-L147"
+        ],
+        "limitations": [
+          "This entry covers trailing-whitespace automatic pluralization in custom-object creation and Settings editing. The related autosave corruption entry requires an earlier save overwriting concurrent typing in another field.",
+          "Fresh Boundary and County objects reproduced Settings edits, and a fresh Box object reproduced padded creation. Leading spaces alone did not trigger the defect; one trailing space did. Manual plural repair persisted.",
+          "The malformed label reproduced with API-name synchronization enabled and disabled. With synchronization enabled the plural API name and route also derive from the malformed label, but the tested Box record list still loads normally.",
+          "Observed impact is mangled naming. No crash, inaccessible records, saved-record loss or external integration failure was demonstrated. Administrator and desktop only; standard objects and other roles were not browser-tested.",
+          "Codex-only approval; no independent Claude agreement is represented. Latest runtime was not tested."
+        ]
+      }
+    },
+    {
+      "id": "settings-data-model-pass3-85ecf9ab",
+      "name": "Empty relation destination previews an unrelated object",
+      "severity": 1,
+      "owningArea": "twenty/settings-data-model",
+      "summary": "Clearing every relation destination leaves a preview card naming an unrelated object even though the destination selector is empty.",
+      "expected": "An empty destination should show an empty preview or selection prompt rather than imply a relationship to an unselected object.",
+      "actual": "On Add relation, clearing all destinations disables Save but the diagram still displays the inverse field on an unrelated fallback object, such as Blocklists or Messages.",
+      "reproSteps": [
+        "Create a disposable custom object and open Add relation. Enter the field and inverse field names.",
+        "Open Object destination and deselect every selected destination. Close the picker.",
+        "Observe an empty selector and disabled Save while the diagram names an unrelated object.",
+        "Select Company as a control; the preview follows Company and Save becomes enabled."
+      ],
+      "reviewEvidence": {
+        "basis": "Explicit user approval of the reported finding, followed by the instruction to add accepted findings to ground truth. Reviewer nonacceptance, nonreproduction or blocked checks are retained below; this entry does not claim independent positive agreement.",
+        "userAccepted": true,
+        "sourceRevision": "35c645064f72bc4e3180a2c6c506cbbfee170007",
+        "severityReason": "Observed presentation, validation feedback or configuration clarity issue; no demonstrated downstream execution damage.",
+        "sourceReferences": [
+          "https://github.com/twentyhq/twenty/blob/35c645064f72bc4e3180a2c6c506cbbfee170007/packages/twenty-front/src/modules/settings/data-model/fields/forms/morph-relation/components/SettingsDataModelFieldRelationFormCard.tsx#L54-L65",
+          "https://github.com/twentyhq/twenty/blob/35c645064f72bc4e3180a2c6c506cbbfee170007/packages/twenty-front/src/modules/settings/data-model/fields/forms/morph-relation/components/SettingsDataModelFieldRelationFormCard.tsx#L95-L122"
+        ],
+        "limitations": [
+          "Both reviewers recommended rejection at the bug bar while confirming the preview behavior; the user accepted it as a GUI issue.",
+          "The fallback is explicit in source. Its presence does not by itself establish that this presentation is desirable product behavior.",
+          "The unrelated object depends on available metadata order; Blocklists is not required. Save remains disabled, no relation is created, and no saved relationship damage is claimed.",
+          "Accepted by explicit user adjudication; reviewer disagreement or nonreproduction is not represented as positive verification. Latest runtime was not tested."
+        ]
+      }
+    },
+    {
+      "id": "settings-data-model-pass3-02ed85c8",
+      "name": "Unnamed API-key submission lacks an explanation when Save appears actionable",
+      "severity": 1,
+      "owningArea": "twenty/settings-data-model",
+      "summary": "The reported New API key form presents an apparently actionable Save with an empty Name, but clicking does not explain the missing required value.",
+      "expected": "When an unnamed key cannot be created, the form should visibly disable submission or explain that Name is required.",
+      "actual": "The original report alleges an enabled-looking Save with Name empty, Role Admin and Expiration Never; clicking leaves the form unchanged without a validation explanation.",
+      "reproSteps": [
+        "Open Settings > MCP & APIs > API and choose Create API key.",
+        "Leave Name empty, select Admin and Never, and inspect Save.",
+        "For the reported enabled-looking state, click Save and observe the unchanged form without validation feedback.",
+        "Enter a nonempty unique Name as a control; a valid key can be created."
+      ],
+      "matchingGuidance": {
+        "distinction": "Reported enabled-looking/no-explanation state accepted by the user despite fresh disabled-Save controls. Does not reclassify the existing visibly-disabled validation path.",
+        "relatedReferenceId": "settings-data-model-N06"
+      },
+      "reviewEvidence": {
+        "basis": "Explicit user approval of the reported finding, followed by the instruction to add accepted findings to ground truth. Reviewer nonacceptance, nonreproduction or blocked checks are retained below; this entry does not claim independent positive agreement.",
+        "userAccepted": true,
+        "sourceRevision": "35c645064f72bc4e3180a2c6c506cbbfee170007",
+        "severityReason": "Observed presentation, validation feedback or configuration clarity issue; no demonstrated downstream execution damage.",
+        "sourceReferences": [
+          "https://github.com/twentyhq/twenty/blob/35c645064f72bc4e3180a2c6c506cbbfee170007/packages/twenty-front/src/pages/settings/developers/api-keys/SettingsDevelopersApiKeysNew.tsx#L127-L154"
+        ],
+        "limitations": [
+          "Explicit user acceptance overrides the fresh reviewer nonreproduction for this reported state. In two fresh drafts Save was disabled, clearing Name disabled it again, and a named control saved successfully.",
+          "No enabled submission was independently reproduced. Clicking a disabled button position does not prove an enabled no-op.",
+          "The separate existing rejection for a visibly disabled Save remains unchanged; this entry is limited to the user-approved apparently actionable presentation.",
+          "Accepted by explicit user adjudication; reviewer disagreement or nonreproduction is not represented as positive verification. Latest runtime was not tested."
+        ]
+      }
+    },
+    {
+      "id": "settings-data-model-pass3-464418ce",
+      "name": "New custom Number edit shows a metadata error and loses the displayed value on reload",
+      "severity": 3,
+      "owningArea": "twenty/settings-data-model",
+      "summary": "Editing a fresh custom Number field can show a missing-target metadata error while displaying the value locally, then reopen empty after reload.",
+      "expected": "A supported numeric record edit should persist or clearly remain uncommitted after an error.",
+      "actual": "The reported new Number field briefly displayed the formatted numeric input with Target field metadata full object not found; reload and reopening showed no saved value.",
+      "reproSteps": [
+        "Create a disposable custom object and a Number field configured for two decimal places.",
+        "Create a record and enter 1234.567 through the record side-panel field editor.",
+        "Inspect the reported metadata-error toast and locally formatted value.",
+        "Reload and reopen the record; inspect whether the entered value persisted. Compare a fresh integer or decimal edit as a control."
+      ],
+      "matchingGuidance": {
+        "distinction": "User-approved Number record-edit failure with unresolved metadata prerequisite. Existing N14 concerns opening New after structured-field configuration, not this numeric edit.",
+        "relatedReferenceId": "settings-data-model-N14"
+      },
+      "reviewEvidence": {
+        "basis": "Explicit user approval of the reported finding, followed by the instruction to add accepted findings to ground truth. Reviewer nonacceptance, nonreproduction or blocked checks are retained below; this entry does not claim independent positive agreement.",
+        "userAccepted": true,
+        "sourceRevision": "35c645064f72bc4e3180a2c6c506cbbfee170007",
+        "severityReason": "Reported supported record edit fails and its displayed value is lost after reload.",
+        "sourceReferences": [
+          "https://github.com/twentyhq/twenty/blob/35c645064f72bc4e3180a2c6c506cbbfee170007/packages/twenty-front/src/modules/object-record/hooks/useUpdateOneRecord.ts#L122-L174",
+          "https://github.com/twentyhq/twenty/blob/35c645064f72bc4e3180a2c6c506cbbfee170007/packages/twenty-front/src/modules/apollo/optimistic-effect/utils/triggerUpdateRelationsOptimisticEffect.ts#L130-L141"
+        ],
+        "limitations": [
+          "The user accepted the original failure despite two fresh custom-object reviewer trials retaining decimal values after reload; integer and comma-decimal-format controls also passed.",
+          "Historical missing metadata and its cause remain unverified. The relation optimistic-effect helper can fail on another relation during a Number update; this is a possible explanation, not an established historical trace.",
+          "No decimal-parser defect, universal custom-Number failure, table-cell/mobile effect or latest fix is claimed.",
+          "Accepted by explicit user adjudication; reviewer disagreement or nonreproduction is not represented as positive verification. Latest runtime was not tested."
+        ]
+      }
+    },
+    {
+      "id": "settings-data-model-N14",
+      "name": "Custom-object New action fails in an unresolved field-metadata state",
+      "summary": "A custom object’s New action repeatedly fails with an error and no creation panel after a field-metadata error; the prerequisite state and later recovery remain unresolved.",
+      "expected": "The New action opens record creation for a custom object configured with the reported structured fields.",
+      "actual": "The original report shows an An error occurred toast and no creation panel. Independent follow-up observed repeated New failures on one object after a field-metadata error, but matching fresh objects worked and the failing object later recovered for an unknown reason.",
+      "reproSteps": [
+        "As a workspace administrator, create a disposable custom object in Settings > Data model.",
+        "Add distinct Files, Emails, Links, Phones, Full Name, Address, Rich Text, JSON, and Array fields, saving each.",
+        "Select See records, then New for the custom object.",
+        "Inspect whether a record creation panel opens or an An error occurred toast appears.",
+        "The historical affected object had a preceding target-field metadata error and repeatedly failed New; matching fresh objects worked. This setup may not reproduce without the unresolved metadata state."
+      ],
+      "owningArea": "twenty/settings-data-model",
+      "reviewEvidence": {
+        "basis": "Explicit user adjudication approving this previously rejected report as a known bug. Historical observations and contrary evidence remain qualified below; this move does not claim fresh independent verification.",
+        "userAccepted": true,
+        "sourceRevision": "35c645064f72bc4e3180a2c6c506cbbfee170007",
+        "severityReason": "The enabled New action fails to open record creation on the affected object. Fresh-object controls work; no full-page crash or saved-record loss is established.",
+        "priorAssessment": "Previously rejected because the reported structured-field configuration did not provide a repeatable trigger. One reviewer observed a genuine repeated failure after a target-field metadata error, while matching fresh objects worked and the affected object later recovered. The user now accepts the observed failure with these limitations.",
+        "limitations": [
+          "The field-metadata prerequisite and recovery cause remain unresolved. Adding the listed structured fields is not a deterministic reproduction recipe or established cause.",
+          "One independent reviewer observed the repeated failure on one object. Another did not reproduce it, and matching fresh objects passed; independent positive agreement is not claimed.",
+          "No physical data loss or newer-runtime behavior was established."
+        ]
+      },
+      "severity": 3,
+      "matchingGuidance": {
+        "distinction": "Match the custom-object New action failing with an error and no record-creation panel in the reported field-metadata context. Do not infer that structured fields always cause the failure or that matching fresh objects must fail. A Number edit failing on an already-created record is a different operation; no shared cause is established."
       }
     }
   ]
