@@ -583,6 +583,71 @@
           "Other roles/mobile touch/Phones copy and latest runtime untested."
         ]
       }
+    },
+    {
+      "name": "Creating a Relation field fails: 'Relation creation payload is required'",
+      "summary": "Saving a new Relation field from Settings > Data model always fails. The frontend sends CreateOneFieldMetadataItem without the relationCreationPayload (no target object, relation type, or target field label/icon), so the server rejects it.",
+      "expected": "The Relation field is created on the source object, the inverse field (e.g. 'Widgets') appears on the destination object, and the user is returned to the object's field list.",
+      "actual": "An error toast says 'Relation creation payload is required', the page stays on the configure step, and no field is created. The request body has only {description, icon, label, name, isLabelSyncedWithName, objectMetadataId, type: RELATION}, with no relationCreationPayload. This happens with both 'Has many' and 'Belongs to one', and also after explicitly choosing Company as the object destination.",
+      "reproSteps": [
+        "Sign in as tim@apple.dev and go to Settings > Data model",
+        "Open any object (e.g. a custom object 'Widgets') and click New Field, then choose Relation",
+        "Enter the name 'Supplier', keep or choose Object destination 'Company', choose any relation type, and enter 'Widgets' as the Field on destination",
+        "Click Save",
+        "Result: the toast 'Relation creation payload is required' appears and no field is created (the network request CreateOneFieldMetadataItem has no relationCreationPayload)"
+      ],
+      "id": "native-twenty-u18",
+      "owningArea": "twenty/settings-data-model",
+      "reviewEvidence": {
+        "basis": "Explicit reviewer adjudication of collapsed unmatched group U18. No fresh independent verification is claimed.",
+        "userAccepted": false,
+        "sourceRevision": "35c645064f72bc4e3180a2c6c506cbbfee170007"
+      },
+      "reason": "The reported failure uses an unsupported relation-creation URL. It does not establish failure through the supported relation-field creation flow.",
+      "matchingGuidance": {
+        "distinction": "Reject the submitted unsupported relation URL/payload flow, not an independently established failure reached through the supported relation-field UI."
+      }
+    },
+    {
+      "name": "New object form accepts identical singular and plural labels and silently saves a different plural API name",
+      "summary": "On Settings > Data model > Add object, entering the same text for Singular and Plural (e.g. 'Sprocket'/'Sprocket') shows no validation error and Save stays enabled. The object is created with labelPlural 'Sprocket' but namePlural 'sprockets', even though 'Synchronize Objects Labels and API Names' is on. The plural label no longer matches the plural API name.",
+      "expected": "The form rejects identical singular and plural labels with an inline error (e.g. 'Singular and plural labels must be different') and keeps Save disabled. With label/API-name sync on, the saved API name should always match the label.",
+      "actual": "No error appears and Save works. The object is created with labelSingular='Sprocket', labelPlural='Sprocket', nameSingular='sprocket', namePlural='sprockets' and isLabelSyncedWithName=true, then the app opens /settings/objects/sprockets. The sidebar and record list show 'Sprocket' as the plural name.",
+      "reproSteps": [
+        "Go to Settings > Data model and click Add object",
+        "Enter Singular = 'Sprocket' and Plural = 'Sprocket' (leave Synchronize Objects Labels and API Names on)",
+        "Note that no validation error appears and Save is enabled",
+        "Click Save",
+        "Result: the app opens /settings/objects/sprockets, and the metadata API shows labelPlural 'Sprocket' but namePlural 'sprockets' with isLabelSyncedWithName true"
+      ],
+      "id": "native-twenty-u19",
+      "owningArea": "twenty/settings-data-model",
+      "reviewEvidence": {
+        "basis": "Explicit reviewer adjudication of collapsed unmatched group U19. No fresh independent verification is claimed.",
+        "userAccepted": false,
+        "sourceRevision": "35c645064f72bc4e3180a2c6c506cbbfee170007"
+      },
+      "reason": "Identical singular and plural labels are intentional. API-name pluralization does not establish a defect or a requirement to reject these labels."
+    },
+    {
+      "name": "A Select field's only option is incorrectly announced as disabled",
+      "summary": "When a Select field has one option, its disabled drag wrapper applies aria-disabled=true to the entire row, including editable label/API inputs, color picker and option menu. The controls still accept physical mouse and keyboard edits but are exposed as disabled to assistive technology.",
+      "expected": "Only the drag operation should be disabled for a single option. Its editable controls should retain their enabled accessibility state.",
+      "actual": "The sole row and all child controls are reported disabled (aria-disabled=true on the draggable ancestor), despite the input's native disabled property being false. Adding another option makes them enabled. Physical mouse click + typing successfully changed the sole option from Ready to Available, confirming that editing is intended to remain available.",
+      "reproSteps": [
+        "Open Settings → Data model → a custom object → New Field → Select.",
+        "Enter a field name and leave the initial Option 1 as the sole option.",
+        "Inspect the option label, API value, color picker and menu in the accessibility tree.",
+        "Add a second option and compare the accessibility state; alternatively remove it again."
+      ],
+      "id": "native-twenty-u21",
+      "owningArea": "twenty/settings-data-model",
+      "reviewEvidence": {
+        "basis": "Explicit reviewer adjudication of collapsed unmatched group U21. No fresh independent verification is claimed.",
+        "userAccepted": false,
+        "sourceRevision": "35c645064f72bc4e3180a2c6c506cbbfee170007"
+      },
+      "reason": "The reviewer rejected this accessibility-only claim for the benchmark. Physical editing works; do not extend this rejection to broken option editing."
     }
   ]
 }

@@ -340,6 +340,27 @@
           "Visual auditing used sampled frames with denser checks around decisive actions; no newer-runtime claim is made."
         ]
       }
+    },
+    {
+      "name": "Date filter 'Is after or equal' / 'Is before' compares against the current time of day instead of the start of the selected day",
+      "summary": "On Opportunities, filtering Close date 'Is after or equal' Nov 21, 2026 leaves out the opportunities that close on Nov 21. 'Is before' Nov 21 includes them. The filter sent to the server is closeDate gte/lt '2026-11-21T20:14:35.016Z', which is the selected date plus the current time of day. It should be the start of Nov 21 in the user's timezone (2026-11-21T08:00:00Z). The 'Is' operand correctly uses a whole-day range.",
+      "expected": "'Is after or equal Nov 21' should include every record whose close date falls on or after Nov 21 (114 records, including the 2 that close Nov 21 at 10:49 AM). 'Is before Nov 21' should return only records before Nov 21 (36).",
+      "actual": "'Is after or equal Nov 21' returns 112 and leaves out both Nov 21 opportunities (Enterprise iPad Deployment, Apple TV+ Enterprise License). 'Is before Nov 21' returns 38 and includes them. GraphQL filter: {closeDate:{gte:'2026-11-21T20:14:35.016Z'}} / {closeDate:{lt:'2026-11-21T20:14:35.016Z'}}.",
+      "reproSteps": [
+        "Sign in as tim@apple.dev and open /objects/opportunities (All Opportunities table view)",
+        "Filter > Close date, set operand 'Is', and pick Nov 21, 2026: 2 records (Close date Nov 21, 2026 10:49 AM)",
+        "Change the operand to 'Is after or equal': count is 112, and the two Nov 21 records are missing",
+        "Change the operand to 'Is before': count is 38, and the two Nov 21 records are included",
+        "Compare: the API returns 114 for closeDate >= start of Nov 21 (PST) and 36 for < start of Nov 21"
+      ],
+      "id": "native-twenty-u12",
+      "owningArea": "twenty/records-views",
+      "reviewEvidence": {
+        "basis": "Explicit reviewer adjudication of collapsed unmatched group U12. No fresh independent verification is claimed.",
+        "userAccepted": false,
+        "sourceRevision": "35c645064f72bc4e3180a2c6c506cbbfee170007"
+      },
+      "reason": "The reviewer rejected treating datetime comparisons as whole-day filters. Is-before and Is-after-or-equal compare datetime values; a start-of-day contract was not established."
     }
   ]
 }
