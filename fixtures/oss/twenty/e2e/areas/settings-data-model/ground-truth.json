@@ -2626,13 +2626,33 @@
       "id": "agent-browser-reviewed-profile-navigation",
       "owningArea": "twenty/settings-data-model",
       "reviewEvidence": {
-        "basis": "Explicit reviewer decision on this agent-browser report. No fresh independent verification is claimed.",
+        "basis": "User acceptance after native Codex report and pinned-source review. The report describes keyboard and fill repetitions plus a passing wait-before-navigation control. No fresh coordinator browser run or Claude comparison is represented.",
         "userAccepted": true,
         "sourceRevision": "35c645064f72bc4e3180a2c6c506cbbfee170007",
-        "severityReason": "The reviewer assigned severity 3 for unavailable task creation or silent loss of a valid edit during normal navigation."
+        "severityReason": "Ordinary in-app navigation silently discards a valid edit, rather than only omitting feedback for an invalid empty draft.",
+        "analysis": [
+          "NameFields queues a valid nonempty change through a 500ms debounced update. Its effect cleanup cancels the pending callback rather than flushing it.",
+          "Profile mounts NameFields with autosave enabled. Leaving that route unmounts the editor; navigation before the debounce fires can cancel the mutation entirely.",
+          "The waited control permits updateWorkspaceMemberSettings to run and preserves the new name. No server-acknowledged change is claimed to be lost.",
+          "Debouncing explains reachability but does not establish maintainer approval of silently discarding valid edits during ordinary navigation. The flush-or-warning expectation is an inferred interaction contract accepted by the user, not an explicit maintainer statement."
+        ],
+        "sourceReferences": [
+          "https://github.com/twentyhq/twenty/blob/35c645064f72bc4e3180a2c6c506cbbfee170007/packages/twenty-front/src/pages/settings/profile/SettingsProfile.tsx#L48-L67",
+          "https://github.com/twentyhq/twenty/blob/35c645064f72bc4e3180a2c6c506cbbfee170007/packages/twenty-front/src/modules/settings/profile/components/NameFields.tsx#L27-L95",
+          "https://github.com/twentyhq/twenty/blob/35c645064f72bc4e3180a2c6c506cbbfee170007/packages/twenty-front/src/modules/settings/profile/components/NameFields.tsx#L100-L121",
+          "https://github.com/twentyhq/twenty/blob/35c645064f72bc4e3180a2c6c506cbbfee170007/packages/twenty-front/src/modules/settings/profile/hooks/useUpdateWorkspaceMemberSettings.ts#L39-L61"
+        ],
+        "limitations": [
+          "This is the valid First Name edit and sidebar-navigation path. Other Profile settings, browser closure, and a claimed post-acknowledgement persistence failure were not established.",
+          "Screenshots referenced by the original report were not available locally; this review checked the report and source without independently replaying it.",
+          "Source revision follows the fixture recipe; the runtime image was not re-attested during this review."
+        ],
+        "consolidatedFromPullRequest": "https://github.com/momentic-ai/qa-bench/pull/37"
       },
       "matchingGuidance": {
-        "distinction": "Nonempty valid profile edits are lost during normal settings navigation; excludes empty required-name validation."
+        "distinction": "The related severity-1 entry covers missing feedback when an empty required Last Name is intentionally not saved. This severity-3 entry uses a valid nonempty name and ordinary navigation, which cancels its pending autosave. It does not require allowing empty names.",
+        "relatedReference": "settings-data-model-fresh-41e07e8c",
+        "boundaries": "Require the valid edit, ordinary settings navigation during the pending debounce, and restored old name on return, with a waited-save control. Do not match hard-refresh interruptions, clearing a required name, or a completed save later being overwritten. The missing-feedback-only and valid-edit-loss claims remain distinct."
       },
       "severity": 3
     },
@@ -2687,6 +2707,31 @@
       },
       "matchingGuidance": {
         "distinction": "Low contrast in active Settings descriptions and sidebar section labels under the default light theme; no functional failure is claimed."
+      }
+    },
+    {
+      "name": "Workspace name edit is silently discarded when switching tabs immediately",
+      "id": "agent-browser-reviewed-workspace-navigation",
+      "summary": "A valid pending Workspace name edit is lost when the user immediately switches from General to Security settings.",
+      "expected": "Normal settings navigation should flush the pending valid name save or warn before losing the edit.",
+      "actual": "The name reverts without warning after switching General to Security and returning. The report reproduces it twice, with fill and character-by-character typing; waiting before navigation allows persistence.",
+      "reproSteps": [
+        "Open Settings, General, then General and note the current workspace Name.",
+        "Enter a valid nonempty replacement name.",
+        "Immediately switch to Security, then return to General.",
+        "Observe the previous name restored without warning. Compare waiting after editing before switching tabs."
+      ],
+      "severity": 3,
+      "owningArea": "twenty/settings-data-model",
+      "matchingGuidance": {
+        "distinction": "Covers Workspace Name in General settings with a General-to-Security tab switch. The related Profile entry covers Profile name during normal settings navigation; native-twenty-u17 covers AI Workspace Instructions.",
+        "relatedReference": "agent-browser-reviewed-profile-navigation"
+      },
+      "reviewEvidence": {
+        "basis": "Explicit reviewer approval of this agent-browser report. No fresh independent reproduction or source audit by this agent is claimed.",
+        "userAccepted": true,
+        "sourceRevision": "35c645064f72bc4e3180a2c6c506cbbfee170007",
+        "severityReason": "Ordinary navigation cancels the pending valid save without warning. The reviewer states that source confirms cancellation."
       }
     }
   ]
