@@ -1413,6 +1413,46 @@
           "The inspected newer source retains the update-reset omission; newer runtime was not tested."
         ]
       }
+    },
+    {
+      "id": "records-views-loop-17dfbea5",
+      "name": "Opportunity Amount Is empty with Search any field produces incorrect totals and average",
+      "severity": 3,
+      "owningArea": "twenty/records-views",
+      "summary": "A basic empty-Amount filter and any-field search correctly restrict Opportunity rows, while header and table aggregates ignore the Amount condition.",
+      "expected": "The view total and table calculations should use the same combined filters as the displayed records.",
+      "actual": "With one searched Opportunity at 100 and another with an empty Amount, Search any field plus Amount Is empty displays only the empty record but reports a total of 2. In Table view, Average of Amount is100 despite the only visible Amount being empty. Removing the search yields the correct total 1 and an empty average.",
+      "reproSteps": [
+        "Create two uniquely named Opportunities in the same stage: Alpha with Amount 100 and Beta with Amount empty.",
+        "Search their shared name prefix and apply Amount Is empty in an Opportunity Kanban with all stage groups visible.",
+        "Observe only Beta appears but the view total is2; save a view and reload to confirm the mismatch.",
+        "In an ungrouped Table apply the same filters and select Average for Amount. The single empty-Amount row is displayed with average 100.",
+        "Remove only the search to confirm total 1 and an empty average; compare Is not empty, which correctly displays only Alpha."
+      ],
+      "sourceCause": "A single Amount Is empty filter and any-field search each compile to a top-level or. Header and table-footer aggregate hooks merge them with shallow object spreads, so the search overwrites the Amount condition. Record queries use combineFilters with AND and preserve both filters.",
+      "matchingGuidance": {
+        "relatedReferenceId": "records-views-N52",
+        "additionalRelatedReferenceId": "records-views-fresh-9960e144",
+        "distinction": "This entry covers basic CURRENCY Amount Is empty on Opportunities, with wrong header and table calculations. N52 covers advanced OR groups, and the related People entry covers basic Name filtering. Do not match stale nonmatching rows with a correct count or infer corruption of saved amounts."
+      },
+      "reviewEvidence": {
+        "basis": "Both independent reviewers reproduced the header mismatch and a table Average of Amount of 100 while the only matching row has an empty amount, with passing no-search and alternate-filter controls. Coordinator checked full reports, source/AND contract, independent screenshots, original focused Mo evidence, actual aggregate-versus-row request proof and subscription billing.",
+        "sourceRevision": "35c645064f72bc4e3180a2c6c506cbbfee170007",
+        "severityReason": "Both independent reviewers observed an incorrect numerical calculation, including excluded data in Average of Amount, beyond the header display mismatch. Both recommend severity 3.",
+        "sourceReferences": [
+          "https://github.com/twentyhq/twenty/blob/35c645064f72bc4e3180a2c6c506cbbfee170007/packages/twenty-front/src/modules/views/hooks/internal/useGetRecordIndexTotalCount.ts#L38-L67",
+          "https://github.com/twentyhq/twenty/blob/35c645064f72bc4e3180a2c6c506cbbfee170007/packages/twenty-shared/src/utils/filter/utils/getEmptyRecordGqlOperationFilter.ts#L136-L146",
+          "https://github.com/twentyhq/twenty/blob/35c645064f72bc4e3180a2c6c506cbbfee170007/packages/twenty-front/src/modules/object-record/record-table/record-table-footer/hooks/useAggregateRecordsForRecordTableColumnFooter.tsx#L111-L125",
+          "https://github.com/twentyhq/twenty/blob/35c645064f72bc4e3180a2c6c506cbbfee170007/packages/twenty-front/src/modules/object-record/record-index/hooks/useFindManyRecordIndexTableParams.ts#L79-L88",
+          "https://github.com/twentyhq/twenty/blob/35c645064f72bc4e3180a2c6c506cbbfee170007/packages/twenty-docs/user-guide/views-pipelines/capabilities/filters-and-sorting.mdx#L30-L33"
+        ],
+        "limitations": [
+          "Joint scope is an Opportunity basic Amount Is empty filter combined with Search any field, including a wrong table Average of Amount. Header mismatch alone is not the severity-3 evidence.",
+          "Actual stored Opportunity amounts remain correct; the defect is the displayed aggregate query result.",
+          "Kanban card queries and column aggregates correctly apply the filters. Other objects and arbitrary OR-shaped filters are excluded.",
+          "The inspected newer source retains the spread collision; newer runtime was not tested."
+        ]
+      }
     }
   ]
 }
