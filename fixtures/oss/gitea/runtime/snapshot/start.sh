@@ -5,7 +5,6 @@ set -eu
 mkdir -p /data
 tar -C /data -xf /fixture-seeded/gitea-data.tar
 config=/data/gitea/conf/app.ini
-[ -f /data/gitea/fixture-seeded ]
 [ -f /data/gitea/gitea.db ]
 [ -f "$config" ]
 # The old revision reads its installed config before processing environment overrides.

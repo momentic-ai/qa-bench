@@ -1,13 +1,11 @@
 #!/bin/sh
 set -eu
-
-[ -f /data/gitea/fixture-seeded ]
-[ ! -f /data/gitea/fixture-seeding ]
 api() {
   curl --fail --silent --show-error --max-time 30 \
     --user "$FIXTURE_USERNAME:$FIXTURE_PASSWORD" \
-    "http://localhost:$FIXTURE_PORT/api/v1$1"
+    "http://localhost:$FIXTURE_PORT/api/v1/$1"
 }
-api /user > /dev/null
-api "/repos/$FIXTURE_USERNAME/harbor-handbook" > /dev/null
-api "/repos/$FIXTURE_USERNAME/harbor-handbook/issues/4/comments" | grep -q 'captain rotation'
+api user | jq -e --arg login "$FIXTURE_USERNAME" '.login == $login' > /dev/null
+api user/repos | jq -e 'length == 0' > /dev/null
+api admin/users | jq -e 'length == 1' > /dev/null
+printf 'Empty Gitea verified: one account, no repositories.\n'
