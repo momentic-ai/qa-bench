@@ -1751,6 +1751,44 @@
           "The selector/setter ordering explains the observed result; synchronous runtime state sequencing was not separately instrumented. Latest source presence is not a newer-runtime or exhaustive no-fix claim."
         ]
       }
+    },
+    {
+      "id": "records-views-loop-2c3abe4d",
+      "name": "Annual Revenue numeric filter activates nonnumeric text without validation",
+      "severity": 3,
+      "owningArea": "twenty/records-views",
+      "summary": "The basic Annual Revenue filter accepts abc as an active numeric condition and empties the table without identifying the invalid value.",
+      "expected": "The numeric filter prevents a nonnumeric draft from becoming an active numeric condition, instead of presenting an empty result as though the condition were valid.",
+      "actual": "Entering abc leaves an active Annual Revenue ≥ abc chip and No Company found with no validation explanation. The rendered input is text despite the caller requesting number, and letter-valued conditions reach the query as a null numeric operand. Valid numeric thresholds filter the same control records correctly.",
+      "reproSteps": [
+        "Create disposable Companies with distinct known Annual Revenue amounts, including zero, and isolate them using a search filter.",
+        "Add a basic Annual Revenue Greater than or equal condition and verify a valid numeric threshold selects the expected records.",
+        "Replace the numeric value with abc, dismiss the popup and inspect the active chip, table and validation feedback.",
+        "Repeat the invalid draft and compare another valid threshold and retained zero-USD control."
+      ],
+      "sourceCause": "ObjectFilterDropdownNumberInput requests type=number, but DropdownMenuInput does not forward that prop to its input. The filter validity guard accepts nonempty strings, and raw input is used for the active value/display. The currency query converter parses letters to NaN, which serializes as a null operand.",
+      "matchingGuidance": {
+        "distinction": "Match the basic Companies Annual Revenue filter activating literal nonnumeric text. Distinguish refused invalid values with generic feedback, deliberate legacy read coercion, record-field currency parsing and relative-date input remounts."
+      },
+      "reviewEvidence": {
+        "basis": "Both independent browser/source reviewers accept the same literal nonnumeric Annual Revenue value becoming an active basic filter at severity 3. Coordinator checked full source/contract audits including contrary read-path intent, independent retained images, numeric/zero-USD controls and letter-valued query readbacks, plus both official subscription billing records.",
+        "sourceRevision": "35c645064f72bc4e3180a2c6c506cbbfee170007",
+        "severityReason": "A numeric filtering operation silently becomes an invalid active condition and returns misleading empty results; correcting or clearing the filter is a workaround.",
+        "sourceReferences": [
+          "https://github.com/twentyhq/twenty/blob/35c645064f72bc4e3180a2c6c506cbbfee170007/packages/twenty-front/src/modules/object-record/object-filter-dropdown/components/ObjectFilterDropdownNumberInput.tsx#L43-L60",
+          "https://github.com/twentyhq/twenty/blob/35c645064f72bc4e3180a2c6c506cbbfee170007/packages/twenty-front/src/modules/ui/layout/dropdown/components/DropdownMenuInput.tsx#L93-L146",
+          "https://github.com/twentyhq/twenty/blob/35c645064f72bc4e3180a2c6c506cbbfee170007/packages/twenty-front/src/modules/object-record/object-filter-dropdown/components/ObjectFilterDropdownFilterInput.tsx#L125-L129",
+          "https://github.com/twentyhq/twenty/blob/35c645064f72bc4e3180a2c6c506cbbfee170007/packages/twenty-shared/src/utils/filter/isRecordFilterValueValid.ts#L14-L18",
+          "https://github.com/twentyhq/twenty/blob/35c645064f72bc4e3180a2c6c506cbbfee170007/packages/twenty-shared/src/utils/filter/turnRecordFilterIntoGqlOperationFilter.ts#L727-L755"
+        ],
+        "limitations": [
+          "Joint scope is the basic Companies Annual Revenue filter accepting literal nonnumeric text such as abc as an active numeric condition, with an empty table and no validation explanation. Comma-formatted/prefix values, other operators and Opportunities/NUMBER-field variants are excluded.",
+          "The expected numeric guard is supported by the caller’s requested numeric input and later explicit strict filter-write validation. The exact native validation presentation remains inferred; no particular error wording is required.",
+          "Later maintainer commit 532330 explicitly preserves deliberately lenient read-path coercion for compatibility while rejecting invalid writes. Prefix/comma parsing and newer fallback code alone are not independent proof of unintended behavior or latest fix status.",
+          "Claude created its control records through ordinary API. Codex’s own zero-USD control was separately verified from its official output; placeholder rendering alone is not evidence that the zero amount was absent.",
+          "These are applied draft filters. No saved-view persistence, stored business-data change or newer-runtime test is claimed."
+        ]
+      }
     }
   ]
 }
