@@ -1528,6 +1528,45 @@
           "Inspected newer source wraps the overlay in the missing context and a maintainer fix explicitly addresses grouped-row dragging. Newer runtime was not tested; this does not establish unrelated post-fix drop behavior."
         ]
       }
+    },
+    {
+      "id": "records-views-loop-7dc923b9",
+      "name": "Calendar omits overnight Task continuations at the first displayed grid day",
+      "severity": 3,
+      "owningArea": "twenty/records-views",
+      "summary": "A calendar query excludes a late Task starting before the grid even though its intended one-hour fallback duration overlaps the first displayed day.",
+      "expected": "A Task with no end date should appear on every displayed day overlapped by its intended one-hour fallback interval, consistently across calendar periods.",
+      "actual": "With Sunday-first November 2026 and no end field, a Task due October 31 at 23:59 appears on October 31 but not November 1. Month, Week and Day omit the continuation. Mid-month and trailing-grid continuations render, and a Monday-first grid restores the same Task on November 1. The record remains saved.",
+      "reproSteps": [
+        "Create a disposable Tasks calendar using Due Date with End date None, UTC and Sunday week start. Filter to uniquely named own Tasks.",
+        "Create a Task due October 30, 2026 at 23:59 and verify it appears on October 30 and 31.",
+        "Drag it to October 31, preserving 23:59, then navigate to November. Inspect November 1 in Month, Week and Day.",
+        "Compare a November 1 start and a mid-month continuation, then use a Monday-first November grid to recover the missing continuation."
+      ],
+      "sourceCause": "The display selector gives records without an end a one-hour interval. With no compatible end field, the calendar query instead filters start times to the displayed month grid without allowing that fallback interval to overlap its leading boundary. A preceding-day Task is never fetched for the selector to place on the first day.",
+      "matchingGuidance": {
+        "relatedReferenceId": "records-views-N44",
+        "distinction": "The rejected reference establishes that the one-hour next-day continuation is intended. Match its omission when the start lies just before the first fetched grid day; exclude objections to the intended continuation itself, crowded-day caps and unrelated calendar loading failures."
+      },
+      "reviewEvidence": {
+        "basis": "Independent browser and source checks agree on a severity 3 calendar omission at the leading grid boundary. Coordinator checked original video samples, retained independent screenshots and readbacks, the actual calendar query, explicit overlap contract and exact subscription billing.",
+        "sourceRevision": "35c645064f72bc4e3180a2c6c506cbbfee170007",
+        "severityReason": "Both reviewers recommend severity 3: saved records are silently missing from calendar days, with no stored-data loss.",
+        "sourceReferences": [
+          "https://github.com/twentyhq/twenty/blob/35c645064f72bc4e3180a2c6c506cbbfee170007/packages/twenty-front/src/modules/object-record/record-calendar/utils/getRecordCalendarDateTimeRange.ts#L38-L44",
+          "https://github.com/twentyhq/twenty/blob/35c645064f72bc4e3180a2c6c506cbbfee170007/packages/twenty-front/src/modules/object-record/record-calendar/states/selectors/calendarDayRecordsComponentFamilySelector.ts#L101-L113",
+          "https://github.com/twentyhq/twenty/blob/35c645064f72bc4e3180a2c6c506cbbfee170007/packages/twenty-front/src/modules/object-record/record-calendar/month/hooks/useRecordCalendarQueryDateRangeFilter.tsx#L115-L137",
+          "https://github.com/twentyhq/twenty/blob/35c645064f72bc4e3180a2c6c506cbbfee170007/packages/twenty-front/src/modules/object-record/record-calendar/month/utils/getRecordCalendarDateRangeOverlapFilter.ts#L12-L44",
+          "https://github.com/twentyhq/twenty/blob/35c645064f72bc4e3180a2c6c506cbbfee170007/packages/twenty-front/src/modules/object-record/record-calendar/hooks/useRecordCalendarGroupByRecords.ts#L45-L72",
+          "https://github.com/twentyhq/twenty/commit/25bd2897a331e57c635533319265360fd5451c4a"
+        ],
+        "limitations": [
+          "Both independent checks used Tasks Due Date, no end field, UTC and a Sunday-first November grid. The shared trigger includes an ordinary calendar drag to October 31 at 23:59. Other objects, time zones and configured end fields are unverified.",
+          "The task remains saved and visible on its start day and in Table. November is not universally empty: records starting inside the fetched range render normally.",
+          "Mid-month and trailing-grid overlap controls pass. A Monday-first grid restores the missing continuation because its query includes the preceding start day.",
+          "Inspected newer source removes the one-hour overlap model. Newer runtime was not tested, and the pinned revision is not an ancestor of the inspected newer checkout."
+        ]
+      }
     }
   ]
 }
