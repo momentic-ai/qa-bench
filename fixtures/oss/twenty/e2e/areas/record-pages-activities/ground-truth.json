@@ -1022,6 +1022,39 @@
           "https://github.com/twentyhq/twenty/blob/35c645064f72bc4e3180a2c6c506cbbfee170007/packages/twenty-front/src/modules/object-record/record-field/ui/meta-types/input/components/MultiItemBaseInput.tsx#L122-L172"
         ]
       }
+    },
+    {
+      "id": "record-pages-activities-pass3-ec82a3d9",
+      "name": "Restoring a Person or Company leaves saved Notes hidden behind an empty state",
+      "severity": 3,
+      "owningArea": "twenty/record-pages-activities",
+      "summary": "After deleting and restoring a Person or Company with saved Notes, the Notes panel can show Notes 1 and No notes until refetched.",
+      "expected": "Restoring a record should display its saved associated Notes consistently with the panel count.",
+      "actual": "The deleted banner disappears, but the saved note card remains hidden behind No notes while Notes 1 remains. Switching tabs or reloading restores the card; no saved data loss was observed.",
+      "reproSteps": [
+        "Create a fresh Person with a titled Note containing saved body text. Close the editor and reload to confirm the note card appears.",
+        "With Notes open, delete the Person through its command menu, then click Restore in the deleted-record banner.",
+        "Observe Notes 1 alongside the No notes empty state, with the saved card absent.",
+        "Switch to Tasks and back to Notes, or reload, and verify the saved card returns. Repeat on a second fresh Person; Companies can also reproduce."
+      ],
+      "sourceCause": "Soft-delete optimistic relation handling removes cached NoteTarget edges/entities. Restoration clears parent deletedAt but does not refetch the removed activity-target list; unchanged relations can short-circuit restoration. Filter-based count updates can disagree with ID-based edge eviction when cached target fragments are partial. The precise running-cache ordering/count mechanism was not instrumented.",
+      "matchingGuidance": "Covers Notes-panel display after deleting and restoring the parent Person or Company. Related to activity-deletion count staleness, but does not require deleting the Note itself. Distinct from restoring an activity reviving removed server relations and from workflows loaded while deleted. Do not generalize persistent failure to Tasks, Comments, other objects, or actual saved-data loss.",
+      "reviewEvidence": {
+        "basis": "Independent repeated browser reproductions on fresh records, source inspection and coordinator verification.",
+        "sourceRevision": "35c645064f72bc4e3180a2c6c506cbbfee170007",
+        "limitations": [
+          "Intermittent; no universal failure rate established.",
+          "No running-cache instrumentation or direct database query.",
+          "Other roles, mobile widths, bulk restoration and other record objects untested.",
+          "Original Mo video and latest runtime not inspected."
+        ],
+        "sourceReferences": [
+          "https://github.com/twentyhq/twenty/blob/35c645064f72bc4e3180a2c6c506cbbfee170007/packages/twenty-front/src/modules/activities/notes/components/NotesCard.tsx#L72-L106",
+          "https://github.com/twentyhq/twenty/blob/35c645064f72bc4e3180a2c6c506cbbfee170007/packages/twenty-front/src/modules/apollo/optimistic-effect/utils/triggerUpdateRelationsOptimisticEffect.ts#L162-L207",
+          "https://github.com/twentyhq/twenty/blob/35c645064f72bc4e3180a2c6c506cbbfee170007/packages/twenty-front/src/modules/apollo/optimistic-effect/utils/triggerDestroyRecordsOptimisticEffect.ts#L55-L126",
+          "https://github.com/twentyhq/twenty/blob/35c645064f72bc4e3180a2c6c506cbbfee170007/packages/twenty-front/src/modules/object-record/hooks/useRestoreManyRecords.ts#L77-L139"
+        ]
+      }
     }
   ]
 }
