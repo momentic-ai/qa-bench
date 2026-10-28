@@ -2063,6 +2063,42 @@
           "The inspected newer source retains fixed node sizing and fitting calls; newer runtime was not tested."
         ]
       }
+    },
+    {
+      "id": "settings-data-model-pass3-f7e91002",
+      "name": "Inactive custom-object list deletion bypasses the typed confirmation safeguard",
+      "severity": 3,
+      "owningArea": "twenty/settings-data-model",
+      "summary": "The Objects list permanently removes a deactivated custom object directly, while its Settings page requires typed confirmation.",
+      "expected": "The destructive object deletion should retain the explicit confirmation used by the same object’s Settings flow.",
+      "actual": "After deactivating a custom object, choosing Delete from its Objects list row menu immediately removes it without a confirmation prompt. The removal persists after reload. Opening a deactivated object’s Settings directly and choosing Delete instead displays the warning requiring yes; Cancel preserves the object.",
+      "reproSteps": [
+        "Create a disposable custom object and open its Settings page. Choose Delete and confirm the typed-yes warning appears; cancel.",
+        "Deactivate the object and return to the Objects list.",
+        "Open its inactive row menu and choose Delete. Observe immediate removal without a confirmation dialog; reload and confirm it remains absent.",
+        "Repeat on a fresh object. As a control, open another deactivated object’s Settings directly and choose Delete; the typed-yes confirmation appears and Cancel preserves it."
+      ],
+      "sourceCause": "The inactive row-menu callback calls the object deletion hook directly. The object-detail Settings flow opens a confirmation dialog before calling the same deletion hook, so the destructive list entry point skips that safeguard.",
+      "matchingGuidance": {
+        "distinction": "Requires the inactive custom-object Objects-list Delete entry point. Do not match reversible deactivation, standard-object deletion restrictions, or unverified field/relation menu behavior."
+      },
+      "reviewEvidence": {
+        "basis": "Both independent reviewers reproduced immediate custom-object removal from the inactive list with no confirmation on fresh objects, including desktop/mobile variants, and observed typed-yes confirmation on the detail-page control. Coordinator checked full reports, source/confirmation contract and contrary history, original Mo samples, retained independent browser images and actual subscription billing.",
+        "sourceRevision": "35c645064f72bc4e3180a2c6c506cbbfee170007",
+        "severityReason": "A destructive custom-object operation immediately proceeds without the explicit confirmation present in the same feature’s detail flow. Both independent reviewers recommend severity 3.",
+        "sourceReferences": [
+          "https://github.com/twentyhq/twenty/blob/35c645064f72bc4e3180a2c6c506cbbfee170007/packages/twenty-front/src/modules/settings/data-model/objects/components/SettingsObjectInactiveMenuDropDown.tsx#L33-L62",
+          "https://github.com/twentyhq/twenty/blob/35c645064f72bc4e3180a2c6c506cbbfee170007/packages/twenty-front/src/pages/settings/data-model/SettingsObjectTable.tsx#L264-L283",
+          "https://github.com/twentyhq/twenty/blob/35c645064f72bc4e3180a2c6c506cbbfee170007/packages/twenty-front/src/modules/settings/data-model/object-details/components/tabs/ObjectSettings.tsx#L81-L100",
+          "https://github.com/twentyhq/twenty/blob/35c645064f72bc4e3180a2c6c506cbbfee170007/packages/twenty-front/src/modules/settings/data-model/object-details/components/tabs/ObjectSettings.tsx#L184-L193"
+        ],
+        "limitations": [
+          "Joint scope is deleting a deactivated custom object through the Objects list row menu. Field/relation deletion and other backend callers are excluded.",
+          "Object removal persists after reload. Physical database rows were not independently inspected by both reviewers; no broader database-loss measurement is claimed.",
+          "Confirmation consistency is supported by an inactive-object detail-page control. The maintainer confirmation change is an unmerged proposal, not a merged fix or final contract decision.",
+          "The inspected newer main-source path still differs between list and detail; newer runtime and other roles were not established."
+        ]
+      }
     }
   ]
 }
