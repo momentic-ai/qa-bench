@@ -2241,6 +2241,265 @@
       "matchingGuidance": {
         "distinction": "Match returning from a full Task record to the same Kanban view through its breadcrumb and losing the previous board scroll position. Exclude merely closing a side panel, which preserves position, and Table row restoration. Do not require both scroll axes."
       }
+    },
+    {
+      "name": "Adding a Company Kanban group resets grouping to Stage and empties the board",
+      "summary": "In Opportunities → By Stage, changing Group by to Company works until a company group is added. Selecting Google in New group resets the grouping field to Stage while retaining incompatible group configuration, leaving the board blank. Reproduced twice.",
+      "expected": "Google should appear as a Company column containing its two opportunities, and Group should remain Company after adding the group and reloading.",
+      "actual": "After selecting Google the entire board disappears. Options shows Group: Stage instead of Company. Reload retains the broken blank board (view count becomes 2). Selecting Group by Stage again restores stage columns.",
+      "reproSteps": [
+        "Open the built-in Opportunities By Stage Kanban and change Group by to Company or Owner.",
+        "Allow the grouping update to complete, then add a matching relation group through New group.",
+        "Reopen Group settings and observe grouping has reverted to Stage while relation group values remain. Reload and inspect the saved board.",
+        "Compare a newly created custom board grouped by Company with an explicitly added Company group."
+      ],
+      "id": "native-twenty-u08",
+      "owningArea": "twenty/records-views",
+      "reviewEvidence": {
+        "basis": "User-requested publication after auditing fresh Codex browser captures and pinned source. The browser batch was stopped after useful checks; no completed formal judge verdict is represented.",
+        "userAccepted": true,
+        "sourceRevision": "35c645064f72bc4e3180a2c6c506cbbfee170007",
+        "severityReason": "Observed broken editing, configuration, record-view or workflow functionality.",
+        "analysis": [
+          "Adding a configured relation group resets native grouping to Stage and blanks board. Fresh custom Company board works."
+        ],
+        "sourceReferences": [
+          "https://github.com/twentyhq/twenty/blob/35c645064f72bc4e3180a2c6c506cbbfee170007/packages/twenty-server/src/engine/metadata-modules/flat-entity/constant/all-entity-properties-configuration-by-metadata-name.constant.ts#L396",
+          "https://github.com/twentyhq/twenty/blob/35c645064f72bc4e3180a2c6c506cbbfee170007/packages/twenty-server/src/engine/subscriptions/metadata-event/utils/sanitize-overridable-entity-event-batch.util.ts#L7"
+        ],
+        "limitations": [
+          "The fresh group-field reset was observed, but the native board had already undergone the Stage-group restoration test; pristine attribution of its initial blank state was not independently established.",
+          "Company/Owner relation groups were explicitly configured, so this is not an automatic relation-group-population expectation.",
+          "Evidence basis: fresh UI + source.",
+          "No independent Claude agreement or newer-runtime verification is claimed.",
+          "Targeted UI tool captures, screenshots and source were audited. The Codex batch was stopped after useful checks; this does not represent a completed formal judge verdict."
+        ]
+      },
+      "severity": 3
+    },
+    {
+      "name": "Changing a Kanban aggregate silently clears active filters",
+      "summary": "On Tasks → By Status, changing the column aggregation discards an applied Title filter and expands the board from 150 matching tasks to all 1,800. Reproduced with Count all and Count empty → Title.",
+      "expected": "Changing the aggregation preserves the active Title filter and the 150 matching records. Saving an unrelated view setting must not silently discard the current filter.",
+      "actual": "The Title filter chip and Update view disappear, and the board expands to all 1,800 tasks. Count all shows 1,050 / 525 / 225 across columns instead of the filtered 150 / 0 / 0. Reapplying the filter and choosing Count empty → Title clears it again.",
+      "reproSteps": [
+        "Open Tasks By Status and apply a Title Contains filter matching a subset of records. Leave the filter pending and confirm Update view appears.",
+        "Change a column calculation to Count all or Count empty for Title.",
+        "Observe the pending filter chip and Update view disappear and unfiltered Tasks return.",
+        "Save the filter before changing the calculation as a passing control."
+      ],
+      "id": "native-twenty-u10",
+      "owningArea": "twenty/records-views",
+      "reviewEvidence": {
+        "basis": "User-requested publication after auditing fresh Codex browser captures and pinned source. The browser batch was stopped after useful checks; no completed formal judge verdict is represented.",
+        "userAccepted": true,
+        "sourceRevision": "35c645064f72bc4e3180a2c6c506cbbfee170007",
+        "severityReason": "Observed broken editing, configuration, record-view or workflow functionality.",
+        "analysis": [
+          "Aggregation reloads saved view state over valid pending filters. Fresh150matchingTasks becomes1800; completed saved-filter control works."
+        ],
+        "sourceReferences": [
+          "https://github.com/twentyhq/twenty/blob/35c645064f72bc4e3180a2c6c506cbbfee170007/packages/twenty-front/src/modules/views/hooks/useUpdateViewAggregate.ts#L49",
+          "https://github.com/twentyhq/twenty/blob/35c645064f72bc4e3180a2c6c506cbbfee170007/packages/twenty-front/src/modules/object-record/record-index/hooks/useLoadRecordIndexStates.ts#L319"
+        ],
+        "limitations": [
+          "Evidence basis: fresh UI + source.",
+          "No independent Claude agreement or newer-runtime verification is claimed.",
+          "Targeted UI tool captures, screenshots and source were audited. The Codex batch was stopped after useful checks; this does not represent a completed formal judge verdict."
+        ]
+      },
+      "severity": 3,
+      "matchingGuidance": {
+        "relatedReference": "records-views-N03",
+        "distinction": "This entry changes a Tasks Kanban aggregation; N03 changes Layout. Both can reload saved criteria over pending filters."
+      }
+    },
+    {
+      "name": "Saved Opportunity Stage board reopens with no columns or cards",
+      "summary": "The existing Opportunities → By Stage saved board shows a record count of 150 but renders an empty board after reload. Switching Group by from Stage to Owner and back to Stage restores populated columns only until the next reload. Reproduced after a fresh sign-in; a newly created board did not reproduce this failure.",
+      "expected": "The saved Stage grouping should reopen with its five populated columns and allow browsing the 150 matching opportunities.",
+      "actual": "The toolbar shows By Stage · 150, while the board is completely blank with no columns, cards, or empty-state explanation. Cycling Group by temporarily restores the board; reload loses it again. The same blank state remained after a fresh browser session and sign-in.",
+      "reproSteps": [
+        "Open the populated built-in Opportunities By Stage board.",
+        "Change Group by to Owner or Company, then change it back to Stage. Observe the populated Stage columns return live.",
+        "Reload and wait for the record count to load. Observe no Stage columns/cards and no configured visible groups.",
+        "Compare the same round trip on a freshly created custom Stage board."
+      ],
+      "id": "native-twenty-u11",
+      "owningArea": "twenty/records-views",
+      "reviewEvidence": {
+        "basis": "User-requested publication after auditing fresh Codex browser captures and pinned source. The browser batch was stopped after useful checks; no completed formal judge verdict is represented.",
+        "userAccepted": true,
+        "sourceRevision": "35c645064f72bc4e3180a2c6c506cbbfee170007",
+        "severityReason": "Observed broken editing, configuration, record-view or workflow functionality.",
+        "analysis": [
+          "Native Stage roundtrip loses groups after reload; custom control works. Maintainer fix26656 confirms exact defect."
+        ],
+        "sourceReferences": [
+          "https://github.com/twentyhq/twenty/blob/35c645064f72bc4e3180a2c6c506cbbfee170007/packages/twenty-server/src/engine/metadata-modules/flat-view/utils/from-update-view-input-to-flat-view-to-update-or-throw.util.ts#L184",
+          "https://github.com/twentyhq/twenty/blob/35c645064f72bc4e3180a2c6c506cbbfee170007/packages/twenty-server/src/engine/metadata-modules/flat-view/utils/handle-flat-view-update-side-effect.util.ts#L31",
+          "https://github.com/twentyhq/twenty/blob/35c645064f72bc4e3180a2c6c506cbbfee170007/packages/twenty-server/src/engine/metadata-modules/utils/sanitize-overridable-entity-input.util.ts#L40",
+          "https://github.com/twentyhq/twenty/commit/bb9bd0b222d27f4c47a24d11dd5697136ff01b6e"
+        ],
+        "limitations": [
+          "Evidence basis: fresh UI + source.",
+          "No independent Claude agreement or newer-runtime verification is claimed.",
+          "Targeted UI tool captures, screenshots and source were audited. The Codex batch was stopped after useful checks; this does not represent a completed formal judge verdict."
+        ]
+      },
+      "severity": 3,
+      "matchingGuidance": {
+        "distinction": "Match persistent native Stage-group loss after restoring grouping and reloading. Exclude header-only N39 nonreproduction, relation-group setup without configured groups, and U08 resetting the grouping field when a group is added."
+      }
+    },
+    {
+      "name": "People 'Search any field' with several words returns records that match any word, not all words",
+      "summary": "On the People list, a 'Search any field' filter with more than one word returns the union of matches for each word. Searching 'John Gonzalez' returns 50 people, including Debbie Johnson and John Cook, when only John Gonzalez matches the full term.",
+      "expected": "A multi-token full-name search should require every entered name token to match a name component. This does not require literal phrase matching, token order, or distribution across unrelated fields.",
+      "actual": "The view shows '· 50' records. That is exactly the 42 'john' matches plus the 9 'gonzalez' matches, minus the 1 overlap. Results include Debbie Johnson, John Guerrero, Theodore Gonzalez, John Cook, Nathaniel Johnson, etc. Likewise 'Red Hat' returns Meredith Gregory, who matches only the substring 'red'.",
+      "reproSteps": [
+        "Open the People list and use Search any field.",
+        "Search a first-name token, then a last-name token, and note their separate matching sets.",
+        "Search both tokens together for a known full name. Observe first-name-only and last-name-only records remain.",
+        "Compare an ordinary multiword text-field match; this entry concerns full-name token matching rather than a literal phrase or arbitrary cross-field token distribution."
+      ],
+      "id": "native-twenty-u13",
+      "owningArea": "twenty/records-views",
+      "reviewEvidence": {
+        "basis": "User-requested publication after auditing fresh Codex browser captures and pinned source. The browser batch was stopped after useful checks; no completed formal judge verdict is represented.",
+        "userAccepted": true,
+        "sourceRevision": "35c645064f72bc4e3180a2c6c506cbbfee170007",
+        "severityReason": "Observed broken editing, configuration, record-view or workflow functionality.",
+        "analysis": [
+          "Global search uses known faulty full-name token OR helper. Fresh9Gonzalez+42john→50JohnGonzalez; maintainer24380 correction supports all name tokens. Related known bug, not literal-phrase or cross-field-all-terms claim."
+        ],
+        "sourceReferences": [
+          "https://github.com/twentyhq/twenty/blob/35c645064f72bc4e3180a2c6c506cbbfee170007/packages/twenty-shared/src/utils/filter/turnAnyFieldFilterIntoRecordGqlFilter.ts#L77",
+          "https://github.com/twentyhq/twenty/blob/35c645064f72bc4e3180a2c6c506cbbfee170007/packages/twenty-shared/src/utils/filter/turnAnyFieldFilterIntoRecordGqlFilter.ts#L239",
+          "https://github.com/twentyhq/twenty/blob/35c645064f72bc4e3180a2c6c506cbbfee170007/packages/twenty-shared/src/utils/filter/turnRecordFilterIntoGqlOperationFilter.ts#L775",
+          "https://github.com/twentyhq/twenty/blob/35c645064f72bc4e3180a2c6c506cbbfee170007/packages/twenty-shared/src/utils/filter/utils/generateILikeFiltersForCompositeFields.ts#L32"
+        ],
+        "limitations": [
+          "The accepted full-name Boolean-logic reference is related. This entry covers the Search any field full-name branch, not a promise that arbitrary terms across all fields form one literal phrase.",
+          "Evidence basis: fresh UI + source.",
+          "No independent Claude agreement or newer-runtime verification is claimed.",
+          "Targeted UI tool captures, screenshots and source were audited. The Codex batch was stopped after useful checks; this does not represent a completed formal judge verdict."
+        ]
+      },
+      "severity": 3,
+      "matchingGuidance": {
+        "relatedReference": "records-views-pass3-1eb89be5",
+        "distinction": "This entry covers Search any field full-name token matching; the existing entry covers Name Contains and Does not contain."
+      }
+    },
+    {
+      "name": "Calendar card selection never activates the selection toolbar",
+      "summary": "Calendar cards expose working checkboxes but their selected state is not reflected in the list header, unlike Table and Kanban.",
+      "expected": "Checked calendar records should activate the same selected-count and selection-action toolbar provided by Table and Kanban, or the calendar should not offer unsupported selection controls.",
+      "actual": "Both People checkboxes have aria-checked=true, but the header remains People / New Person, with no '2 selected' indicator or Update/selection actions. Tasks likewise checks the selected record (including all four date appearances of that record) without any selected count or toolbar. Table and Kanban selections correctly activate the toolbar in independent tests.",
+      "reproSteps": [
+        "Create or open a populated Month Calendar view for People or Tasks.",
+        "Hover a card and select its checkbox. Select a second card when available.",
+        "Observe the cards checked while the header still shows the ordinary New action without the selected count or selection actions.",
+        "Compare selecting records in a Table or Kanban view, where the selection actions activate."
+      ],
+      "id": "native-twenty-u14",
+      "owningArea": "twenty/records-views",
+      "reviewEvidence": {
+        "basis": "User-requested publication after auditing fresh Codex browser captures and pinned source. The browser batch was stopped after useful checks; no completed formal judge verdict is represented.",
+        "userAccepted": true,
+        "sourceRevision": "35c645064f72bc4e3180a2c6c506cbbfee170007",
+        "severityReason": "Observed broken editing, configuration, record-view or workflow functionality.",
+        "analysis": [
+          "Calendar cards become checked but selection actions/count do not activate. Wrong record-ID collection; fresh Kanban control works; maintainer fix27421 corroborates."
+        ],
+        "sourceReferences": [
+          "https://github.com/twentyhq/twenty/blob/35c645064f72bc4e3180a2c6c506cbbfee170007/packages/twenty-front/src/modules/object-record/record-calendar/states/selectors/recordCalendarSelectedRecordIdsComponentSelector.ts#L13",
+          "https://github.com/twentyhq/twenty/blob/35c645064f72bc4e3180a2c6c506cbbfee170007/packages/twenty-front/src/modules/object-record/record-index/states/selectors/recordIndexAllRecordIdsComponentSelector.ts#L20",
+          "https://github.com/twentyhq/twenty/blob/35c645064f72bc4e3180a2c6c506cbbfee170007/packages/twenty-front/src/modules/object-record/record-calendar/components/RecordIndexCalendarDataLoaderEffect.tsx#L38",
+          "https://github.com/twentyhq/twenty/commit/0a73a535d14e95c6daf298776e5b470ebaffe970"
+        ],
+        "limitations": [
+          "Evidence basis: fresh UI + source.",
+          "No independent Claude agreement or newer-runtime verification is claimed.",
+          "Targeted UI tool captures, screenshots and source were audited. The Codex batch was stopped after useful checks; this does not represent a completed formal judge verdict."
+        ]
+      },
+      "severity": 3,
+      "matchingGuidance": {
+        "distinction": "Checked Calendar cards without selected count or bulk actions. Distinct from checkboxes failing to toggle (U09)."
+      }
+    },
+    {
+      "name": "Existing saved views lose their record area after layout or grouping changes",
+      "summary": "Existing Tasks By Status and Opportunities By Stage views become blank after changing their layout/grouping. The views retain record counts and settings but lose all visible records and groups after reload. Newly created custom views render successfully.",
+      "expected": "Changing layout or grouping should preserve a usable saved view. Calendar should render its grid; a Stage Kanban should regenerate and persist stage columns.",
+      "actual": "Tasks By Status shows 1,800 records but a completely blank record area, including after reload. Opportunities By Stage shows 150 records but no columns/cards after the grouping round trip and reload; its Group settings show Stage but no visible groups. Newly created custom views can render these layouts. By Stage's saved groups are empty, as are the affected By Status groups. Screenshot of Tasks failure: tasks-calendar-blank.png.",
+      "reproSteps": [
+        "Open the built-in Tasks By Status view and change Layout to Calendar.",
+        "Close Options, wait, reload, and choose a populated date field such as Due Date. Observe the record area lacks the Calendar grid.",
+        "Switch the affected view back to Kanban and reload; inspect the absent groups/cards.",
+        "Compare a newly created custom Calendar view and its reload."
+      ],
+      "id": "native-twenty-u15",
+      "owningArea": "twenty/records-views",
+      "reviewEvidence": {
+        "basis": "User-requested publication after auditing fresh Codex browser captures and pinned source. The browser batch was stopped after useful checks; no completed formal judge verdict is represented.",
+        "userAccepted": true,
+        "sourceRevision": "35c645064f72bc4e3180a2c6c506cbbfee170007",
+        "severityReason": "Observed broken editing, configuration, record-view or workflow functionality.",
+        "analysis": [
+          "Native Tasks Calendar grid remains absent after reload; custom Calendar passes. Opportunity portion already covered byU11."
+        ],
+        "sourceReferences": [
+          "https://github.com/twentyhq/twenty/blob/35c645064f72bc4e3180a2c6c506cbbfee170007/packages/twenty-server/src/engine/subscriptions/metadata-event/utils/sanitize-overridable-entity-event-batch.util.ts#L7",
+          "https://github.com/twentyhq/twenty/blob/35c645064f72bc4e3180a2c6c506cbbfee170007/packages/twenty-server/src/engine/metadata-modules/flat-view/utils/from-update-view-input-to-flat-view-to-update-or-throw.util.ts#L184"
+        ],
+        "limitations": [
+          "Only the Tasks native-layout failure is added here. The compound report’s Opportunities Stage-group portion is covered by native-twenty-u11.",
+          "Evidence basis: fresh UI + source.",
+          "No independent Claude agreement or newer-runtime verification is claimed.",
+          "Targeted UI tool captures, screenshots and source were audited. The Codex batch was stopped after useful checks; this does not represent a completed formal judge verdict."
+        ]
+      },
+      "severity": 3,
+      "matchingGuidance": {
+        "relatedReference": "native-twenty-u11",
+        "distinction": "This entry covers native Tasks layout changes leaving the entire Calendar/grid or restored Kanban area absent through reload. The related entry covers Opportunity Stage-group restoration. N33 recovers on reload and retains Calendar structure."
+      }
+    },
+    {
+      "name": "Save as new view fails when changing a table to Kanban",
+      "summary": "Saving a filtered Opportunities table as a new Kanban view fails with a missing main-group field error although Stage is shown as selected. Creating a Kanban through Add view works.",
+      "expected": "A new Kanban saved view should be created with Stage grouping and the Amount filter retained.",
+      "actual": "No view is created or opened. An error toast says 'Kanban view must have a main group by field', despite Stage being displayed in the form. Create becomes disabled and remains disabled even after reselecting Stage. Reproduced twice, including with a one-second pause after selecting Kanban. Screenshot: save-as-kanban-missing-group.png.",
+      "reproSteps": [
+        "Open Opportunities All Opportunities in Table layout and apply a valid Amount filter.",
+        "Choose Save as new view, enter a name, and change View type to Kanban. Confirm Stage is displayed as selected.",
+        "Wait for the form to settle and click Create. Observe the missing-main-group-field error and no new view.",
+        "Reselect Stage and inspect the still-disabled Create control. Compare creating a Kanban through Add view."
+      ],
+      "id": "native-twenty-u16",
+      "owningArea": "twenty/records-views",
+      "reviewEvidence": {
+        "basis": "User-requested publication after auditing fresh Codex browser captures and pinned source. The browser batch was stopped after useful checks; no completed formal judge verdict is represented.",
+        "userAccepted": true,
+        "sourceRevision": "35c645064f72bc4e3180a2c6c506cbbfee170007",
+        "severityReason": "Observed broken editing, configuration, record-view or workflow functionality.",
+        "analysis": [
+          "Form displays Stage but CreateView sends null grouping and fails; AddView control succeeds. Create also remains disabled after the error."
+        ],
+        "sourceReferences": [
+          "https://github.com/twentyhq/twenty/blob/35c645064f72bc4e3180a2c6c506cbbfee170007/packages/twenty-front/src/modules/views/view-picker/hooks/useCreateViewFromCurrentState.ts#L91",
+          "https://github.com/twentyhq/twenty/blob/35c645064f72bc4e3180a2c6c506cbbfee170007/packages/twenty-front/src/modules/views/hooks/useCreateViewFromCurrentView.ts#L130"
+        ],
+        "limitations": [
+          "Evidence basis: fresh UI + source.",
+          "No independent Claude agreement or newer-runtime verification is claimed.",
+          "Targeted UI tool captures, screenshots and source were audited. The Codex batch was stopped after useful checks; this does not represent a completed formal judge verdict."
+        ]
+      },
+      "severity": 3
     }
   ]
 }

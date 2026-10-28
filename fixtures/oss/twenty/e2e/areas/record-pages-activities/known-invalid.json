@@ -94,6 +94,139 @@
           "Visual auditing used sampled frames with denser checks around decisive actions; no newer-runtime claim is made."
         ]
       }
+    },
+    {
+      "name": "Record field editors do not open on company and task pages",
+      "summary": "Editable record fields show a pointer cursor but clicking or double-clicking their values never opens an editor, preventing changes to company details and task metadata.",
+      "expected": "Clicking an editable value opens the relevant text, date, currency, member, or status editor so changes can be saved.",
+      "actual": "No editor, picker, or input opens. The values remain unchanged. Reproduced in both the task side panel and full record page; task title and rich-text body remain editable.",
+      "reproSteps": [
+        "Sign in as tim@apple.dev.",
+        "Open Companies > Google, then Open to view the full record at /object/company/<record-id>.",
+        "Click Account Owner (Phil Schiler), Address (Mountain View), or the empty Annual Revenue field; also try double-clicking the values.",
+        "Open the company's Tasks tab, create a task, and try changing Status, Due Date, or Assignee in its side panel or full record page."
+      ],
+      "id": "native-twenty-u01",
+      "owningArea": "twenty/record-pages-activities",
+      "reviewEvidence": {
+        "basis": "Explicit reviewer decision U01. Original independent controls successfully edit after hovering.",
+        "userAccepted": false,
+        "sourceRevision": "35c645064f72bc4e3180a2c6c506cbbfee170007"
+      },
+      "reason": "Original independent controls successfully edit after hovering."
+    },
+    {
+      "name": "Note, task, and calendar event export actions do nothing",
+      "summary": "Record command menus expose Export Note / Export Task / Export Calendar event and Export to PDF, but selecting these actions does not start an export or show export options.",
+      "expected": "The selected action downloads the record or opens export/PDF options with feedback.",
+      "actual": "The command menu stays unchanged and no download, dialog, navigation, or export options appear. Playwright download/dialog listeners captured no events. Reproduced with Export Note, Export to PDF on a note, Export Task on a task, and Export Calendar event.",
+      "reproSteps": [
+        "Sign in and go to Notes.",
+        "Create a note, enter a title and body, then click Open to view its full record.",
+        "Open the top-right Command Menu and select Export Note.",
+        "Select Export to PDF from the same menu.",
+        "Repeat Export Task on a full task record.",
+        "Open Google > Calendar > Client Presentation > Open, then Command Menu > Export Calendar event."
+      ],
+      "id": "native-twenty-u02",
+      "owningArea": "twenty/record-pages-activities",
+      "reviewEvidence": {
+        "basis": "Explicit reviewer decision U02. CSV blobs were generated despite absent remote-download events. Every PDF variant was not independently verified. Rejected as reported; do not generalize to a separately verified export failure.",
+        "userAccepted": false,
+        "sourceRevision": "35c645064f72bc4e3180a2c6c506cbbfee170007"
+      },
+      "reason": "CSV blobs were generated despite absent remote-download events. Every PDF variant was not independently verified. Rejected as reported; do not generalize to a separately verified export failure."
+    },
+    {
+      "name": "Existing company attachments cannot be downloaded (404)",
+      "summary": "Files listed on company records open a preview dialog, but downloading them fails with HTTP 404 and provides no visible error.",
+      "expected": "The existing attachment downloads successfully, or a visible error explains why it is unavailable.",
+      "actual": "No file downloads. The download GET /file/files-field/<record-id> returns 404 for Google's Backup Data.zip; the console reports 'Failed downloading file'. The preview dialog remains unchanged with no user-facing error. The same failure occurs for Microsoft's Source Code.zip.",
+      "reproSteps": [
+        "Sign in, open Companies > Google > Files.",
+        "Click Backup Data.zip.",
+        "In the Preview Not Available dialog, click Download File.",
+        "Repeat with Microsoft > Files > Source Code.zip."
+      ],
+      "id": "native-twenty-u03",
+      "owningArea": "twenty/record-pages-activities",
+      "reviewEvidence": {
+        "basis": "Explicit reviewer decision U03. Missing backing files for seeded attachments; exclude valid user uploads.",
+        "userAccepted": false,
+        "sourceRevision": "35c645064f72bc4e3180a2c6c506cbbfee170007"
+      },
+      "reason": "Missing backing files for seeded attachments; exclude valid user uploads."
+    },
+    {
+      "name": "Task detail page labels its body tab Note",
+      "summary": "A full task record displays a Note tab for its task description, while its preview correctly labels the content Task.",
+      "expected": "The task description tab is labeled Task or Description, consistently with the task preview.",
+      "actual": "The tab is labeled Note alongside Timeline and Files, despite the page breadcrumb/title identifying the record as a Task. Reproduced on QA Standalone Task Details (/object/task/<record-id>).",
+      "reproSteps": [
+        "Sign in and open Tasks.",
+        "Create or open any task, then use Open to view its full page.",
+        "Inspect the tabs above the task description."
+      ],
+      "id": "native-twenty-u06",
+      "owningArea": "twenty/record-pages-activities",
+      "reviewEvidence": {
+        "basis": "Explicit reviewer decision U06. Intentional layout terminology; no contrary contract established.",
+        "userAccepted": false,
+        "sourceRevision": "35c645064f72bc4e3180a2c6c506cbbfee170007"
+      },
+      "reason": "Intentional layout terminology; no contrary contract established."
+    },
+    {
+      "name": "CSV export truncates 'Created by / Name' (e.g. 'Tim A' instead of 'Tim Apple') for Notes and Tasks",
+      "summary": "When notes or tasks are exported to CSV, the 'Created by / Name' column contains a truncated name ('Tim A'), even though the UI shows the creator as 'Tim Apple' everywhere.",
+      "expected": "The 'Created by / Name' column has the creator's full name, 'Tim Apple', matching the Created by value shown in the list and on record pages.",
+      "actual": "Every exported row has 'Tim A' in 'Created by / Name'. Notes example: '...,MANUAL,<record-id>,Tim A,,2026-10-28T19:38:24.977Z'. Tasks example: 'Schedule follow-up call,TODO,MANUAL,20202020-0687-...,Tim A,,2026-10-31T19:38:14.039Z,...'.",
+      "reproSteps": [
+        "Sign in as tim@apple.dev and go to /objects/notes.",
+        "Select the checkboxes for the first 3 notes. The Created by column shows 'Tim Apple'.",
+        "Open the ⋮ menu at the top right and click 'Export Notes'.",
+        "Open the downloaded CSV: the 'Created by / Name' column says 'Tim A' on every row.",
+        "Do the same on /objects/tasks (select 2 tasks, then ⋮ > Export Tasks). The task CSV also says 'Tim A'."
+      ],
+      "id": "native-twenty-u07",
+      "owningArea": "twenty/record-pages-activities",
+      "reviewEvidence": {
+        "basis": "Explicit reviewer decision U07. Seed actually stores Tim A; CSV preserves it.",
+        "userAccepted": false,
+        "sourceRevision": "35c645064f72bc4e3180a2c6c506cbbfee170007"
+      },
+      "reason": "Seed actually stores Tim A; CSV preserves it."
+    },
+    {
+      "id": "native-twenty-final-4",
+      "name": "Address components use the fixture’s tested comma-only formatting",
+      "owningArea": "twenty/record-pages-activities",
+      "summary": "A report objected to Address components appearing with commas but no following spaces after a valid edit.",
+      "expected": "Saved address components should display according to the fixture formatter; no applicable requirement for comma-space separators was established.",
+      "actual": "The rendered address uses comma-only separators while all saved component values remain correct. Exact-version formatting tests expect this representation.",
+      "reproSteps": [
+        "Open a disposable Company record and edit multiple Address components, such as street, city, state and postcode.",
+        "Save and inspect the Address display. It joins the populated parts with comma-only separators.",
+        "Compare the stored component values; the report establishes no value loss or incorrect component."
+      ],
+      "reason": "The reported representation is deliberately implemented and explicitly asserted by the pinned address-formatting tests. The requested comma-space style is not an established fixture product requirement. Rejection covers this separator-style complaint, not missing components, data corruption, clipping or an independently established formatting contract.",
+      "reviewedBy": "hnhaefliger",
+      "reviewedAt": "2026-10-28T21:02:51.459076+00:00",
+      "reviewEvidence": {
+        "basis": "User accepted publication after original captured UI evidence and pinned source/tests review. No new independent browser run or formal judge agreement is claimed.",
+        "userAccepted": false,
+        "sourceRevision": "35c645064f72bc4e3180a2c6c506cbbfee170007",
+        "sourceReferences": [
+          "https://github.com/twentyhq/twenty/blob/35c645064f72bc4e3180a2c6c506cbbfee170007/packages/twenty-front/src/utils/joinAddressFieldValues.ts#L12",
+          "https://github.com/twentyhq/twenty/blob/35c645064f72bc4e3180a2c6c506cbbfee170007/packages/twenty-front/src/utils/__tests__/formatAddressDisplay.test.ts#L32",
+          "https://github.com/twentyhq/twenty/blob/35c645064f72bc4e3180a2c6c506cbbfee170007/packages/twenty-front/src/modules/object-record/record-field/ui/meta-types/display/components/AddressFieldDisplay.tsx#L13"
+        ],
+        "limitations": [
+          "Tests establish current formatting intent, not optimal readability. A future UX style change would be separate.",
+          "Newer runtime was not tested."
+        ],
+        "userRejected": true
+      }
     }
   ]
 }

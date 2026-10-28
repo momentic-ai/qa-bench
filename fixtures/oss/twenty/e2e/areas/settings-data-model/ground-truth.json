@@ -2491,6 +2491,126 @@
       "matchingGuidance": {
         "distinction": "Match the custom-object New action failing with an error and no record-creation panel in the reported field-metadata context. Do not infer that structured fields always cause the failure or that matching fresh objects must fail. A Number edit failing on an already-created record is a different operation; no shared cause is established."
       }
+    },
+    {
+      "name": "Workspace instruction edits are silently discarded when switching AI tabs",
+      "summary": "Editing Workspace Instructions and immediately opening Skills loses the edit without a save prompt or warning. Returning to Overview restores the previous instructions.",
+      "expected": "The latest instructions should be saved when leaving the editor, or the app should warn that unsaved changes will be lost.",
+      "actual": "The editor shows 'QA saved instruction one'; the new instructions are silently lost. Reproduced through Playwright fill followed by an ordinary Skills tab click, with no reload or forced navigation.",
+      "reproSteps": [
+        "Open Settings > AI > Overview and save unique Workspace Instructions, waiting for the initial value to persist.",
+        "Replace the instructions and immediately use the ordinary Skills tab.",
+        "Return to Overview and reload. Observe the previous saved text instead of the replacement, without an unsaved-change warning.",
+        "Compare waiting beyond the one-second autosave debounce before switching tabs."
+      ],
+      "id": "native-twenty-u17",
+      "owningArea": "twenty/settings-data-model",
+      "reviewEvidence": {
+        "basis": "User-requested publication after auditing original captured evidence and pinned source. No fresh independent reproduction is claimed.",
+        "userAccepted": true,
+        "sourceRevision": "35c645064f72bc4e3180a2c6c506cbbfee170007",
+        "severityReason": "Observed broken editing, configuration, record-view or workflow functionality.",
+        "analysis": [
+          "Ordinary immediate AI-tab navigation loses pending Workspace Instructions. Original3reports plus1000ms debounce/unmount chain; no fresh retest counted."
+        ],
+        "sourceReferences": [
+          "https://github.com/twentyhq/twenty/blob/35c645064f72bc4e3180a2c6c506cbbfee170007/packages/twenty-front/src/pages/settings/ai/components/SettingsAiOverviewTab.tsx#L54"
+        ],
+        "limitations": [
+          "Three original runs capture ordinary immediate in-app navigation loss; no fresh targeted reproduction was completed in this review.",
+          "This concerns a pending edit on normal navigation, not hard reload before saving or completed-autosave focus/fullscreen interruption.",
+          "Evidence basis: original captured evidence + source.",
+          "No independent Claude agreement or newer-runtime verification is claimed."
+        ]
+      },
+      "severity": 3,
+      "matchingGuidance": {
+        "relatedReference": "settings-data-model-pass3-69cbded5",
+        "distinction": "This entry loses pending text on ordinary tab navigation; the related entry preserves entered text but interrupts focus/fullscreen after autosave."
+      }
+    },
+    {
+      "name": "Editing any select field option overwrites empty record values with the field's default option",
+      "summary": "When a Select field has a default option, saving any change to its options in Settings > Data model (even renaming an unrelated option) sets every record whose value was empty (null) to the default option. Data the user never touched is silently changed.",
+      "expected": "Records whose select value is empty stay empty. Only records using the renamed option should change to the new value.",
+      "actual": "After renaming the unrelated option 'Red' to 'Crimson' (no record used Red), record W3null went from null to 'LIME' (the default option). W4blue (BLUE_SKY) was unchanged. Earlier, renaming the default option Green to Lime also turned W1, which was empty before, into LIME.",
+      "reproSteps": [
+        "Create a custom object with a nullable Select field, multiple options, and a configured default.",
+        "Create a record with an explicit null Select value and another using a nondefault option. The original report used the supported REST API for this setup.",
+        "Confirm the null value before editing field options. Rename an unused option through Settings > Data model and Save.",
+        "Read the records again and inspect the list. Observe the previously null value replaced by the default while the nondefault record retains its selection."
+      ],
+      "id": "native-twenty-u20",
+      "owningArea": "twenty/settings-data-model",
+      "reviewEvidence": {
+        "basis": "User-requested publication after auditing original captured evidence and pinned source. No fresh independent reproduction is claimed.",
+        "userAccepted": true,
+        "sourceRevision": "35c645064f72bc4e3180a2c6c506cbbfee170007",
+        "severityReason": "Observed broken editing, configuration, record-view or workflow functionality.",
+        "analysis": [
+          "Any Select-option migration recreates column with default and copies only nonnull old values, replacing existing nulls. Original REST null setup plus UI rename/readbacks; no fresh UI-only reproduction counted."
+        ],
+        "sourceReferences": [
+          "https://github.com/twentyhq/twenty/blob/35c645064f72bc4e3180a2c6c506cbbfee170007/packages/twenty-server/src/engine/workspace-manager/workspace-migration/workspace-migration-runner/action-handlers/field/services/update-field-action-handler.service.ts#L219",
+          "https://github.com/twentyhq/twenty/blob/35c645064f72bc4e3180a2c6c506cbbfee170007/packages/twenty-server/src/engine/workspace-manager/workspace-migration/workspace-migration-runner/action-handlers/field/services/update-field-action-handler.service.ts#L658",
+          "https://github.com/twentyhq/twenty/blob/35c645064f72bc4e3180a2c6c506cbbfee170007/packages/twenty-server/src/engine/twenty-orm/workspace-schema-manager/services/workspace-schema-enum-manager.service.ts#L180",
+          "https://github.com/twentyhq/twenty/blob/35c645064f72bc4e3180a2c6c506cbbfee170007/packages/twenty-server/src/engine/twenty-orm/workspace-schema-manager/services/workspace-schema-enum-manager.service.ts#L424"
+        ],
+        "limitations": [
+          "The original report used REST to prepare and inspect explicit null records; an independent UI-only setup/reproduction was not completed.",
+          "The source chain recreates the enum column with its default and copies only nonnull old values, leaving null rows replaced by the default.",
+          "Evidence basis: original captured evidence + source.",
+          "No independent Claude agreement or newer-runtime verification is claimed."
+        ]
+      },
+      "severity": 3,
+      "matchingGuidance": {
+        "relatedReference": "settings-data-model-pass3-d76f5f6b",
+        "distinction": "This entry fills existing null values with a default after an option edit; the related entry erases selected values after a corrected bulk-label typo."
+      }
+    },
+    {
+      "id": "native-twenty-final-2",
+      "name": "Reactivating a custom object hides its Search information table until reload",
+      "severity": 1,
+      "owningArea": "twenty/settings-data-model",
+      "summary": "After UI deactivation and reactivation, a custom object’s Search section stays enabled but omits the indexed-field names, static weights and data types until full reload.",
+      "expected": "Reactivation should restore the saved Search information table consistently with the object’s enabled search configuration.",
+      "actual": "The Name/Weight/Data type rows are present before deactivation, absent after reactivation and a ten-second wait, and restored after full reload. The weight is displayed information, not an editable control.",
+      "reproSteps": [
+        "Enable Advanced settings and create a disposable custom object with its default Name field.",
+        "Open its Settings tab and confirm Global search is enabled and the Search table displays Name with weight 1.",
+        "Deactivate the object, then activate it through its Inactive Object Options menu in Data model.",
+        "Reopen its Settings tab and wait at least ten seconds. Observe the Search table rows remain missing while Global search is enabled.",
+        "Reload and reopen Settings; observe the Search information rows return."
+      ],
+      "matchingGuidance": {
+        "distinction": "Match the Search information table disappearing after custom-object reactivation and recovering on reload. Do not claim editable weight controls, changed ranking, lost saved configuration or failed global-search queries. Field reactivation failing to restore record-layout placement is a separate entry."
+      },
+      "reviewEvidence": {
+        "basis": "User accepted publication after original captured UI evidence and pinned source/tests review. No new independent browser run or formal judge agreement is claimed.",
+        "userAccepted": true,
+        "sourceRevision": "35c645064f72bc4e3180a2c6c506cbbfee170007",
+        "sourceReferences": [
+          "https://github.com/twentyhq/twenty/blob/35c645064f72bc4e3180a2c6c506cbbfee170007/packages/twenty-front/src/modules/settings/data-model/object-details/components/tabs/SettingsObjectSearchSection.tsx#L71",
+          "https://github.com/twentyhq/twenty/blob/35c645064f72bc4e3180a2c6c506cbbfee170007/packages/twenty-front/src/modules/settings/data-model/object-details/components/tabs/SettingsObjectSearchSection.tsx#L125",
+          "https://github.com/twentyhq/twenty/blob/35c645064f72bc4e3180a2c6c506cbbfee170007/packages/twenty-front/src/modules/settings/data-model/object-details/components/tabs/SettingsObjectSearchSection.tsx#L159",
+          "https://github.com/twentyhq/twenty/blob/35c645064f72bc4e3180a2c6c506cbbfee170007/packages/twenty-front/src/modules/object-metadata/hooks/useUpdateOneObjectMetadataItem.ts#L49",
+          "https://github.com/twentyhq/twenty/blob/35c645064f72bc4e3180a2c6c506cbbfee170007/packages/twenty-front/src/modules/object-metadata/utils/mapPaginatedObjectMetadataItemsToObjectMetadataItems.ts#L28",
+          "https://github.com/twentyhq/twenty/blob/35c645064f72bc4e3180a2c6c506cbbfee170007/packages/twenty-front/src/modules/object-metadata/states/objectMetadataItemsWithFieldsSelector.ts#L86"
+        ],
+        "limitations": [
+          "No new independent browser reproduction.",
+          "Exact cache replacement chain inferred from source and reload control.",
+          "Accept only missing information table at severity1; do not claim editable weight controls, changed search ranking, saved configuration loss or broken global search.",
+          "Newer runtime was not tested."
+        ],
+        "severityReason": "Missing settings information; no editable-weight or search-execution failure was demonstrated.",
+        "analysis": [
+          "Original UI captures repeat the disappearance and reload recovery. Source resolves indexed fields through canonical search metadata; mutation-response versus hydration mapping supports a stale-metadata explanation.",
+          "Exact state replacement is inferred from source and controls; no fresh independent UI-only reproduction was completed."
+        ]
+      }
     }
   ]
 }
