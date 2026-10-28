@@ -30,7 +30,7 @@ Environment:
 
 `mo` needs `qa` 0.27.0 or later, signed in. Set `MO_EVAL_CLI` to use another
 executable. Use `--effort low|medium|high|max` to set Mo's effort preset
-(default: medium); it is recorded in `duration.json`.
+(default: medium). An explicit `--effort` is recorded in `duration.json`.
 
 ## Run
 
