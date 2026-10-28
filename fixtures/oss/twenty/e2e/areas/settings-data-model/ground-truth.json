@@ -2498,19 +2498,36 @@
       "expected": "The latest instructions should be saved when leaving the editor, or the app should warn that unsaved changes will be lost.",
       "actual": "The editor shows 'QA saved instruction one'; the new instructions are silently lost. Reproduced through Playwright fill followed by an ordinary Skills tab click, with no reload or forced navigation.",
       "reproSteps": [
-        "Sign in as tim@apple.dev and open Settings > AI > Overview.",
-        "Enter 'QA saved instruction one' in Workspace Instructions, click the heading, and wait for it to save.",
-        "Replace the text with 'QA saved instruction two' and immediately click the Skills tab.",
-        "Return to Overview."
+        "Open Settings > AI > Overview and save unique Workspace Instructions, waiting for the initial value to persist.",
+        "Replace the instructions and immediately use the ordinary Skills tab.",
+        "Return to Overview and reload. Observe the previous saved text instead of the replacement, without an unsaved-change warning.",
+        "Compare waiting beyond the one-second autosave debounce before switching tabs."
       ],
       "id": "native-twenty-u17",
       "owningArea": "twenty/settings-data-model",
       "reviewEvidence": {
-        "basis": "Explicit reviewer decision U17. Original repeated captures plus debounce/unmount source chain.",
+        "basis": "User-requested publication after auditing original captured evidence and pinned source. No fresh independent reproduction is claimed.",
         "userAccepted": true,
-        "sourceRevision": "35c645064f72bc4e3180a2c6c506cbbfee170007"
+        "sourceRevision": "35c645064f72bc4e3180a2c6c506cbbfee170007",
+        "severityReason": "Observed broken editing, configuration, record-view or workflow functionality.",
+        "analysis": [
+          "Ordinary immediate AI-tab navigation loses pending Workspace Instructions. Original3reports plus1000ms debounce/unmount chain; no fresh retest counted."
+        ],
+        "sourceReferences": [
+          "https://github.com/twentyhq/twenty/blob/35c645064f72bc4e3180a2c6c506cbbfee170007/packages/twenty-front/src/pages/settings/ai/components/SettingsAiOverviewTab.tsx#L54"
+        ],
+        "limitations": [
+          "Three original runs capture ordinary immediate in-app navigation loss; no fresh targeted reproduction was completed in this review.",
+          "This concerns a pending edit on normal navigation, not hard reload before saving or completed-autosave focus/fullscreen interruption.",
+          "Evidence basis: original captured evidence + source.",
+          "No independent Claude agreement or newer-runtime verification is claimed."
+        ]
       },
-      "severity": 3
+      "severity": 3,
+      "matchingGuidance": {
+        "relatedReference": "settings-data-model-pass3-69cbded5",
+        "distinction": "This entry loses pending text on ordinary tab navigation; the related entry preserves entered text but interrupts focus/fullscreen after autosave."
+      }
     },
     {
       "name": "Editing any select field option overwrites empty record values with the field's default option",
@@ -2518,20 +2535,39 @@
       "expected": "Records whose select value is empty stay empty. Only records using the renamed option should change to the new value.",
       "actual": "After renaming the unrelated option 'Red' to 'Crimson' (no record used Red), record W3null went from null to 'LIME' (the default option). W4blue (BLUE_SKY) was unchanged. Earlier, renaming the default option Green to Lime also turned W1, which was empty before, into LIME.",
       "reproSteps": [
-        "In Settings > Data model, create a custom object (e.g. Widgets) with a Select field 'Stage' that has options Red, Lime, Blue Sky, and set Lime as the default",
-        "Create a record with Stage empty (e.g. via REST: POST /rest/widgets {name:'W3null', widgetStage:null}) and one with Stage = Blue Sky",
-        "Confirm with GET /rest/widgets that W3null has widgetStage null",
-        "Open Settings > Data model > Widgets > Stage, rename option 'Red' to 'Crimson', and click Save",
-        "GET /rest/widgets again: W3null now has widgetStage 'LIME', and the record list shows 'Lime' for it"
+        "Create a custom object with a nullable Select field, multiple options, and a configured default.",
+        "Create a record with an explicit null Select value and another using a nondefault option. The original report used the supported REST API for this setup.",
+        "Confirm the null value before editing field options. Rename an unused option through Settings > Data model and Save.",
+        "Read the records again and inspect the list. Observe the previously null value replaced by the default while the nondefault record retains its selection."
       ],
       "id": "native-twenty-u20",
       "owningArea": "twenty/settings-data-model",
       "reviewEvidence": {
-        "basis": "Explicit reviewer decision U20. Original readbacks plus migration code explain unintended record changes.",
+        "basis": "User-requested publication after auditing original captured evidence and pinned source. No fresh independent reproduction is claimed.",
         "userAccepted": true,
-        "sourceRevision": "35c645064f72bc4e3180a2c6c506cbbfee170007"
+        "sourceRevision": "35c645064f72bc4e3180a2c6c506cbbfee170007",
+        "severityReason": "Observed broken editing, configuration, record-view or workflow functionality.",
+        "analysis": [
+          "Any Select-option migration recreates column with default and copies only nonnull old values, replacing existing nulls. Original REST null setup plus UI rename/readbacks; no fresh UI-only reproduction counted."
+        ],
+        "sourceReferences": [
+          "https://github.com/twentyhq/twenty/blob/35c645064f72bc4e3180a2c6c506cbbfee170007/packages/twenty-server/src/engine/workspace-manager/workspace-migration/workspace-migration-runner/action-handlers/field/services/update-field-action-handler.service.ts#L219",
+          "https://github.com/twentyhq/twenty/blob/35c645064f72bc4e3180a2c6c506cbbfee170007/packages/twenty-server/src/engine/workspace-manager/workspace-migration/workspace-migration-runner/action-handlers/field/services/update-field-action-handler.service.ts#L658",
+          "https://github.com/twentyhq/twenty/blob/35c645064f72bc4e3180a2c6c506cbbfee170007/packages/twenty-server/src/engine/twenty-orm/workspace-schema-manager/services/workspace-schema-enum-manager.service.ts#L180",
+          "https://github.com/twentyhq/twenty/blob/35c645064f72bc4e3180a2c6c506cbbfee170007/packages/twenty-server/src/engine/twenty-orm/workspace-schema-manager/services/workspace-schema-enum-manager.service.ts#L424"
+        ],
+        "limitations": [
+          "The original report used REST to prepare and inspect explicit null records; an independent UI-only setup/reproduction was not completed.",
+          "The source chain recreates the enum column with its default and copies only nonnull old values, leaving null rows replaced by the default.",
+          "Evidence basis: original captured evidence + source.",
+          "No independent Claude agreement or newer-runtime verification is claimed."
+        ]
       },
-      "severity": 3
+      "severity": 3,
+      "matchingGuidance": {
+        "relatedReference": "settings-data-model-pass3-d76f5f6b",
+        "distinction": "This entry fills existing null values with a default after an option edit; the related entry erases selected values after a corrected bulk-label typo."
+      }
     }
   ]
 }
