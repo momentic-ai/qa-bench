@@ -1453,6 +1453,44 @@
           "The inspected newer source retains the spread collision; newer runtime was not tested."
         ]
       }
+    },
+    {
+      "id": "records-views-loop-55cdacc0",
+      "name": "Hide empty groups hides populated Task columns after cards move into initially empty groups",
+      "severity": 3,
+      "owningArea": "twenty/records-views",
+      "summary": "A Task moved into an initially empty Status column disappears when Hide empty groups is enabled, despite its saved status and nonempty destination.",
+      "expected": "Hide empty groups should retain a Status column containing a saved Task.",
+      "actual": "After moving a Task into an initially empty In progress column, enabling Hide empty groups removes that column and Task while the view total is unchanged. Disabling the toggle or reloading restores the saved records and columns.",
+      "reproSteps": [
+        "Create two uniquely named Tasks in To do, and a Tasks Kanban grouped by Status with the relevant groups visible and Hide empty groups disabled. Save and reload the view.",
+        "Drag one Task into the initially empty In progress column; confirm its card and changed status are visible.",
+        "Enable Hide empty groups. Observe In progress and its Task disappear while the total still includes the Task.",
+        "Disable the toggle or reload with it enabled. The populated destination and saved Task reappear. Repeat in another fresh view; compare a move into a column already populated at load."
+      ],
+      "sourceCause": "Initial board loading synchronizes both record IDs and a separate empty-group flag. Drop and reposition paths update group memberships without synchronizing that flag. Column body and header visibility still consult the stale empty flag, hiding a now-populated destination. This causal chain is inferred from source and observed controls rather than direct atom instrumentation.",
+      "matchingGuidance": {
+        "distinction": "Requires a populated destination being hidden because it was empty at initial board load, following a cross-column Task move. Do not match intentionally hidden empty or unconfigured groups, sorting persistence/order defects, or a Calendar layout transition."
+      },
+      "reviewEvidence": {
+        "basis": "Both independent reviewers reproduced populated Task columns disappearing after moves into initially empty groups and enabling Hide empty groups, with passing toggle-off and reload controls. Coordinator checked independent actual screenshots, original Mo video samples, saved-status/reload evidence, source and label contract audits, fixture independence and exact subscription billing.",
+        "sourceRevision": "35c645064f72bc4e3180a2c6c506cbbfee170007",
+        "severityReason": "Both independent reviewers recommend severity 3 because saved populated groups and their records become unavailable on the board until a toggle or reload workaround.",
+        "sourceReferences": [
+          "https://github.com/twentyhq/twenty/blob/35c645064f72bc4e3180a2c6c506cbbfee170007/packages/twenty-front/src/modules/object-record/record-group/hooks/useShouldHideRecordGroup.ts#L6-L17",
+          "https://github.com/twentyhq/twenty/blob/35c645064f72bc4e3180a2c6c506cbbfee170007/packages/twenty-front/src/modules/object-record/record-board/hooks/useSetRecordIdsForColumn.ts#L56-L79",
+          "https://github.com/twentyhq/twenty/blob/35c645064f72bc4e3180a2c6c506cbbfee170007/packages/twenty-front/src/modules/object-record/record-drag/hooks/useUpdateDroppedRecordOnBoard.ts#L118-L158",
+          "https://github.com/twentyhq/twenty/blob/35c645064f72bc4e3180a2c6c506cbbfee170007/packages/twenty-front/src/modules/object-record/record-board/record-board-column/components/RecordBoardColumn.tsx#L50-L66"
+        ],
+        "limitations": [
+          "Joint scope is Tasks Kanban grouped by Status: move a card into a column empty at initial load, then enable Hide empty groups. Sorting is not required.",
+          "The Task and changed status remain saved; disabling the toggle or reloading restores populated columns. No saved-record loss is claimed.",
+          "Each reviewer used its own fixture. The two fresh views in the Codex review were in one fixture, not two independent fixture lineages.",
+          "The stale empty-state mechanism is supported by source and observed behavior; runtime atom values were not directly instrumented. Other objects, board widgets, grouped Tables and inline status edits are excluded from joint scope.",
+          "Inspected newer board source retains the relevant state handling; newer runtime was not tested.",
+          "Updates that trigger a full query can repair the board; this is not a claim that every incremental update fails. The related upstream List change is not an explicit acknowledgment or fix of this board defect."
+        ]
+      }
     }
   ]
 }
