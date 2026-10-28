@@ -2171,6 +2171,45 @@
           "Both reviewers used fresh own custom objects; Claude also checked direct/mobile entry. Newer source was inspected without newer-runtime or exhaustive-history proof."
         ]
       }
+    },
+    {
+      "id": "settings-data-model-pass3-a78c7f36",
+      "name": "Deleting one inverse hides the surviving multi-destination relation until refresh",
+      "severity": 3,
+      "owningArea": "twenty/settings-data-model",
+      "summary": "Deleting one destination’s inverse can remove a surviving multi-destination relation from its source settings and leave the remaining inverse incomplete until refresh.",
+      "expected": "Deleting one destination’s inverse preserves visible management of the remaining source relation and its surviving inverse.",
+      "actual": "When the deleted inverse corresponds to the source representative loaded by the client, the source displays No relations found and the remaining inverse loses its destination/type label. Metadata still contains the surviving pair. Refresh restores the source’s 1 Object relation and the inverse’s destination and Has many type.",
+      "reproSteps": [
+        "Create three disposable custom objects and a Belongs to one relation from the source to both destinations, with Has many inverses. Reload and verify one settled source row and complete inverse rows.",
+        "Delete one destination inverse from its field editor, using the normal typed confirmation. Exercise the inverse paired with the client-loaded source representative.",
+        "Navigate in-app to the source and surviving destination: inspect the missing source relation and incomplete inverse row. Compare a full refresh and retained metadata.",
+        "Repeat on a fresh set and compare ordinary single-destination inverse deletion."
+      ],
+      "sourceCause": "The metadata query collapses per-destination rows to one representative, which inverse relation lookups also reference. Deletion removes only the chosen inverse and paired source leg, while client per-row cleanup does not promote or reload the surviving collapsed leg. A missing representative makes the remaining relation lookup incomplete until metadata reload.",
+      "matchingGuidance": {
+        "relatedReferenceName": "Creating a multi-destination relation shows duplicate rows until refresh",
+        "distinction": "Match post-inverse-deletion loss of surviving relation management until refresh. Distinguish creation-time duplicate rows, saved editor type mismatches and actual deletion of the whole relation."
+      },
+      "reviewEvidence": {
+        "basis": "Both independent browser/source reviewers accept the same loss of the surviving relation’s management entry after inverse deletion at severity 3. Coordinator checked full source/contract audits, independent retained images and exact surviving metadata/reload/single-relation controls, plus both official subscription billing records.",
+        "sourceRevision": "35c645064f72bc4e3180a2c6c506cbbfee170007",
+        "severityReason": "The remaining relationship cannot be correctly found and managed through the source relation list until refresh, while saved metadata survives.",
+        "sourceReferences": [
+          "https://github.com/twentyhq/twenty/blob/35c645064f72bc4e3180a2c6c506cbbfee170007/packages/twenty-front/src/modules/object-metadata/hooks/useDeleteOneFieldMetadataItem.ts#L62-L69",
+          "https://github.com/twentyhq/twenty/blob/35c645064f72bc4e3180a2c6c506cbbfee170007/packages/twenty-front/src/modules/metadata-store/effect-components/MetadataStoreSSEEffect.tsx#L50-L60",
+          "https://github.com/twentyhq/twenty/blob/35c645064f72bc4e3180a2c6c506cbbfee170007/packages/twenty-front/src/modules/object-metadata/hooks/useGetRelationMetadata.ts#L33-L37",
+          "https://github.com/twentyhq/twenty/blob/35c645064f72bc4e3180a2c6c506cbbfee170007/packages/twenty-front/src/modules/settings/data-model/object-details/components/SettingsObjectRelationItemTableRow.tsx#L115-L140",
+          "https://github.com/twentyhq/twenty/blob/35c645064f72bc4e3180a2c6c506cbbfee170007/packages/twenty-shared/src/utils/fieldMetadata/pick-morph-group-survivor-or-throw.ts#L24-L31"
+        ],
+        "limitations": [
+          "Joint scope is deletion of an inverse corresponding to the loaded representative of a settled two-destination Belongs to one relation. Other inverse deletion can leave a stale destination count instead of hiding the relation; complete disappearance is not universal.",
+          "The retained source leg and inverse are returned by metadata queries and reappear correctly after refresh. No physical relation/record data loss, link execution failure or page crash was established.",
+          "Which destination supplied the original Mo representative and the exact SSE/local-store event ordering remain inferred. Representative selection uses active/non-system ranking with an ID tie-break, not unconditionally the lowest ID.",
+          "Claude-only record-table column disappearance lacked a before-deletion capture and is excluded from joint scope. Three-plus destinations, mobile and other roles are untested.",
+          "Newer source introduces a stable relation head and different event handling, a plausible source fix only. Newer runtime and exhaustive history were not verified."
+        ]
+      }
     }
   ]
 }
