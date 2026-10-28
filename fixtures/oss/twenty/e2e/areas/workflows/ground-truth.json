@@ -2923,6 +2923,49 @@
           "The inspected newer source preserves null and adds clearing tests; newer runtime was not tested. No scheduled execution was tested."
         ]
       }
+    },
+    {
+      "id": "workflows-loop-94d24a87",
+      "name": "Workflow Update Record ignores saved No Status and retains the Task’s previous status",
+      "severity": 3,
+      "owningArea": "twenty/workflows",
+      "summary": "Update Record saves No Status correctly, but successful execution leaves the Task’s existing status unchanged.",
+      "expected": "Selecting Status under Fields to update and explicitly choosing No Status must clear the Task status when the saved action executes.",
+      "actual": "After No Status saves and survives reload, the workflow completes successfully but Update Record returns TODO or IN_PROGRESS inherited from Create Record. Selecting Done instead updates the status correctly.",
+      "reproSteps": [
+        "Create a manual workflow with Create Record for Tasks, a unique title and To do status.",
+        "Add Update Record targeting the created Task. Select Status under Fields to update, choose Done, wait for saving and test; confirm the run completes and output status is DONE.",
+        "Choose No Status in Update Record, wait for saving and reload. Reopen the action and confirm No Status remains selected.",
+        "Test the saved workflow. The run completes, but Update Record output and the Task retain TODO.",
+        "Repeat with a fresh Task starting In progress and with only Status selected for update; the successful action retains IN_PROGRESS. Compare the passing Done control."
+      ],
+      "sourceCause": "No Status emits null and the saved workflow retains that selected field value. Before writing the record, UpdateRecordService calls removeUndefinedFromRecord, whose isDefined guard removes null as well as undefined. Status is omitted from the update, so the previous stored value remains.",
+      "matchingGuidance": {
+        "relatedReferenceId": "workflows-N53",
+        "relatedReferenceName": "Create Record displays No Status but creates To do tasks and ignores explicitly selected No Status",
+        "additionalRelatedReferenceId": "workflows-loop-e6baef60",
+        "distinction": "This entry covers Update Record clearing an existing Task status, which retains its previous value. N53 covers Create Record status defaults and explicit No Status. The related Company revenue entry covers composite amount clearing through Update Record. Do not match interrupted autosave or unsupported fractional-value normalization."
+      },
+      "reviewEvidence": {
+        "basis": "Both independent reviewers confirmed that a saved No Status selection is ignored during successful Task Update Record execution, with passing Done controls. Coordinator checked full reports, source and null-clearing contract, original and independent visual evidence, actual saved-mapping readbacks, sampled recordings and subscription billing.",
+        "sourceRevision": "35c645064f72bc4e3180a2c6c506cbbfee170007",
+        "severityReason": "A successful workflow silently ignores a saved supported field clear, leaving the Task in the wrong status. Both independent reviewers recommend severity 3.",
+        "sourceReferences": [
+          "https://github.com/twentyhq/twenty/blob/35c645064f72bc4e3180a2c6c506cbbfee170007/packages/twenty-docs/user-guide/workflows/capabilities/workflow-actions.mdx#L30-L41",
+          "https://github.com/twentyhq/twenty/blob/35c645064f72bc4e3180a2c6c506cbbfee170007/packages/twenty-front/src/modules/object-record/record-field/ui/form-types/components/FormSelectFieldInput.tsx#L74-L106",
+          "https://github.com/twentyhq/twenty/blob/35c645064f72bc4e3180a2c6c506cbbfee170007/packages/twenty-front/src/modules/workflow/workflow-steps/workflow-actions/components/WorkflowEditActionUpdateRecord.tsx#L120-L146",
+          "https://github.com/twentyhq/twenty/blob/35c645064f72bc4e3180a2c6c506cbbfee170007/packages/twenty-server/src/modules/workflow/workflow-executor/workflow-actions/record-crud/update-record.workflow-action.ts#L60-L135",
+          "https://github.com/twentyhq/twenty/blob/35c645064f72bc4e3180a2c6c506cbbfee170007/packages/twenty-server/src/engine/core-modules/record-crud/services/update-record.service.ts#L67-L108",
+          "https://github.com/twentyhq/twenty/blob/35c645064f72bc4e3180a2c6c506cbbfee170007/packages/twenty-server/src/engine/core-modules/record-crud/utils/remove-undefined-from-record.util.ts#L12-L29"
+        ],
+        "limitations": [
+          "Joint scope is Task Status clearing through a saved Update Record action. Assignee and other fields are not covered by this entry.",
+          "One reviewer used one workflow with several fresh tasks; the other used two fresh workflows.",
+          "The ordinary record null-clear control used the application GraphQL API after its headless record dropdown did not open.",
+          "Broader null-valued update effects are source-supported but not established for every field; defined empty strings are not shown to fail.",
+          "The inspected newer source preserves null and adds clearing tests; newer runtime and activated launches were not tested."
+        ]
+      }
     }
   ]
 }
