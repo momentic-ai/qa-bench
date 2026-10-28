@@ -3002,6 +3002,42 @@
           "The inspected newer source retains the reset guard; newer runtime was not tested."
         ]
       }
+    },
+    {
+      "id": "workflows-loop-4775c00e",
+      "name": "Reconnecting a workflow edge onto an existing action opens unwanted action creation",
+      "severity": 1,
+      "owningArea": "twenty/workflows",
+      "summary": "An existing edge reconnect saves correctly but also opens Select Action and overlays its destination with a temporary Add an Action node.",
+      "expected": "Reconnecting an edge onto an existing node should update that connection without starting node creation.",
+      "actual": "Dragging the arrow end of an existing connection onto an existing action saves the reconnect, but Select Action opens and a temporary Add an Action placeholder and edge cover the destination. Closing the panel or reloading restores the correct saved graph. A new connection onto an existing node does not open action creation.",
+      "reproSteps": [
+        "Create a manual workflow with two existing actions and a connection to the first action.",
+        "Select the existing connection and drag its arrow end onto the second existing action.",
+        "Observe the reconnect succeeds while Select Action opens and a temporary Add an Action placeholder appears over the destination.",
+        "Close the panel or reload; the unwanted placeholder disappears and the intended connection remains. Compare a new connection between existing nodes, which opens no creation panel."
+      ],
+      "sourceCause": "The reconnect drag records connection-start information used by drag-to-create. The ordinary connect handler clears it, while the reconnect path does not. The shared connect-end handler can therefore start node creation after reconnecting. Exact callback ordering is inferred from the source and observed controls.",
+      "matchingGuidance": {
+        "distinction": "Requires reconnecting an existing edge onto an existing action. Do not match intentional plus-button insertion, dragging a new connection onto empty canvas, or persistent malformed-loop execution defects."
+      },
+      "reviewEvidence": {
+        "basis": "Both independent reviewers reproduced the unwanted creation panel and temporary placeholder after reconnecting an existing edge, while ordinary new connections onto an existing node passed. Coordinator checked full reports, source and explicit upstream reconnect guard, original Mo samples, independent screenshots and controls, recorded artifacts and actual subscription billing.",
+        "sourceRevision": "35c645064f72bc4e3180a2c6c506cbbfee170007",
+        "severityReason": "The intended saved connection remains correct; the unwanted panel and temporary overlapping placeholder are a recoverable GUI defect. Both independent reviewers recommend severity 1.",
+        "sourceReferences": [
+          "https://github.com/twentyhq/twenty/blob/35c645064f72bc4e3180a2c6c506cbbfee170007/packages/twenty-front/src/modules/workflow/workflow-diagram/components/WorkflowDiagramCanvasBase.tsx#L495-L584",
+          "https://github.com/twentyhq/twenty/blob/35c645064f72bc4e3180a2c6c506cbbfee170007/packages/twenty-front/src/modules/workflow/workflow-diagram/components/WorkflowDiagramCanvasEditable.tsx#L109-L131",
+          "https://github.com/twentyhq/twenty/blob/35c645064f72bc4e3180a2c6c506cbbfee170007/packages/twenty-front/src/modules/workflow/workflow-diagram/hooks/useStartNodeCreation.ts#L41-L66",
+          "https://github.com/twentyhq/twenty/commit/e9a909b6775a7276d8b8409e88dd878748b9f7bd"
+        ],
+        "limitations": [
+          "Joint scope is reconnecting an existing edge onto an existing action in the editable workflow canvas, which opens temporary action creation despite saving the intended connection.",
+          "Closing the unwanted panel or reloading removes the temporary placeholder; no unintended extra saved action or execution failure is claimed.",
+          "The initial mistaken insert-button click and one reviewer’s later action selection are excluded.",
+          "Exact callback timing and behavior of the pinned graph-library version are inferred; the inspected newer source adds a reconnect guard, but newer runtime was not tested."
+        ]
+      }
     }
   ]
 }
