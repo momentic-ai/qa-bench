@@ -457,21 +457,22 @@
     },
     {
       "id": "record-pages-activities-fresh-d47fdbf5",
-      "name": "Record-page CSV exports contain only Id after refresh or direct loading",
+      "name": "Record CSV exports contain only Id when list-column state is uninitialized",
       "severity": 3,
       "owningArea": "twenty/record-pages-activities",
-      "summary": "Exporting a saved record from its directly loaded or refreshed record page produces an Id-only CSV, omitting its saved content. The same record exports its fields from the list or before the record page is refreshed.",
-      "expected": "Export Note and the equivalent record-page CSV actions should retain the saved record’s content after refresh or direct loading.",
-      "actual": "Two fresh notes per judge exported only Id and the record UUID after refresh or direct loading, despite saved titles and bodies remaining visible. The same notes exported populated fields from the list or before refresh. Company and Task record-page exports also produced Id-only files.",
+      "summary": "A record CSV export routed through the index exporter produces only Id when that object’s list-column state has not initialized. Direct loading, refreshing, or opening a related Calendar event before visiting its list can reach this state.",
+      "expected": "Record CSV export should include the applicable configured columns without requiring the user to visit the object list first.",
+      "actual": "Two fresh notes per judge exported only Id and the record UUID after refresh or direct loading, despite saved titles and bodies remaining visible. The same notes exported populated fields from the list or before refresh. Company and Task record-page exports also produced Id-only files. Follow-up Calendar event reproductions exported only Id after opening through a Company Calendar tab before visiting the Calendar events list. Visiting that list made the same record export include 11 columns; reloading reproduced Id-only output.",
       "reproSteps": [
         "Sign in and create a fresh Note with a unique title and body.",
         "Allow the content to save, open the Note record page, and reload it. Confirm the title and body remain visible.",
         "Open the record’s command menu and choose Export Note. Inspect the downloaded CSV and observe only the Id header and record UUID, with no Title or Body columns.",
         "As a control, export the same Note from the Notes list with the record selected; observe populated Title and Body columns.",
         "Alternatively, open the Note from the list and export before refreshing; observe populated fields. Reload the same record page and repeat the failing export.",
-        "Repeat with a second saved Note. Equivalent directly loaded Company and Task record pages demonstrate the shared export path."
+        "Repeat with a second saved Note. Equivalent directly loaded Company and Task record pages demonstrate the shared export path.",
+        "For the Calendar variant, open a Company, choose Calendar and open an event before visiting the Calendar events list. Export from its record menu and observe Id-only output. Visit the Calendar events list and repeat the same export to observe populated configured columns."
       ],
-      "sourceCause": "Record-page context with a resolvable view ID supplies recordIndexId, causing ExportRecordsCommand to use the index exporter. Its visible-column state is empty after a direct record-page load, and CSV generation inserts only the mandatory Id column.",
+      "sourceCause": "A record context with a resolvable view ID supplies recordIndexId, routing ExportRecordsCommand through the index exporter. When visible list-column state has not initialized, CSV generation inserts only mandatory Id. Refresh and direct load are ways to reach this state, not required triggers.",
       "reviewEvidence": {
         "basis": "Mo report plus independent Claude Code and Codex browser reproductions and source audits, coordinator citation checks, and user acceptance.",
         "userAccepted": true,
@@ -480,7 +481,8 @@
         "analysis": [
           "Both judges reproduced on two fresh persisted notes and ran same-record controls before refresh and from the list.",
           "Codex additionally reproduced on Company, with another user and at tablet width. Claude additionally reproduced on Company and Task.",
-          "The dedicated single-record exporter selects active metadata fields, but the view-ID branch dispatches to index export instead. The latest source retains that branch."
+          "The dedicated single-record exporter selects active metadata fields, but the view-ID branch dispatches to index export instead. The latest source retains that branch.",
+          "Independent follow-up reviewers confirmed Calendar event exports use the same command and uninitialized-column prerequisite; in-app entry is not a distinct defect. The passing Calendar control has 11 columns but does not include Description, so this reference does not require every displayed field in CSV."
         ],
         "sourceReferences": [
           "https://github.com/twentyhq/twenty/blob/35c645064f72bc4e3180a2c6c506cbbfee170007/packages/twenty-front/src/modules/context-store/components/MainContextStoreProvider.tsx#L104-L129",
@@ -498,6 +500,10 @@
           "Scope requires a record-page context with a resolvable view ID; behavior on a record page without one is not established.",
           "Saved records remain intact. The observed loss is in CSV output; PDF export uses a separate path."
         ]
+      },
+      "matchingGuidance": {
+        "matchWhen": "Match Id-only record CSV exports caused by uninitialized list-column state, including full record pages and related Calendar event panels reached before visiting the object list. Do not require a reload, direct URL entry, or a particular object type.",
+        "distinction": "Opening a record after its object list has initialized columns is the passing control. In-app navigation alone does not establish that prerequisite. Exclude unrelated export permission failures, PDF issues and missing fields that are not configured list columns."
       }
     },
     {
@@ -946,6 +952,44 @@
         "sourceReferences": [
           "https://github.com/twentyhq/twenty/blob/35c645064f72bc4e3180a2c6c506cbbfee170007/packages/twenty-front/src/modules/command-menu-item/record/single-record/utils/exportBlockNoteEditorToPdf.ts#L9-L48",
           "https://github.com/twentyhq/twenty/commit/2bce4f321c903737a9c45bcdc7c4c412c6fc6545"
+        ]
+      }
+    },
+    {
+      "id": "record-pages-activities-pass3-74862fa6",
+      "name": "Deleting an imported Calendar event without a channel association silently leaves the event unchanged",
+      "severity": 3,
+      "owningArea": "twenty/record-pages-activities",
+      "summary": "The Calendar Delete command closes without deleting a visible imported event or displaying feedback.",
+      "expected": "Deleting a supported imported Calendar event should remove it or explain why deletion is unavailable.",
+      "actual": "Delete Calendar event closes the command panel, but imported events without calendar-channel associations remain after reload. No deletion mutation is sent. Notes controls delete normally; associating the event with a calendar channel makes the UI deletion succeed.",
+      "reproSteps": [
+        "Import a fresh Calendar event through the CSV importer without assigning a calendar-channel association.",
+        "Open the imported event’s record page and choose Delete Calendar event.",
+        "Reload and confirm the record remains without a deletion error or explanation.",
+        "Repeat with a second imported event. Compare deleting a Note and an event associated with a calendar channel."
+      ],
+      "sourceCause": "Calendar visibility post-hook splices unassociated events from the same findMany records array, yielding empty edges despite totalCount1. Incremental deletion fetches IDs first and silently skips mutation when that list is empty. findOne uses a temporary wrapper array, so the visible record remains accessible.",
+      "reviewEvidence": {
+        "basis": "Independent browser/source checks, coordinator verification and explicit user acceptance at severity 3.",
+        "userAccepted": true,
+        "sourceRevision": "35c645064f72bc4e3180a2c6c506cbbfee170007",
+        "severityReason": "The supported Delete operation silently fails for visible imported Calendar events.",
+        "analysis": [
+          "Both reviewers UI-imported two fresh events and reproduced ineffective deletion.",
+          "A channel-associated event deleted successfully; an unassociated control could be deleted through the direct API.",
+          "The absence of a confirmation dialog is normal and is not part of this defect."
+        ],
+        "limitations": [
+          "No external-provider event was deleted.",
+          "Other bulk commands were not verified.",
+          "Newer source changes visibility handling; newer deletion runtime was not tested."
+        ],
+        "sourceReferences": [
+          "https://github.com/twentyhq/twenty/blob/35c645064f72bc4e3180a2c6c506cbbfee170007/packages/twenty-front/src/modules/object-record/hooks/useIncrementalFetchAndMutateRecords.ts#L60-L92",
+          "https://github.com/twentyhq/twenty/blob/35c645064f72bc4e3180a2c6c506cbbfee170007/packages/twenty-server/src/engine/api/graphql/workspace-query-runner/workspace-query-hook/workspace-query-hook.explorer.ts#L134-L148",
+          "https://github.com/twentyhq/twenty/blob/35c645064f72bc4e3180a2c6c506cbbfee170007/packages/twenty-server/src/modules/calendar/common/query-hooks/calendar-event/services/apply-calendar-events-visibility-restrictions.service.ts#L74-L135",
+          "https://github.com/twentyhq/twenty/commit/a08907e1e79f400f7407d48cf831bce6b2cb227e"
         ]
       }
     }

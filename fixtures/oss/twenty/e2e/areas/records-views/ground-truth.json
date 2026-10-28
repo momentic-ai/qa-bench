@@ -1093,6 +1093,45 @@
           "https://github.com/twentyhq/twenty/blob/35c645064f72bc4e3180a2c6c506cbbfee170007/packages/twenty-front/src/modules/page-layout/widgets/record-table/hooks/useRecordTableWidgetLayoutCallbacks.ts#L136-L158"
         ]
       }
+    },
+    {
+      "id": "records-views-pass3-d23f9fb3",
+      "name": "Task record pagination excludes undated tasks from a Due Date-sorted view",
+      "severity": 3,
+      "owningArea": "twenty/records-views",
+      "summary": "Record-page navigation skips undated Tasks and reports incorrect totals when the parent view sorts by Due Date.",
+      "expected": "Next/Previous navigation and breadcrumb positions should include all Tasks matching the parent view, including Tasks without a Due Date.",
+      "actual": "A view with two dated Tasks and one undated Task lists all three, but dated record pages show 1/2 or 2/2 and cycle between only those Tasks. The undated record shows 1/1.",
+      "reproSteps": [
+        "Create three Tasks with a shared marker: give two distinct Due Dates and leave the third undated.",
+        "Save a Tasks view filtered to the marker and sorted by Due Date; verify all three appear.",
+        "Open a dated Task and use Next/Previous. Observe totals of two and navigation skipping the undated Task.",
+        "Open the undated Task from the table and observe a total of one. Remove the Due Date sort and confirm navigation includes all three."
+      ],
+      "sourceCause": "Client before/after filters use date gt/lt without a NULL alternative, excluding undated tasks despite DescNullsLast ordering. Summed neighbor counts understate total and wrap navigation prematurely. The server applies these explicit filters and ordinary SQL date comparisons.",
+      "reviewEvidence": {
+        "basis": "Independent Codex and Claude browser/source checks, coordinator review and explicit user acceptance.",
+        "userAccepted": true,
+        "sourceRevision": "35c645064f72bc4e3180a2c6c506cbbfee170007",
+        "severityReason": "Navigation omits matching records, requiring a return to the table to access them.",
+        "analysis": [
+          "Each created an independent fresh three-task dataset: two dates plus one empty date. View shows three, but dated-task breadcrumbs show1/2 and2/2, empty-date task1/1. Next cycles between dated tasks and skips the undated one. No-date-sort control passes; Claude additionally dated the empty task and all counts then passed.",
+          "Existing Search any field navigation entry omits search context, while this includes its parent filter but mishandles null boundaries. Existing Calendar Previous tied-position case has a different trigger; shared cause unestablished. No exact covered reference identified.",
+          "Both reviewers reproduced at desktop and tablet widths without requiring grouping."
+        ],
+        "sourceReferences": [
+          "https://github.com/twentyhq/twenty/blob/35c645064f72bc4e3180a2c6c506cbbfee170007/packages/twenty-front/src/modules/object-record/graphql/utils/computeCursorArgFilter.ts#L85-L113",
+          "https://github.com/twentyhq/twenty/blob/35c645064f72bc4e3180a2c6c506cbbfee170007/packages/twenty-front/src/modules/object-record/record-show/hooks/useRecordShowPagePagination.ts#L186-L210",
+          "https://github.com/twentyhq/twenty/commit/e04eef0461bb6b8fd0fb582a09ac4f3725819cef",
+          "https://github.com/twentyhq/twenty/commit/2dd348285e902377086b4ee2594e9ed9ce5a5d68"
+        ],
+        "limitations": [
+          "Other object types and nullable sort fields not browser-tested.",
+          "Codex repeated as another member and ascending; Claude did not.",
+          "Historical Mo video and latest runtime not tested.",
+          "No saved Task content lost."
+        ]
+      }
     }
   ]
 }
