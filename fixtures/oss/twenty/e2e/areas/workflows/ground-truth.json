@@ -2882,6 +2882,47 @@
           "The inspected newer source retains the reducer omission; newer runtime was not tested."
         ]
       }
+    },
+    {
+      "id": "workflows-loop-e6baef60",
+      "name": "Workflow Update Record ignores a saved clear of Company revenue amount",
+      "severity": 3,
+      "owningArea": "twenty/workflows",
+      "summary": "Clearing Annual Revenue Amount Micros saves a blank mapping, but a successful Update Record action retains the Company’s previous amount while applying the new currency.",
+      "expected": "A selected amount explicitly cleared to null must clear the stored amount when Update Record executes.",
+      "actual": "A Create Record action creates a Company with amountMicros 3210000/USD. Update Record configured with blank Amount Micros and EUR remains blank after reload, but execution returns 3210000/EUR and leaves that amount on the Company. Explicit 0/EUR correctly stores 0/EUR.",
+      "reproSteps": [
+        "Create a manual workflow with Create Record for Companies, setting a unique name and Annual Revenue amountMicros 3210000/USD.",
+        "Add Update Record targeting the Company created by the first action and select Annual Revenue. Set Amount Micros to 0 and Currency Code to EUR. Wait for saving and test; confirm 0/EUR.",
+        "Clear only Amount Micros with Backspace or Delete, blur, wait for saving and reload. Reopen Update Record and confirm the amount is blank while EUR remains.",
+        "Test the saved workflow and inspect Update Record output and the created Company. The run succeeds but retains 3210000 while changing currency to EUR.",
+        "Repeat with a fresh workflow or a new duplicate whose record reference is explicitly remapped. Compare the passing explicit-zero control."
+      ],
+      "sourceCause": "The workflow’s Update Record service runs the saved record mapping through removeUndefinedFromRecord before writing it. That helper uses isDefined and recursively removes null as well as undefined. The explicit amount clear is therefore omitted from the update, while the defined currency is retained.",
+      "matchingGuidance": {
+        "relatedReferenceId": "workflows-N53",
+        "relatedReferenceName": "Create Record displays No Status but creates To do tasks and ignores explicitly selected No Status",
+        "distinction": "The shared null-removal helper is involved, but this entry covers clearing an existing Company revenue amount through Update Record. The related entry covers Task status defaults and explicit No Status through Create Record. Do not match interrupted autosave, fractional micros validation, or client-side date clears that never save."
+      },
+      "reviewEvidence": {
+        "basis": "Both independent reviewers confirmed a saved blank Company Annual Revenue amount is ignored during successful Update Record execution, with passing explicit-zero controls. Coordinator checked full reports, source and clearing contract, original Mo samples, independent screenshots and sampled recordings, actual browser readbacks and subscription billing.",
+        "sourceRevision": "35c645064f72bc4e3180a2c6c506cbbfee170007",
+        "severityReason": "A completed workflow silently fails to apply a saved field clear and leaves an incorrect stored amount. Both independent reviewers recommend severity 3.",
+        "sourceReferences": [
+          "https://github.com/twentyhq/twenty/blob/35c645064f72bc4e3180a2c6c506cbbfee170007/packages/twenty-front/src/modules/object-record/record-field/ui/form-types/components/FormNumberFieldInput.tsx#L71-L87",
+          "https://github.com/twentyhq/twenty/blob/35c645064f72bc4e3180a2c6c506cbbfee170007/packages/twenty-front/src/modules/object-record/record-field/ui/form-types/components/FormCurrencyFieldInput.tsx#L40-L53",
+          "https://github.com/twentyhq/twenty/blob/35c645064f72bc4e3180a2c6c506cbbfee170007/packages/twenty-server/src/modules/workflow/workflow-executor/workflow-actions/record-crud/update-record.workflow-action.ts#L60-L127",
+          "https://github.com/twentyhq/twenty/blob/35c645064f72bc4e3180a2c6c506cbbfee170007/packages/twenty-server/src/engine/core-modules/record-crud/services/update-record.service.ts#L77-L101",
+          "https://github.com/twentyhq/twenty/blob/35c645064f72bc4e3180a2c6c506cbbfee170007/packages/twenty-server/src/engine/core-modules/record-crud/utils/remove-undefined-from-record.util.ts#L12-L29",
+          "https://github.com/twentyhq/twenty/blob/35c645064f72bc4e3180a2c6c506cbbfee170007/packages/twenty-shared/src/utils/validation/isDefined.ts#L1-L5"
+        ],
+        "limitations": [
+          "Joint scope is Company Annual Revenue amount clearing in a manual Create Record → Update Record workflow. Other fields and callers are outside this entry.",
+          "One reviewer constructed an original workflow and duplicated/remapped a second; the other used two fresh workflows.",
+          "An interrupted original recording lacks a duration; retained screenshots and official browser readbacks support those controls. Complete recordings from both reviewers are not claimed.",
+          "The inspected newer source preserves null and adds clearing tests; newer runtime was not tested. No scheduled execution was tested."
+        ]
+      }
     }
   ]
 }
