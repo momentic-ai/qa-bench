@@ -3149,6 +3149,44 @@
           "The inspected newer source changes trigger updates; no newer runtime success or precise server commit-order trace is claimed."
         ]
       }
+    },
+    {
+      "id": "workflows-loop-579926f2",
+      "name": "Tab traps focus in Delay duration inputs and leaves edits unsaved",
+      "severity": 3,
+      "owningArea": "twenty/workflows",
+      "summary": "Typing a Delay duration and pressing Tab leaves focus in the same input, so its blur-based save never runs and reload restores the old duration.",
+      "expected": "Tab moves focus out of an editable Delay duration input and allows the editor to commit the new value.",
+      "actual": "After changing Seconds from 0 to 5 and pressing Tab, the field keeps focus and displays 5 without saving. Reloading and reopening the action shows 0. Repeated Tab and a wait do not commit it. Clicking another field or leaving through normal in-app navigation does save the edit.",
+      "reproSteps": [
+        "Create a disposable workflow with a Delay action using After a set amount of time and a known saved duration. A deactivated workflow can demonstrate the failure.",
+        "Change Seconds, press Tab and inspect the focused input. Wait before reloading.",
+        "Reload the workflow and reopen Delay; compare the old duration. Repeat on a fresh workflow.",
+        "As a control, change the duration and click another field before reloading; verify that edit persists."
+      ],
+      "sourceCause": "Delay stores duration edits locally and calls its action update only on blur. The number input uses TextInput hotkeys with no Tab callback. The default handler prevents the native Tab action, so focus stays in the input, blur never occurs and no duration update is submitted.",
+      "matchingGuidance": {
+        "distinction": "Match typed Delay duration edits followed by Tab that traps focus and leaves the value unsaved. Distinguish Delay variable-picker insert/remove loss, date-mask clearing, interrupted pending autosaves and execution failures. Deactivation is not required.",
+        "relatedReferenceName": "Delay variable selection or removal stays local and is lost after ordinary panel navigation"
+      },
+      "reviewEvidence": {
+        "basis": "Both independent browser/source reviewers reproduce the Tab trap and duration reversion at severity 3 with working real-blur controls. Coordinator checked full reports, source/intent audits, independent retained original images and executed focus/save/readback controls, and exact subscription billing.",
+        "sourceRevision": "35c645064f72bc4e3180a2c6c506cbbfee170007",
+        "severityReason": "The editor displays a changed workflow duration without committing it through the expected Tab interaction; reload restores the old configuration.",
+        "sourceReferences": [
+          "https://github.com/twentyhq/twenty/blob/35c645064f72bc4e3180a2c6c506cbbfee170007/packages/twenty-front/src/modules/workflow/workflow-steps/workflow-actions/delay-actions/components/WorkflowEditActionDelay.tsx#L133-L167",
+          "https://github.com/twentyhq/twenty/blob/35c645064f72bc4e3180a2c6c506cbbfee170007/packages/twenty-front/src/modules/object-record/record-field/ui/form-types/components/FormNumberFieldInput.tsx#L105-L122",
+          "https://github.com/twentyhq/twenty/blob/35c645064f72bc4e3180a2c6c506cbbfee170007/packages/twenty-front/src/modules/ui/field/input/components/TextInput.tsx#L87-L97",
+          "https://github.com/twentyhq/twenty/blob/35c645064f72bc4e3180a2c6c506cbbfee170007/packages/twenty-front/src/modules/object-record/record-field/ui/meta-types/input/hooks/useRegisterInputEvents.ts#L55-L62",
+          "https://github.com/twentyhq/twenty/blob/35c645064f72bc4e3180a2c6c506cbbfee170007/packages/twenty-front/src/modules/ui/utilities/hotkey/hooks/useHotkeysOnFocusedElementCallback.ts#L57-L67"
+        ],
+        "limitations": [
+          "Joint scope is Tab after editing Delay duration, with Seconds and Minutes checks. Days/Hours, other callers and roles are not independently established affected.",
+          "Real mouse blur, panel departure and ordinary in-app navigation can commit the edit. This is not loss of an acknowledged save or proof that every keyboard path fails.",
+          "Deactivated workflows demonstrate the issue; Claude also checked a never-activated Draft, so deactivation is not the cause. Claude-only Enter behavior remains outside joint scope.",
+          "No downstream execution damage is claimed. Newer source and the maintainer Tab fix support the source explanation; newer runtime was not tested."
+        ]
+      }
     }
   ]
 }
