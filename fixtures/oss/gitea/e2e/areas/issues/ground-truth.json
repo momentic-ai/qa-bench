@@ -876,6 +876,176 @@
         "Look below the attachment list, then reload and compare."
       ],
       "severity": 1
+    },
+    {
+      "id": "gitea-empty-inline-issue-title-no-validation-feedback",
+      "name": "Saving an empty issue title closes the editor without validation feedback",
+      "severity": 1,
+      "owningArea": "gitea/issues",
+      "summary": "Clearing an existing issue title and clicking Save closes the editor and restores the saved title without explaining that the empty value was not saved.",
+      "expected": "An empty or whitespace-only title edit shows visible validation feedback so the user can correct it. Keeping the existing required title is valid; silently ignoring the attempted edit is the defect.",
+      "actual": "Save sends no title update request, reloads the page and restores the previous title without a toast, inline message or browser validation warning. A valid nonempty replacement saves and records a title-change event.",
+      "reproSteps": [
+        "Create a disposable issue with a nonempty title in a writable repository.",
+        "Open the issue and click Edit beside its title.",
+        "Clear the title completely and click Save.",
+        "Observe that the editor closes and the original title returns without validation feedback.",
+        "As a control, enter a valid nonempty replacement and save; confirm the heading changes."
+      ],
+      "sourceReport": {
+        "sessionId": "618c98cb-51c1-5897-9f68-369bcd12e205",
+        "webUrl": "https://app.momentic.ai/mo/sessions/618c98cb-51c1-5897-9f68-369bcd12e205?tab=bug%3AEmpty%20title%20edit%20exits%20without%20validation%20feedback",
+        "recording": {
+          "startedAt": 1793224438098,
+          "finishedAt": 1793224467500,
+          "agentId": "618c98cb-51c1-5897-9f68-369bcd12e205:sandbox-bugbash-v2:create-edit",
+          "windowId": "b88af789-f93b-4c7d-821d-925725ad6a35",
+          "artifactId": "06189c71-8451-405b-9b08-0983b42e579f"
+        }
+      },
+      "matchingGuidance": {
+        "scope": "Covers missing validation feedback after Save of an empty or whitespace-only inline issue title. Do not require an empty title to be saved, and do not describe the preserved original title as lost data.",
+        "distinction": "Cancel followed by reopening a stale title draft and WIP-prefix removal failing to leave draft have separate triggers."
+      },
+      "reviewEvidence": {
+        "basis": "Explicit user approval after reviewing the report, independent Codex and Claude recommendations, and coordinator-checked source. Both agents recommended rejection; the user overrode their contract judgment because missing visible feedback counts as a bug.",
+        "userAccepted": true,
+        "sourceRevision": "99053ce4fa2b45f1bca5837418c0c57f793ca824",
+        "severityReason": "Severity 1: missing validation feedback; valid title changes work and the saved original remains intact.",
+        "analysis": [
+          "Claude reproduced empty-title Save twice on fresh issues, tested whitespace input, and confirmed a valid nonempty rename saves with a timeline event.",
+          "Codex reviewed source and stopped at its bug bar without independent browser reproduction.",
+          "The inline input is not required; the client skips empty updates then reloads. The server also treats an empty title as a no-op. These guards explain the behavior but do not establish that silent feedback is acceptable.",
+          "Latest inspected source retains the nonempty guard; latest runtime was not tested."
+        ],
+        "sourceReferences": [
+          "https://github.com/go-gitea/gitea/blob/99053ce4fa2b45f1bca5837418c0c57f793ca824/templates/repo/issue/view_title.tmpl#L29-L40",
+          "https://github.com/go-gitea/gitea/blob/99053ce4fa2b45f1bca5837418c0c57f793ca824/web_src/js/features/repo-issue.ts#L469-L490",
+          "https://github.com/go-gitea/gitea/blob/99053ce4fa2b45f1bca5837418c0c57f793ca824/routers/web/repo/issue.go#L292-L295",
+          "https://github.com/go-gitea/gitea/blob/965d7522e0b3d323ea2da6615e7d4b39684d16e5/web_src/js/features/repo-issue.ts#L410-L431"
+        ],
+        "limitations": [
+          "No maintainer statement establishing the intended validation feedback was found.",
+          "Pull-request title behavior and other roles were not independently browser-tested."
+        ]
+      }
+    },
+    {
+      "id": "gitea-comment-after-deletion-raw-json-error",
+      "name": "Commenting on a deleted issue shows a raw JSON SyntaxError",
+      "severity": 1,
+      "owningArea": "gitea/issues",
+      "summary": "Submitting a comment from an issue tab left open before deletion shows an internal JSON parsing exception mislabeled as a network error rather than explaining that the issue no longer exists.",
+      "expected": "Reject a comment on a deleted issue with readable feedback explaining that the issue is unavailable, preserving the draft.",
+      "actual": "The server returns HTTP 404 with plain text Not found. The frontend parses it as JSON and displays a red Network error SyntaxError banner. The stale issue and comment draft remain visible; no comment is saved, and the Issues link still works.",
+      "reproSteps": [
+        "Create a disposable issue in a writable repository and open it in two tabs.",
+        "In the second tab, enter a comment without submitting it.",
+        "In the first tab, delete the issue and confirm it is gone.",
+        "Return to the stale second tab and click Comment.",
+        "Observe the raw JSON SyntaxError instead of a readable missing-issue explanation.",
+        "As a control, submit a comment on a live disposable issue and confirm it succeeds."
+      ],
+      "sourceReport": {
+        "sessionId": "ca104d0f-f1a6-52e9-8514-ed22cc9348a0",
+        "webUrl": "https://app.momentic.ai/mo/sessions/ca104d0f-f1a6-52e9-8514-ed22cc9348a0?tab=bug%3ACommenting%20on%20a%20deleted%20issue%20displays%20a%20JSON%20parsing%20error",
+        "recording": {
+          "startedAt": 1793214978460,
+          "finishedAt": 1793215045174,
+          "agentId": "ca104d0f-f1a6-52e9-8514-ed22cc9348a0:sandbox-bugbash-v2:time-tracking",
+          "windowId": "887babba-9c16-4495-ba7d-e7d24656d02a",
+          "artifactId": "fe913991-eac8-42ec-953d-809fe5bedd80"
+        }
+      },
+      "matchingGuidance": {
+        "relatedReference": {
+          "id": "gitea-comment-after-lock-raw-json-error",
+          "distinction": "The existing reference covers a stale comment after the issue is locked. This entry covers a stale comment after the issue is deleted; both expose a parsing error in the shared comment form error handler."
+        },
+        "scope": "Covers the raw error feedback after submitting Comment or Close with Comment on an already-deleted issue. Rejection and retained draft are expected; no lost draft, persisted comment, issue restoration or navigation dead end is claimed. Add Time on a deleted issue is a separate unverified entry point."
+      },
+      "reviewEvidence": {
+        "basis": "Explicit user approval as a related entry after both subscription-authenticated reviewers independently reproduced the comment failure and recommended acceptance at severity 1; coordinator checked the shared parser and missing-issue source path.",
+        "userAccepted": true,
+        "sourceRevision": "99053ce4fa2b45f1bca5837418c0c57f793ca824",
+        "severityReason": "Severity 1: incorrect technical error feedback; comment rejection, draft preservation and navigation work.",
+        "analysis": [
+          "Codex reproduced on two fresh owner issues and a separate contributor session, with passing live-comment controls and a mobile variation.",
+          "Claude reproduced on three fresh issues using Comment, Close with Comment and a separate contributor session; a live-comment control succeeded.",
+          "The comment form uses the shared fetch-action handler, which unconditionally parses non-JSON 4xx responses as JSON and labels the parsing exception a Network error. The deleted issue lookup produces a plain-text 404.",
+          "Latest source checks Content-Type before parsing. Its missing-issue lookup also changed to ServerError; the exact latest response and runtime behavior were not tested."
+        ],
+        "sourceReferences": [
+          "https://github.com/go-gitea/gitea/blob/99053ce4fa2b45f1bca5837418c0c57f793ca824/templates/repo/issue/view_content.tmpl#L82",
+          "https://github.com/go-gitea/gitea/blob/99053ce4fa2b45f1bca5837418c0c57f793ca824/web_src/js/features/common-fetch-action.ts#L25-L56",
+          "https://github.com/go-gitea/gitea/blob/99053ce4fa2b45f1bca5837418c0c57f793ca824/routers/web/repo/issue.go#L184-L188",
+          "https://github.com/go-gitea/gitea/blob/99053ce4fa2b45f1bca5837418c0c57f793ca824/services/context/context_response.go#L129-L149",
+          "https://github.com/go-gitea/gitea/blob/965d7522e0b3d323ea2da6615e7d4b39684d16e5/web_src/js/modules/fetch-action.ts#L122-L137"
+        ],
+        "limitations": [
+          "Latest runtime and a specific upstream fixing commit were not verified.",
+          "The related Add Time report was not independently reproduced and is excluded from this entry."
+        ]
+      }
+    },
+    {
+      "id": "gitea-repo-issues-any-assignee-search-omits-issue",
+      "name": "Repository issue search with Assigned to anybody hides matching assigned issues",
+      "severity": 3,
+      "owningArea": "gitea/issues",
+      "summary": "Combining a matching text search with Assignee → Assigned to anybody on a repository Issues list hides assigned issues and shows zero Open and Closed counts. Bulk assignment succeeds; the search index uses an unpopulated legacy assignee field.",
+      "expected": "Matching issues with at least one assignee remain listed when text search is combined with Assigned to anybody.",
+      "actual": "The search alone lists the assigned issue, and Assigned to anybody without search lists it. Combining the two shows No results and zero counts despite the assignment remaining visible on the issue. The failure persists after reload and also affects assignments made from the issue sidebar.",
+      "reproSteps": [
+        "Create two disposable issues sharing a unique searchable title prefix, with no milestone.",
+        "Assign one issue to a contributor, using its sidebar or the list bulk-assignment action.",
+        "Search for their shared title prefix on the repository Issues list and confirm both issues appear.",
+        "Choose Assignee → Assigned to anybody and observe the assigned issue disappears, with No results and zero Open/Closed counts.",
+        "Remove the text search while retaining Assigned to anybody and confirm the assigned issue appears."
+      ],
+      "sourceReport": {
+        "sessionId": "ca104d0f-f1a6-52e9-8514-ed22cc9348a0",
+        "webUrl": "https://app.momentic.ai/mo/sessions/ca104d0f-f1a6-52e9-8514-ed22cc9348a0?tab=bug%3AAssigned%20to%20anybody%20filter%20hides%20an%20assigned%20issue",
+        "recording": {
+          "startedAt": 1793215281419,
+          "finishedAt": 1793215301206,
+          "agentId": "ca104d0f-f1a6-52e9-8514-ed22cc9348a0:sandbox-bugbash-v2:bulk",
+          "windowId": "b3bf52c7-1267-4448-8f65-e8af38595ac0",
+          "artifactId": "63582293-ecd9-4401-a94f-488b20feecf8"
+        }
+      },
+      "matchingGuidance": {
+        "relatedReference": {
+          "id": "mo-12m-gitea-issues-6",
+          "distinction": "The existing entry covers selecting a specific named user in the repository Assignee dropdown. This entry covers its Assigned to anybody option. Type → Assigned to you and organization/global dashboards have separate related references."
+        },
+        "scope": "Require a matching text search together with Assigned to anybody. Assignment itself succeeds, and filtering without a keyword works. Do not infer that bulk assignment failed or that every dashboard/API variant was browser-tested."
+      },
+      "reviewEvidence": {
+        "basis": "User explicitly approved related severity-3 coverage. Codex and Claude independently reproduced on fresh issues and both recommended acceptance at severity 3. Coordinator verified the index conversion, filtering code and upstream fix.",
+        "userAccepted": true,
+        "sourceRevision": "99053ce4fa2b45f1bca5837418c0c57f793ca824",
+        "severityReason": "Severity 3: supported search/filter combinations return incorrect empty results and counts. No assignment data loss was observed.",
+        "analysis": [
+          "Both reviewers reproduced on two fresh issue sets with bulk and sidebar assignments, and confirmed search-only and filter-only controls work. Codex additionally checked a separate contributor session and desktop/mobile widths.",
+          "The indexer reads Issue.AssigneeID, a nonpersisted legacy field, rather than the loaded Assignees collection. Non-DB index backends therefore filter against the wrong assignee data.",
+          "The normal database assignment filter queries issue_assignees directly, explaining why filtering without text search works.",
+          "Upstream commit a4781dde89ee9cc2e5af73a2c4d2f4d32cda0aee explicitly fixes specific, any-assignee and no-assignee filters by indexing actual assignee IDs. Its patch and rationale were verified through the upstream commit API."
+        ],
+        "sourceReferences": [
+          "https://github.com/go-gitea/gitea/blob/99053ce4fa2b45f1bca5837418c0c57f793ca824/modules/indexer/issues/util.go#L100-L125",
+          "https://github.com/go-gitea/gitea/blob/99053ce4fa2b45f1bca5837418c0c57f793ca824/models/issues/issue.go#L89-L91",
+          "https://github.com/go-gitea/gitea/blob/99053ce4fa2b45f1bca5837418c0c57f793ca824/models/issues/assignees.go#L28-L50",
+          "https://github.com/go-gitea/gitea/blob/99053ce4fa2b45f1bca5837418c0c57f793ca824/modules/indexer/issues/bleve/bleve.go#L257-L264",
+          "https://github.com/go-gitea/gitea/blob/99053ce4fa2b45f1bca5837418c0c57f793ca824/models/issues/issue_search.go#L374-L383",
+          "https://github.com/go-gitea/gitea/commit/a4781dde89ee9cc2e5af73a2c4d2f4d32cda0aee"
+        ],
+        "limitations": [
+          "Latest runtime was not tested.",
+          "The exact deployed non-DB search backend was not independently established; the defective conversion is shared by the inspected non-DB backends.",
+          "Additional shared API, pull-request and milestone entry points are excluded from this entry unless independently reported."
+        ]
+      }
     }
   ]
 }
