@@ -159,7 +159,14 @@ async function runFixture({
       message:
         agentName === "mo"
           ? bugbashBrief(url, stopAfterMs, fixture)
-          : basicBugbashBrief(url, stopAfterMs, fixture),
+          : basicBugbashBrief(
+              url,
+              stopAfterMs,
+              fixture,
+              agentName?.endsWith("-agent-browser")
+                ? "agent-browser"
+                : "Playwright MCP",
+            ),
       timeLimitMs: stopAfterMs,
       signal: resources.signal,
     });
