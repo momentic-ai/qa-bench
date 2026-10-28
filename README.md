@@ -60,7 +60,8 @@ URL, test accounts, the area's scope and entry points, and the reporting rules.
 
 A judge model (GPT-6.1 Sol, high reasoning) matches each finding to the area's
 `ground-truth.json` (known bugs) or `known-invalid.json` (known false reports).
-Anything else is unverified and goes to `review.md`.
+Repeat reports of one bug count as duplicates. Anything else is unverified.
+Duplicates and unverified findings are listed in `review.md`.
 
 - Recall: known hits / known bugs in the area.
 - Precision: known hits / (known hits + known invalid). Unverified findings

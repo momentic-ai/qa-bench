@@ -80,9 +80,16 @@ export async function gradeFixture(
   const bugs = [...report.bugs, ...flags];
   const duration = DurationSchema.extend({
     partial: z.boolean().optional(),
+    timeLimitMs: z.number().optional(),
   }).parse(
     JSON.parse(await readFile(path.join(directory, "duration.json"), "utf8")),
   );
+  if (duration.timeLimitMs !== undefined) {
+    // Older runs had per-run time limits and other briefs, so they are not comparable.
+    throw new Error(
+      `Outdated run in ${directory}: it was made with a time limit. Rerun it with the current harness.`,
+    );
+  }
   if ((duration.errors?.length ?? 0) > 0) {
     // Harness failures cannot become apparently valid benchmark scores.
     throw new Error(

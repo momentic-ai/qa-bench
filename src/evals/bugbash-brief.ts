@@ -1,6 +1,5 @@
 import { Fixture, FixtureAccount } from "./types";
 
-// Every agent gets this same brief.
 export function bugbashBrief(url: URL, fixture: Fixture) {
   const sections = [
     `Find bugs in this app: ${url.href}`,
