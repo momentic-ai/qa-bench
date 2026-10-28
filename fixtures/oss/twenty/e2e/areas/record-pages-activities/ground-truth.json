@@ -1092,6 +1092,46 @@
           "https://github.com/twentyhq/twenty/blob/35c645064f72bc4e3180a2c6c506cbbfee170007/packages/twenty-shared/src/utils/rich-text-variable-resolver.ts#L39-L51"
         ]
       }
+    },
+    {
+      "id": "record-pages-activities-pass4-a2c7542b",
+      "name": "Open Opportunity Calendar keeps its old empty results after linking a company with meetings",
+      "severity": 3,
+      "owningArea": "twenty/record-pages-activities",
+      "summary": "Linking an Opportunity to a company with meetings while its Calendar tab is open leaves Calendar showing no events until the tab is remounted or the page reloaded.",
+      "expected": "An Opportunity Calendar should show the meeting history of its currently linked company after the relation edit is saved.",
+      "actual": "An unlinked Opportunity initially shows Calendar 0 and No Events. Setting Company to a company with known meetings saves correctly, but Calendar remains empty. Reopening Calendar or reloading displays those meetings while retaining the same saved company. Linking the company before first opening Calendar works.",
+      "reproSteps": [
+        "Use a company with known Calendar meetings and create a fresh Opportunity without a Company or Point of Contact.",
+        "Open its Calendar tab and confirm the empty state.",
+        "While keeping Calendar open, set Company to the company with meetings and wait for the relation save to finish.",
+        "Observe Calendar still showing no events despite the saved company.",
+        "Switch away and back to Calendar, or reload. Observe the previously missing company meetings.",
+        "Control: link that company on a fresh Opportunity before first opening Calendar; the meetings appear immediately."
+      ],
+      "sourceCause": "The Calendar query is keyed by object name, record ID and pagination, which stay unchanged after a Company edit. Its refresh subscription watches Calendar participant changes for previously returned people instead of the Opportunity relation change, and skips that subscription when the previous people list is empty. A new query recomputes people from current saved relations.",
+      "matchingGuidance": {
+        "distinction": "Covers the open Opportunity Calendar after a Company relation edit. Meeting records and the company link remain saved; this is not restricted-calendar visibility, event deletion, event navigation, or a backend failure to retrieve meetings. Emails and Point of Contact variants are excluded from the joint verified scope."
+      },
+      "reviewEvidence": {
+        "basis": "Both reviewers reproduced on two fresh Opportunities and verified link-before-open and remount/reload controls. Coordinator inspected saved-company/empty-Calendar and recovered-meetings screenshots, verified captured recording files, source/contract citations and subscription billing.",
+        "sourceRevision": "35c645064f72bc4e3180a2c6c506cbbfee170007",
+        "severityReason": "The open Calendar displays an incorrect empty result for the Opportunity’s saved current company until remounted.",
+        "sourceReferences": [
+          "https://github.com/twentyhq/twenty/blob/35c645064f72bc4e3180a2c6c506cbbfee170007/packages/twenty-docs/user-guide/calendar-emails/capabilities/calendar.mdx#L14-L26",
+          "https://github.com/twentyhq/twenty/blob/35c645064f72bc4e3180a2c6c506cbbfee170007/packages/twenty-front/src/modules/activities/calendar/components/CalendarEventsCard.tsx#L48-L109",
+          "https://github.com/twentyhq/twenty/blob/35c645064f72bc4e3180a2c6c506cbbfee170007/packages/twenty-front/src/modules/activities/hooks/useCustomResolver.ts#L49-L61",
+          "https://github.com/twentyhq/twenty/blob/35c645064f72bc4e3180a2c6c506cbbfee170007/packages/twenty-front/src/modules/activities/hooks/useSubscribeTimelineToParticipantChanges.ts#L20-L51",
+          "https://github.com/twentyhq/twenty/blob/35c645064f72bc4e3180a2c6c506cbbfee170007/packages/twenty-server/src/engine/core-modules/calendar/timeline-calendar-event.service.ts#L332-L367"
+        ],
+        "limitations": [
+          "No meeting or saved company-link data was lost; a fresh query returns the correct meetings.",
+          "The original historical meeting titles were not recreated; the control uses meetings actually present for the chosen company in the review fixture.",
+          "Claude-only Emails, Point of Contact and other relation variations are not added as established joint scope.",
+          "The participant-refresh maintainer change supports the mechanism but is not itself an explicit promise about relation-edit invalidation.",
+          "Newer source retains relevant wiring; newer runtime was not tested."
+        ]
+      }
     }
   ]
 }
