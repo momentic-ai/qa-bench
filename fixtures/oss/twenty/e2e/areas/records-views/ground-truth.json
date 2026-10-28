@@ -1567,6 +1567,44 @@
           "Inspected newer source removes the one-hour overlap model. Newer runtime was not tested, and the pinned revision is not an ancestor of the inspected newer checkout."
         ]
       }
+    },
+    {
+      "id": "records-views-pass4-44d2e147",
+      "name": "Dropping a scrolled calendar event on the toolbar saves an unintended Task time",
+      "severity": 3,
+      "owningArea": "twenty/records-views",
+      "summary": "Day and Week calendar drag handling accepts a toolbar release inside the offscreen full-grid rectangle and persists a calculated early-morning Due Date.",
+      "expected": "Releasing an event on the toolbar outside visible calendar slots should cancel the drag without changing its saved Due Date.",
+      "actual": "After scrolling a Tasks Day calendar toward late evening, dragging a 23:30 event onto the toolbar can save an early-morning time such as 04:30. The erroneous Due Date survives record-page reload. Week layout also accepts toolbar drops. Ordinary in-grid dragging works, and outside drops are rejected when the grid is unscrolled or the pointer is beyond its horizontal bounds.",
+      "reproSteps": [
+        "Create a disposable Tasks calendar using Due Date, no end field, and a uniquely named late-evening Task.",
+        "In Day layout, scroll the time grid down until the Task is visible near the bottom.",
+        "Drag the Task quickly onto the view/filter toolbar above the calendar and release before auto-scroll moves the grid to the top.",
+        "Inspect the saved Due Date and reload the record. Compare a valid in-grid drag and a toolbar release with the grid unscrolled; repeat in Week layout."
+      ],
+      "sourceCause": "The drag context measures the full 1152-pixel time grid inside the scroll wrapper. When scrolled, that rectangle extends behind the toolbar. The resolver checks the full rectangle without clipping it to the visible viewport, converts the toolbar pointer position into a snapped time, and sends the accepted destination through the record-update hook.",
+      "matchingGuidance": {
+        "distinction": "Match a scrolled Day/Week calendar event released on the visible toolbar that is accepted through the offscreen full-grid rectangle and saves an unintended Due Date. Exclude intended one-hour display fallback, ordinary valid time-slot drops, view-setting resets and unrelated Kanban dragging."
+      },
+      "reviewEvidence": {
+        "basis": "Both independent browser/source checks reproduce a toolbar drop silently persisting an unintended Task Due Date, with working in-grid and outside-drop controls. Coordinator checked full reports and complete source/contract audits, original Mo sampled video, retained independent images and Codex official reload/readback audit, and exact subscription billing.",
+        "sourceRevision": "35c645064f72bc4e3180a2c6c506cbbfee170007",
+        "severityReason": "Both reviewers recommend severity 3 because an invalid drop silently rewrites a saved Task Due Date.",
+        "sourceReferences": [
+          "https://github.com/twentyhq/twenty/blob/35c645064f72bc4e3180a2c6c506cbbfee170007/packages/twenty-front/src/modules/object-record/record-calendar/time-grid/components/RecordCalendarTimeGrid.tsx#L127-L134",
+          "https://github.com/twentyhq/twenty/blob/35c645064f72bc4e3180a2c6c506cbbfee170007/packages/twenty-front/src/modules/object-record/record-calendar/time-grid/components/RecordCalendarTimeGrid.tsx#L594-L599",
+          "https://github.com/twentyhq/twenty/blob/35c645064f72bc4e3180a2c6c506cbbfee170007/packages/twenty-front/src/modules/object-record/record-calendar/week/components/RecordCalendarWeekDragDropContext.tsx#L49-L90",
+          "https://github.com/twentyhq/twenty/blob/35c645064f72bc4e3180a2c6c506cbbfee170007/packages/twenty-front/src/modules/object-record/record-calendar/week/utils/resolveRecordCalendarWeekEventDrop.ts#L30-L64",
+          "https://github.com/twentyhq/twenty/blob/35c645064f72bc4e3180a2c6c506cbbfee170007/packages/twenty-front/src/modules/object-record/record-calendar/week/hooks/useProcessRecordCalendarWeekEventDrop.ts#L49-L74"
+        ],
+        "limitations": [
+          "Independent Tasks Due Date checks reproduce in Day and Week with the grid scrolled down. An ordinary in-grid drag updates correctly; unscrolled toolbar, sidebar or time-gutter controls reject the drop.",
+          "The erroneous saved time varies with geometry and drag timing; 04:30 is an example, not a required result. Only Claude independently observed a different saved day, so that extra effect is outside the joint claim.",
+          "The resolver tests reject positions outside the supplied full-grid rectangle. Applying that no-op contract to the visible toolbar also uses the UI boundary and passing control; the tests do not explicitly simulate viewport clipping.",
+          "Shared scope excludes Month, date-only fields, other objects, roles, end-field configurations and editable widgets. No record loss or irreversible damage is claimed.",
+          "Newer source removes the hourly implementation in a broader rewrite. No newer runtime or targeted fix is established; exact auto-scroll timing is inferred."
+        ]
+      }
     }
   ]
 }
