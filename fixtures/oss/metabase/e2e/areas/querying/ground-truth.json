@@ -1693,6 +1693,97 @@
         "Click Created At header → Distribution, then Switch to data.",
         "Click that row's Count1, then See this Order."
       ]
+    },
+    {
+      "id": "metabase-querying-b23",
+      "name": "Renaming an upstream custom column changes a later-stage calculation",
+      "severity": 3,
+      "summary": "Renaming an upstream custom column changes a later-stage calculation.",
+      "expected": "A name-only change preserves the later-stage references and ratio 2.",
+      "actual": "Both aggregate totals remain approximately 9954.82 and 19909.65, but QA-COL Later Ratio becomes 1.",
+      "reproSteps": [
+        "Create an Orders notebook question in Sample Database.",
+        "Add QA-COL Discount Zero = coalesce([Discount], 0) and QA-COL Conditional = case(notNull([Discount]), [Discount] * 2).",
+        "Summarize by Sum of QA-COL Discount Zero and Sum of QA-COL Conditional.",
+        "Add a custom column after Summarize: QA-COL Later Ratio = [Sum of QA-COL Conditional] / [Sum of QA-COL Discount Zero].",
+        "Run, save as a unique QA-COL question and refresh; verify ratio 2.",
+        "Edit the first-stage QA-COL Conditional column and only rename it to QA-COL Nullable Double.",
+        "Click Update and Visualize."
+      ]
+    },
+    {
+      "id": "metabase-querying-b20",
+      "name": "Back to previous results leaves native query on No results",
+      "severity": 3,
+      "summary": "Back to previous results leaves native query on No results.",
+      "expected": "Clicking “Back to previous results” restores the previous successful query results and filter state.",
+      "actual": "The page remains on the 'No results!' screen with 'Showing 0 rows' and Category set to O'Reilly with no reaction after clicking 'Back to previous results'.",
+      "reproSteps": [
+        "As an admin, choose New > SQL query > Sample Database.",
+        "Run SELECT AVG(PRICE) AS avg_price, MIN(PRICE) AS min_price, MAX(PRICE) AS max_price FROM PRODUCTS.",
+        "Replace SQL with SELECT ID, TITLE, CATEGORY FROM PRODUCTS [[WHERE CATEGORY = {{category}}]] ORDER BY ID LIMIT 5 and run with category empty.",
+        "Enter Gizmo in Category, press Enter and run; observe five Gizmo rows.",
+        "Replace Category with O'Reilly, press Enter and run; observe No results.",
+        "Click Back to previous results and inspect the result."
+      ]
+    },
+    {
+      "id": "metabase-querying-b36",
+      "name": "Month-offset relative date range omits its previewed final day",
+      "severity": 3,
+      "summary": "Month-offset relative date range omits its previewed final day.",
+      "expected": "The relative range results include November 30 rows, consistent with its November 29–30 preview and the equivalent fixed range.",
+      "actual": "Only 11 November 29 rows appear. equivalent fixed range returned 25 rows including November 30.",
+      "reproSteps": [
+        "As the primary account, create a fresh notebook question from Sample Database → Orders; use a unique QA-dates name if saving.",
+        "Add Created At → Relative date range → Next, interval 2 days.",
+        "Enable Starting from, set offset 1 and unit months from now. On the observed application date October 28, 2026, the preview reads Nov 29–30, 2026.",
+        "Apply the filter and Visualize. Observe 11 rows all dated November 29.",
+        "For comparison, edit to Fixed date range November 29 through November 30, 2026 and Visualize; both dates appear, with 25 rows."
+      ]
+    },
+    {
+      "id": "metabase-querying-b37",
+      "name": "Previous-hour filter returns timestamps outside its previewed range",
+      "severity": 1,
+      "summary": "Previous-hour filter returns timestamps outside its previewed range.",
+      "expected": "The returned timestamps fall inside the range shown by the filter preview.",
+      "actual": "The 11-row result includes multiple timestamps later than the preview's October28 2:59PM endpoint.",
+      "reproSteps": [
+        "Create a fresh Sample Database → Orders notebook question as the primary account, with a unique QA-dates name if saving.",
+        "Add Created At → Relative date range → Previous; set interval 24 and unit hours. Leave Include this hour off and no Starting from offset.",
+        "Observe preview: Oct 27, 3:00 PM – Oct 28, 2026, 2:59 PM (on observed application date/time).",
+        "Apply and Visualize. Inspect Created At values such as order1490 at October28 7:20PM and order6570 at6:56PM."
+      ]
+    },
+    {
+      "id": "metabase-querying-b38",
+      "name": "Switching SQL variable to single value still runs hidden selections",
+      "severity": 3,
+      "summary": "Switching SQL variable to single value still runs hidden selections.",
+      "expected": "Running the query with the single-value filter set to 1 returns a count of 1.",
+      "actual": "Running the query returns a count of 3 while the filter displays 1.",
+      "reproSteps": [
+        "Create a new SQL query on Sample Database with SELECT COUNT(*) AS matches FROM PRODUCTS WHERE ID IN ({{ids}}).",
+        "Configure ids as Number and choose Multiple values under People can pick.",
+        "Enter 1, 2 and 3 in the Ids filter, apply it, and run; the count is3.",
+        "Change People can pick to A single value. The Ids input now shows1.",
+        "Run the query again."
+      ]
+    },
+    {
+      "id": "metabase-querying-b40",
+      "name": "Trash banner omits Restore right after moving an open question to trash",
+      "severity": 3,
+      "summary": "Trash banner omits Restore right after moving an open question to trash.",
+      "expected": "The trash banner should show the same actions for the same trashed question, including Restore, as it does when the question is reloaded or reopened.",
+      "actual": "Right after the trash is confirmed, the banner shows only Move, and Restore and Delete permanently are missing. The breadcrumb still shows the personal collection. Reloading the same URL shows Restore, Move and Delete permanently, and the breadcrumb changes to Trash.",
+      "reproSteps": [
+        "Pick Sample Database > Products, click Save, name it QA-saving-trash-actions, and save it to Harbor Admin's Personal Collection",
+        "Click the ... question actions menu and choose Move to trash, then confirm Move to trash",
+        "Look at the red banner: it shows only Move",
+        "Reload the page: the banner now shows Restore, Move and Delete permanently"
+      ]
     }
   ]
 }

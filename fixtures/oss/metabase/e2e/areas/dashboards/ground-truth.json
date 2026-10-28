@@ -1254,6 +1254,82 @@
         "Enter 101 in Number of decimal places and blur. Observe gauge preview displays 3.",
         "Click Done, Save dashboard, refresh and scroll to gauge; it still displays 3."
       ]
+    },
+    {
+      "id": "metabase-dashboards-b13",
+      "name": "Opening a dashboard via a tab URL (?tab=...) discards and overwrites the user's last-used filter values",
+      "severity": 3,
+      "summary": "Opening a dashboard via a tab URL (?tab=...) discards and overwrites the user's last-used filter values.",
+      "expected": "Filters whose slug is not in the URL use the user's last-used value (falling back to the default). /dashboard/1?tab=1-overview should open with Date Range: Previous 3 months, the same as /dashboard/1.",
+      "actual": "URL becomes ...&date_range=&...&tab=1-overview and Date Range is empty. Afterwards GET /api/dashboard/1 last_used_param_values no longer has the date range entry (it was {\"81cd957\":\"past3months\",...} before).",
+      "reproSteps": [
+        "Sign in as eval@momentic.ai and open /dashboard/1",
+        "Set Date Range to 'Previous 3 months' (cards update; URL has date_range=past3months)",
+        "Navigate to /dashboard/1 (no query): Date Range is still 'Previous 3 months', so last-used values work",
+        "Now navigate to /dashboard/1?tab=1-overview",
+        "Observe Date Range is empty (URL date_range=). Navigate to /dashboard/1 again and the remembered value is gone"
+      ]
+    },
+    {
+      "id": "metabase-dashboards-b21",
+      "name": "Relative date preview disagrees with interval after blur",
+      "severity": 3,
+      "summary": "Relative date preview disagrees with interval after blur.",
+      "expected": "The preview matches the interval displayed after validation: 1 previous month plus this month should cover September–October 2026. Invalid fractional input should not leave contradictory values.",
+      "actual": "After blur, Interval displays 1 but the preview remains May 1–October 31, 2026.",
+      "reproSteps": [
+        "Open an authenticated dashboard with a Date Range filter (for example a duplicate of E-commerce Insights).",
+        "Select Previous month, then reopen its Date Range editor.",
+        "Set interval to 2, enable Include this month and Update filter.",
+        "Reopen Date Range and replace Interval with 0.5 using normal typing.",
+        "Move focus away from Interval and compare its displayed value with the preview dates."
+      ]
+    },
+    {
+      "id": "metabase-dashboards-b32",
+      "name": "Saving a dashboard edit clears values of filters connected only to text/heading cards",
+      "severity": 3,
+      "summary": "Saving a dashboard edit clears values of filters connected only to text/heading cards.",
+      "expected": "Saving dashboard layout/content changes preserves the currently applied filter values (as it does for filters connected to question columns); headings continue to show the substituted value.",
+      "actual": "On dashboard 'QA Filter Reset C' with URL ?day=2026-10-25&word=hello&text=us-east, the headings read 'Day: On October 25, 2026' / 'Word: hello'. After Edit → add a heading → Save, the URL becomes ?day=&word=&text=us-east and headings show 'Day: {{dd}}' and 'Word: {{w}}'. The 'Text' filter (mapped to the Release requests Region column) kept us-east. Also seen on a dashboard where a Date filter was connected only to a heading (date=2026-10-25 → date=) and a required Region filter mapped to text/heading/SQL-variable cards reset to its default.",
+      "reproSteps": [
+        "Sign in as eval@momentic.ai, go to /collection/root, click New > Dashboard, name it 'Heading filter test', Create.",
+        "Click the T (heading/text) dropdown > Heading and type 'Word: {{w}}'; click outside the card.",
+        "Click the filter icon (Add a filter or parameter) > Text or Category; set Label to 'Word'. On the heading card click 'Select…' and choose 'w'. Click Done, then Save.",
+        "In view mode open the Word filter, type 'hello' and apply it. Confirm the heading reads 'Word: hello' and the URL has ?word=hello.",
+        "Click the pencil (Edit dashboard), add another Heading (any text), click outside, and click Save.",
+        "Observe: the URL changes to ?word= , the Word filter widget is empty, and the heading shows 'Word: {{w}}' instead of 'Word: hello'. (Same with a Date picker filter connected only to a heading, e.g. 'Day: {{dd}}' with 2026-10-25.)"
+      ]
+    },
+    {
+      "id": "metabase-dashboards-b09",
+      "name": "Dashboard move leaves last editor stale until refresh",
+      "severity": 1,
+      "summary": "Dashboard move leaves last editor stale until refresh.",
+      "expected": "Info should display the updated last editor after a successful move, consistent with the same dashboard after refresh.",
+      "actual": "Saved in updates immediately, but last editor shows Jordan Ellis until refresh; it then shows Maya Chen.",
+      "reproSteps": [
+        "As Maya, create a new disposable dashboard in Our analytics.",
+        "In a separate Jordan member session, edit its Info description and blur to save; verify Jordan Ellis becomes last editor. Leave the title unchanged.",
+        "As Maya, open that dashboard, use Move, trash, and more → Move, select Maya Chen's Personal Collection and confirm Move.",
+        "Open More info after the move completes: Saved in reflects Maya Chen's Personal Collection, but last editor still reads Jordan Ellis.",
+        "Refresh and reopen More info: last editor now reads Maya Chen."
+      ]
+    },
+    {
+      "id": "metabase-dashboards-b42",
+      "name": "Reloading numeric selections loses custom labels and duplicates options",
+      "severity": 1,
+      "summary": "Reloading numeric selections loses custom labels and duplicates options.",
+      "expected": "Selected entries retain their custom labels and appear once, checked as One unit and Two units.",
+      "actual": "Checked entries appear as raw 1 and 2; separate unchecked One unit and Two units entries appear below them. Donut results and two-selection count remain intact.",
+      "reproSteps": [
+        "Duplicate dashboard 1 with Only duplicate the dashboard checked, using a fresh QA name.",
+        "Add a Number filter named QA Threshold, Equal to operator, Dropdown list and Multiple values. Map the Total orders by product category card to Orders.Quantity.",
+        "Open Edit beside Dropdown list and choose Custom list. Enter separate lines: 1,One unit; 2,Two units; 1000000,Huge. Confirm Done, Done and save the dashboard.",
+        "Open QA Threshold, select One unit and Two units and apply the filter.",
+        "Refresh the dashboard and reopen QA Threshold."
+      ]
     }
   ]
 }

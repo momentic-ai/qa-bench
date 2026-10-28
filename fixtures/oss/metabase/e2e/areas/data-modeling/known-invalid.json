@@ -473,6 +473,54 @@
         "Compare the saved field heading with the final breadcrumb."
       ],
       "reason": "Works as intended: the field breadcrumb always shows the physical column name (uppercased by CSS), never the display name, for renamed and untouched fields alike. It still identifies the current field."
+    },
+    {
+      "id": "metabase-data-modeling-b14",
+      "name": "Model Info > Relationships 'Linked tables' leaves out tables the model links to through foreign keys",
+      "summary": "Model Info > Relationships 'Linked tables' leaves out tables the model links to through foreign keys.",
+      "expected": "Linked tables should list every table reachable through the model's FK columns. For both 'Orders + People' and a plain Orders model, that is People and Products.",
+      "actual": "'Orders + People' (id 1) lists only 'People'. 'Orders plain model' (a model whose query is just the Orders table) shows 'This model is not linked to any tables.' The model metadata (GET /api/card/:id/query_metadata) does include the FK targets: USER_ID has fk_target_field_id 4 (People.ID) and PRODUCT_ID has fk_target_field_id 8 (Products.ID), and both People and Products appear in the returned tables.",
+      "reproSteps": [
+        "Sign in as eval@momentic.ai.",
+        "Go to /browse/models and open 'Orders + People'. Dismiss the intro modal with 'Start exploring'.",
+        "Click the info (i) icon in the header and open the 'Relationships' tab.",
+        "Under 'Linked tables', only 'People' is listed. 'Products' is missing, although the model has a Product ID foreign-key column.",
+        "Create a model with only the Orders table as its source and no joins (for example New > Model > Orders > Save). In this run it was 'Orders plain model', id 44.",
+        "Open the new model, then Info > Relationships. It shows 'This model is not linked to any tables.' even though the User ID and Product ID FK columns point to People and Products."
+      ],
+      "reason": "Works as intended: Linked tables lists the tables the model's query joins, not every table its foreign keys point to."
+    },
+    {
+      "id": "metabase-data-modeling-b33",
+      "name": "Metric action menu offers \"Turn into a model\" and converts the metric into a model",
+      "summary": "Metric action menu offers \"Turn into a model\" and converts the metric into a model.",
+      "expected": "\"Turn into a model\" should only be offered for saved questions. A metric's menu should offer metric actions only (Edit metric definition, Move, Duplicate, Move to trash, and so on), and a metric should never be silently converted into a model.",
+      "actual": "The metric menu lists: Add to dashboard, Create an alert, Edit metric definition, Turn into a model, Move, Duplicate, Move to trash. Clicking \"Turn into a model\" and then \"Turn this into a model\" redirects to /model/44-... . GET /api/card/44 now returns type \"model\" and display \"table\". History shows \"type changed from :metric to :model\", and the page shows the model menu (Edit query definition / Edit metadata / Turn back to saved question).",
+      "reproSteps": [
+        "Sign in as eval@momentic.ai / momentic-eval-1.",
+        "Go to /browse/metrics and click the + (Create a new metric) icon.",
+        "Pick the table Sample Database → Orders, set the formula to Sum of Total and the default time dimension to Created At, click Save, name it \"QA Total Revenue Metric\", and save to Our analytics.",
+        "On the saved metric page (/metric/<id>), dismiss the \"It's okay to play around with metrics\" modal and click the \"Move, trash, and more…\" (…) button.",
+        "Observe that \"Turn into a model\" is listed. Click it, then click \"Turn this into a model\" in the modal.",
+        "Observe the redirect to /model/<id>: the item is now a model (GET /api/card/<id> returns type \"model\") and it is gone from /browse/metrics.",
+        "Cleanup: open More info → History and revert to the previous version."
+      ],
+      "reason": "Works as intended: Turn into a model is a deliberate, confirmed and undoable action that is offered for metrics."
+    },
+    {
+      "id": "metabase-data-modeling-b43",
+      "name": "Trash Undo leaves a converted model in the trash",
+      "summary": "Trash Undo leaves a converted model in the trash.",
+      "expected": "Undo restores the model and removes the trash banner.",
+      "actual": "The red 'This model is in the trash' banner remains after Undo.",
+      "reproSteps": [
+        "As Harbor Admin, create a fresh metric from Sample Database > Orders using the default Count formula and save it in the personal collection.",
+        "Open its ellipsis menu and choose Turn into a model.",
+        "Open the model's ellipsis menu, choose Move to trash and confirm.",
+        "While the moved-to-trash notification is visible, click Undo.",
+        "Observe the settled page."
+      ],
+      "reason": "Cannot reproduce on human review: Undo restores the converted model from the trash."
     }
   ]
 }
