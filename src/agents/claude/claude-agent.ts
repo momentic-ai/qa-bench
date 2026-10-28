@@ -15,6 +15,7 @@ import { z } from "zod";
 import { AgentContext, Browser, EvalAgentDefinition } from "../../evals/agent";
 import { combinedCost } from "../../evals/browser-cost";
 import { writeJson } from "../../evals/json-file";
+import { BrowserTool, validateAgentBrowser } from "../agent-browser";
 import { CodexAgent } from "../codex/codex-agent";
 import { FindingsStore } from "../codex/findings-store";
 import { validateLocalChromium } from "../local-browser";
@@ -34,6 +35,7 @@ const ResultSchema = z.object({
 });
 
 export class ClaudeAgent extends CodexAgent {
+  protected skillOwner = ".claude" as const;
   private claude: ChildProcessWithoutNullStreams | undefined;
   private reporting:
     | Awaited<ReturnType<typeof startReportingServer>>
@@ -49,8 +51,9 @@ export class ClaudeAgent extends CodexAgent {
   constructor(
     context: AgentContext,
     private claudeCommand = CLAUDE_COMMAND,
+    browserTool: BrowserTool = "playwright-mcp",
   ) {
-    super(context);
+    super(context, browserTool);
     this.findings = new FindingsStore(context.reportDirectory);
   }
 
@@ -71,13 +74,16 @@ export class ClaudeAgent extends CodexAgent {
     ]);
     const setup = await this.prepare();
     this.reporting = await startReportingServer(this.findings);
-    const browser = z
-      .object({
-        command: z.string(),
-        args: z.array(z.string()),
-        env: z.record(z.string(), z.string()),
-      })
-      .parse(setup.mcpServers.playwright);
+    const browserServers = z
+      .record(
+        z.string(),
+        z.object({
+          command: z.string(),
+          args: z.array(z.string()),
+          env: z.record(z.string(), z.string()),
+        }),
+      )
+      .parse(setup.mcpServers);
     signal.throwIfAborted();
     this.transcript = createWriteStream(
       path.join(this.context.reportDirectory, "transcript.jsonl"),
@@ -100,26 +106,29 @@ export class ClaudeAgent extends CodexAgent {
         "--mcp-config",
         JSON.stringify({
           mcpServers: {
-            playwright: {
-              type: "stdio",
-              ...browser,
-            },
+            ...Object.fromEntries(
+              Object.entries(browserServers).map(([name, server]) => [
+                name,
+                { type: "stdio", ...server },
+              ]),
+            ),
             reporting: { type: "http", url: this.reporting.url },
           },
         }),
         "--permission-mode",
         "bypassPermissions",
         "--allowedTools",
-        "mcp__playwright__*",
+        ...Object.keys(browserServers).map((name) => `mcp__${name}__*`),
         "mcp__reporting__*",
         "--setting-sources",
-        "",
+        this.browserTool === "agent-browser" ? "project" : "",
       ],
       {
         cwd: workspace,
         detached: true,
         env: {
-          PATH: process.env.PATH,
+          ...setup.env,
+          PATH: setup.env?.PATH ?? process.env.PATH,
           HOME: process.env.HOME,
           ANTHROPIC_API_KEY: process.env.ANTHROPIC_API_KEY,
           CLAUDE_CONFIG_DIR: configDirectory,
@@ -230,15 +239,19 @@ export class ClaudeAgent extends CodexAgent {
   }
 }
 
-export function claudeAgent(browser: Browser): EvalAgentDefinition {
+export function claudeAgent(
+  browser: Browser,
+  browserTool: BrowserTool = "playwright-mcp",
+): EvalAgentDefinition {
   return {
-    name: "claude-playwright-mcp",
-    reportSubdirectory: "claude-playwright-mcp",
+    name: `claude-${browserTool}`,
+    reportSubdirectory: `claude-${browserTool}`,
     concurrency: browser === "local" ? 2 : Infinity,
     config: { browser },
     async validateEnvironment() {
       if (!process.env.ANTHROPIC_API_KEY)
         throw new Error("ANTHROPIC_API_KEY is required.");
+      if (browserTool === "agent-browser") await validateAgentBrowser();
       if (browser === "local") await validateLocalChromium();
       else if (!process.env.BROWSERBASE_API_KEY)
         throw new Error("BROWSERBASE_API_KEY is required.");
@@ -249,8 +262,8 @@ export function claudeAgent(browser: Browser): EvalAgentDefinition {
     },
     create(context) {
       return browser === "local"
-        ? new LocalClaudeAgent(context)
-        : new ClaudeAgent(context);
+        ? new LocalClaudeAgent(context, CLAUDE_COMMAND, browserTool)
+        : new ClaudeAgent(context, CLAUDE_COMMAND, browserTool);
     },
   };
 }

@@ -17,7 +17,7 @@ export const GRADING_OUTPUT_SCHEMA = z.toJSONSchema(GRADING_APP_SCHEMA, {
   target: "openai-3.0",
 });
 const GRADING_PROJECTION = {
-  referenceFields: "all",
+  referenceFields: "all except sourceCause and reviewEvidence",
   indexField: "index",
   findingFields: ["name", "summary", "expected", "actual", "reproSteps"],
 } as const;
@@ -51,11 +51,18 @@ export function gradingPrompt(
   findings: Finding[],
 ) {
   const data = {
-    groundTruth: groundTruth.map(({ sourceCause: _, ...finding }, index) => ({
-      ...finding,
-      index,
-    })),
-    knownInvalid: knownInvalid.map((finding, index) => ({ ...finding, index })),
+    groundTruth: groundTruth.map(
+      ({ sourceCause: _, reviewEvidence: _evidence, ...finding }, index) => ({
+        ...finding,
+        index,
+      }),
+    ),
+    knownInvalid: knownInvalid.map(
+      ({ sourceCause: _, reviewEvidence: _evidence, ...finding }, index) => ({
+        ...finding,
+        index,
+      }),
+    ),
     findings: findings.map((finding, index) => ({
       index,
       name: finding.name,
