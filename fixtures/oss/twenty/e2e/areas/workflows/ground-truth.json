@@ -2450,6 +2450,43 @@
           "Newer runtime and other roles were not tested."
         ]
       }
+    },
+    {
+      "id": "workflows-pass4-4e6d6b5b",
+      "name": "Changing a database trigger object conceals retained monitored fields and prevents runs",
+      "severity": 3,
+      "owningArea": "twenty/workflows",
+      "summary": "Changing a Record is updated trigger from Companies to People retains Company-only monitored fields while showing an empty Fields selector, silently preventing later People updates from starting the workflow.",
+      "expected": "The optional monitored-fields selector should accurately display its saved restrictions after an object change, or clear incompatible restrictions before activation. A visibly unrestricted trigger should behave like the working no-field-restriction control.",
+      "actual": "After selecting Companies Annual Revenue and switching to People, the Fields selector shows its empty placeholder after reload, but saved settings retain annualRevenue. Activation succeeds, and saved Person name changes produce no new run. Clearing the retained restriction restores execution. A truly unrestricted People trigger looks the same and runs normally.",
+      "reproSteps": [
+        "Create a disposable workflow with Record is updated, Companies, monitored field Annual Revenue, and a harmless Search Records action.",
+        "Change Record Type to People without editing Fields, wait for saving and reload. Observe the empty Select specific fields to listen to placeholder.",
+        "Activate and edit a fresh Person’s name. Observe no new workflow run, despite the seemingly unrestricted trigger.",
+        "As a control, configure a fresh People trigger without selected fields and verify the same name edits start it.",
+        "For recovery, switch the affected trigger back to Companies, uncheck the retained field, return to People and activate. Verify a later name edit starts a run."
+      ],
+      "sourceCause": "The object-change handler preserves trigger settings, including fields. The multi-select hides stored names absent from the new object’s options. Activation copies those settings without validating their object compatibility, and the event listener requires a retained nonempty fields list to intersect updated field names.",
+      "matchingGuidance": {
+        "relatedReference": "workflows-fresh-b4cded10",
+        "distinction": "This entry retains hidden settings.fields, the optional monitored-field restriction. The related entry retains settings.filter, an incompatible condition with its old operator/value. N17 separately covers condition-picker options that recover after reopening. Common field names present on both objects are not established failures."
+      },
+      "reviewEvidence": {
+        "basis": "Independent repeated browser/source verification with saved-settings inspection, working unrestricted controls and a repaired affected-workflow control.",
+        "sourceRevision": "35c645064f72bc4e3180a2c6c506cbbfee170007",
+        "severityReason": "An active automation silently ignores supported updates while its optional Fields UI appears unrestricted.",
+        "sourceReferences": [
+          "https://github.com/twentyhq/twenty/blob/35c645064f72bc4e3180a2c6c506cbbfee170007/packages/twenty-front/src/modules/workflow/workflow-trigger/components/WorkflowEditTriggerDatabaseEventForm.tsx#L155-L166",
+          "https://github.com/twentyhq/twenty/blob/35c645064f72bc4e3180a2c6c506cbbfee170007/packages/twenty-front/src/modules/object-record/record-field/ui/form-types/components/FormMultiSelectFieldInput.tsx#L194-L205",
+          "https://github.com/twentyhq/twenty/blob/35c645064f72bc4e3180a2c6c506cbbfee170007/packages/twenty-server/src/modules/workflow/workflow-trigger/automated-trigger/listeners/workflow-database-event-trigger.listener.ts#L405-L425",
+          "https://github.com/twentyhq/twenty/blob/35c645064f72bc4e3180a2c6c506cbbfee170007/packages/twenty-docs/user-guide/workflows/capabilities/workflow-triggers.mdx#L33-L38"
+        ],
+        "limitations": [
+          "No server trace attributes each skipped event to the field gate; retained settings, checked source and before/after controls support that explanation.",
+          "The review workspace was shared: unrelated Person updates could also start unrestricted control workflows. Affected workflows remained at zero new runs; the repaired-workflow control also ran.",
+          "Other roles, object pairs, upsert triggers and newer runtime were not tested."
+        ]
+      }
     }
   ]
 }
