@@ -20,9 +20,6 @@ type BrowserConnection = {
   filesystem: Record<string, string>;
 };
 
-export const SUBAGENT_INSTRUCTIONS =
-  "You can and should use subagents to explore different product areas or frontend paths. Each subagent gets its own fresh browser, separate from yours and from other subagents'. Orchestrate and divide the work however you choose, and prefer parallelism where appropriate. Only the parent can submit, update, or remove evaluation findings.";
-
 export class CodexAgent extends CodexRunner {
   protected localBrowser = false;
   private browsers: BrowserbaseSessions | undefined;
@@ -34,11 +31,11 @@ export class CodexAgent extends CodexRunner {
   ) {
     return {
       mcpServers: await this.prepareBrowserMcp(resolverFiles),
-      subagents: !this.localBrowser,
+      subagents: false,
       filesystem: {
         [path.join(this.context.runDirectory, "browser-artifacts")]: "read",
       },
-      instructions: this.localBrowser ? "" : SUBAGENT_INSTRUCTIONS,
+      instructions: "",
     };
   }
 
@@ -151,8 +148,7 @@ export function codexAgent(browser: Browser): EvalAgentDefinition {
     name: "Codex",
     reportSubdirectory: "codex",
     concurrency: browser === "local" ? 2 : Infinity,
-    // One local browser cannot be shared, so local runs stay single-agent.
-    config: { browser, subagents: browser !== "local" },
+    config: { browser },
     async validateEnvironment() {
       if (!process.env.OPENAI_API_KEY)
         throw new Error("OPENAI_API_KEY is required.");

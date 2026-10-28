@@ -303,12 +303,7 @@ export async function runLabel(agent: string, runDirectory: string) {
     : {};
   const settings: string[] = [];
   if (config.browser === "local") settings.push("local browser");
-  // Codex and Claude runs from before subagents were enabled did not record the setting.
-  if (
-    config.subagents === false ||
-    (config.subagents === undefined && agent !== "mo")
-  )
-    settings.push("no subagents");
+  if (config.subagents === false) settings.push("no subagents");
   if (config.effort && config.effort !== "medium")
     settings.push(`${config.effort} effort`);
   return settings.length ? `${agent} (${settings.join(", ")})` : agent;
