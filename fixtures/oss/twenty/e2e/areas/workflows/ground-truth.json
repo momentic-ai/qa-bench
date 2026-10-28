@@ -2377,6 +2377,79 @@
           "https://github.com/twentyhq/twenty/blob/35c645064f72bc4e3180a2c6c506cbbfee170007/packages/twenty-front/src/modules/workflow/workflow-variables/components/WorkflowVariablesDropdown.tsx#L112-L115"
         ]
       }
+    },
+    {
+      "id": "workflows-pass4-c4125e60",
+      "name": "Typing a negative fractional Code input loses its sign and saves a positive value",
+      "severity": 3,
+      "owningArea": "twenty/workflows",
+      "summary": "Sequential typing of a Code parameter between -1 and 0 converts its intermediate -0 to 0, saving the completed number with the wrong sign.",
+      "expected": "Supported negative Code parameters should retain their sign during ordinary typing and save the same value as whole-value entry.",
+      "actual": "Typing -0.25 with ordinary pauses displays positive 0.25, which remains saved after reload. Top-level and nested parameters reproduce. Negative values at or below -1, positive fractions and whole-value negative-fraction entry work.",
+      "reproSteps": [
+        "Create a manual workflow with a Code action whose parameters include an unrestricted number, and wait for its generated input.",
+        "In the empty generated input, type -, 0, ., 2, 5 one key at a time with ordinary pauses. Observe the minus disappear at the intermediate -0.",
+        "Wait for saving, reload and reopen the action. Observe the saved positive 0.25. Repeat with a fresh workflow; a nested numeric parameter also reproduces.",
+        "Compare ordinary entry of -1.25 and 0.25 and whole-value entry of -0.25, which preserve the intended values."
+      ],
+      "sourceCause": "The generated Code field forwards numeric changes to its parent. FormNumberFieldInput converts intermediate text -0 to numeric negative zero and reconstructs its display with String(defaultValue), yielding 0. TextInput replaces its local draft with that changed display, so subsequent digits form a positive number.",
+      "matchingGuidance": {
+        "relatedReference": "workflows-N69",
+        "distinction": "This entry concerns saved generated Code action parameters, including nested numbers. N69 concerns a Form Number answer and its submitted output. The negative-zero display round trip is shared. Unsupported numeric domains in other callers are excluded."
+      },
+      "reviewEvidence": {
+        "basis": "Independent browser and source verification on two fresh workflows per reviewer, persistence checks and passing numeric controls.",
+        "sourceRevision": "35c645064f72bc4e3180a2c6c506cbbfee170007",
+        "severityReason": "Ordinary supported input is silently saved with the wrong sign.",
+        "sourceReferences": [
+          "https://github.com/twentyhq/twenty/blob/35c645064f72bc4e3180a2c6c506cbbfee170007/packages/twenty-front/src/modules/workflow/workflow-steps/workflow-actions/code-action/components/WorkflowEditActionCodeFieldLeaf.tsx#L126-L137",
+          "https://github.com/twentyhq/twenty/blob/35c645064f72bc4e3180a2c6c506cbbfee170007/packages/twenty-front/src/modules/object-record/record-field/ui/form-types/components/FormNumberFieldInput.tsx#L59-L87",
+          "https://github.com/twentyhq/twenty/blob/35c645064f72bc4e3180a2c6c506cbbfee170007/packages/twenty-front/src/modules/ui/field/input/components/TextInput.tsx#L74-L85",
+          "https://github.com/twentyhq/twenty/blob/35c645064f72bc4e3180a2c6c506cbbfee170007/packages/twenty-front/src/utils/cast-as-number-or-null.ts#L53-L75"
+        ],
+        "limitations": [
+          "Typing speed affects whether the intermediate parent update replaces the text; whole-value entry works.",
+          "No downstream execution or record damage was established.",
+          "Other numeric callers and newer runtime were not tested."
+        ]
+      }
+    },
+    {
+      "id": "workflows-pass4-6a0ee96e",
+      "name": "Fractional scheduled hour overwrites a valid saved schedule with an invalid cron value",
+      "severity": 3,
+      "owningArea": "twenty/workflows",
+      "summary": "The scheduled trigger hour accepts and saves 1.5 despite promising an integer; the invalid value persists after reload and prevents the schedule preview from operating.",
+      "expected": "The UTC hour should enforce its stated integer range before replacing a valid saved schedule.",
+      "actual": "Entering 1.5 in one edit saves hour 1.5, clears the integer-range field error and replaces the schedule and upcoming-execution preview with Invalid characters, got value: 1.5. Both the fraction and parser error survive reload. A whole-hour edit restores the preview.",
+      "reproSteps": [
+        "Create a fresh scheduled workflow using a daily trigger and a valid saved UTC hour.",
+        "Replace the hour with 1.5 in one input event, such as pasting it. A keyboard-only variation types 15, moves the caret between the digits and inserts a decimal point.",
+        "Allow saving, then reload and reopen the trigger. Observe hour 1.5 and the cron parser error instead of a working schedule preview.",
+        "Repeat on a fresh workflow. Change the hour to a whole number such as 2 and verify the valid preview and saved value recover."
+      ],
+      "sourceCause": "Preset hour validation checks numeric type and bounds but omits integrality despite its integer message. The trigger save path persists the fractional hour unchanged, and schedule-to-cron conversion directly interpolates it into an expression the preview parser rejects.",
+      "matchingGuidance": {
+        "relatedReference": "workflows-pass2-44655eeb",
+        "distinction": "This entry covers the persisted fractional daily UTC-hour edit and broken preview before activation. The related entry covers fractional interval activation persisting Active state without a registered trigger. Unsaved invalid cron text, out-of-range prefix retention and ordinary key-by-key decimal-point loss are excluded."
+      },
+      "reviewEvidence": {
+        "basis": "Independent repeated fresh-workflow browser and source verification, save/reload evidence and working whole-hour controls.",
+        "sourceRevision": "35c645064f72bc4e3180a2c6c506cbbfee170007",
+        "severityReason": "A valid saved configuration is overwritten with an invalid schedule that remains unusable after reload.",
+        "sourceReferences": [
+          "https://github.com/twentyhq/twenty/blob/35c645064f72bc4e3180a2c6c506cbbfee170007/packages/twenty-front/src/modules/workflow/workflow-trigger/components/WorkflowEditTriggerCronForm.tsx#L192-L239",
+          "https://github.com/twentyhq/twenty/blob/35c645064f72bc4e3180a2c6c506cbbfee170007/packages/twenty-front/src/modules/workflow/workflow-trigger/utils/cron-to-human/utils/convertScheduleToCronExpression.ts#L6-L14",
+          "https://github.com/twentyhq/twenty/blob/35c645064f72bc4e3180a2c6c506cbbfee170007/packages/twenty-front/src/modules/workflow/workflow-trigger/components/CronExpressionHelper.tsx#L103-L131",
+          "https://github.com/twentyhq/twenty/blob/35c645064f72bc4e3180a2c6c506cbbfee170007/packages/twenty-server/src/modules/workflow/workflow-builder/workflow-version-step/workflow-version-step-helpers.workspace-service.ts#L35-L71"
+        ],
+        "limitations": [
+          "Activation and actual scheduled execution were not tested; no failed activation or missed execution is claimed.",
+          "Ordinary sequential typing can remove the decimal point; the confirmed trigger supplies the fraction in one edit.",
+          "Only the clean independently isolated retry evidence is used; overlapping earlier local attempts are excluded.",
+          "Newer runtime and other roles were not tested."
+        ]
+      }
     }
   ]
 }
