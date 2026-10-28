@@ -2763,6 +2763,48 @@
           "The exact hidden-container measurement and mount ordering are source-backed inferences supported by observed offsets and controls; no full layout lifecycle trace was captured."
         ]
       }
+    },
+    {
+      "id": "workflows-loop-b928ba08",
+      "name": "A valid Number answer bypasses another workflow Form field’s validation",
+      "severity": 3,
+      "owningArea": "twenty/workflows",
+      "summary": "Entering a valid answer in one Number field re-enables workflow Form submission while another field still displays invalid text and its validation error.",
+      "expected": "Submit should remain disabled while any Number answer has a validation error. Correcting another field must not clear the invalid field’s submission gate.",
+      "actual": "With two uniquely named Number fields, entering abc in the first disables Submit. Entering 42 in the second re-enables Submit while abc and Invalid number remain. Submission completes with only the second answer. If the first previously held a valid number, submission instead retains that previous value behind the invalid replacement text.",
+      "reproSteps": [
+        "Create and activate a saved manual workflow with a Form containing two Number fields with distinct labels, such as Alpha and Beta.",
+        "Start a fresh run and enter abc in Alpha. Confirm Invalid number is displayed and Submit is disabled.",
+        "Enter 42 in Beta without correcting Alpha. Observe Submit becomes usable while Alpha still shows abc and its error.",
+        "Submit and inspect the completed Form result: Beta is 42 and Alpha is omitted. Repeat in another fresh run.",
+        "Stale-answer variation: enter a valid Alpha value first, replace it with invalid text, then enter a valid Beta value and submit. The completed result retains the prior valid Alpha value.",
+        "Control: correct Alpha to a valid number and submit both valid answers; both appear correctly in the completed result."
+      ],
+      "sourceCause": "The Form filler uses one shared error value for all fields. A valid Number field calls the shared error callback with undefined, overwriting another field’s error and enabling Submit. Invalid text remains local to its input and does not update the stored answer, so submission omits it or sends the previous valid number.",
+      "matchingGuidance": {
+        "distinction": "Match runtime Number-field validation bypass caused by editing a valid sibling Number field. The stale Date-answer and untouched Select-default entries have different input-adapter causes. Exclude invalid workflow configuration, duplicate form labels, and claims that raw invalid text is stored."
+      },
+      "reviewEvidence": {
+        "basis": "Both independent reviewers reproduced the bypass in two fresh executions of saved, activated workflows and observed completed results omitting the invalid answer. Both also confirmed stale previous-number submission and passing valid-answer controls. Coordinator checked original visual evidence, independent screenshots and retained recordings, actual submitted-result readbacks, subscription billing, source, and the explicit submission-blocking maintainer contract.",
+        "sourceRevision": "35c645064f72bc4e3180a2c6c506cbbfee170007",
+        "severityReason": "The runtime validation gate is bypassed and completed Form results disagree with the displayed answers.",
+        "sourceReferences": [
+          "https://github.com/twentyhq/twenty/blob/35c645064f72bc4e3180a2c6c506cbbfee170007/packages/twenty-front/src/modules/workflow/workflow-steps/workflow-actions/form-action/components/WorkflowEditActionFormFiller.tsx#L35-L94",
+          "https://github.com/twentyhq/twenty/blob/35c645064f72bc4e3180a2c6c506cbbfee170007/packages/twenty-front/src/modules/workflow/workflow-steps/workflow-actions/form-action/components/WorkflowEditActionFormFiller.tsx#L159-L191",
+          "https://github.com/twentyhq/twenty/blob/35c645064f72bc4e3180a2c6c506cbbfee170007/packages/twenty-front/src/modules/object-record/record-field/ui/form-types/components/FormNumberFieldInput.tsx#L71-L87",
+          "https://github.com/twentyhq/twenty/blob/35c645064f72bc4e3180a2c6c506cbbfee170007/packages/twenty-front/src/modules/object-record/record-field/ui/components/FormFieldInput.tsx#L88-L115",
+          "https://github.com/twentyhq/twenty/blob/35c645064f72bc4e3180a2c6c506cbbfee170007/packages/twenty-front/src/modules/workflow/workflow-steps/workflow-actions/form-action/hooks/useSubmitFormStep.ts#L34-L49",
+          "https://github.com/twentyhq/twenty/blob/35c645064f72bc4e3180a2c6c506cbbfee170007/packages/twenty-server/src/modules/workflow/workflow-runner/workspace-services/workflow-runner.workspace-service.ts#L138-L199",
+          "https://github.com/twentyhq/twenty/commit/18a89b515235a212104fec91738562ad3f1307c4"
+        ],
+        "limitations": [
+          "Raw invalid text is not stored; the observed result omits the answer or uses its previous valid parsed value.",
+          "Each reviewer repeated fresh executions of its own saved workflow; two independent workflow configurations per reviewer are not claimed.",
+          "No downstream record, email or other action consequences were tested.",
+          "Other roles and AI-form runtime behavior are not established.",
+          "The inspected newer workflow Form source retains shared error tracking; newer runtime was not tested."
+        ]
+      }
     }
   ]
 }
