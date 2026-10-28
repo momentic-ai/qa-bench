@@ -2560,6 +2560,46 @@
           "The newer source retains the identity split; newer runtime was not tested."
         ]
       }
+    },
+    {
+      "id": "workflows-pass4-e91444e9",
+      "name": "A rejecting Filter stalls a trigger-adjacent Iterator without a successful external parent",
+      "severity": 3,
+      "owningArea": "twenty/workflows",
+      "summary": "A finite Iterator placed directly after a manual trigger stops advancing when a loop Filter rejects an item, leaving its completed continuation unstarted and the saved run Running.",
+      "expected": "A supported Filter inside a finite Iterator should stop only the current branch and let the Iterator advance or complete.",
+      "actual": "With items alpha and beta, a Filter allowing alpha passes the first iteration and rejects the second. The loop-back Delay becomes Skipped, the Iterator remains Running and its completed-path Delay stays Not started after reload and waits exceeding a minute. Rejecting the first item also prevents later items from being processed. All-items-pass and successful-predecessor controls complete.",
+      "reproSteps": [
+        "Create a fresh manual workflow with Iterator directly after the trigger and literal items alpha and beta.",
+        "Wire a loop containing a one-second Delay, a Filter Current Item Is alpha, then another one-second Delay returning to the Iterator. Add a one-second Delay on the Iterator completed path. Wait for configuration to save.",
+        "Test the workflow. Inspect both Filter iterations: alpha matches and beta does not. Observe the loop-back Delay skipped, Iterator Running and completed Delay Not started.",
+        "After more than 60 seconds, reload the run and confirm its stored state still has not advanced. Repeat with a fresh workflow.",
+        "Controls: allow both items through the Filter and observe completion. With the rejecting Filter retained, insert a successful one-second Delay before the Iterator; that external successful parent also restores completion."
+      ],
+      "sourceCause": "After starting, Iterator eligibility checks all action parents and requires a successful one. The trigger is stored separately and does not supply such a parent. A skipped or stopped loop-back supplies no success; the already-started Iterator cannot be skipped and has no qualifying failed-safely exception, so no path advances it.",
+      "matchingGuidance": {
+        "relatedReference": "workflows-pass2-3bc6d300",
+        "distinction": "This entry has no nested Iterator and requires no successful external action parent; a direct Filter makes its loop-back skipped or stopped. The related entry skips a nested Iterator and fails to hand off its completed path. Do not match all Filter-in-Iterator graphs or stale Running labels for completed executions."
+      },
+      "reviewEvidence": {
+        "basis": "Independent repeated fresh-workflow browser/source verification with stored stalled state, all-items-pass controls and an external-successful-predecessor control.",
+        "sourceRevision": "35c645064f72bc4e3180a2c6c506cbbfee170007",
+        "severityReason": "Supported finite-loop execution does not advance to remaining work or its completed continuation.",
+        "sourceReferences": [
+          "https://github.com/twentyhq/twenty/blob/35c645064f72bc4e3180a2c6c506cbbfee170007/packages/twenty-server/src/modules/workflow/workflow-executor/workflow-actions/iterator/utils/should-execute-iterator-step.util.ts#L23-L68",
+          "https://github.com/twentyhq/twenty/blob/35c645064f72bc4e3180a2c6c506cbbfee170007/packages/twenty-server/src/modules/workflow/workflow-executor/utils/should-execute-child-step.util.ts#L12-L27",
+          "https://github.com/twentyhq/twenty/blob/35c645064f72bc4e3180a2c6c506cbbfee170007/packages/twenty-server/src/modules/workflow/workflow-executor/workflow-actions/iterator/utils/should-skip-iterator-step-execution.util.ts#L33-L46",
+          "https://github.com/twentyhq/twenty/blob/35c645064f72bc4e3180a2c6c506cbbfee170007/packages/twenty-docs/user-guide/workflows/capabilities/use-iterator.mdx#L20-L24",
+          "https://github.com/twentyhq/twenty/blob/35c645064f72bc4e3180a2c6c506cbbfee170007/packages/twenty-docs/user-guide/workflows/capabilities/workflow-actions.mdx#L108-L116",
+          "https://github.com/twentyhq/twenty/commit/cbfd73cbd8ce8cb355c8287a6ca4ddbd5a4f4f6f"
+        ],
+        "limitations": [
+          "The causal worker path is source-supported without worker instrumentation.",
+          "Observations establish a persistent finite-execution stall over the sampled interval, not indefinite duration or an unkillable run. Stop finalization is excluded.",
+          "Claude configured some fresh copies through the app’s own mutations after its first UI-built workflow; stale duplicated references were repaired before counted tests.",
+          "Other roles, trigger types, If/Else siblings and newer runtime were not tested."
+        ]
+      }
     }
   ]
 }
