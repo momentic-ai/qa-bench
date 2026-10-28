@@ -3075,6 +3075,43 @@
           "Same-column reorder, other destinations, grouped-table/calendar callers and broader object behavior are excluded."
         ]
       }
+    },
+    {
+      "id": "workflows-loop-1fd56a13",
+      "name": "Reselecting a workflow condition field clears its saved comparison while displaying the old value",
+      "severity": 3,
+      "owningArea": "twenty/workflows",
+      "summary": "Reselecting the current field can conceal an empty saved comparison and make a workflow Filter execute differently from its visible condition.",
+      "expected": "The comparison shown in the editor should match the condition saved and executed after field reselection.",
+      "actual": "After reselecting Workspace Member Id, the comparison input still shows the previous text or valid member ID, but the saved comparison is empty. Is can remain Is, leaving the panel visually unchanged. A Test then rejects the matching member and skips the downstream action. Reopening or reloading reveals the empty comparison.",
+      "reproSteps": [
+        "Create a manual workflow with Filter: Workspace Member Id Is the current member ID, followed by a Create Record action. Save and Test to verify the Filter passes and the action executes.",
+        "Open the Filter field picker and explicitly reselect the current Workspace Member Id field. Observe the same Is condition and member ID remain visible.",
+        "Wait for the edit to save and Test again. The saved flow uses an empty comparison, the Filter returns false and the downstream action is skipped.",
+        "Reopen the Filter or reload to reveal the empty comparison. Re-enter the member ID and Test to restore the passing result; merely opening and dismissing the picker preserves it."
+      ],
+      "sourceCause": "Selecting the field writes the default operand and initial empty comparison. The string input initializes its editor from defaultValue only; its stable filter ID keeps the editor mounted without synchronizing cleared content. Execution reads the saved empty comparison.",
+      "matchingGuidance": {
+        "relatedReferenceId": "workflows-fresh-19dfdd26",
+        "distinction": "This entry requires FIELD reselection, including reselecting the same field while Is remains Is. The related entry covers OPERATOR changes. Both can conceal a cleared saved comparison, but match the reported selector trigger. Do not require or infer a wrong If/Else branch from a stale input alone."
+      },
+      "reviewEvidence": {
+        "basis": "Both independent reviewers reproduced field reselection clearing the saved comparison while retaining its visible text, and each verified an incorrect Filter result against a valid workspace member with passing controls. Coordinator checked full reports, all source/contract audits, original Mo video samples, independent actual screenshots, owned saved/run readbacks and exact subscription billing.",
+        "sourceRevision": "35c645064f72bc4e3180a2c6c506cbbfee170007",
+        "severityReason": "Both independent reviewers observed a different Filter result and skipped downstream action despite a visible valid comparison, and recommend severity 3.",
+        "sourceReferences": [
+          "https://github.com/twentyhq/twenty/blob/35c645064f72bc4e3180a2c6c506cbbfee170007/packages/twenty-front/src/modules/workflow/workflow-steps/components/WorkflowDropdownStepOutputItems.tsx#L104-L126",
+          "https://github.com/twentyhq/twenty/blob/35c645064f72bc4e3180a2c6c506cbbfee170007/packages/twenty-front/src/modules/workflow/workflow-steps/filters/components/WorkflowStepFilterValueInput.tsx#L175-L184",
+          "https://github.com/twentyhq/twenty/blob/35c645064f72bc4e3180a2c6c506cbbfee170007/packages/twenty-front/src/modules/object-record/record-field/ui/form-types/hooks/useTextVariableEditor.ts#L43-L63",
+          "https://github.com/twentyhq/twenty/blob/35c645064f72bc4e3180a2c6c506cbbfee170007/packages/twenty-server/src/modules/workflow/workflow-executor/workflow-actions/filter/utils/evaluate-step-filters.util.ts#L15-L24"
+        ],
+        "limitations": [
+          "Joint scope is reselecting the current Workspace Member Id field in a Filter string condition, including Is remaining Is while its comparison is cleared. Operator-only changes are covered separately.",
+          "The visible stale comparison can cause a Filter to reject a member and skip its downstream action. If/Else stale-display observations are supplementary; an independently verified wrong If/Else branch is not claimed.",
+          "Fresh independent workflows and passing no-reselection, reopen/reload and re-entered-value controls support the issue. Other field types, roles and layouts are excluded.",
+          "The inspected newer source retains initialization-only editor content with the selector reset; newer runtime was not tested."
+        ]
+      }
     }
   ]
 }
