@@ -630,6 +630,73 @@
           "distinction": "Same cause (the search index doesn't store assignees), but that entry is the global Pull Requests dashboard; this entry is a repository's Pull Requests list."
         }
       }
+    },
+    {
+      "id": "gitea-pr-whitespace-inline-comment-saved",
+      "name": "Whitespace-only inline review comment is saved as an empty discussion",
+      "summary": "In a pull request's Files Changed view, an empty inline comment is blocked, but one containing only spaces is accepted. It's saved as a pending review discussion that shows \"No description provided.\", and Add single comment publishes it to the timeline as a contentless review comment.",
+      "expected": "A whitespace-only inline review comment is rejected like an empty one, as the main pull request comment box does.",
+      "actual": "Entering only spaces in an inline comment and clicking Start Review saved a pending discussion showing \"No description provided.\" and increased the review counter; it persisted after reload. Add single comment with only spaces published a contentless review comment visible to other users. Replies with only spaces were also saved.",
+      "reproSteps": [
+        "Open a pull request's Files Changed tab and click the + on a changed line.",
+        "Type only spaces in the comment box and click Start Review (or Add single comment).",
+        "Check whether the comment is rejected or saved, and how it appears.",
+        "Reload the page and check the review counter and the conversation."
+      ],
+      "severity": 3
+    },
+    {
+      "id": "gitea-repo-pulls-review-requested-search-omits-pr",
+      "name": "Repository Pull Requests 'Review requested' with a search hides a pull request awaiting your review",
+      "summary": "On a repository's Pull Requests list, combining a text search with Type → Review requested shows No results, even though a matching pull request requests your review. Requesting a reviewer never refreshes the search index, so the search doesn't know about the request; Review requested without a search works.",
+      "expected": "A pull request that requests your review and matches the search stays listed when Review requested is combined with the search.",
+      "actual": "Searching for the pull request's title listed it, but choosing Review requested with that search showed No results with 0 Open and 0 Closed. Review requested without a search listed it, and posting a comment on the pull request made the combined search find it.",
+      "reproSteps": [
+        "Open a pull request and request another user's review.",
+        "As that user, open the repository's Pull Requests list and search for a word from the pull request's title; confirm it's listed.",
+        "With the search still applied, choose Type → Review requested.",
+        "Check whether the pull request is still listed, then clear the search and compare."
+      ],
+      "severity": 3
+    },
+    {
+      "id": "gitea-empty-pr-squash-merge-fails",
+      "name": "Squash merging a pull request with no remaining changes fails",
+      "summary": "When a pull request's changes are already on the target branch, the merge box says it will create an empty commit and still offers squash merging, but Create squash commit fails and the pull request stays open. The squash step commits without allowing an empty commit.",
+      "expected": "Squash merging a pull request whose changes are already on the target completes, consistent with the empty-commit notice, or squash isn't offered for it.",
+      "actual": "Confirming Create squash commit failed with a server error; after a reload the pull request was still open and unmerged. Create merge commit on the same pull request succeeded.",
+      "reproSteps": [
+        "Open a pull request, then make its branch's changes already present on the target branch (for example, revert the change on the branch, or merge the same change into the target).",
+        "Confirm the merge box says the merge will be an empty commit.",
+        "Choose Create squash commit and confirm.",
+        "Reload and check whether the pull request was merged."
+      ],
+      "severity": 3,
+      "matchingGuidance": {
+        "relatedReference": {
+          "name": "Failed squash merge of an empty pull request shows only a bare \"server error: 500\"",
+          "distinction": "Same failed squash merge, but that entry is the unhelpful bare 500 message; this entry is the merge failing and leaving the pull request open."
+        }
+      }
+    },
+    {
+      "id": "gitea-empty-pr-squash-merge-bare-500-message",
+      "name": "Failed squash merge of an empty pull request shows only a bare \"server error: 500\"",
+      "summary": "When squash merging a pull request with no remaining changes fails, the only feedback is a red \"server error: 500\" notification. It doesn't say what went wrong or what to do instead, such as using a merge commit.",
+      "expected": "A failed squash merge shows a message that explains why it failed and how to proceed.",
+      "actual": "Only a red \"server error: 500\" notification appeared, with no explanation; the squash confirmation form stayed open.",
+      "reproSteps": [
+        "Open a pull request whose changes are already on the target branch (the merge box says the merge will be an empty commit).",
+        "Choose Create squash commit and confirm.",
+        "Read the error message that appears."
+      ],
+      "severity": 1,
+      "matchingGuidance": {
+        "relatedReference": {
+          "name": "Squash merging a pull request with no remaining changes fails",
+          "distinction": "Same failed squash merge, but that entry is the merge failing; this entry is the bare, non-actionable 500 message shown for it."
+        }
+      }
     }
   ]
 }

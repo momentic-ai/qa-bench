@@ -11,7 +11,7 @@ labels those rows, e.g. `codex-playwright-mcp (local browser)`.
 
 ## Setup
 
-Requires Node.js 22.9+ and pnpm.
+Requires Node.js 22.12+ and pnpm.
 
 ```bash
 pnpm install
@@ -31,6 +31,12 @@ Environment:
 `mo` needs `qa` 0.27.0 exactly, signed in. Set `MO_EVAL_CLI` to use another
 executable. Use `--effort low|medium|high|max` to set Mo's effort preset
 (default: medium). An explicit `--effort` is recorded in `duration.json`.
+
+## Development
+
+Run `pnpm lint`, `pnpm format:check` and `pnpm typecheck` before submitting
+changes. CI runs the same checks. Use `pnpm lint:fix` and `pnpm format` to apply
+automatic fixes to `src/`.
 
 ## Run
 
