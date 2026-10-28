@@ -2600,6 +2600,47 @@
           "Other roles, trigger types, If/Else siblings and newer runtime were not tested."
         ]
       }
+    },
+    {
+      "id": "workflows-pass3-5be54c15",
+      "name": "Completed-branch Delay Input shows the Iterator first iteration instead of its completed context",
+      "severity": 1,
+      "owningArea": "twenty/workflows",
+      "summary": "After a two-item Iterator finishes, its completed-branch Delay Input tab shows the first iteration values even though execution used the final completed Iterator result.",
+      "expected": "A completed step’s Input inspector should represent the execution context passed to that step, consistently with the documented run-debugging behavior.",
+      "actual": "A correctly committed Current Item Index Delay executes with final index 2 and the run completes, but its Input tab shows currentItem alpha, currentItemIndex 0 and hasProcessedAllItems false. The final stored Iterator result is index 2/true.",
+      "reproSteps": [
+        "Create a manual workflow with an Iterator over two known items, alpha and beta, and a valid one-second Delay on its loop path.",
+        "On the Iterator completed branch, add a Delay whose Seconds uses Current Item Index. Explicitly commit the variable selection and verify the saved configuration.",
+        "Test the workflow and confirm successful completion with final Iterator result currentItemIndex 2 and hasProcessedAllItems true.",
+        "Inspect the completed-branch Delay’s Input tab and expand Iterator. Observe alpha, index 0 and false, including the consumed index highlighted as 0.",
+        "Compare the successful execution and stored final Iterator result; do not count an uncommitted variable or zero-duration execution failure as this display defect."
+      ],
+      "sourceCause": "The Input inspector passes no selected loop index for a step outside the loop. Its context helper defaults to history index 0 of an array containing historical results before the latest result. Backend execution instead uses each step’s current result.",
+      "matchingGuidance": {
+        "distinction": "Covers stale completed-branch Input context only. Delay variable selection not saving (workflows-pass2-7b30d0b9) and zero-duration execution failure (workflows-fresh-a4320e8f) remain existing coverage. Node-tab configuration interpretation, nested Input crashes and skipped-iteration Output gating are different claims."
+      },
+      "reviewEvidence": {
+        "basis": "Independent browser controls and source verification, followed by separate own-session reviews explicitly grading the original narrow Input-display claim; both accepted at severity 1. Coordinator checked source, subscription billing and retained successful-run/Input/Node screenshots.",
+        "sourceRevision": "35c645064f72bc4e3180a2c6c506cbbfee170007",
+        "severityReason": "The run inspector misreports context while execution and stored results remain correct.",
+        "sourceReferences": [
+          "https://github.com/twentyhq/twenty/blob/35c645064f72bc4e3180a2c6c506cbbfee170007/packages/twenty-front/src/modules/workflow/workflow-steps/components/WorkflowRunStepInputDetail.tsx#L62-L72",
+          "https://github.com/twentyhq/twenty/blob/35c645064f72bc4e3180a2c6c506cbbfee170007/packages/twenty-front/src/modules/workflow/workflow-steps/utils/getWorkflowRunStepContext.ts#L43-L60",
+          "https://github.com/twentyhq/twenty/blob/35c645064f72bc4e3180a2c6c506cbbfee170007/packages/twenty-front/src/modules/workflow/workflow-steps/utils/getWorkflowRunAllStepInfoHistory.ts#L9-L14",
+          "https://github.com/twentyhq/twenty/blob/35c645064f72bc4e3180a2c6c506cbbfee170007/packages/twenty-shared/src/workflow/utils/getWorkflowRunContext.ts#L4-L11",
+          "https://github.com/twentyhq/twenty/blob/35c645064f72bc4e3180a2c6c506cbbfee170007/packages/twenty-server/src/modules/workflow/workflow-executor/workspace-services/workflow-executor.workspace-service.ts#L463-L472",
+          "https://github.com/twentyhq/twenty/blob/35c645064f72bc4e3180a2c6c506cbbfee170007/packages/twenty-docs/user-guide/workflows/capabilities/workflow-runs.mdx#L41-L47"
+        ],
+        "limitations": [
+          "Observed impact is misleading inspection information; execution and stored final Iterator results are correct when the Delay variable is committed.",
+          "Original execution failures are already covered by the Delay variable-save and zero-duration references and contribute no severity to this entry.",
+          "The claim concerns the Input tab, not the Node tab showing stored configuration or an inside-loop selected historical iteration.",
+          "Other completed-branch action types and nested Iterator scope were not browser-established.",
+          "The unintended history-index fallback is inferred from documentation, source and passing execution controls; no maintainer acknowledgement of this exact display bug was found.",
+          "Newer source retains the relevant history selection; newer runtime was not tested."
+        ]
+      }
     }
   ]
 }
