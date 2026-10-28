@@ -646,6 +646,208 @@
         "Choose Fixed date range. Observe the two-calendar Between mode at 1920×1080 desktop viewport."
       ],
       "reason": "Works as intended: the preview column is deliberately sized, and its container scrolls when the date picker is wider. The hidden days and the next-month arrow stay reachable by scrolling, and the preview has no submit button."
+    },
+    {
+      "id": "metabase-admin-b11",
+      "name": "Turning on 'Choose when syncs and scans happen' sets field-value scanning to 'Never', and saving silently turns off scheduled scans",
+      "summary": "Turning on 'Choose when syncs and scans happen' sets field-value scanning to 'Never', and saving silently turns off scheduled scans.",
+      "expected": "When the scheduling controls appear, they show the database's current behavior: 'Regularly, on a schedule' (is_full_sync = true) with its daily schedule. Saving without touching the scan option leaves is_full_sync = true and the scan schedule unchanged.",
+      "actual": "The scan selector appears as 'Never, I'll do this manually if I need to' (value 'none'), even though GET /api/database/2 shows is_full_sync: true and a daily cache_field_values schedule. After Save changes, GET /api/database/2 returns is_full_sync: false, is_on_demand: false, schedules.cache_field_values: null. If the database already has let-user-control-scheduling = true, the same form shows 'Regularly, on a schedule' correctly, so the wrong default only appears when the toggle is first turned on.",
+      "reproSteps": [
+        "Sign in as admin and open /admin/databases/2 (Release operations, Postgres). Confirm GET /api/database/2 shows is_full_sync: true, details.let-user-control-scheduling false/absent, and a daily cache_field_values schedule.",
+        "Click 'Edit connection details', then 'Show advanced options'.",
+        "Turn on 'Choose when syncs and scans happen'.",
+        "Look at 'Scanning for Filter Values': it shows 'Never, I'll do this manually if I need to'.",
+        "Click 'Save changes' without changing that select.",
+        "GET /api/database/2: is_full_sync is now false and schedules.cache_field_values is null, so the scheduled scan was silently turned off."
+      ],
+      "reason": "Cannot reproduce on human review: the scan setting did not change to Never through the UI."
+    },
+    {
+      "id": "metabase-admin-b22",
+      "name": "Zero-day relative date filter silently saves as one day",
+      "summary": "Zero-day relative date filter silently saves as one day.",
+      "expected": "Reject an unsupported zero-day interval with validation, or preserve the explicitly entered interval instead of silently changing it.",
+      "actual": "Zero is accepted without validation. The saved list says Birth Date is yesterday; reopening the picker shows Previous 1 day, silently changing the input from 0 to 1.",
+      "reproSteps": [
+        "Create a disposable People segment with State is CA, unique name and description; save.",
+        "Edit it and add Birth Date > Relative date range.",
+        "Leave Previous selected, replace interval 30 with 0, keep day and Include today off.",
+        "Click Add filter, enter revision reason, Save changes and refresh.",
+        "Reopen the segment and click the Birth Date filter chip."
+      ],
+      "reason": "Works as intended: a relative date interval must be at least 1, so 0 days is saved as 1 day (same as querying-367)."
+    },
+    {
+      "id": "metabase-admin-b25",
+      "name": "Saving an Orders relative-date segment changes its table to Products",
+      "summary": "Saving an Orders relative-date segment changes its table to Products.",
+      "expected": "Saving retains the selected Orders table and its date filter.",
+      "actual": "The saved list and reopened editor identify Products instead of Orders.",
+      "reproSteps": [
+        "In Admin Segments, choose New segment and select Sample Database > Orders.",
+        "Add Created At > Relative date range, set Previous 7 days and enable Include today.",
+        "Add the filter and enter a unique name and description.",
+        "Save changes and inspect the table column, then reopen the segment."
+      ],
+      "reason": "Cannot reproduce on human review: the saved segment kept its Orders table."
+    },
+    {
+      "id": "metabase-admin-b05",
+      "name": "Segment definition appears in French on English admin page",
+      "summary": "Segment definition appears in French on English admin page.",
+      "expected": "Definition text uses the same English language as the surrounding page, such as “Filtered by Total is between 100 and 200.”",
+      "actual": "Definition reads “Filtré par Total est compris entre 100 et 200” beside English NAME, TABLE, DEFINITION, Filter by table and New segment labels.",
+      "reproSteps": [
+        "As an admin, open Table Metadata > Segments.",
+        "Create an Orders segment with Total between 100 and 200, a name and description, then save.",
+        "Edit the segment, change its name and description, enter a reason, and save.",
+        "Inspect the definition column in the Segments list."
+      ],
+      "reason": "Cannot reproduce on human review."
+    },
+    {
+      "id": "metabase-admin-b06",
+      "name": "Custom homepage enabled setting reverts after refresh",
+      "summary": "Custom homepage enabled setting reverts after refresh.",
+      "expected": "The enabled setting persists, or the UI explains why it cannot be saved.",
+      "actual": "The switch shows Enabled before refresh and Disabled after refresh.",
+      "reproSteps": [
+        "Open Admin Settings > General as the supplied administrator.",
+        "Turn on the initially Disabled Custom homepage switch.",
+        "Observe Enabled, then refresh the page."
+      ],
+      "reason": "Cannot reproduce on human review."
+    },
+    {
+      "id": "metabase-admin-b07",
+      "name": "MongoDB SSH form shows an integer port assertion error",
+      "summary": "",
+      "expected": "The default ports should be usable, or the form should identify a required port value with actionable validation.",
+      "actual": "The connection alert reads “Assert failed: (integer? port)” rather than a usable connection or validation message.",
+      "reproSteps": [
+        "Open Add database as admin, select MongoDB and set a display name.",
+        "Choose Use a connection string and enter mongodb://qa-connection.invalid:27017/qa_mongo?connectTimeoutMS=1000&serverSelectionTimeoutMS=1000.",
+        "Enable SSH tunnel, use qa-ssh.invalid, username qa_ssh, Password authentication and dummy password qa_dummy_password; leave SSH port at displayed 22.",
+        "Switch to Fill out host, port and database name.",
+        "Enter Host qa-connection.invalid and Database name qa_mongo, leave MongoDB Port at displayed 27017 and click Save."
+      ],
+      "reason": "Works as intended per human review."
+    },
+    {
+      "id": "metabase-admin-b08",
+      "name": "Model cache log opens to an error",
+      "summary": "Model cache log opens to an error.",
+      "expected": "The Model cache log page displays cache log records, an empty state, or an informative feature message",
+      "actual": "The page displays 'An error occurred'",
+      "reproSteps": [
+        "As the fixture administrator, open Admin > Tools.",
+        "Select Model cache log in the Tools sidebar.",
+        "Observe the settled Model cache log page."
+      ],
+      "reason": "Cannot reproduce on human review."
+    },
+    {
+      "id": "metabase-admin-b16",
+      "name": "Combining locked Region with editable Category breaks embedding preview",
+      "summary": "Combining locked Region with editable Category breaks embedding preview.",
+      "expected": "Preview filters to the matching us-west Documentation row (amount 90).",
+      "actual": "Preview displays “An error occurred in your query” and “An error occurred while running the query.”",
+      "reproSteps": [
+        "As Harbor Admin, duplicate Release requests by region and category to a disposable question in your personal collection.",
+        "Open Admin > Embedding, enable guest embeds if disabled, and choose New embed > Chart.",
+        "Select the copied question and continue to configuration.",
+        "Set Region to Editable, enter initial value us-west, then change Region to Locked. Observe the two us-west rows.",
+        "Set Category to Editable and enter Documentation into the Category input in the preview, pressing Enter."
+      ],
+      "reason": "Cannot reproduce on human review."
+    },
+    {
+      "id": "metabase-admin-b17",
+      "name": "Confirmed custom map deletion leaves the map in the list",
+      "summary": "Confirmed custom map deletion leaves the map in the list.",
+      "expected": "The confirmed custom map is deleted and removed from the Custom maps list.",
+      "actual": "The deletion dialog closes and a 'Changes saved' notification appears, but the custom map remains listed under Custom maps.",
+      "reproSteps": [
+        "As primary admin open Settings > Maps.",
+        "Create a fresh map named Mo Maps QA Countries, using https://raw.githubusercontent.com/johan/world.geo.json/master/countries.geo.json; Load and select name for both identifier and display name, then Add map.",
+        "Click Remove on this map's row.",
+        "In Delete custom map, click Yes and inspect the settled list."
+      ],
+      "reason": "Cannot reproduce on human review."
+    },
+    {
+      "id": "metabase-admin-b18",
+      "name": "Deactivate user opens unchanged People list",
+      "summary": "Deactivate user opens unchanged People list.",
+      "expected": "Clicking 'Deactivate user' opens a deactivation confirmation dialog or deactivates the user with clear feedback.",
+      "actual": "The menu closes, but no confirmation dialog or notification appears, and the user remains listed unchanged.",
+      "reproSteps": [
+        "As Harbor Admin use Invite someone to create a unique QA user with first/last name and example.test email. Click Create then Done.",
+        "In People open the fresh user's ellipsis menu.",
+        "Choose Deactivate user.",
+        "Observe the settled page."
+      ],
+      "reason": "Cannot reproduce on human review."
+    },
+    {
+      "id": "metabase-admin-b19",
+      "name": "Negative decimal places crashes table and field metadata panes",
+      "summary": "Negative decimal places crashes table and field metadata panes.",
+      "expected": "Reject an invalid negative decimal count with validation while keeping table and field settings usable.",
+      "actual": "Typing -1 causes both metadata panes to display An error occurred. The decimal input disappears, so it cannot be corrected in the current editor.",
+      "reproSteps": [
+        "As an Admin, open Table Metadata and choose Release operations > Release Requests > Amount. Use this seeded numeric field as a disposable test field; record original settings for restoration, or use an equivalent newly connected test table with a numeric amount field.",
+        "Set semantic type to Currency and leave visibility Everywhere.",
+        "Scroll to Number of decimal places. Enter 3, then open Preview to verify a value such as 120.000.",
+        "Close Preview, scroll back to Number of decimal places, and replace 3 with -1."
+      ],
+      "reason": "Cannot reproduce on human review."
+    },
+    {
+      "id": "metabase-admin-b44",
+      "name": "Undo hiding a table leaves it hidden",
+      "summary": "Undo hiding a table leaves it hidden.",
+      "expected": "Clicking Undo restores the table to its previous visible state with a normal eye icon",
+      "actual": "The 'Change undone' notification appears, but Release Requests remains hidden with its crossed-out eye icon",
+      "reproSteps": [
+        "Sign in as administrator and open Admin > Table Metadata.",
+        "Expand seeded Release operations and open Release Requests. If hidden, click its eye to unhide it and verify Hide table control.",
+        "Click Hide table for Release Requests.",
+        "Wait about one second for the Hid Release Requests notification, then immediately click Undo.",
+        "Observe Change undone feedback and the table's visibility icon/control."
+      ],
+      "reason": "Cannot reproduce on human review: Undo restores the hidden table."
+    },
+    {
+      "id": "metabase-admin-b45",
+      "name": "Fractional relative date interval 1.5 becomes 15 days",
+      "summary": "Fractional relative date interval 1.5 becomes 15 days.",
+      "expected": "The interval should preserve 1.5 if fractional days are supported, or reject fractional input with clear validation; it should not reinterpret 1.5 as 15.",
+      "actual": "The input displays 15 without an error. The saved list definition and reopened date filter both show previous 15 days.",
+      "reproSteps": [
+        "In Admin > Table Metadata > Segments create a uniquely named Accounts segment on Sample Database with a description and Active Subscription is false; save.",
+        "Open the segment and add or edit a Created At filter. Choose Relative date range, Previous, days.",
+        "Replace the Interval with 1.5 and blur the input.",
+        "Click Update filter, enter a change reason, and Save changes.",
+        "Reopen the saved segment and its Created At filter."
+      ],
+      "reason": "Works as intended: the relative date interval takes whole numbers, and the field shows the value it will use before saving (same as dashboards-138)."
+    },
+    {
+      "id": "metabase-admin-b46",
+      "name": "Public sharing admin list public dashboard link does nothing when clicked",
+      "summary": "Public sharing admin list public dashboard link does nothing when clicked.",
+      "expected": "Clicking the public URL opens that public dashboard.",
+      "actual": "The URL stays at /admin/settings/public-sharing and the page looks the same. No /public/dashboard/ tab exists (SWITCH_TAB found only the admin page).",
+      "reproSteps": [
+        "Sign in as an admin.",
+        "Go to /admin/settings/public-sharing and make sure Enable Public Sharing is turned on.",
+        "Under Shared dashboards, find a dashboard that has a public link (in this run: MO-MAPS-QA-Public).",
+        "Click its Public Link URL (/public/dashboard/c3c1afa6-...).",
+        "Observe: the page stays on Admin Public sharing and no public dashboard tab opens."
+      ],
+      "reason": "Cannot reproduce on human review: the public dashboard link opens."
     }
   ]
 }

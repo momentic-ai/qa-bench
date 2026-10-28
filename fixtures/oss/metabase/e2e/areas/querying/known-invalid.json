@@ -537,6 +537,40 @@
         "Reload the saved question."
       ],
       "reason": "Works as intended: Metabase keeps a saved question's display locked, so a one-row result stays on the line chart and shows the documented empty state. Switching to the table or Number view shows the value."
+    },
+    {
+      "id": "metabase-querying-b31",
+      "name": "SQL Field Filter dropdown lists values in random (unsorted) order while writing/editing a SQL query",
+      "summary": "SQL Field Filter dropdown lists values in random (unsorted) order while writing/editing a SQL query.",
+      "expected": "Field Filter dropdown values are listed in sorted order (Doohickey, Gadget, Gizmo, Widget; AK, AL, AR, AZ, …), the same as the query-builder filter picker and the saved-question widget.",
+      "actual": "In the SQL editor, Products.Category is listed as Doohickey, Gizmo, Gadget, Widget. People.Source is listed as Twitter, Organic, Affiliate, Google, Facebook. People.State starts NY, ND, NH, TN, NC, MN, … POST /api/dataset/parameter/values (body {parameter:{type:'string/=',…}, field_ids:[18]}) returns [[\"Doohickey\"],[\"Gizmo\"],[\"Gadget\"],[\"Widget\"]]. For the same field, GET /api/field/18/values returns [[\"Doohickey\"],[\"Gadget\"],[\"Gizmo\"],[\"Widget\"]]. A saved SQL question with a State field filter (GET /api/card/45/params/…/values) returns AK, AL, AR, … in sorted order.",
+      "reproSteps": [
+        "Sign in as eval@momentic.ai.",
+        "Click + New → SQL query and choose Sample Database.",
+        "Type: select count(*) from products where {{cat}}",
+        "In the Variables sidebar, set Variable type = Field Filter, then Field to map to = Products → Category (the widget defaults to Dropdown list).",
+        "Click the 'Cat' filter widget above the editor.",
+        "Observe the order: Doohickey, Gizmo, Gadget, Widget (not alphabetical).",
+        "Change the SQL to select count(*) from people where {{cat}} and map the variable to People → State, then open the widget: the 50 states are shuffled (NY, ND, NH, TN, …).",
+        "For comparison, in a new query-builder question on Products, add a filter on Category: the values are alphabetical. After saving the SQL question and reopening it, the widget is alphabetical too."
+      ],
+      "reason": "Works as intended: no ordering is promised for field filter values, and every value is present and selectable."
+    },
+    {
+      "id": "metabase-querying-b39",
+      "name": "SQL date range accepts an end before its start",
+      "summary": "SQL date range accepts an end before its start.",
+      "expected": "The date-range control should reject or clearly explain a start date later than its end before applying the filter.",
+      "actual": "The filter applies as January 1, 2031 - December 31, 2030 and returns count0.",
+      "reproSteps": [
+        "As the primary account, choose New > SQL query > Sample Database.",
+        "Enter SELECT COUNT(*) AS matches FROM ORDERS WHERE {{created}}.",
+        "Set created to Field Filter, map to Orders > Created At, and set Filter widget type to Date Range.",
+        "Set the query filter to January 1, 2000 through December 31, 2030, apply, and run (observed count18,760).",
+        "Reopen the filter and replace Start date with January 1, 2031, leaving End date December 31, 2030.",
+        "Click Update filter and rerun."
+      ],
+      "reason": "Works as intended: a reversed date range is accepted and simply matches no rows, as with reversed number ranges."
     }
   ]
 }
