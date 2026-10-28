@@ -51,7 +51,8 @@ against the union of its area references.
 Reports go to `reports/<agent>/<fixture>/<run-id>/`. Each run writes
 `scores.csv`, `grading.json` and a `review.md` queue of unmatched findings.
 
-Runs stop after 2 hours if the agent hasn't finished.
+Runs stop after 2 hours if the agent hasn't finished. Agents aren't told this
+limit up front; 15 minutes before it, every agent gets one wrap-up message.
 
 Every agent gets the same brief, built in `src/evals/bugbash-brief.ts`: the app
 URL, test accounts, the area's scope and entry points, and the reporting rules.

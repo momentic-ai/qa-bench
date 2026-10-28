@@ -28,6 +28,7 @@ export class MoAgent implements EvalAgent {
   readonly preparesEnvironment = true;
   private sessionId: string | undefined;
   private completed = false;
+  private wrapUpMessage: string | undefined;
   private execution = new AbortController();
   private pending: Promise<unknown>[] = [];
 
@@ -110,6 +111,7 @@ export class MoAgent implements EvalAgent {
         if (inputId) {
           if (!answered.has(inputId)) {
             const message =
+              this.wrapUpMessage ??
               "No additional information is available beyond the supplied evaluation brief and setup.";
             await this.mo(
               ["send", "--session-id", sessionId, "--wait", "0", message],
@@ -145,6 +147,16 @@ export class MoAgent implements EvalAgent {
       await setTimeout(5000, undefined, { signal });
     }
     signal.throwIfAborted();
+  }
+
+  async send(message: string, signal: AbortSignal) {
+    this.wrapUpMessage = message;
+    const delivery = this.mo(
+      ["send", "--session-id", this.requireSessionId(), "--wait", "0", message],
+      AbortSignal.any([signal, this.execution.signal]),
+    );
+    this.pending.push(Promise.allSettled([delivery]));
+    await delivery;
   }
 
   async terminate() {

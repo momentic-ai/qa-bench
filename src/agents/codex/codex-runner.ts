@@ -16,7 +16,7 @@ import { FINDINGS_TOOLS, FindingsStore } from "./findings-store";
 
 // The brief can exceed the goal limit, so the objective points to the first turn, which carries it in full.
 const GOAL_OBJECTIVE =
-  "Complete the evaluation task given in full in this thread's first user message: test the assigned target end to end, and save findings with the reporting tools.";
+  "Complete the evaluation task given in full in this thread's first user message: test the assigned target end to end, and save findings with the reporting tools, and follow any later wrap-up instructions.";
 const require = createRequire(import.meta.url);
 
 type CodexSetup = {

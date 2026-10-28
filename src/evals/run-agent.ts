@@ -3,6 +3,16 @@ import { setTimeout as delay } from "node:timers/promises";
 import { TIMEOUT_MS } from "../tasks/full-app/options";
 import { AgentResults, EvalAgent } from "./agent";
 
+// Agents are not told the timeout up front; they get one wrap-up message before it.
+const WRAP_UP_MS = 15 * 60_000;
+
+export const WRAP_UP_MESSAGE =
+  "The evaluation ends in 15 minutes. Stop starting new journeys or assigning new work. " +
+  "Tell active children to finish, collect their findings, and stop all subagents. " +
+  "Save every verified bug now, review pending reports, deduplicate findings, " +
+  "and record unfinished coverage as limitations. " +
+  "Execution will be forcibly stopped at the deadline; a final chat reply is not the result artifact.";
+
 export type AgentRun = {
   results: AgentResults | null;
   /** Start of the measured agent budget. */
@@ -90,6 +100,18 @@ export async function runAgent({
       return execution.completion;
     }
     return deadline;
+  });
+  void (async () => {
+    const deadlineMs = await ready;
+    await delay(Math.max(0, deadlineMs - WRAP_UP_MS - Date.now()), undefined, {
+      signal: runSignal,
+    });
+    await started;
+    runSignal.throwIfAborted();
+    await agent.send(WRAP_UP_MESSAGE, runSignal);
+  })().catch((err: unknown) => {
+    // Steering is best effort; a failed delivery must not disable the deadline.
+    if (!runSignal.aborted) errors.push(err);
   });
   try {
     // Completion observers may only settle after termination; they cannot gate the cutoff.

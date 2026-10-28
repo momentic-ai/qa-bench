@@ -35,6 +35,8 @@ export interface EvalAgent {
     deadlineMs?: number,
     onReady?: () => number,
   ): Promise<AgentExecution | void>;
+  /** Resolve on delivery, without waiting for the model to comply. */
+  send(message: string, signal: AbortSignal): Promise<void>;
   /** Request parent/child stop; await local persistence needed for collection, not hosted child drain. */
   terminate(): Promise<void>;
   /** Read/export saved results only. Never invoke a model to produce a report. */
