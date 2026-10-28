@@ -3225,6 +3225,45 @@
           "The shared helper’s newer null-preservation change is source evidence only. No newer-runtime or exact deployment chronology claim."
         ]
       }
+    },
+    {
+      "id": "workflows-loop-e5996e14",
+      "name": "Workflow Update Record ignores a saved Clear of Task Due Date",
+      "severity": 3,
+      "owningArea": "twenty/workflows",
+      "summary": "The Due Date picker saves a null clear in Update Record, but successful execution leaves the Task’s previous date unchanged.",
+      "expected": "A completed Update Record action applies its saved Due Date Clear by setting the selected Task’s dueAt to null.",
+      "actual": "Due Date remains selected under Fields to update and the empty configuration remains on re-entry. The saved input contains dueAt:null. The workflow and update step complete successfully, but their output and the refreshed Task retain the old date. Setting a non-null date works.",
+      "reproSteps": [
+        "Build a disposable workflow that creates a Task with a Due Date and then updates that Task using its returned ID.",
+        "Select Due Date under Update Record’s Fields to update, set a date and use the picker’s explicit Clear command. Close and reopen or reload to verify the saved empty configuration.",
+        "Run the workflow and compare Update Record’s output and the saved Task’s Due Date with the requested clear.",
+        "Repeat with a fresh Task. Compare an Update Record action assigning a different non-null Due Date."
+      ],
+      "sourceCause": "The picker emits null, which survives the saved action configuration and workflow field filtering. UpdateRecordService cleans the data with removeUndefinedFromRecord. The pinned helper removes null as well as undefined, so dueAt is omitted from the actual update while the action still reports success.",
+      "matchingGuidance": {
+        "distinction": "Match a fully saved explicit picker Clear of Task Due Date ignored during successful Update Record execution. Distinguish interrupted client saves, incomplete keyboard date masks, Task Status clears, Company relation/revenue clears and other actions.",
+        "relatedReferenceId": "workflows-loop-94d24a87"
+      },
+      "reviewEvidence": {
+        "basis": "Both independent browser/source reviewers accept the same saved Task Due Date clear ignored at execution with severity 3. Coordinator checked full reports/source audits, independent retained images and exact saved-null/successful-output/record readbacks, non-null update controls and subscription billing.",
+        "sourceRevision": "35c645064f72bc4e3180a2c6c506cbbfee170007",
+        "severityReason": "The supported saved workflow clear silently produces the wrong Task Due Date despite reporting success.",
+        "sourceReferences": [
+          "https://github.com/twentyhq/twenty/blob/35c645064f72bc4e3180a2c6c506cbbfee170007/packages/twenty-front/src/modules/object-record/record-field/ui/form-types/components/FormDateTimeFieldInput.tsx#L112-L119",
+          "https://github.com/twentyhq/twenty/blob/35c645064f72bc4e3180a2c6c506cbbfee170007/packages/twenty-front/src/modules/object-record/record-field/ui/form-types/components/FormDateTimeFieldInput.tsx#L172-L181",
+          "https://github.com/twentyhq/twenty/blob/35c645064f72bc4e3180a2c6c506cbbfee170007/packages/twenty-front/src/modules/workflow/workflow-steps/workflow-actions/components/WorkflowEditActionUpdateRecord.tsx#L69-L81",
+          "https://github.com/twentyhq/twenty/blob/35c645064f72bc4e3180a2c6c506cbbfee170007/packages/twenty-server/src/modules/workflow/workflow-executor/workflow-actions/record-crud/update-record.workflow-action.ts#L69-L127",
+          "https://github.com/twentyhq/twenty/blob/35c645064f72bc4e3180a2c6c506cbbfee170007/packages/twenty-server/src/engine/core-modules/record-crud/services/update-record.service.ts#L78-L101",
+          "https://github.com/twentyhq/twenty/blob/35c645064f72bc4e3180a2c6c506cbbfee170007/packages/twenty-server/src/engine/core-modules/record-crud/utils/remove-undefined-from-record.util.ts#L3-L15"
+        ],
+        "limitations": [
+          "Joint scope is Task Due Date clearing through a saved Update Record action using the picker’s Clear command. Other nullable fields, variable unlinking and other CRUD/tool callers are excluded.",
+          "Codex tested two fresh Task runs through one workflow; Claude built two fresh workflows. The evidence does not establish two independently built workflows per reviewer.",
+          "Claude’s simultaneous Title update and ordinary API date-clear control provide supporting controls; the API control is not a second rendered-picker control.",
+          "The newer helper preserves null, with explicit maintainer intent to support clears. Newer runtime was not tested; shared-source exposure does not establish every other field or action as affected."
+        ]
+      }
     }
   ]
 }
