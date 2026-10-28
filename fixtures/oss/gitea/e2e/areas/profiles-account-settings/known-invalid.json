@@ -12,6 +12,20 @@
         "As an administrator, open that user's profile and look for the email."
       ],
       "reason": "Intended, and the message is accurate: administrators can see a hidden email, in Site Administration > User Accounts (the user list has an Email column) and on the admin Edit User page. The tooltip doesn't promise the profile page, where a hidden email is deliberately shown to no one else, administrators included (go-gitea/gitea#23900 added the padlock to say the email isn't visible to anyone apart from the user and the admins)."
+    },
+    {
+      "id": "gitea-private-profile-shown-on-browser-back",
+      "name": "Private profile briefly appears through a previously visited activity tab",
+      "summary": "The report says that after a user makes their profile private, another user opening the profile's Public Activity URL (?tab=activity) that they had visited before still sees the profile's name, avatar and follower counts, while the base profile URL returns 404.",
+      "expected": "The reported expectation is that the private profile's ?tab=activity URL returns 404, like the base profile URL.",
+      "actual": "After the profile was made private, every fresh load of the profile and of its ?tab=activity URL by an unrelated user returned 404, including direct navigation, reloads and new tabs. The old public page reappeared only on the browser's Back button, served from the browser's own cache; reloading that page returned 404. The base profile behaves the same way on Back.",
+      "reproSteps": [
+        "As an observer, visit another user's profile and its Public Activity tab.",
+        "As that user, set User visibility to Private in profile settings and save.",
+        "As the observer, reload the activity tab, then use the browser's Back button to return to an earlier profile page.",
+        "Check whether the server returns the profile or a 404."
+      ],
+      "reason": "Not a Gitea leak: the server checks visibility before rendering any profile tab, so the activity tab returns 404 to unrelated users once the profile is private. The only way to see the old page was the browser restoring a cached copy loaded while the profile was still public; Gitea deliberately sends private, must-revalidate caching rather than no-store so Back and history work. The report's own notes say the disclosure didn't recur and that the same history entry later returned 404."
     }
   ]
 }
