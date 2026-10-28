@@ -660,6 +660,79 @@
         "Check whether all matching files are reachable or a message says the results were truncated."
       ],
       "severity": 1
+    },
+    {
+      "id": "gitea-editor-backspace-on-selected-name-merges-folder",
+      "name": "Backspace on a selected file name in the editor merges the parent folder into the name instead of clearing it",
+      "summary": "In the file editor's path field, Backspace at the very start of the name intentionally pulls the last folder back into the name (the inverse of typing '/'). But the check only looks at where the selection starts, so selecting the whole name and pressing Backspace also triggers it: the selected text isn't deleted, the parent folder is prefixed onto it, and the folder disappears from the path. The same happens in the Upload File directory field.",
+      "expected": "With the whole file name selected, Backspace deletes the selection and leaves the folder path unchanged, so a new name can be typed.",
+      "actual": "Editing qa-paths-fixtures/source/nested/destination/recovered.md, selecting the whole name and pressing Backspace changed the name to destinationrecovered.md and removed destination from the breadcrumb, leaving qa-paths-fixtures/source/nested.",
+      "reproSteps": [
+        "Open a file inside a folder and click Edit File.",
+        "Click in the file name field, press Ctrl+A to select the whole name, then press Backspace.",
+        "Check whether the name was cleared or the parent folder was merged into it and removed from the path."
+      ],
+      "severity": 3
+    },
+    {
+      "id": "gitea-editor-cancel-after-rejected-move-404",
+      "name": "Cancel after a rejected file rename opens the attempted path and a 404",
+      "summary": "In the file editor, if renaming or moving a file is rejected (for example because part of the new path is an existing file), the editor's Cancel link then points at the rejected new path instead of the original file, so clicking Cancel opens a 404. The error page renders with the attempted path as the current file path.",
+      "expected": "Cancel after a rejected rename returns to the original file, which still exists unchanged.",
+      "actual": "Editing qa-paths-fixtures/source/nested/up-one.md and renaming it to destination/occupied.md/child.md was rejected because occupied.md is a file. Clicking Cancel then opened qa-paths-fixtures/source/nested/destination/occupied.md/child.md, which showed '404 Not Found'.",
+      "reproSteps": [
+        "In a folder that contains a file (for example occupied.md), open another file's editor.",
+        "Change its name to a path that goes through that file (for example occupied.md/child.md) and commit; the change is rejected.",
+        "On the error page, click Cancel next to the file name.",
+        "Check whether you're taken back to the original file or to a 404."
+      ],
+      "severity": 3
+    },
+    {
+      "id": "gitea-upload-commit-redirect-stale-commit-count",
+      "name": "Code page shows a stale commit count right after an upload commit",
+      "summary": "After committing uploaded files directly to a branch, Gitea redirects to the Code page, which already lists the new commit and file but still shows the previous commit count in the statistics bar. Reloading shows the right count. The count is read from a cache that is refreshed in the background after the push.",
+      "expected": "The Code page shown right after an upload commit shows the commit count including that commit, matching the latest commit already displayed.",
+      "actual": "In a fresh repository with two commits, an Upload File commit 'Add count sentinel 2' redirected to the Code page, which listed that commit and the new file but showed '2 Commits'. Reloading showed '3 Commits'.",
+      "reproSteps": [
+        "In a repository, use Add File > Upload File, upload a file and commit directly to the branch.",
+        "On the Code page you're redirected to, compare the commit count in the statistics bar with the latest commit shown.",
+        "Reload the page and compare again."
+      ],
+      "severity": 1,
+      "matchingGuidance": {
+        "relatedReference": {
+          "name": "Code page shows the old commit count right after Sync fork",
+          "distinction": "Same commit-count cache read before it refreshes, but that entry is triggered by Sync fork; this entry is triggered by committing an upload from the web editor."
+        }
+      }
+    },
+    {
+      "id": "gitea-apply-patch-existing-branch-500",
+      "name": "Apply Patch to a new branch whose name already exists shows a full-page 500",
+      "summary": "On a repository's Apply Patch page, choosing 'Create a new branch' with the name of a branch that already exists correctly shows 'Branch \"<name>\" already exists in this repository.', but the rest of the page is a 500 Internal Server Error (a template render failure) instead of the Apply Patch form, so the patch and commit message are lost. The handler renders the file editor's template for this error instead of the patch template.",
+      "expected": "The duplicate-branch message is shown on the Apply Patch form, with the patch and commit fields kept, so the user can pick another branch name.",
+      "actual": "Submitting a patch to the new branch name qa-patch-20260718-a, which already existed, showed 'Branch \"qa-patch-20260718-a\" already exists in this repository.' above a 500 Internal Server Error with template-render error text; the Apply Patch form, patch and commit summary were gone.",
+      "reproSteps": [
+        "In a repository with a branch named, for example, existing-branch, choose Add File > Apply Patch.",
+        "Paste a valid patch, choose 'Create a new branch for this commit', enter existing-branch as the new branch name, and click Propose file change.",
+        "Check whether the Apply Patch form is shown with the error, or a 500 page."
+      ],
+      "severity": 5
+    },
+    {
+      "id": "gitea-hidden-new-branch-name-blocks-direct-commit",
+      "name": "An invalid new-branch name blocks committing directly after switching back to the current branch",
+      "summary": "In the file editor (also Delete and Upload), after typing an invalid name under 'Create a new branch for this commit' and then switching to 'Commit directly to the branch', the hidden new-branch name is still validated, so Commit Changes is refused with 'New branch name must be a well-formed Git reference name.' even though no new branch will be created.",
+      "expected": "With 'Commit directly' selected, the unused new-branch name is ignored and the commit goes through to the current branch.",
+      "actual": "After entering qa-edit-boundary-invalid.lock as the new branch name, getting the reference-name error, and switching to 'Commit directly' (which hides the field and relabels the button Commit Changes), clicking Commit Changes kept the editor open with 'New branch name must be a well-formed Git reference name.' and the file wasn't saved.",
+      "reproSteps": [
+        "Edit or create a file, choose 'Create a new branch for this commit', and enter an invalid branch name such as bad..name.",
+        "Submit and see the reference-name error.",
+        "Switch to 'Commit directly to the branch' and click Commit Changes.",
+        "Check whether the commit is saved or the new-branch-name error appears again."
+      ],
+      "severity": 3
     }
   ]
 }
