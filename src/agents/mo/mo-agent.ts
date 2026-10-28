@@ -42,6 +42,7 @@ export class MoAgent implements EvalAgent {
     onReady?.();
     // Mo uses its effort preset budget.
     const startArgs = ["start", message];
+    if (this.context.effort) startArgs.push("--effort", this.context.effort);
     if (this.context.maxConcurrentSubAgents !== undefined) {
       startArgs.push(
         "--max-concurrency",

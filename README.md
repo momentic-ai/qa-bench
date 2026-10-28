@@ -30,8 +30,10 @@ Environment:
 | `MOMENTIC_API_KEY` | `mo` (or sign in with `qa`) |
 
 `mo` runs on Momentic's hosted service and needs a Momentic account. Install
-the CLI with `npm install -g qa` (0.24.0 or later) and sign in, or set
-`MOMENTIC_API_KEY`. Set `MO_EVAL_CLI` to use another executable.
+the CLI with `npm install -g qa` (0.27.0 or later) and sign in, or set
+`MOMENTIC_API_KEY`. Set `MO_EVAL_CLI` to use another executable. Use
+`--effort low|medium|high|max` to set Mo's effort preset (default: medium);
+it is recorded in `duration.json`.
 
 ## Run
 
