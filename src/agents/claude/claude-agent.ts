@@ -37,8 +37,12 @@ const CLAUDE_COMMAND = path.join(
   "bin",
   "claude.exe",
 );
+// Matches Codex, whose Playwright MCP disables this tool.
+const DISABLED_BROWSER_TOOL = "browser_run_code_unsafe";
 // Claude Code builds name the subagent tool "Agent" or "Task".
 const SUBAGENT_TOOLS = ["Agent", "Task"];
+// Browser and reporting tools only, plus subagents; no shell or file access on the eval host.
+const ORCHESTRATION_TOOLS = [...SUBAGENT_TOOLS, "SendMessage", "TaskStop"];
 const PlaywrightServerSchema = z.object({
   command: z.string(),
   args: z.array(z.string()),
@@ -143,7 +147,7 @@ export class ClaudeAgent extends CodexAgent {
         HOME: process.env.HOME || "",
         ...playwright.env,
       },
-      disabledTools: [],
+      disabledTools: [DISABLED_BROWSER_TOOL],
     });
     const browserUrl = await this.browserProxy.start();
     this.reporting = await startReportingServer(this.findings);
@@ -151,6 +155,7 @@ export class ClaudeAgent extends CodexAgent {
     this.transcript = createWriteStream(
       path.join(this.context.reportDirectory, "transcript.jsonl"),
     );
+    const tools = setup.subagents ? ORCHESTRATION_TOOLS : [];
     this.session = query({
       prompt: this.input,
       options: {
@@ -161,10 +166,10 @@ export class ClaudeAgent extends CodexAgent {
         systemPrompt: { type: "preset", preset: "claude_code" },
         settingSources: [],
         skills: [],
-        tools: { type: "preset", preset: "claude_code" },
-        disallowedTools: setup.subagents ? [] : SUBAGENT_TOOLS,
-        permissionMode: "bypassPermissions",
-        allowDangerouslySkipPermissions: true,
+        tools,
+        allowedTools: [...tools, "mcp__playwright__*", "mcp__reporting__*"],
+        disallowedTools: [`mcp__playwright__${DISABLED_BROWSER_TOOL}`],
+        permissionMode: "dontAsk",
         mcpServers: {
           playwright: { type: "http", url: browserUrl, timeout: 120_000 },
           reporting: { type: "http", url: this.reporting.url },
@@ -196,13 +201,7 @@ export class ClaudeAgent extends CodexAgent {
       },
     });
     this.enqueue(
-      [
-        message,
-        setup.instructions,
-        "Use reporting.submit_bug to save each bug with a stable ID, reporting.remove_bug to retract it, and reporting.record_coverage for areas explored and limitations.",
-      ]
-        .filter(Boolean)
-        .join("\n\n"),
+      `${message}\n\nUse reporting.submit_bug to save each bug with a stable ID, reporting.remove_bug to retract it, and reporting.record_coverage for areas explored and limitations.`,
     );
     this.observer = this.observe(this.session);
     void this.observer.catch(() => {});

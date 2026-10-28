@@ -18,9 +18,6 @@ type BrowserConnection = {
   env: Record<string, string>;
 };
 
-export const SUBAGENT_INSTRUCTIONS =
-  "You can and should use subagents to explore different product areas or frontend paths. Each subagent gets its own fresh browser, separate from yours and from other subagents'. Orchestrate and divide the work however you choose, and prefer parallelism where appropriate. Only the parent can submit, update, or remove evaluation findings.";
-
 export class CodexAgent extends CodexRunner {
   protected localBrowser = false;
   private browsers: BrowserbaseSessions | undefined;
@@ -31,7 +28,6 @@ export class CodexAgent extends CodexRunner {
       mcpServers: await this.prepareBrowserMcp(),
       // Each Codex subagent starts its own Playwright MCP, and the broker gives it its own Browserbase session.
       subagents: !this.localBrowser,
-      instructions: this.localBrowser ? "" : SUBAGENT_INSTRUCTIONS,
     };
   }
 
@@ -93,6 +89,7 @@ export class CodexAgent extends CodexRunner {
         tool_timeout_sec: 120,
         default_tools_approval_mode: "approve",
         required: true,
+        disabled_tools: ["browser_run_code_unsafe"],
       },
     };
   }

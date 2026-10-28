@@ -254,6 +254,8 @@ export class BrowserProxy {
           protocolVersion: "2025-03-26",
           capabilities: { tools: {} },
           serverInfo: { name: "playwright", version: "1.0.0" },
+          instructions:
+            "Each agent, including each subagent, gets its own separate browser.",
         };
       case "ping":
         return {};

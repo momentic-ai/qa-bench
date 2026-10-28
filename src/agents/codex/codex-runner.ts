@@ -23,7 +23,6 @@ const require = createRequire(import.meta.url);
 type CodexSetup = {
   mcpServers: Record<string, unknown>;
   subagents: boolean;
-  instructions: string;
 };
 
 export abstract class CodexRunner implements EvalAgent {
@@ -119,7 +118,7 @@ export abstract class CodexRunner implements EvalAgent {
       ),
     );
     this.threadId = thread.id;
-    const task = `${message}\n\n${setup.instructions ? `${setup.instructions}\n\n` : ""}Use submit_bug to save each bug with a stable ID, remove_bug to retract it, and record_coverage for areas explored and limitations.`;
+    const task = `${message}\n\nUse submit_bug to save each bug with a stable ID, remove_bug to retract it, and record_coverage for areas explored and limitations.`;
     process.stdout.write(
       `${this.context.fixture.name}: Codex session ${thread.id}\n`,
     );
