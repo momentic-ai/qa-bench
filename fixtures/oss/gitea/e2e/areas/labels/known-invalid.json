@@ -70,6 +70,45 @@
         "Look for the label's added and removed events in the pull request timeline."
       ],
       "reason": "Intended: nothing is deleted. Pull requests use the same issue timeline as issues. Both events are stored and still listed by the API timeline. The web timeline deliberately merges one person's label changes made within 60 seconds and drops an add that is cancelled by a later remove, so an add followed quickly by Clear labels shows nothing (unit-tested in TestCombineLabelComments). Changes more than 60 seconds apart show both events."
+    },
+    {
+      "id": "gitea-label-color-picker-hue-error-banner",
+      "name": "Changing the label color picker's hue shows a JavaScript error banner",
+      "summary": "The report says that clicking the hue strip in the label color picker shows a JavaScript error banner: Cannot read properties of null (reading 'toLowerCase').",
+      "expected": "The reported expectation is that changing the hue updates the label color without any error.",
+      "actual": "Clicking the hue strip on a label's Edit color picker updated the color normally, with no page error and no error banner.",
+      "reproSteps": [
+        "Open a repository's Labels page and click Edit on a label.",
+        "Click a different part of the color picker's hue strip.",
+        "Check for a JavaScript error banner."
+      ],
+      "reason": "Caused by the testing tool, not Gitea. The error is thrown inside the color picker library when its color attribute is set to null. Gitea only ever sets that attribute to the input's string value. The stack trace shows the call coming from the test agent's page serializer rewriting element attributes, not from a user interaction. Ordinary clicks, drags, keyboard input, swatches and typed values never show the error."
+    },
+    {
+      "id": "gitea-label-create-enter-not-persisted",
+      "name": "Creating a label with Enter does not persist after refresh",
+      "summary": "The report says that pressing Enter in the New Label dialog reloads the page without saving, so the label is missing from the list and after a refresh.",
+      "expected": "The reported expectation is that pressing Enter in the New Label dialog creates and persists the label.",
+      "actual": "Pressing Enter in the Name, Color or Description field didn't reload the page or send any request; the dialog stayed open with every value intact. Clicking Save on the same draft created a label that was still listed after a refresh.",
+      "reproSteps": [
+        "Open a repository's Labels page and click New Label.",
+        "Fill in the name and color, then press Enter in one of the fields.",
+        "Refresh the page and check whether the label is listed."
+      ],
+      "reason": "Not a bug: Enter isn't a save shortcut in the label dialog, and it doesn't reload the page. The dialog's Save and Cancel buttons sit outside its form, and the form is submitted only when Save is clicked, so Enter does nothing and nothing promises otherwise. The label was missing after refresh only because the draft was never saved; Save creates and persists it."
+    },
+    {
+      "id": "gitea-label-open-count-link-shows-closed",
+      "name": "Open label count links include closed issues",
+      "summary": "The report says that on a repository's Labels page, a label showing '0 open issues/pull requests' links to an issue list that shows its closed issues.",
+      "expected": "The reported expectation is that the open count link lists only open issues, or none when the count is 0.",
+      "actual": "For a label whose only issue is closed, the count reads 0 open issues/pull requests, and its link opens the issue list filtered by that label, which shows the closed issue (0 Open, 1 Closed). Labels with any open issue link to an open-only list.",
+      "reproSteps": [
+        "Create a label, apply it to one issue, and close that issue.",
+        "On the repository's Labels page, click the label's open issues count.",
+        "Check whether the resulting list shows the closed issue."
+      ],
+      "reason": "Intended: the count link opens the issue list filtered by the label without a state, and Gitea deliberately shows all states when there are no open issues but some closed ones (upstream #12200, \"Default to showing closed Issues/PR list when there are only closed issues/PRs\"). The link text labels the count, not the destination's state."
     }
   ]
 }
