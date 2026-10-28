@@ -2842,6 +2842,46 @@
           "Unintended body-side validation is inferred from the separate payload/header contract, controls and shared-component history. Newer source was inspected, not run."
         ]
       }
+    },
+    {
+      "id": "workflows-loop-b68e2f69",
+      "name": "Deleting another HTTP header saves and locks a rejected Content-Type header",
+      "severity": 3,
+      "owningArea": "twenty/workflows",
+      "summary": "Deleting an unrelated header saves a manually entered Content-Type header that normal editing rejects, then reload turns it into a disabled managed row.",
+      "expected": "Deleting another row must preserve the same reserved-header validation as ordinary editing and must not save a rejected header as an uneditable managed value.",
+      "actual": "A GET action rejects Content-Type=text/plain with “This key should be set through body input.” Deleting X-Temporary causes Content-Type to persist. After reload the warning disappears and its key, value and trash button are disabled. Without the deletion, only X-Temporary persists.",
+      "reproSteps": [
+        "Create a fresh manual workflow and add an HTTP Request action using GET.",
+        "In Headers Input enter Content-Type=text/plain and observe the reserved-header validation warning.",
+        "Add X-Temporary=remove, wait normally, then delete only the X-Temporary row using its trash button.",
+        "Wait, reload and reopen the action. Observe that Content-Type=text/plain remains, its warning is gone and its key/value/delete controls are disabled.",
+        "Repeat with a fresh workflow. Control: reload the same rejected Content-Type plus ordinary X-Temporary setup without deleting a row; Content-Type is omitted and X-Temporary remains editable."
+      ],
+      "sourceCause": "The edit reducer filters non-managed reserved keys, but the remove reducer serializes every remaining nonempty row without that validation. Reload classifies the saved reserved key as automatically managed, suppresses its warning and disables editing and deletion.",
+      "matchingGuidance": {
+        "relatedReferenceId": "workflows-loop-04ba264e",
+        "relatedReferenceName": "HTTP body property content-type receives header validation and is omitted on save",
+        "distinction": "The shared key/value component is involved in both entries. This entry covers deleting another Headers Input row and saving a rejected reserved header. The related entry covers normal Body Input editing incorrectly omitting a valid payload property; these opposite save paths are distinct triggers."
+      },
+      "reviewEvidence": {
+        "basis": "Both independent reviewers reproduced the GET-header deletion trigger twice with fresh workflows and passing no-deletion controls. Coordinator checked full reports, source and validation contract, original and independent visual evidence, actual browser readbacks, retained recordings and subscription billing.",
+        "sourceRevision": "35c645064f72bc4e3180a2c6c506cbbfee170007",
+        "severityReason": "An unrelated row deletion saves rejected configuration and disables its ordinary correction after reload. Both reviewers recommend severity 3.",
+        "sourceReferences": [
+          "https://github.com/twentyhq/twenty/blob/35c645064f72bc4e3180a2c6c506cbbfee170007/packages/twenty-front/src/modules/workflow/workflow-steps/workflow-actions/http-request-action/components/KeyValuePairInput.tsx#L54-L76",
+          "https://github.com/twentyhq/twenty/blob/35c645064f72bc4e3180a2c6c506cbbfee170007/packages/twenty-front/src/modules/workflow/workflow-steps/workflow-actions/http-request-action/components/KeyValuePairInput.tsx#L98-L138",
+          "https://github.com/twentyhq/twenty/blob/35c645064f72bc4e3180a2c6c506cbbfee170007/packages/twenty-front/src/modules/workflow/workflow-steps/workflow-actions/http-request-action/components/KeyValuePairInput.tsx#L146-L175",
+          "https://github.com/twentyhq/twenty/blob/35c645064f72bc4e3180a2c6c506cbbfee170007/packages/twenty-front/src/modules/workflow/workflow-steps/workflow-actions/http-request-action/hooks/useHttpRequestForm.ts#L28-L65",
+          "https://github.com/twentyhq/twenty/blob/35c645064f72bc4e3180a2c6c506cbbfee170007/packages/twenty-front/src/modules/workflow/workflow-steps/hooks/useUpdateWorkflowVersionStep.ts#L46-L54"
+        ],
+        "limitations": [
+          "No request execution, outgoing header behavior or security impact was tested or inferred as observed damage.",
+          "Method/body-mode variations do not establish that deleting the step is the only possible recovery. Lowercase spelling has a tested method-change workaround.",
+          "Body-editor sibling variations share the reducer but are outside this narrowly defined GET-header reproduction.",
+          "The inspected newer source retains the reducer omission; newer runtime was not tested."
+        ]
+      }
     }
   ]
 }
