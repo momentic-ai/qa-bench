@@ -2805,6 +2805,43 @@
           "The inspected newer workflow Form source retains shared error tracking; newer runtime was not tested."
         ]
       }
+    },
+    {
+      "id": "workflows-loop-04ba264e",
+      "name": "HTTP body property content-type receives header validation and is omitted on save",
+      "severity": 3,
+      "owningArea": "twenty/workflows",
+      "summary": "A newly entered content-type property in an HTTP Request Key/Value body is incorrectly treated as a reserved header and omitted from saved body configuration.",
+      "expected": "Body property names should be validated as payload properties, independently of restrictions on manually entered HTTP headers.",
+      "actual": "Entering content-type=document under Body Input > Key/Value shows “This key should be set through body input.” After reload the property is absent, while an ordinary body property remains. Raw JSON preserves a content-type property.",
+      "reproSteps": [
+        "Create a fresh manual workflow and add an HTTP Request action using POST.",
+        "Set Body Input to Key/Value. Enter an ordinary property such as title=document and allow saving.",
+        "Add a body property content-type=document. Observe the red header-oriented validation message beneath its name.",
+        "Wait, reload and reopen the action. Observe that the ordinary property remains but content-type is absent.",
+        "Repeat on another fresh workflow. Control: a Raw JSON body containing a content-type property survives save and reload."
+      ],
+      "sourceCause": "The shared KeyValuePairInput applies the reserved-header content-type guard to every caller and filters flagged rows from onChange. BodyInput reuses that component without a header-only switch, so valid payload properties are filtered before the debounced body save.",
+      "reviewEvidence": {
+        "basis": "Both independent reviewers reproduced the body-key validation error and missing reloaded Key/Value property with fresh workflow data and ordinary-key/Raw JSON controls. Coordinator checked complete reports, original and independent visual evidence, retained recordings, source and contract audits, and subscription billing.",
+        "sourceRevision": "35c645064f72bc4e3180a2c6c506cbbfee170007",
+        "severityReason": "Normal editing cannot save the valid body property through the affected path. Both reviewers recommend severity 3.",
+        "sourceReferences": [
+          "https://github.com/twentyhq/twenty/blob/35c645064f72bc4e3180a2c6c506cbbfee170007/packages/twenty-front/src/modules/workflow/workflow-steps/workflow-actions/http-request-action/components/KeyValuePairInput.tsx#L68-L76",
+          "https://github.com/twentyhq/twenty/blob/35c645064f72bc4e3180a2c6c506cbbfee170007/packages/twenty-front/src/modules/workflow/workflow-steps/workflow-actions/http-request-action/components/KeyValuePairInput.tsx#L98-L111",
+          "https://github.com/twentyhq/twenty/blob/35c645064f72bc4e3180a2c6c506cbbfee170007/packages/twenty-front/src/modules/workflow/workflow-steps/workflow-actions/http-request-action/components/BodyInput.tsx#L197-L214",
+          "https://github.com/twentyhq/twenty/blob/35c645064f72bc4e3180a2c6c506cbbfee170007/packages/twenty-front/src/modules/workflow/workflow-steps/workflow-actions/http-request-action/components/BodyInput.tsx#L106-L109",
+          "https://github.com/twentyhq/twenty/blob/35c645064f72bc4e3180a2c6c506cbbfee170007/packages/twenty-front/src/modules/workflow/workflow-steps/workflow-actions/http-request-action/utils/isReadOnlyHeaderKey.ts#L3-L5",
+          "https://github.com/twentyhq/twenty/blob/35c645064f72bc4e3180a2c6c506cbbfee170007/packages/twenty-front/src/modules/workflow/workflow-steps/workflow-actions/http-request-action/hooks/useHttpRequestForm.ts#L28-L66"
+        ],
+        "limitations": [
+          "This covers newly entered properties, not erasure of a previously acknowledged saved body field.",
+          "Both reviewers also observed the error in Form Data; saved Form Data omission was independently established by only one reviewer and is not added to the joint claim.",
+          "A reviewer found an edit/delete bypass that can save the key; the claim is the normal editing path, not universal inability to store it.",
+          "No request execution or downstream server damage was tested.",
+          "Unintended body-side validation is inferred from the separate payload/header contract, controls and shared-component history. Newer source was inspected, not run."
+        ]
+      }
     }
   ]
 }
