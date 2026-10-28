@@ -3301,6 +3301,150 @@
           "Latest source also changes floating positioning strategy. Newer runtime and native touch were not tested; no targeted fix or linear ancestry claim is made."
         ]
       }
+    },
+    {
+      "id": "workflows-loop-f253606c",
+      "name": "Newly created draft is omitted from reopened versions history",
+      "severity": 1,
+      "owningArea": "twenty/workflows",
+      "summary": "After Use as Draft creates a new saved draft, reopening workflow versions history can omit it while the versions count includes it.",
+      "expected": "Workflow-filtered versions history should include the saved draft alongside the active and archived versions.",
+      "actual": "On two fresh workflows, Use as Draft opens the saved v3 draft, but immediately reopening See Versions History shows only v2 Active and v1 Archived while the count is 3. A separate fresh workflow passes the same sequence.",
+      "reproSteps": [
+        "Create an owned workflow, activate v1, create a draft from v1 and activate it as v2.",
+        "Open archived v1 and choose Use as Draft. Verify the new saved draft opens.",
+        "Immediately reopen See Versions History and inspect the filtered list and count.",
+        "Compare a separate fresh workflow and confirm its v3 Draft, v2 Active and v1 Archived all appear."
+      ],
+      "sourceCause": "The history entry reuses cached list state after draft creation. The new draft exists and can be opened, while the reopened history list can retain its old two rows. Exact cache timing is inferred.",
+      "matchingGuidance": {
+        "distinction": "No draft data loss or execution failure was observed. This is newly created draft omission, not omission after subsequently discarding it."
+      },
+      "reviewEvidence": {
+        "basis": "Codex-only approval under the user’s updated authorization: completed official Codex Pro review plus coordinator-checked actual evidence, source and contract. Claude agreement is not required by this policy; existing comparison history is preserved.",
+        "sourceRevision": "35c645064f72bc4e3180a2c6c506cbbfee170007",
+        "severityReason": "Completed Codex assigns severity 1 to the narrowly described observed failure.",
+        "sourceReferences": [
+          "https://github.com/twentyhq/twenty/blob/35c645064f72bc4e3180a2c6c506cbbfee170007/packages/twenty-docs/user-guide/workflows/capabilities/workflow-versions.mdx#L34-L39",
+          "https://github.com/twentyhq/twenty/blob/35c645064f72bc4e3180a2c6c506cbbfee170007/packages/twenty-front/src/modules/command-menu-item/engine-command/record/single-record/workflow-versions/components/UseAsDraftWorkflowVersionSingleRecordCommand.tsx#L27-L36",
+          "https://github.com/twentyhq/twenty/blob/35c645064f72bc4e3180a2c6c506cbbfee170007/packages/twenty-front/src/modules/workflow/hooks/useCreateDraftFromWorkflowVersion.ts#L17-L50",
+          "https://github.com/twentyhq/twenty/blob/35c645064f72bc4e3180a2c6c506cbbfee170007/packages/twenty-front/src/modules/command-menu-item/engine-command/record/single-record/workflow-versions/components/SeeVersionsWorkflowVersionSingleRecordCommand.tsx#L15-L28"
+        ],
+        "limitations": [
+          "Two failing fresh workflows and one passing workflow share one fixture; the failure is not universal.",
+          "No draft data loss or execution failure was observed. This is newly created draft omission, not omission after subsequently discarding it.",
+          "Approved under the Codex-only policy; no completed independent Claude comparison is claimed.",
+          "Source inspected at the pinned revision; newer runtime was not tested."
+        ]
+      }
+    },
+    {
+      "id": "workflows-loop-644dd61d",
+      "name": "Deleted active workflow keeps an Active badge until refresh",
+      "severity": 1,
+      "owningArea": "twenty/workflows",
+      "summary": "Deleting an active workflow leaves its open record showing both a deleted banner and an Active badge.",
+      "expected": "The workflow record should reflect the deactivation performed by deletion rather than continuing to display Active.",
+      "actual": "After deleting active workflows, the open record displays a deleted-record banner together with Active. After Restore and reload, the version shows Deactivated. Deleting an already deactivated workflow displays Deactivated correctly.",
+      "reproSteps": [
+        "Create and activate a disposable owned workflow.",
+        "Delete it from its open record and inspect the deleted banner and activation badge.",
+        "Restore, reload and inspect its deactivated state.",
+        "Compare ordinary Deactivate and deletion of an already deactivated workflow."
+      ],
+      "sourceCause": "Deletion deactivates the workflow on the server, but the open workflow activation presentation is not refreshed consistently. Missing client invalidation is inferred from the display and source paths.",
+      "matchingGuidance": {
+        "distinction": "This entry covers the still-deleted record, not an Active badge appearing only after Restore."
+      },
+      "reviewEvidence": {
+        "basis": "Codex-only approval under the user’s updated authorization: completed official Codex Pro review plus coordinator-checked actual evidence, source and contract. Claude agreement is not required by this policy; existing comparison history is preserved.",
+        "sourceRevision": "35c645064f72bc4e3180a2c6c506cbbfee170007",
+        "severityReason": "Completed Codex assigns severity 1 to the narrowly described observed failure.",
+        "sourceReferences": [
+          "https://github.com/twentyhq/twenty/blob/35c645064f72bc4e3180a2c6c506cbbfee170007/packages/twenty-front/src/modules/command-menu-item/engine-command/record/components/DeleteRecordsCommand.tsx#L35-L75",
+          "https://github.com/twentyhq/twenty/blob/35c645064f72bc4e3180a2c6c506cbbfee170007/packages/twenty-front/src/modules/object-record/hooks/useIncrementalDeleteManyRecords.ts#L77-L179",
+          "https://github.com/twentyhq/twenty/blob/35c645064f72bc4e3180a2c6c506cbbfee170007/packages/twenty-front/src/modules/object-record/hooks/useIncrementalDeleteManyRecords.ts#L223-L250",
+          "https://github.com/twentyhq/twenty/blob/35c645064f72bc4e3180a2c6c506cbbfee170007/packages/twenty-front/src/modules/object-record/hooks/useDeleteManyRecordsMutation.ts#L28-L36"
+        ],
+        "limitations": [
+          "Three owned workflows share one fixture. No continued execution or backend-active state after deletion was established.",
+          "This entry covers the still-deleted record, not an Active badge appearing only after Restore.",
+          "Approved under the Codex-only policy; no completed independent Claude comparison is claimed.",
+          "Source inspected at the pinned revision; newer runtime was not tested."
+        ]
+      }
+    },
+    {
+      "id": "workflows-loop-af546766",
+      "name": "Update Record ignores a saved No currency selection",
+      "severity": 3,
+      "owningArea": "twenty/workflows",
+      "summary": "A saved No currency choice is ignored when Update Record completes on an existing Company revenue currency.",
+      "expected": "A successful Update Record should apply the saved null currency selection while retaining the separately configured amount.",
+      "actual": "The historical run configuration shows No currency and amount 0, but successful Update Record output retains USD with amount 0 on repeated fresh Company runs. Changing only the currency choice to EUR returns 0/EUR. A nonzero null-currency update similarly retains the existing currency.",
+      "reproSteps": [
+        "Create an owned manual workflow that creates a Company with USD annual revenue and then updates that Company.",
+        "In Update Record, select Annual Revenue, set amount 0 and choose No currency. Allow the configuration to save and reopen it.",
+        "Run the workflow and compare its saved Node configuration with successful Output: currency remains USD.",
+        "Repeat with fresh Company data; compare an explicit EUR assignment and a sibling Create Record with No currency."
+      ],
+      "sourceCause": "The selected currencyCode null reaches UpdateRecordService, whose recursive cleanup drops null values before the composite update. The omitted currency subfield therefore retains its existing value.",
+      "matchingGuidance": {
+        "distinction": "This entry covers currencyCode clearing, distinct from clearing the revenue amount. No universal nullable-field or newer-runtime claim."
+      },
+      "reviewEvidence": {
+        "basis": "Codex-only approval under the user’s updated authorization: completed official Codex Pro review plus coordinator-checked actual evidence, source and contract. Claude agreement is not required by this policy; existing comparison history is preserved.",
+        "sourceRevision": "35c645064f72bc4e3180a2c6c506cbbfee170007",
+        "severityReason": "Completed Codex assigns severity 3 to the narrowly described observed failure.",
+        "sourceReferences": [
+          "https://github.com/twentyhq/twenty/blob/35c645064f72bc4e3180a2c6c506cbbfee170007/packages/twenty-docs/user-guide/workflows/capabilities/workflow-actions.mdx#L30-L41",
+          "https://github.com/twentyhq/twenty/blob/35c645064f72bc4e3180a2c6c506cbbfee170007/packages/twenty-front/src/modules/object-record/record-field/ui/form-types/components/FormCurrencyFieldInput.tsx#L29-L53",
+          "https://github.com/twentyhq/twenty/blob/35c645064f72bc4e3180a2c6c506cbbfee170007/packages/twenty-front/src/modules/object-record/record-field/ui/form-types/components/FormSelectFieldInput.tsx#L73-L84",
+          "https://github.com/twentyhq/twenty/blob/35c645064f72bc4e3180a2c6c506cbbfee170007/packages/twenty-front/src/modules/workflow/workflow-steps/workflow-actions/components/WorkflowEditActionUpdateRecord.tsx#L69-L80"
+        ],
+        "limitations": [
+          "One manually built workflow was exercised with fresh Company data; independent workflow construction is not claimed.",
+          "This entry covers currencyCode clearing, distinct from clearing the revenue amount. No universal nullable-field or newer-runtime claim.",
+          "Approved under the Codex-only policy; no completed independent Claude comparison is claimed.",
+          "Source inspected at the pinned revision; newer runtime was not tested."
+        ]
+      }
+    },
+    {
+      "id": "workflows-loop-c2b0827f",
+      "name": "Backspace does not persist deletion of an Iterator loop-start edge",
+      "severity": 3,
+      "owningArea": "twenty/workflows",
+      "summary": "Backspace temporarily removes an Iterator loop-start connection, then the connection returns and remains after reload.",
+      "expected": "A selectable and deletable loop-start connection should be removable through the canvas keyboard deletion path just as through its trash button.",
+      "actual": "On two fresh workflows, the selected Iterator-to-Delay loop-start edge disappears briefly after Backspace, then returns gray and unselected. Reload retains it. The same edge deletes persistently through its trash button, and ordinary trigger/completed-branch edges delete persistently with Backspace.",
+      "reproSteps": [
+        "Create an owned manual workflow containing an Iterator with a Delay in its loop.",
+        "Select the Iterator-to-Delay loop-start edge and press Backspace. Wait for the mutation response.",
+        "Observe the connection return, then reload and confirm it remains.",
+        "Compare the same edge trash button and Backspace on ordinary trigger and completed-branch connections; verify their deletions persist and nodes remain."
+      ],
+      "sourceCause": "The keyboard edge callback omits sourceConnectionOptions. Without the Iterator loop option, the server checks ordinary nextStepIds and returns unchanged; the observed response has empty triggerDiff and stepsDiff. The trash callback supplies the loop option.",
+      "matchingGuidance": {
+        "distinction": "Two fresh workflows share one fixture. No node loss, other loop target or role, or newer-runtime behavior was established."
+      },
+      "reviewEvidence": {
+        "basis": "Codex-only approval under the user’s updated authorization: completed official Codex Pro review plus coordinator-checked actual evidence, source and contract. Claude agreement is not required by this policy; existing comparison history is preserved.",
+        "sourceRevision": "35c645064f72bc4e3180a2c6c506cbbfee170007",
+        "severityReason": "Completed Codex assigns severity 3 to the narrowly described observed failure.",
+        "sourceReferences": [
+          "https://github.com/twentyhq/twenty/blob/35c645064f72bc4e3180a2c6c506cbbfee170007/packages/twenty-front/src/modules/workflow/workflow-diagram/components/WorkflowDiagramCanvasBase.tsx#L438-L459",
+          "https://github.com/twentyhq/twenty/blob/35c645064f72bc4e3180a2c6c506cbbfee170007/packages/twenty-front/src/modules/workflow/workflow-diagram/components/WorkflowDiagramCanvasEditable.tsx#L133-L138",
+          "https://github.com/twentyhq/twenty/blob/35c645064f72bc4e3180a2c6c506cbbfee170007/packages/twenty-front/src/modules/workflow/workflow-diagram/workflow-edges/components/WorkflowDiagramDefaultEdgeEditable.tsx#L80-L89",
+          "https://github.com/twentyhq/twenty/blob/35c645064f72bc4e3180a2c6c506cbbfee170007/packages/twenty-front/src/modules/workflow/workflow-diagram/workflow-edges/utils/getConnectionOptionsForSourceHandle.ts#L9-L20"
+        ],
+        "limitations": [
+          "Persistent highlighting did not reproduce; the returned connection is gray and unselected.",
+          "Two fresh workflows share one fixture. No node loss, other loop target or role, or newer-runtime behavior was established.",
+          "Approved under the Codex-only policy; no completed independent Claude comparison is claimed.",
+          "Source inspected at the pinned revision; newer runtime was not tested."
+        ]
+      }
     }
   ]
 }
