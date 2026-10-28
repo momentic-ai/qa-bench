@@ -232,8 +232,8 @@ export class ClaudeAgent extends CodexAgent {
 
 export function claudeAgent(browser: Browser): EvalAgentDefinition {
   return {
-    name: "Claude",
-    reportSubdirectory: "claude",
+    name: "claude-playwright-mcp",
+    reportSubdirectory: "claude-playwright-mcp",
     concurrency: browser === "local" ? 2 : Infinity,
     config: { browser },
     async validateEnvironment() {

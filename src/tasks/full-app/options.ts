@@ -77,8 +77,10 @@ function parseBrowser(
   browser: string | undefined,
 ): Browser {
   if (browser === undefined) return "browserbase";
-  if (agent !== "codex" && agent !== "claude")
-    throw new Error("--browser applies only to --agent codex or claude.");
+  if (agent !== "codex-playwright-mcp" && agent !== "claude-playwright-mcp")
+    throw new Error(
+      "--browser applies only to --agent codex-playwright-mcp or claude-playwright-mcp.",
+    );
   if (browser !== "browserbase" && browser !== "local")
     throw new Error("--browser must be browserbase or local.");
   return browser;
