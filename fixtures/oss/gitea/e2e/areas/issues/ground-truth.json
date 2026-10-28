@@ -987,6 +987,65 @@
           "The related Add Time report was not independently reproduced and is excluded from this entry."
         ]
       }
+    },
+    {
+      "id": "gitea-repo-issues-any-assignee-search-omits-issue",
+      "name": "Repository issue search with Assigned to anybody hides matching assigned issues",
+      "severity": 3,
+      "owningArea": "gitea/issues",
+      "summary": "Combining a matching text search with Assignee → Assigned to anybody on a repository Issues list hides assigned issues and shows zero Open and Closed counts. Bulk assignment succeeds; the search index uses an unpopulated legacy assignee field.",
+      "expected": "Matching issues with at least one assignee remain listed when text search is combined with Assigned to anybody.",
+      "actual": "The search alone lists the assigned issue, and Assigned to anybody without search lists it. Combining the two shows No results and zero counts despite the assignment remaining visible on the issue. The failure persists after reload and also affects assignments made from the issue sidebar.",
+      "reproSteps": [
+        "Create two disposable issues sharing a unique searchable title prefix, with no milestone.",
+        "Assign one issue to a contributor, using its sidebar or the list bulk-assignment action.",
+        "Search for their shared title prefix on the repository Issues list and confirm both issues appear.",
+        "Choose Assignee → Assigned to anybody and observe the assigned issue disappears, with No results and zero Open/Closed counts.",
+        "Remove the text search while retaining Assigned to anybody and confirm the assigned issue appears."
+      ],
+      "sourceReport": {
+        "sessionId": "ca104d0f-f1a6-52e9-8514-ed22cc9348a0",
+        "webUrl": "https://app.momentic.ai/mo/sessions/ca104d0f-f1a6-52e9-8514-ed22cc9348a0?tab=bug%3AAssigned%20to%20anybody%20filter%20hides%20an%20assigned%20issue",
+        "recording": {
+          "startedAt": 1793215281419,
+          "finishedAt": 1793215301206,
+          "agentId": "ca104d0f-f1a6-52e9-8514-ed22cc9348a0:sandbox-bugbash-v2:bulk",
+          "windowId": "b3bf52c7-1267-4448-8f65-e8af38595ac0",
+          "artifactId": "63582293-ecd9-4401-a94f-488b20feecf8"
+        }
+      },
+      "matchingGuidance": {
+        "relatedReference": {
+          "id": "mo-12m-gitea-issues-6",
+          "distinction": "The existing entry covers selecting a specific named user in the repository Assignee dropdown. This entry covers its Assigned to anybody option. Type → Assigned to you and organization/global dashboards have separate related references."
+        },
+        "scope": "Require a matching text search together with Assigned to anybody. Assignment itself succeeds, and filtering without a keyword works. Do not infer that bulk assignment failed or that every dashboard/API variant was browser-tested."
+      },
+      "reviewEvidence": {
+        "basis": "User explicitly approved related severity-3 coverage. Codex and Claude independently reproduced on fresh issues and both recommended acceptance at severity 3. Coordinator verified the index conversion, filtering code and upstream fix.",
+        "userAccepted": true,
+        "sourceRevision": "99053ce4fa2b45f1bca5837418c0c57f793ca824",
+        "severityReason": "Severity 3: supported search/filter combinations return incorrect empty results and counts. No assignment data loss was observed.",
+        "analysis": [
+          "Both reviewers reproduced on two fresh issue sets with bulk and sidebar assignments, and confirmed search-only and filter-only controls work. Codex additionally checked a separate contributor session and desktop/mobile widths.",
+          "The indexer reads Issue.AssigneeID, a nonpersisted legacy field, rather than the loaded Assignees collection. Non-DB index backends therefore filter against the wrong assignee data.",
+          "The normal database assignment filter queries issue_assignees directly, explaining why filtering without text search works.",
+          "Upstream commit a4781dde89ee9cc2e5af73a2c4d2f4d32cda0aee explicitly fixes specific, any-assignee and no-assignee filters by indexing actual assignee IDs. Its patch and rationale were verified through the upstream commit API."
+        ],
+        "sourceReferences": [
+          "https://github.com/go-gitea/gitea/blob/99053ce4fa2b45f1bca5837418c0c57f793ca824/modules/indexer/issues/util.go#L100-L125",
+          "https://github.com/go-gitea/gitea/blob/99053ce4fa2b45f1bca5837418c0c57f793ca824/models/issues/issue.go#L89-L91",
+          "https://github.com/go-gitea/gitea/blob/99053ce4fa2b45f1bca5837418c0c57f793ca824/models/issues/assignees.go#L28-L50",
+          "https://github.com/go-gitea/gitea/blob/99053ce4fa2b45f1bca5837418c0c57f793ca824/modules/indexer/issues/bleve/bleve.go#L257-L264",
+          "https://github.com/go-gitea/gitea/blob/99053ce4fa2b45f1bca5837418c0c57f793ca824/models/issues/issue_search.go#L374-L383",
+          "https://github.com/go-gitea/gitea/commit/a4781dde89ee9cc2e5af73a2c4d2f4d32cda0aee"
+        ],
+        "limitations": [
+          "Latest runtime was not tested.",
+          "The exact deployed non-DB search backend was not independently established; the defective conversion is shared by the inspected non-DB backends.",
+          "Additional shared API, pull-request and milestone entry points are excluded from this entry unless independently reported."
+        ]
+      }
     }
   ]
 }
