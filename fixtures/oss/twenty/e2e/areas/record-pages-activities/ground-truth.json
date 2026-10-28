@@ -1404,6 +1404,43 @@
           "Inspected newer source retains the broad error mapping; newer runtime was not tested."
         ]
       }
+    },
+    {
+      "id": "record-pages-activities-loop-7969f86e",
+      "name": "Relinking a Task or Note hides its existing Company creation history",
+      "severity": 3,
+      "owningArea": "twenty/record-pages-activities",
+      "summary": "Relinking a recently unlinked Task or Note can rewrite its creation Timeline row into an empty diff, hiding that history while the activity remains linked.",
+      "expected": "Relinking an activity preserves its already-visible creation history rather than silently hiding the row.",
+      "actual": "A creation row remains visible after unlink, but disappears after relink and reload. Tasks or Notes still contains the live linked item, while Timeline retains the related-deletion row. The creation event still exists; its properties change from {} to {diff:{}}.",
+      "reproSteps": [
+        "Create a disposable Company and a related Task; verify its creation row in Company Timeline.",
+        "Unlink the Company from the Task and verify the creation row still exists. Relink the same Company as the same member shortly after creation.",
+        "Reload and compare Company Timeline with its Tasks tab. Repeat with a Note.",
+        "Compare an isolated relink after the recent-event window, and retain any intervening-event controls that do not reproduce."
+      ],
+      "sourceCause": "The recent-event repository can merge the relink into an existing creation event. Merging two empty properties objects produces an empty diff. The frontend keeps linked activity rows without a diff but filters rows with a defined empty diff, so the rewritten creation event disappears from rendered history.",
+      "matchingGuidance": {
+        "relatedReferenceName": "Unlinking a company from a Task or Note is described as deleting the activity in Timeline",
+        "distinction": "Match a pre-existing creation row disappearing after relink while the live Task/Note and stored creation event survive. Distinguish unlink wording, creation labels becoming Untitled after deletion, restoration duplicates and merely coalesced new events."
+      },
+      "reviewEvidence": {
+        "basis": "Both independent browser/source reviewers accept the same relink-induced disappearance of existing Task/Note creation history at severity 3. Coordinator checked complete source/contract audits, independent images/video samples and stored-row/live-activity/reload controls, plus both official subscription billing records.",
+        "sourceRevision": "35c645064f72bc4e3180a2c6c506cbbfee170007",
+        "severityReason": "The Company activity history silently loses a previously visible creation event while the linked item remains present.",
+        "sourceReferences": [
+          "https://github.com/twentyhq/twenty/blob/35c645064f72bc4e3180a2c6c506cbbfee170007/packages/twenty-server/src/modules/timeline/repositories/timeline-activity.repository.ts#L65-L91",
+          "https://github.com/twentyhq/twenty/blob/35c645064f72bc4e3180a2c6c506cbbfee170007/packages/twenty-server/src/modules/timeline/repositories/timeline-activity.repository.ts#L115-L135",
+          "https://github.com/twentyhq/twenty/blob/35c645064f72bc4e3180a2c6c506cbbfee170007/packages/twenty-server/src/engine/core-modules/event-emitter/utils/object-record-diff-merge.ts#L1-L33",
+          "https://github.com/twentyhq/twenty/blob/35c645064f72bc4e3180a2c6c506cbbfee170007/packages/twenty-front/src/modules/activities/timeline-activities/utils/filterOutInvalidTimelineActivities.ts#L81-L101"
+        ],
+        "limitations": [
+          "Joint scope is a Company Timeline creation-history row disappearing after same-member unlink/relink of a Task or Note while the activity remains linked and alive. It is not physical deletion of the history row or the activity.",
+          "Recent-event matching is bounded by a ten-minute window and chooses a recent candidate before linked-record matching. Intervening events can change the outcome; not every relink within ten minutes fails.",
+          "Both reviewers tested Task and Note variants. Claude additionally observed a later-than-ten-minute control retain the old creation and insert a new row. The contract does not require a separate new event for every relink.",
+          "The newer source retains relevant merge/filter structures, but the rewritten relink path and runtime event-type equivalence were not verified end to end. No newer-runtime or exhaustive-history claim is made."
+        ]
+      }
     }
   ]
 }
