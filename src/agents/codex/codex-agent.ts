@@ -92,8 +92,8 @@ export class CodexAgent extends CodexRunner {
 
 export function codexAgent(browser: Browser): EvalAgentDefinition {
   return {
-    name: "Codex",
-    reportSubdirectory: "codex",
+    name: "codex-playwright-mcp",
+    reportSubdirectory: "codex-playwright-mcp",
     concurrency: browser === "local" ? 2 : Infinity,
     config: { browser },
     async validateEnvironment() {
