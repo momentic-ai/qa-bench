@@ -1716,6 +1716,41 @@
           "The newer picker rewrite removes the keyed structure in inspected source. Newer runtime and a targeted fix for this symptom were not verified."
         ]
       }
+    },
+    {
+      "id": "records-views-loop-a0bef773",
+      "name": "Removing Alphabetical sort after a column drag moves the wrong group",
+      "severity": 3,
+      "owningArea": "twenty/records-views",
+      "summary": "Confirming a header drag while groups are Alphabetical applies the displayed indices to Manual order, saving a different column move.",
+      "expected": "Confirming Remove Alphabetical group sorting applies the column-header move the user requested.",
+      "actual": "From Alphabetical Customer, Meeting, New, Proposal, Screening, dragging Meeting before Customer and confirming Remove produces Screening, New, Meeting, Proposal, Customer. Meeting remains third and Screening moves first. The wrong order persists after reload; Manual-mode drag moves Meeting correctly.",
+      "reproSteps": [
+        "Create a fresh Opportunities Kanban view grouped by Stage with initial Manual order New, Screening, Meeting, Proposal, Customer.",
+        "Change group sorting to Alphabetical. Drag the Meeting column header before Customer.",
+        "Confirm Remove in the group-sorting dialog and inspect the settled column order; reload to verify the saved order.",
+        "Compare the same intended header move in Manual mode, and repeat on another fresh view."
+      ],
+      "sourceCause": "Drag end stores indices from the displayed Alphabetical columns. Confirmation sets group sort to Manual before reorderRecordGroups reads visible group IDs. The stored alphabetical indices are therefore applied to a different Manual-ordered list, and the resulting positions are saved.",
+      "matchingGuidance": {
+        "distinction": "Match wrong persisted column order after a header drag plus Remove Alphabetical sorting confirmation. Distinguish sorting mode reverting on reload, card record sorting and Options-list reordering symptoms."
+      },
+      "reviewEvidence": {
+        "basis": "Both independent browser/source reviewers accept the same wrong column moved and saved after an Alphabetical header drag confirmation at severity 3. Coordinator checked full source/contract audits, independent original images and settled order/reload/Manual-mode controls, plus both official subscription billing records.",
+        "sourceRevision": "35c645064f72bc4e3180a2c6c506cbbfee170007",
+        "severityReason": "The view saves a different column move from the requested drag; Manual-mode reordering is a workaround.",
+        "sourceReferences": [
+          "https://github.com/twentyhq/twenty/blob/35c645064f72bc4e3180a2c6c506cbbfee170007/packages/twenty-front/src/modules/object-record/record-board/record-board-column/dnd/hooks/useRecordBoardColumnDndKit.ts#L146-L176",
+          "https://github.com/twentyhq/twenty/blob/35c645064f72bc4e3180a2c6c506cbbfee170007/packages/twenty-front/src/modules/object-record/record-group/hooks/useReorderRecordGroups.ts#L49-L101",
+          "https://github.com/twentyhq/twenty/blob/35c645064f72bc4e3180a2c6c506cbbfee170007/packages/twenty-front/src/modules/object-record/record-group/states/selectors/visibleRecordGroupIdsComponentFamilySelector.ts#L21-L48"
+        ],
+        "limitations": [
+          "Joint scope is an Opportunities Stage Kanban column-header drag while Alphabetical sorting is active, followed by Remove confirmation. Options-list reordering, Tasks, Reverse Alphabetical and hide-empty variations are excluded.",
+          "The wrong saved configuration is column order, not record-field loss or movement of records between stages. Manual-mode drag works.",
+          "Claude verified two fresh views; Codex’s first settled reload supports persistence. An empty immediate second-reload DOM probe is not lost-column or persistence proof.",
+          "The selector/setter ordering explains the observed result; synchronous runtime state sequencing was not separately instrumented. Latest source presence is not a newer-runtime or exhaustive no-fix claim."
+        ]
+      }
     }
   ]
 }
