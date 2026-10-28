@@ -22,6 +22,8 @@ const require = createRequire(import.meta.url);
 
 type CodexSetup = {
   mcpServers: Record<string, unknown>;
+  subagents: boolean;
+  instructions: string;
 };
 
 export abstract class CodexRunner implements EvalAgent {
@@ -83,7 +85,13 @@ export abstract class CodexRunner implements EvalAgent {
     this.server = new CodexAppServer(
       this.command,
       env,
-      async (_threadId, tool, args) => {
+      async (threadId, tool, args) => {
+        if (threadId !== this.threadId) {
+          // The parent accepts/deduplicates subagent evidence before it becomes a scored finding.
+          throw new Error(
+            "Send your findings to the parent; only the root agent accepts eval results.",
+          );
+        }
         await this.store.handleTool(tool, args);
       },
     );
@@ -100,13 +108,18 @@ export abstract class CodexRunner implements EvalAgent {
           config: {
             model_reasoning_effort: "medium",
             mcp_servers: setup.mcpServers,
+            agents: {
+              enabled: setup.subagents,
+              default_subagent_model: "gpt-6.1-sol",
+              default_subagent_reasoning_effort: "medium",
+            },
           },
         },
         signal,
       ),
     );
     this.threadId = thread.id;
-    const task = `${message}\n\nUse submit_bug to save each bug with a stable ID, remove_bug to retract it, and record_coverage for areas explored and limitations.`;
+    const task = `${message}\n\n${setup.instructions ? `${setup.instructions}\n\n` : ""}Use submit_bug to save each bug with a stable ID, remove_bug to retract it, and record_coverage for areas explored and limitations.`;
     process.stdout.write(
       `${this.context.fixture.name}: Codex session ${thread.id}\n`,
     );

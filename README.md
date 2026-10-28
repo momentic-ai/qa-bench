@@ -9,6 +9,16 @@ Browserbase by default, or a headless Chromium on the eval host with
 `--browser local`. The run records its browser in `duration.json`, and `merge`
 labels those rows, e.g. `codex-playwright-mcp (local browser)`.
 
+All three agents can use subagents. Mo runs its own subagents on Momentic's
+service. Codex uses its multi-agent mode, and each Codex subagent starts its own
+Playwright MCP server with its own Browserbase browser. Claude Code uses its
+subagent tool; Claude shares one MCP connection across agents, so a loopback
+proxy gives each subagent its own Playwright process and Browserbase browser.
+For both, only the parent can save findings. With `--browser local`, Codex and
+Claude run single-agent, since one local browser can't be shared. The run
+records `subagents` in `duration.json`, and `merge` labels runs without them,
+e.g. `claude-playwright-mcp (no subagents)`.
+
 ## Setup
 
 Requires Node.js 22.9+ and pnpm.
