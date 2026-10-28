@@ -177,7 +177,9 @@ export async function loadInputComparison(files: string[]) {
         .find((candidate) => existsSync(path.join(candidate, "duration.json")));
       const labeled = {
         ...score,
-        label: await runLabel(score.agent, runDirectory),
+        label: runDirectory
+          ? await runLabel(score.agent, runDirectory)
+          : score.agent,
       };
       scores.push(labeled);
       reviewFiles.set(
