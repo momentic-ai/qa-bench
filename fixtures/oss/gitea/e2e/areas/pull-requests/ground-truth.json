@@ -757,6 +757,71 @@
         "Check whether the Author and Assignee filters are still applied."
       ],
       "severity": 3
+    },
+    {
+      "id": "gitea-global-pr-search-due-sort-stale",
+      "name": "Global pull-request keyword search sorts by stale due dates after sidebar updates",
+      "severity": 3,
+      "owningArea": "gitea/pull-requests",
+      "summary": "Setting or changing a pull request due date updates the database without refreshing the search index. The global PR dashboard orders keyword searches using outdated indexed dates while displaying the current saved dates.",
+      "expected": "Nearest and Farthest due-date sorting on global Pull Requests uses current saved deadlines for matching PRs.",
+      "actual": "With matching PRs due November 15 and December 20, Nearest due date can place December 20 first, and Farthest can retain an equally incorrect stale order. Reloading does not repair the ordering. Clearing the keyword or using the repository PR list sorts correctly. Posting comments on both PRs refreshes their index records and restores ordering; another due-date-only edit can break it again.",
+      "reproSteps": [
+        "Create two disposable pull requests whose titles share a fresh nonnumeric search prefix.",
+        "Set their due dates from the PR sidebar, giving the older PR an earlier date and the newer PR a later date.",
+        "Open global Pull Requests, select Created by you and Open, search for the prefix, and choose Nearest due date.",
+        "Observe the later-dated PR listed above the earlier-dated PR. Reload and compare Nearest/Farthest ordering against the displayed saved dates.",
+        "As controls, clear the keyword or use the repository PR list and confirm current-date ordering.",
+        "Post a normal comment on each PR, repeat the global keyword sort and confirm it recovers. Change only a due date and check for stale ordering again."
+      ],
+      "sourceReport": {
+        "sessionId": "bd66ed23-d8b0-5502-8fc0-7bbad86262c9",
+        "webUrl": "https://app.momentic.ai/mo/sessions/bd66ed23-d8b0-5502-8fc0-7bbad86262c9?tab=bug%3ANearest%20due%20date%20places%20a%20later%20pull%20request%20first",
+        "recording": {
+          "startedAt": 1793228274440,
+          "finishedAt": 1793228304752,
+          "agentId": "bd66ed23-d8b0-5502-8fc0-7bbad86262c9:sandbox-bugbash-v2:lists",
+          "windowId": "f14b9889-e14e-4a98-86f4-cb0b1a49b2dd",
+          "artifactId": "596ae8c0-7cd8-4d4c-a950-ae713344b81c"
+        }
+      },
+      "matchingGuidance": {
+        "relatedReference": {
+          "id": "gitea-issue-search-due-sort-ignores-new-due-dates",
+          "distinction": "The existing reference covers global Issues search after setting due dates. This entry covers global Pull Requests keyword search using stale PR deadlines. The shared missing index refresh is the cause, but the dashboard entry point differs."
+        },
+        "otherRelatedReference": {
+          "id": "gitea-issue-search-due-sort-stale-after-due-date-edit",
+          "distinction": "Related global Issues case for changing already-indexed dates; this entry covers stale PR due-date sorting."
+        },
+        "scope": "Require a keyword search on the global PR dashboard and ordering that disagrees with current saved deadlines. Pure visual query retention, repository-list ordering and undated-milestone database sorting have separate coverage. Some creation/date arrangements coincide with the stale order and appear correct; no universal reversed-order claim is made."
+      },
+      "reviewEvidence": {
+        "basis": "Explicit user approval as a related severity-3 entry after independent Codex and Claude reproductions, passing controls and coordinator source checks. Both final reviewers accepted at severity 3.",
+        "userAccepted": true,
+        "sourceRevision": "99053ce4fa2b45f1bca5837418c0c57f793ca824",
+        "severityReason": "Severity 3: incorrect ordering of matching pull requests under supported due-date sorts. Saved due dates themselves remain correct.",
+        "analysis": [
+          "Claude reproduced on two fresh PR pairs, set dates through the sidebar, and confirmed no-keyword/repository-list controls. Reindexing only one PR could make both directions wrong; comments on both restored correct ordering.",
+          "Codex reproduced after checking creation-order arrangements, repaired ordering through comments, then reproduced again with a due-date-only edit. It also confirmed desktop and narrower-width variants.",
+          "The deadline handler and model update storage and add timeline history without notifying the search indexer. The global dashboard preserves index-result ordering while loading current saved PR data for display.",
+          "Normal comments notify the indexer, explaining the repair control. The repository list uses index results for matching IDs, then sorts current database records, explaining its passing control.",
+          "Latest source retains the missing deadline refresh; latest runtime was not tested."
+        ],
+        "sourceReferences": [
+          "https://github.com/go-gitea/gitea/blob/99053ce4fa2b45f1bca5837418c0c57f793ca824/routers/web/repo/issue.go#L384-L407",
+          "https://github.com/go-gitea/gitea/blob/99053ce4fa2b45f1bca5837418c0c57f793ca824/models/issues/issue_update.go#L510-L532",
+          "https://github.com/go-gitea/gitea/blob/99053ce4fa2b45f1bca5837418c0c57f793ca824/services/indexer/notify.go#L36-L43",
+          "https://github.com/go-gitea/gitea/blob/99053ce4fa2b45f1bca5837418c0c57f793ca824/modules/indexer/issues/util.go#L100-L124",
+          "https://github.com/go-gitea/gitea/blob/99053ce4fa2b45f1bca5837418c0c57f793ca824/routers/web/user/home.go#L544-L555",
+          "https://github.com/go-gitea/gitea/blob/965d7522e0b3d323ea2da6615e7d4b39684d16e5/models/issues/issue_update.go#L530-L548"
+        ],
+        "limitations": [
+          "The exact deployed search backend and stored index contents were not directly inspected; stale index behavior is supported by source and intervention controls.",
+          "Organization dashboards and direct API deadline mutations were not independently browser-tested.",
+          "Latest runtime and complete historical fix coverage were not verified."
+        ]
+      }
     }
   ]
 }
