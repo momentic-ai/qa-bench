@@ -1292,6 +1292,49 @@
           "The inspected newer source fixes both paths; newer runtime was not tested."
         ]
       }
+    },
+    {
+      "id": "records-views-pass4-6e6f194a",
+      "name": "Company record pagination skips empty revenue in a revenue-sorted view",
+      "severity": 3,
+      "owningArea": "twenty/records-views",
+      "summary": "Company record pages undercount a descending Annual Revenue view and wrap forward navigation before visiting its empty-revenue company.",
+      "expected": "Record-page positions and Next navigation should include every matching company in the originating filtered and sorted view.",
+      "actual": "A three-company view lists Gamma ($200), Beta ($100) and Alpha (empty). Gamma shows 1/2, Beta shows 2/2, and Next cycles between them without reaching Alpha. Opening Alpha separately or using Previous from Gamma reaches it with a contradictory 1/1 total. Removing the revenue sort or populating Alpha with $50 restores three-record traversal.",
+      "reproSteps": [
+        "Create three fresh Companies named with a unique common prefix: Alpha with empty Annual Revenue, Beta with $100 and Gamma with $200.",
+        "Create a Company view filtered to the prefix, sort Annual Revenue descending and confirm all three rows are present.",
+        "Open Gamma through its row and the side-panel Open action. Observe the breadcrumb total 2 although the view contains 3.",
+        "Use Next repeatedly: Gamma leads to Beta, then wraps to Gamma without visiting Alpha.",
+        "Open Alpha separately or use Previous from Gamma: Alpha is accessible but shows 1/1. Repeat with another fresh dataset.",
+        "Controls: remove the revenue sort while retaining the filter, then confirm all three are reachable; with the sort restored and every revenue populated, confirm correct three-record traversal."
+      ],
+      "sourceCause": "Record-page pagination constructs neighbor filters with ordinary greater-than/less-than comparisons and equality prefixes, without a branch for empty currency values under NULLS LAST ordering. Those neighbor queries omit the empty amount, so their summed counts understate the total and forward navigation wraps early.",
+      "matchingGuidance": {
+        "relatedReferenceId": "records-views-pass3-d23f9fb3",
+        "relatedReferenceName": "Task record pagination excludes undated tasks from a Due Date-sorted view",
+        "distinction": "This entry covers Company Annual Revenue, a currency subfield, under descending sorting. The related entry covers Tasks sorted by Due Date. Both the Company count and forward-skipping reports belong to this single entry; do not duplicate them."
+      },
+      "reviewEvidence": {
+        "basis": "Both independent reviewers reproduced the Company count and forward-traversal failure with fresh data and passing unsorted and fully populated controls. Coordinator checked subscription billing, complete reports, source and parent-list contract, original Mo and independent visual evidence, retained recordings and actual healthy-fixture traversal readbacks.",
+        "sourceRevision": "35c645064f72bc4e3180a2c6c506cbbfee170007",
+        "severityReason": "Forward navigation skips a matching record and wraps early, breaking traversal of the originating view.",
+        "sourceReferences": [
+          "https://github.com/twentyhq/twenty/blob/35c645064f72bc4e3180a2c6c506cbbfee170007/packages/twenty-front/src/modules/object-record/graphql/utils/computeCursorArgFilter.ts#L85-L113",
+          "https://github.com/twentyhq/twenty/blob/35c645064f72bc4e3180a2c6c506cbbfee170007/packages/twenty-front/src/modules/object-record/record-show/hooks/useRecordShowPagePagination.ts#L82-L152",
+          "https://github.com/twentyhq/twenty/blob/35c645064f72bc4e3180a2c6c506cbbfee170007/packages/twenty-front/src/modules/object-record/record-show/hooks/useRecordShowPagePagination.ts#L186-L211",
+          "https://github.com/twentyhq/twenty/blob/35c645064f72bc4e3180a2c6c506cbbfee170007/packages/twenty-front/src/modules/object-record/record-show/components/ObjectRecordShowPageBreadcrumb.tsx#L87-L100",
+          "https://github.com/twentyhq/twenty/blob/35c645064f72bc4e3180a2c6c506cbbfee170007/packages/twenty-server/src/engine/api/graphql/graphql-query-runner/utils/compute-where-condition-parts.ts#L63-L107",
+          "https://github.com/twentyhq/twenty/commit/e04eef0461bb6b8fd0fb582a09ac4f3725819cef"
+        ],
+        "limitations": [
+          "The empty-revenue company remains accessible by opening it directly or using Previous; no record deletion or saved-data loss was observed.",
+          "Ascending sorting, other objects, roles and viewports are not jointly established.",
+          "Later fixture data reads stalled. Earlier completed Codex repetitions and controls are retained; the independent peer completed two fresh repetitions and controls on a healthy replacement. Interrupted phases and a corrected setup misclick are excluded.",
+          "Executed SQL was not captured; the database comparison mechanism is inferred from traced source and observed query results.",
+          "The inspected newer source retains the relevant numeric comparison path; newer runtime was not tested."
+        ]
+      }
     }
   ]
 }
