@@ -1,6 +1,6 @@
 import { parseArgs } from "node:util";
 
-import { Browser } from "../../evals/agent";
+import { Browser, MO_EFFORTS, MoEffort } from "../../evals/agent";
 import {
   executionOptions,
   parseExecutionOptions,
@@ -18,6 +18,7 @@ export type FullAppOptions = {
   concurrency?: number;
   maxConcurrentSubAgents?: number;
   timeLimitMs?: number;
+  effort?: MoEffort;
   outputDirectory: string;
   browser: Browser;
 };
@@ -29,6 +30,7 @@ export function parseFullAppOptions(args: string[]): FullAppOptions {
       ...executionOptions,
       agent: { type: "string" },
       "max-concurrent-sub-agents": { type: "string" },
+      effort: { type: "string" },
       fixtures: { type: "string" },
       "grade-only": { type: "boolean", default: false },
       "run-id": { type: "string", multiple: true },
@@ -55,6 +57,14 @@ export function parseFullAppOptions(args: string[]): FullAppOptions {
       );
     }
   }
+  let effort: MoEffort | undefined;
+  if (values.effort !== undefined) {
+    if (!MO_EFFORTS.includes(values.effort as MoEffort))
+      throw new Error(`--effort must be one of ${MO_EFFORTS.join(", ")}.`);
+    if (values.agent !== "mo")
+      throw new Error("--effort is supported only with --agent mo.");
+    effort = values.effort as MoEffort;
+  }
   if (values["run-id"] && !values["grade-only"])
     throw new Error(
       "--run-id selects saved runs to regrade with --grade-only.",
@@ -66,6 +76,7 @@ export function parseFullAppOptions(args: string[]): FullAppOptions {
     concurrency,
     maxConcurrentSubAgents,
     timeLimitMs,
+    effort,
     outputDirectory: outputDirectory ?? REPORTS_DIRECTORY,
     gradeOnly: values["grade-only"],
     runIds: parseRunIds(values["run-id"]),
