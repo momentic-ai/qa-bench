@@ -417,6 +417,62 @@
           "distinction": "Same failed create, but that entry is the raw JSON error message; this entry is the New Issue button being offered and the create failing."
         }
       }
+    },
+    {
+      "id": "gitea-double-click-create-milestone-duplicates",
+      "name": "Rapid double-clicking Create Milestone creates duplicate milestones",
+      "severity": 3,
+      "owningArea": "gitea/milestones",
+      "summary": "Two rapid clicks on Create Milestone during one completed form submission can insert two persistent milestones with identical titles and descriptions.",
+      "expected": "A rapid accidental double-click during one milestone creation attempt creates one milestone, as the guarded New Issue form does. This does not require milestone names to be unique across deliberate creation attempts.",
+      "actual": "With clicks about 50 ms apart, two distinct milestone records are inserted and listed after reload. Searching their title shows 2 Open and 0 Closed. A single-click control creates exactly one.",
+      "reproSteps": [
+        "Open New Milestone in a writable repository and enter a fresh unique title and description.",
+        "Rapidly click Create Milestone twice, about 50 ms apart, before the first submission navigates away.",
+        "Search for the submitted title and confirm that two separate milestone links are listed with 2 Open and 0 Closed.",
+        "Open both records and reload the list to verify persistent duplicate records rather than duplicate rendering.",
+        "As a control, submit a fresh equivalent form with one click and confirm it creates exactly one record."
+      ],
+      "sourceReport": {
+        "sessionId": "c5d5ba47-209d-5623-bc01-692d20db9086",
+        "webUrl": "https://app.momentic.ai/mo/sessions/c5d5ba47-209d-5623-bc01-692d20db9086?tab=bug%3ADouble-clicking%20Create%20Milestone%20creates%20duplicate%20milestones",
+        "recording": {
+          "startedAt": 1793226587830,
+          "finishedAt": 1793226627755,
+          "agentId": "c5d5ba47-209d-5623-bc01-692d20db9086:sandbox-bugbash-v2:populated-lifecycle",
+          "windowId": "2ab4abb1-7933-4846-88dd-de962109cf78",
+          "artifactId": "3043b52b-8bc1-4bda-b244-4cebef9254a0"
+        }
+      },
+      "matchingGuidance": {
+        "scope": "Covers duplicate persistent milestone creation from rapid repeated submission of one completed New Milestone form. Does not require mobile width. Deliberately submitting separate creation forms with the same title, or merely seeing repeated rendered rows without distinct saved IDs, is insufficient.",
+        "distinction": "Duplicate labels created deliberately, stale compare forms creating duplicate pull requests, and retrying a blocked Close with Comment are separate triggers and causes."
+      },
+      "reviewEvidence": {
+        "basis": "Explicit user acceptance at severity 3 after both subscription-authenticated reviewers independently reproduced duplicate records and passing single-click controls. Both final verdicts recommend acceptance at severity 3.",
+        "userAccepted": true,
+        "sourceRevision": "99053ce4fa2b45f1bca5837418c0c57f793ca824",
+        "severityReason": "Severity 3: unintended duplicate persistent records requiring manual cleanup, beyond a visual duplication.",
+        "analysis": [
+          "Codex and Claude each reproduced twice at 390px with clicks 50 ms apart and verified separate saved milestone IDs. Both reproduced at desktop width and confirmed a single click creates one record. Codex additionally reproduced as a contributor.",
+          "Claude confirmed the guarded New Issue form creates one issue under the same 50 ms double-click. Codex confirmed repeating Update Milestone edits the existing record without creating another.",
+          "The milestone form is an ordinary POST without the shared fetch-action in-flight submission guard. Each valid creation request constructs a fresh milestone and inserts it in a transaction.",
+          "Claude also tested zero-gap Playwright dblclick and clicks 150 ms apart; those attempts created one milestone. Navigation timing and browser submit coalescing were inferred explanations, not traced.",
+          "Latest inspected source retains the ordinary form and insertion path; latest runtime was not tested."
+        ],
+        "sourceReferences": [
+          "https://github.com/go-gitea/gitea/blob/99053ce4fa2b45f1bca5837418c0c57f793ca824/templates/repo/issue/milestone_new.tmpl#L24-L58",
+          "https://github.com/go-gitea/gitea/blob/99053ce4fa2b45f1bca5837418c0c57f793ca824/web_src/js/features/common-fetch-action.ts#L59-L63",
+          "https://github.com/go-gitea/gitea/blob/99053ce4fa2b45f1bca5837418c0c57f793ca824/routers/web/repo/milestone.go#L110-L140",
+          "https://github.com/go-gitea/gitea/blob/99053ce4fa2b45f1bca5837418c0c57f793ca824/models/issues/milestone.go#L107-L124",
+          "https://github.com/go-gitea/gitea/blob/965d7522e0b3d323ea2da6615e7d4b39684d16e5/templates/repo/issue/milestone_new.tmpl#L24-L56"
+        ],
+        "limitations": [
+          "Timing-sensitive: the sampled 50 ms double-clicks reproduced; zero-gap and 150 ms controls did not. No universal double-click failure rate is claimed.",
+          "One-record-per-attempt is an inferred data-integrity contract supported by the New Issue control; general milestone-name uniqueness is not required.",
+          "Latest runtime and repeated direct API requests were not tested."
+        ]
+      }
     }
   ]
 }
