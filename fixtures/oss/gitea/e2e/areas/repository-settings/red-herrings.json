@@ -1,0 +1,258 @@
+[
+  {
+    "id": "navigation-setting-mistaken-for-resource-authorization",
+    "explanation": "Treating a hidden repository tab or disabled navigation unit as a promise to revoke access to owner-owned resources. Packages can follow owner or organization permissions independently of repository navigation settings; an authorized direct URL is not automatically an access-control failure.",
+    "verificationGuidance": [
+      "Determine which entity owns the resource and which permission actually governs reads and downloads.",
+      "Test an unauthorized actor separately and distinguish navigation visibility from resource publication or authorization."
+    ],
+    "instances": [
+      {
+        "source": "known-invalid.json",
+        "index": 0,
+        "report": {
+          "id": "gitea-novel-013",
+          "name": "Disabled repository Packages page stays accessible",
+          "summary": "After the repository Packages unit is disabled, its tab disappears and its direct URL still opens the Packages page.",
+          "expected": "After the repository Packages unit is disabled and settings are saved, the repository Packages page should be unavailable through direct URL access as well as absent from navigation.",
+          "actual": "The settings save succeeded and the Packages navigation item disappeared, but directly opening /eval/cu-packages-20260316-1537/packages loaded the Packages page with the visible empty state “There are no packages yet.”",
+          "reproSteps": [
+            "At desktop viewport 1440×1000, use the supplied saved authentication state to sign in as the admin account; do not include or expose its saved-state path.",
+            "Open /repo/create and create a public repository owned by eval named cu-packages-20260316-1537, leaving unrelated settings at their defaults.",
+            "Open the new repository's Settings > Repository page, scroll to Advanced Settings, uncheck “Enable Repository Packages Registry,” and submit using the Update Settings button at the end of the Advanced Settings form.",
+            "Confirm the success notice and that Packages is absent from the repository navigation.",
+            "Navigate directly to /eval/cu-packages-20260316-1537/packages and observe the loaded Packages page and its empty-state message. Do not create or inspect package contents."
+          ],
+          "reason": "Human review rejects the claim that hiding the repository Packages tab must also make its direct URL unavailable. Disabling this unit removes the tab but does not unpublish owner-owned packages or change their permissions. The repository listing still applies overall repository access checks and filters packages to that owner and repository. An administrator opening an empty listing establishes no failed supported task or unauthorized package access. The exact direct-URL behavior is consistent with this model; no explicit requirement for a 404 after disabling the unit was recovered."
+        }
+      },
+      {
+        "source": "known-invalid.json",
+        "index": 8,
+        "report": {
+          "id": "gitea-team-packages-no-access-page-reachable",
+          "name": "Packages page remains accessible with team Packages set to No Access",
+          "summary": "The report says that an organization member whose team has Packages set to No Access can still open a repository's Packages page by URL, and list and download its packages, even though the Packages tab is hidden.",
+          "expected": "The reported expectation is that a team with Packages set to No Access can't open or download from the repository's Packages page, like Projects and Releases set to No Access return 404.",
+          "actual": "As a member of a team with Packages set to No Access, the Packages tab was hidden, but the repository's /packages URL loaded and listed linked packages, which could be opened and downloaded. Non-members got 404.",
+          "reproSteps": [
+            "In an organization, give a team access to a private repository with Packages set to No Access.",
+            "As a member of that team, open the repository and confirm the Packages tab is hidden.",
+            "Open the repository's /packages URL directly."
+          ],
+          "reason": "Intended: packages belong to the owner (organization), not to a repository unit, and any organization member has at least read access to them. Upstream deliberately removed enforcement of a team's Packages No Access setting (go-gitea/gitea#25707), restoring \"if a user has read access for an owner, they can read packages\"; the team setting only hides the tab. Same reasoning as the rejected \"Disabled repository Packages page stays accessible\" (gitea-novel-013)."
+        }
+      }
+    ]
+  },
+  {
+    "id": "hidden-or-collapsed-ui-mistaken-for-lost-configuration",
+    "explanation": "Configuration absent from a viewing surface is assumed deleted even though it remains in the editor, another supported view or the applied query. Reviewed examples include hidden empty containers, collapsed filter chips and an accepted omission on a specialized empty-state page. This rules out the claimed storage loss, not every possible presentation defect.",
+    "verificationGuidance": [
+      "Reopen configuration or inspect the same object in its owning settings surface before claiming deletion.",
+      "Expand collapsed controls or add content to a hidden empty container and check whether the retained configuration reappears.",
+      "Distinguish intact stored state from an independently promised view failing to display essential content."
+    ],
+    "instances": [
+      {
+        "source": "known-invalid.json",
+        "index": 1,
+        "report": {
+          "id": "gitea-check-004",
+          "name": "Repository description is not displayed on the mobile repository page after creation",
+          "summary": "A newly created empty private repository omits its entered description from the mobile repository page, including after refresh.",
+          "expected": "The newly created repository page displays “Mobile repository description verification.”",
+          "actual": "At 390×844, the created repository showed its name and Quick Guide, but not the entered description anywhere in the page. The omission remained after scrolling through the page and refreshing.",
+          "reproSteps": [
+            "Sign in as fixture administrator eval and set the browser viewport to 390×844 CSS pixels.",
+            "Create a uniquely named private repository owned by eval. Enter Mobile repository description verification as the description, leaving template and initialization unchecked.",
+            "Inspect the resulting empty repository homepage, scroll through its Quick Guide, and refresh. The entered description is absent from the visible page body.",
+            "As controls, open Repository Settings and the owner profile repository listing to confirm that the description was saved. After a first commit through New File, the normal repository homepage displays it at mobile and desktop widths."
+          ],
+          "reason": "The user explicitly rejected this as intentional empty-repository presentation. The omission is real, but the saved description remains visible in Settings, the owner profile listing and the browser title; after the first commit, the repository homepage displays it normally. Empty repositories use a separate Quick Guide template. This records the human acceptance of that presentation, rather than claiming the original observation is false or that a maintainer explicitly required the omission. Desktop repetition alone does not invalidate the mobile observation."
+        }
+      }
+    ]
+  },
+  {
+    "id": "claim-contradicted-by-controlled-verification",
+    "explanation": "The claimed missing, changed or unusable state is contradicted by a decisive observation or controlled verification of that same claim. Examples include an allegedly lost value remaining intact or an allegedly broken action succeeding under the stated setup. This disproves the checked allegation, not every related workflow or the possibility of a different historical failure.",
+    "verificationGuidance": [
+      "Verify the actual displayed, submitted and persisted values, and the precise action target, instead of repeating the original interpretation.",
+      "Repeat the reported setup and a positive control; record what the decisive observation actually establishes.",
+      "Keep any different trigger, transient state or accepted neighboring defect separate from the contradicted claim."
+    ],
+    "instances": [
+      {
+        "source": "known-invalid.json",
+        "index": 2,
+        "report": {
+          "id": "mo-60m-gitea-6",
+          "name": "Branch protection rule reports success but does not persist required approvals",
+          "summary": "Saving Required approvals as 1 reports that the main branch protection rule was updated, but reopening it shows 0 again; this persisted across a second save attempt.",
+          "expected": "After saving Required approvals as 1, reopening the main branch protection rule should show 1. The UI labels the setting Required approvals and says it limits merges to pull requests with enough approvals; the success banner says the rule was updated.",
+          "actual": "The rule edit form showed 1 before saving and the page displayed “Branch protection for rule \"main\" has been updated.” Reopening Edit showed Required approvals as 0. Repeating the save and reopen produced the same result.",
+          "reproSteps": [
+            "Using the provided authenticated session, start signed in as the admin account at /admin/harbor-handbook.",
+            "Open the top-navigation create menu (+) and choose New Repository. Create a fresh private repository owned by admin named management-branch-approval-qa-6d9c, with Initialize Repository checked so it has a README and main branch.",
+            "In the new repository, open Settings > Branches > Add New Rule.",
+            "Set Protected Branch Name Pattern to main, leave Required approvals at its default 0, then save the rule.",
+            "Click Edit for the main branch protection rule. Change Required approvals to 1 and click Save Rule.",
+            "Observe the success banner stating that branch protection for rule main has been updated. Reopen Edit for main and inspect Required approvals; it shows 0.",
+            "As a falsification check, set Required approvals to 1 and save once more, then reopen Edit for main. The success banner appears again, and Required approvals again shows 0."
+          ],
+          "reason": "User-approved rejection after pinned-source review. The Required approvals form binds required_approvals, the handler assigns the submitted value directly, AllCols persists it, and reopening renders the stored value. The normal successful save of 1 does not silently persist 0 as claimed.",
+          "severity": 3
+        }
+      }
+    ]
+  },
+  {
+    "id": "new-policy-assumed-retroactive",
+    "explanation": "Assuming a tightened allowlist or team-membership rule must invalidate approvals that were valid when given. Review accepts evaluating eligibility at approval time; newly ineligible approvals or approvals carried onto a different protected target require separate analysis.",
+    "verificationGuidance": [
+      "Compare approvals given before and after the rule or membership change.",
+      "Distinguish changing the allowlist from retargeting to a protected branch and verify the applicable approval-time policy."
+    ],
+    "instances": [
+      {
+        "source": "known-invalid.json",
+        "index": 3,
+        "report": {
+          "id": "gitea-approval-allowlist-change-keeps-old-approvals",
+          "name": "Restricting the approval allowlist doesn't stop earlier approvals from counting",
+          "summary": "After a reviewer approves a pull request, restricting the branch's approval allowlist so it excludes that reviewer leaves their earlier approval counting toward required approvals, and the PR can be merged. A new approval from the same reviewer correctly doesn't count.",
+          "expected": "The reported expectation is that approvals count toward required approvals only if the reviewer is on the current approval allowlist when the merge is evaluated.",
+          "actual": "With one required approval, a reviewer approved and then the allowlist was changed to exclude them. Their earlier approval still satisfied the requirement and the PR merged, including with an empty allowlist. A fresh approval from the same reviewer under the restricted rule showed 0 of 1, 'Uncounted approval'.",
+          "reproSteps": [
+            "Protect a branch with 1 required approval, then have a collaborator approve a PR into it.",
+            "Edit the protection rule: enable the approval allowlist without that collaborator and save.",
+            "Return to the PR and check the approval count and whether it can be merged."
+          ],
+          "reason": "User-rejected. Applying a tightened approval allowlist only to approvals given after the change is an acceptable design: an approval that was valid under the rule in force when it was given keeps counting. The upstream fix for re-evaluating approvals on retarget (go-gitea/gitea#38319) covers moving an already-approved PR onto a protected branch, which is a different case.",
+          "matchingGuidance": {
+            "scope": "Reject reports that existing approvals keep counting after the approval allowlist is changed to exclude their reviewers. Do not generalize to approvals surviving a retarget onto a protected branch, or to new approvals from non-allowlisted reviewers being counted."
+          }
+        }
+      },
+      {
+        "source": "known-invalid.json",
+        "index": 9,
+        "report": {
+          "id": "gitea-removed-team-reviewer-approval-still-counts",
+          "name": "Removed reviewer-team member's approval still permits merge",
+          "summary": "The report says that after the only approving reviewer is removed from the branch protection's allowlisted reviewer team, their earlier approval still counts and the pull request can be merged.",
+          "expected": "The reported expectation is that removing the approver from the allowlisted team withdraws their approval's effect, so the pull request isn't mergeable.",
+          "actual": "After the approving user was removed from the Reviewers team (0 members), the pull request still showed as ready and merged using that earlier approval.",
+          "reproSteps": [
+            "Protect a branch to require one approval from a specific team.",
+            "Have a team member approve a pull request.",
+            "Remove that user from the team.",
+            "Check whether the pull request can still be merged."
+          ],
+          "reason": "Intended per the existing ruling: an approval is checked against the allowlist when it's given, and later allowlist or team changes don't retroactively remove it. Same reasoning as the rejected 'Restricting the approval allowlist doesn't stop earlier approvals from counting'; this entry is the reviewer being removed from the team."
+        }
+      }
+    ]
+  },
+  {
+    "id": "visible-input-normalization-mistaken-for-save-corruption",
+    "explanation": "A visible input transformation is attributed to silent save-time corruption even though the field or preview already shows the effective value before submission. Reviewed controls normalize unsupported characters, dates or precision; saving that displayed accepted value is different from secretly replacing a valid submitted value.",
+    "verificationGuidance": [
+      "Record the input and preview immediately before blur, Apply or Save, then compare the submitted and persisted values.",
+      "Check the field-specific normalization contract and a supported-input control.",
+      "Do not use this rejection to dismiss hidden value substitution or corruption that first occurs during a completed save."
+    ],
+    "instances": [
+      {
+        "source": "known-invalid.json",
+        "index": 4,
+        "report": {
+          "id": "gitea-new-repo-name-slash-becomes-hyphen",
+          "name": "Repository creation silently replaces a slash in the entered name with a hyphen",
+          "summary": "The report says that entering a repository name containing a slash on New Repository creates the repository with the slash replaced by a hyphen, without any warning.",
+          "expected": "The reported expectation is that a name with a slash is rejected with a validation message instead of being changed.",
+          "actual": "Entering 'qa-creation/m7x91' as the repository name created eval/qa-creation-m7x91 with no warning.",
+          "reproSteps": [
+            "Open New Repository.",
+            "Enter a repository name containing a slash, such as qa/name, and move focus out of the field.",
+            "Create the repository and check its name."
+          ],
+          "reason": "Intended: Gitea deliberately sanitizes repository names in the browser when the name field loses focus, turning characters such as '/' into '-' (go-gitea/gitea#33986, 'Sanitize repo name for migration and new repo', with a unit test expecting this). The change is visible in the field before submitting, so it isn't silent, and a name that skips the cleanup is still rejected by the server's validation."
+        }
+      }
+    ]
+  },
+  {
+    "id": "number-input-wheel-edit-mistaken-for-save-decrement",
+    "explanation": "Reporting a save-time numeric change when scrolling over a focused number input already stepped the draft before Save. Persisting that displayed submitted value is distinct from the server decrementing or truncating the requested number.",
+    "verificationGuidance": [
+      "Watch the focused input during every scroll and capture its value immediately before Save.",
+      "Repeat scrolling outside the input or using keyboard-only navigation and compare submitted and persisted values."
+    ],
+    "instances": [
+      {
+        "source": "known-invalid.json",
+        "index": 5,
+        "report": {
+          "id": "gitea-branch-rule-zero-approvals-rejected-negative",
+          "name": "Setting Required approvals to 0 is rejected as negative",
+          "summary": "The report says that saving a branch protection rule with Required approvals set to 0 fails with 'Required approvals cannot be negative.'",
+          "expected": "The reported expectation is that 0 required approvals saves successfully.",
+          "actual": "After entering 0 in Required approvals and clicking Save Rule, the editor showed 'Required approvals cannot be negative.' and the rule wasn't saved.",
+          "reproSteps": [
+            "Open a branch protection rule in repository Settings > Branches.",
+            "Enter 0 in Required approvals.",
+            "Click Save Rule."
+          ],
+          "reason": "Not reproduced: 0 required approvals saves fine in repeated attempts on desktop and mobile; only negative values are rejected, as the message says. In the report, the page was scrolled with the mouse wheel while the focused number field still held 0, which steps a number input's value down below 0 before Save Rule was clicked, so the submitted value really was negative."
+        }
+      },
+      {
+        "source": "known-invalid.json",
+        "index": 6,
+        "report": {
+          "id": "gitea-branch-rule-large-approvals-saved-one-less",
+          "name": "Required approvals silently changes 2147483648 to 2147483647 after saving",
+          "summary": "The report says that saving a branch protection rule with Required approvals set to 2147483648 succeeds, but the rule reopens showing 2147483647.",
+          "expected": "The reported expectation is that the rule reopens with the entered 2147483648.",
+          "actual": "After entering 2147483648 in Required approvals and saving, reopening the rule was reported to show 2147483647.",
+          "reproSteps": [
+            "Open a branch protection rule in repository Settings > Branches.",
+            "Enter 2147483648 in Required approvals and click Save Rule.",
+            "Reopen the rule and check the value."
+          ],
+          "reason": "Not reproduced: 2147483648 saves and reopens as 2147483648; the value is stored as a 64-bit integer throughout. In the report, the page was scrolled with the mouse wheel while the focused number field held 2147483648, which steps a number input's value down by one before Save Rule was clicked, so 2147483647 is what was actually submitted."
+        }
+      }
+    ]
+  },
+  {
+    "id": "markup-rendering-assumed-literal-source-roundtrip",
+    "explanation": "A rendered markup surface is expected to mirror literal source text, and supported interpretation or sanitization is mistaken for lost saved content. Reviewed examples include Markdown soft line breaks and restricted HTML handling. This concerns rendering semantics with retained source, not actual stored-text deletion or an established formatting promise being ignored.",
+    "verificationGuidance": [
+      "Compare the saved editor source with the rendered output before claiming content loss.",
+      "Check the supported markup and sanitization rules, including soft versus explicit line breaks.",
+      "Distinguish literal-source expectations from a rendering defect for correctly authored supported markup."
+    ],
+    "instances": [
+      {
+        "source": "known-invalid.json",
+        "index": 7,
+        "report": {
+          "id": "gitea-repo-description-strips-angle-bracket-text",
+          "name": "Saved repository description omits literal <test> on the Code page",
+          "summary": "The report says that a repository description containing text in angle brackets, such as '<test>', is saved intact but the Code page sidebar shows the description without it.",
+          "expected": "The reported expectation is that the Code page shows the description exactly as entered, including '<test>'.",
+          "actual": "With the description 'QA updated description — café & <test>' saved in Settings, the Code page sidebar showed 'QA updated description — café &'.",
+          "reproSteps": [
+            "In repository Settings, set the description to text that includes '<test>' and save.",
+            "Reload Settings and confirm the full text is kept.",
+            "Open the Code page and read the description in the sidebar."
+          ],
+          "reason": "Intended: repository descriptions are rendered as restricted HTML, so tags outside a small allowed list are removed from the display, and '<test>' is treated as an unknown tag (the description sanitizer and its unit test assert this). The saved description is unchanged, as the Settings form shows, and the same text without angle brackets displays in full."
+        }
+      }
+    ]
+  }
+]
