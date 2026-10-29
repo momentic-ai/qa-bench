@@ -1,0 +1,1346 @@
+{
+  "schemaVersion": 2,
+  "sourceGroundTruth": "ground-truth.json",
+  "logicalBugs": [
+    {
+      "id": "gitea-label-color-required-indicator",
+      "explanation": "Required label Color lacks a required indicator.",
+      "rootCause": {
+        "explanation": "The Color input has required but its containing field lacks the required CSS class used for Name, so the mandatory marker is omitted.",
+        "sourceReferences": [
+          {
+            "repository": "go-gitea/gitea",
+            "revision": "99053ce4fa2b45f1bca5837418c0c57f793ca824",
+            "path": "templates/repo/issue/labels/label_edit_modal.tmpl",
+            "line": 51,
+            "url": "https://github.com/go-gitea/gitea/blob/99053ce4fa2b45f1bca5837418c0c57f793ca824/templates/repo/issue/labels/label_edit_modal.tmpl#L51"
+          }
+        ]
+      },
+      "reproductionPaths": [
+        {
+          "id": "gitea-label-color-required-indicator-path-1",
+          "explanation": "The New Label form requires Color to save but only marks Name with a required indicator.",
+          "sourceBugs": [
+            {
+              "index": 0,
+              "id": null,
+              "name": "New Label form does not mark Color as required"
+            }
+          ],
+          "expected": "The Color label should show that Color is required, like the Name label.",
+          "actual": "A new label with a name and blank Color stays in the dialog when Save is clicked and focuses the unmarked Color field.",
+          "reproSteps": [
+            "Sign in and open a repository Labels page.",
+            "Select New Label and enter a unique name, leaving Color blank.",
+            "Click Save; observe that Color is required despite its label lacking a required indicator."
+          ],
+          "severity": 1
+        }
+      ]
+    },
+    {
+      "id": "gitea-dashboard-label-propagation",
+      "explanation": "Dashboard Open/Closed links discard selected labels.",
+      "rootCause": {
+        "explanation": "The dashboard state URLs use .SelectLabels, but the dashboard request handler does not populate that view field from the active labels query; the selected label therefore disappears from generated state links.",
+        "sourceReferences": [
+          {
+            "repository": "go-gitea/gitea",
+            "revision": "99053ce4fa2b45f1bca5837418c0c57f793ca824",
+            "path": "templates/user/dashboard/issues.tmpl",
+            "line": 7,
+            "url": "https://github.com/go-gitea/gitea/blob/99053ce4fa2b45f1bca5837418c0c57f793ca824/templates/user/dashboard/issues.tmpl#L7"
+          },
+          {
+            "repository": "go-gitea/gitea",
+            "revision": "99053ce4fa2b45f1bca5837418c0c57f793ca824",
+            "path": "routers/web/user/home.go",
+            "line": 353,
+            "url": "https://github.com/go-gitea/gitea/blob/99053ce4fa2b45f1bca5837418c0c57f793ca824/routers/web/user/home.go#L353"
+          }
+        ]
+      },
+      "reproductionPaths": [
+        {
+          "id": "gitea-dashboard-label-propagation-path-1",
+          "explanation": "Following an organization label's issue-count link correctly filters the global Issues page, but the Open/Closed tabs discard labels and display unrelated issues.",
+          "sourceBugs": [
+            {
+              "index": 1,
+              "id": "gitea-label-filter-lost-on-state-change",
+              "name": "Issues state tabs drop the selected organization label filter"
+            }
+          ],
+          "expected": "Keep the selected organization label filter when switching between Open and Closed; a label with no closed issues should show no closed results.",
+          "actual": "org/first's count opens /issues?labels=27 showing 1 Open and 0 Closed. Clicking 0 Closed navigates to /issues?type=your_repositories&sort=recentupdate&state=closed, drops labels=27, changes counts to 5 Open/1 Closed, and displays unrelated harbor-handbook#3. Also reproduced earlier with org-shared-renamed (label 4).",
+          "reproSteps": [
+            "Create a disposable organization, an organization label, and an organization-owned repository with an open issue carrying that label. Keep a separate closed issue without that label; the recorded case used qa-labels-org and org/first.",
+            "Open the organization Labels settings and follow that label’s open-issue count link to the global Issues page.",
+            "Confirm the URL includes labels=<id>, the labeled open issue appears, and the label has no closed results.",
+            "Click Closed. Observe that labels=<id> disappears and unrelated closed issues appear."
+          ],
+          "severity": 3,
+          "matchingGuidance": [
+            {
+              "sourceBugIndex": 1,
+              "guidance": {
+                "scope": "Credit losing the selected label filter when switching issue state from an organization-label count view. Other dropped filters and text-search triggers are separate claims."
+              }
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "id": "gitea-label-usage-link-issue-only",
+      "explanation": "A combined issue/PR usage count links to an issue-only list.",
+      "rootCause": {
+        "explanation": "label_list renders NumOpenIssues/NumOpenRepoIssues, which include PRs, while always linking to /issues?labels= rather than a combined result or separate PR list. Organization label links have the same mismatch.",
+        "sourceReferences": [
+          {
+            "repository": "go-gitea/gitea",
+            "revision": "99053ce4fa2b45f1bca5837418c0c57f793ca824",
+            "path": "templates/repo/issue/labels/label_list.tmpl",
+            "line": 40,
+            "url": "https://github.com/go-gitea/gitea/blob/99053ce4fa2b45f1bca5837418c0c57f793ca824/templates/repo/issue/labels/label_list.tmpl#L40"
+          }
+        ]
+      },
+      "reproductionPaths": [
+        {
+          "id": "gitea-label-usage-link-issue-only-path-1",
+          "explanation": "A repository label’s open-usage count includes pull requests, but its link opens an issue-only list. When only an open PR uses the label, clicking the count opens an empty result.",
+          "sourceBugs": [
+            {
+              "index": 2,
+              "id": "gitea-pass2-001",
+              "name": "Repository PR label count opens an empty Issues list"
+            }
+          ],
+          "expected": "The clickable open issues/pull requests count should provide a way to view the counted open PRs as well as issues, so a count of one for an open PR does not lead to an empty issue-only list.",
+          "actual": "A new label assigned only to open PR #6 displays “1 open issues/pull requests.” Clicking that count opens /eval/harbor-handbook/issues?labels=25 with 0 Open, 0 Closed and No results, while the labelled PR remains visible in Pull Requests.",
+          "reproSteps": [
+            "Sign in as eval, an administrator, and open a writable repository with Issues and Pull Requests enabled. Use or create an open PR.",
+            "Open the repository Labels page and create a unique label that is not assigned to any issue or other PR.",
+            "Open the PR and assign that label using its sidebar Labels control. Confirm the PR remains open and visibly carries the label.",
+            "Return to the repository Labels page and confirm the label reports 1 open issues/pull requests.",
+            "Click that count and observe navigation to /<owner>/<repository>/issues?labels=<label-id> with no matching issues. Return to Pull Requests and confirm the labelled PR is still open."
+          ],
+          "severity": 3
+        },
+        {
+          "id": "gitea-label-usage-link-issue-only-path-2",
+          "explanation": "On an organization's Settings > Labels page, a label used only on an open pull request shows '1 open issues/pull requests', but the count's link opens the repository Issues list filtered by that label, which excludes pull requests and shows No results.",
+          "sourceBugs": [
+            {
+              "index": 19,
+              "id": "gitea-org-label-pr-count-opens-empty-issues",
+              "name": "Organization label's pull request count opens an empty Issues list"
+            }
+          ],
+          "expected": "The count link for an organization label shows the open pull request it counts.",
+          "actual": "Organization label qa-pr-inherited showed '1 open issues/pull requests'. Clicking it opened /issues?labels=78 with 0 Open and No results; the labeled pull request wasn't listed.",
+          "reproSteps": [
+            "In an organization's Settings > Labels, create a label.",
+            "In one of the organization's repositories, open a pull request and add that label to it.",
+            "Back on the organization's Settings > Labels page, click the label's '1 open issues/pull requests' count.",
+            "Check whether the labeled pull request is listed."
+          ],
+          "severity": 3,
+          "matchingGuidance": [
+            {
+              "sourceBugIndex": 19,
+              "guidance": {
+                "relatedReference": {
+                  "name": "Repository PR label count opens an empty Issues list",
+                  "distinction": "Same count link that only opens the Issues list, but that entry is a repository label on the repository Labels page; this entry is an organization label on the organization's Settings > Labels page."
+                }
+              }
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "id": "gitea-label-count-plural",
+      "explanation": "The label list heading always uses the plural noun.",
+      "rootCause": {
+        "explanation": "Both organization and repository label lists call the same English translation %d labels without a singular variant.",
+        "sourceReferences": [
+          {
+            "repository": "go-gitea/gitea",
+            "revision": "99053ce4fa2b45f1bca5837418c0c57f793ca824",
+            "path": "options/locale/locale_en-US.ini",
+            "line": 1663,
+            "url": "https://github.com/go-gitea/gitea/blob/99053ce4fa2b45f1bca5837418c0c57f793ca824/options/locale/locale_en-US.ini#L1663"
+          }
+        ]
+      },
+      "reproductionPaths": [
+        {
+          "id": "gitea-label-count-plural-path-1",
+          "explanation": "Organization label count uses the plural “labels” when exactly one label is present.",
+          "sourceBugs": [
+            {
+              "index": 3,
+              "id": "mo-60m-gitea-14",
+              "name": "Organization label count uses the plural “labels” when exactly one label is present."
+            }
+          ],
+          "expected": "The count uses singular wording for one item, such as “1 label.”",
+          "actual": "The label list displays “1 labels” when it contains exactly one label.",
+          "reproSteps": [
+            "/",
+            "Use a fresh private test organization and a single label; do not modify seeded or other users’ data.",
+            "Sign in as an administrator and create a fresh private organization with a unique name beginning `management-orglabel-`.",
+            "Open the organization’s Settings > Labels page and create one label.",
+            "Inspect the label-list count above the row."
+          ],
+          "severity": 1
+        },
+        {
+          "id": "gitea-label-count-plural-path-2",
+          "explanation": "When a repository has exactly one label, the Labels list heading reads \"1 labels\".",
+          "sourceBugs": [
+            {
+              "index": 29,
+              "id": "gitea-labels-single-count-plural",
+              "name": "Labels list heading says \"1 labels\" for a single label"
+            }
+          ],
+          "expected": "The heading reads \"1 label\".",
+          "actual": "The heading reads \"1 labels\".",
+          "reproSteps": [
+            "Open a repository's Labels page.",
+            "Delete labels until exactly one remains (or create a single label in a repository with none).",
+            "Read the list heading."
+          ],
+          "severity": 1
+        }
+      ]
+    },
+    {
+      "id": "gitea-label-exclusive-order-invalid-integer",
+      "explanation": "Decimal-looking exclusive sort input silently converts to zero.",
+      "rootCause": {
+        "explanation": "The modal accepts a number input string such as 1.0, while CreateLabelForm decodes ExclusiveOrder as int. The failed conversion leaves zero without a form validation error; UpdateLabel persists it.",
+        "sourceReferences": [
+          {
+            "repository": "go-gitea/gitea",
+            "revision": "99053ce4fa2b45f1bca5837418c0c57f793ca824",
+            "path": "templates/repo/issue/labels/label_edit_modal.tmpl",
+            "line": 32,
+            "url": "https://github.com/go-gitea/gitea/blob/99053ce4fa2b45f1bca5837418c0c57f793ca824/templates/repo/issue/labels/label_edit_modal.tmpl#L32"
+          },
+          {
+            "repository": "go-gitea/gitea",
+            "revision": "99053ce4fa2b45f1bca5837418c0c57f793ca824",
+            "path": "services/forms/repo_form.go",
+            "line": 508,
+            "url": "https://github.com/go-gitea/gitea/blob/99053ce4fa2b45f1bca5837418c0c57f793ca824/services/forms/repo_form.go#L508"
+          }
+        ]
+      },
+      "reproductionPaths": [
+        {
+          "id": "gitea-label-exclusive-order-invalid-integer-path-1",
+          "explanation": "Saving Sort Order \"1.0\" on an exclusive label closes the Edit dialog with no error, and the previously saved order of 1000 is reset to 0. The 1000 badge also disappears from the label list.",
+          "sourceBugs": [
+            {
+              "index": 4,
+              "id": "gitea-label-sort-order-numeric-notation-zero",
+              "name": "Exclusive label Sort Order silently resets to zero when saving 1.0"
+            }
+          ],
+          "expected": "The value is saved as 1, or the form shows a clear validation error and keeps the prior value of 1000.",
+          "actual": "The Edit dialog closes without an error after saving 1.0. Refreshing and reopening Edit shows Sort Order 0 instead of the requested 1 or the previous 1000, and the 1000 badge disappears. Saving the integer 1000 directly works.",
+          "reproSteps": [
+            "Sign in as eval and open repository Labels in an initialized repository. Use an existing exclusive scoped label from the Advanced set, such as Reviewed/Duplicate, or create an equivalent exclusive label.",
+            "Edit the label, keep Exclusive checked, set Sort Order to 1000 and save. Reopen Edit to confirm 1000 persisted.",
+            "Replace only Sort Order with 1.0 and click Save. Observe that the dialog closes without an error.",
+            "Refresh the label list and reopen Edit. Observe Sort Order 0 and the missing1000 badge."
+          ],
+          "severity": 3
+        }
+      ]
+    },
+    {
+      "id": "gitea-label-list-fixed-columns-overflow",
+      "explanation": "Fixed label-list columns do not contain long badges.",
+      "rootCause": {
+        "explanation": "The flex row assigns 33% widths to title, usage and operations without wrapping or clipping badge text. Labels use white-space:nowrap, so long names paint across neighboring columns at narrow widths.",
+        "sourceReferences": [
+          {
+            "repository": "go-gitea/gitea",
+            "revision": "99053ce4fa2b45f1bca5837418c0c57f793ca824",
+            "path": "web_src/css/repo/issue-label.css",
+            "line": 23,
+            "url": "https://github.com/go-gitea/gitea/blob/99053ce4fa2b45f1bca5837418c0c57f793ca824/web_src/css/repo/issue-label.css#L23"
+          },
+          {
+            "repository": "go-gitea/gitea",
+            "revision": "99053ce4fa2b45f1bca5837418c0c57f793ca824",
+            "path": "web_src/css/modules/label.css",
+            "line": 18,
+            "url": "https://github.com/go-gitea/gitea/blob/99053ce4fa2b45f1bca5837418c0c57f793ca824/web_src/css/modules/label.css#L18"
+          }
+        ]
+      },
+      "reproductionPaths": [
+        {
+          "id": "gitea-label-list-fixed-columns-overflow-path-1",
+          "explanation": "On the Issues > Labels page at 390×844, long label badges collide with adjacent row controls and label metadata runs together, making the label information difficult to read.",
+          "sourceBugs": [
+            {
+              "index": 5,
+              "id": "mo-60m-gitea-2",
+              "name": "Mobile label names overlap row metadata at 390px viewport"
+            }
+          ],
+          "expected": "At 390×844, each long label name, its description and open-issues/pull-requests count, and the row actions should remain distinct and readable.",
+          "actual": "The two long label badges crowd into/under the adjacent Edit/Delete controls. The description line abuts the open-issues/pull-requests metadata and that text wraps, so the row information is not cleanly separated. The same layout remained after waiting six seconds and taking a fresh screenshot.",
+          "reproSteps": [
+            "Using the provided authenticated admin account/session (authentication was already established; no login flow was tested), open /admin/harbor-handbook.",
+            "Use the top-right menu, choose Create > New Repository, enter issues-meta-repo-847291, select Make repository private, and create it.",
+            "Open the new repository’s Issues tab, then Labels. The observed labels URL is /admin/issues-meta-repo-847291/labels.",
+            "Choose New Label and create issues-meta-repo-label-release-readiness-documentation-and-review with description “Short release note.” and color #c320f6.",
+            "Create issues-meta-repo-label-engineering-checklist-and-contributor-guidance with description “Short contributor note.” and color #c320f6.",
+            "At a 390×844 CSS-pixel viewport, inspect the two-row label list. Wait for the page to settle and observe that the long names crowd adjacent row controls and the description/count metadata is not cleanly separated."
+          ],
+          "severity": 1,
+          "matchingGuidance": [
+            {
+              "sourceBugIndex": 5,
+              "guidance": {
+                "acceptanceScope": "Accepted as a valid reference by user instruction; source prerequisites and remaining evidence gaps are retained below.",
+                "prerequisites": [
+                  "Long label content wider than its33% column at specified viewport."
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "id": "gitea-label-list-fixed-columns-overflow-path-2",
+          "explanation": "On an organization's Settings > Labels page at tablet width (about 768 px), a long label name's badge runs into the open-issue count column, and the count icon is drawn over the end of the name.",
+          "sourceBugs": [
+            {
+              "index": 20,
+              "id": "gitea-org-label-name-overlaps-count-tablet",
+              "name": "Organization label names overlap their open-issue count at tablet width"
+            }
+          ],
+          "expected": "At tablet width, each label's name and its open-issue count stay separate and readable.",
+          "actual": "At 768 x 900, the label or-responsive-0720-renamed extended into the open-issue count column, and the count icon covered its last characters.",
+          "reproSteps": [
+            "In an organization's Settings > Labels, create a label with a long name (about 26 characters).",
+            "View the labels list at about 768 px wide.",
+            "Check whether the label badge overlaps the open-issue count."
+          ],
+          "severity": 1,
+          "matchingGuidance": [
+            {
+              "sourceBugIndex": 20,
+              "guidance": {
+                "relatedReference": {
+                  "name": "Mobile label names overlap row metadata at 390px viewport",
+                  "distinction": "Same label row layout, but that entry is phone width; this entry is an organization's Settings > Labels at tablet width."
+                }
+              }
+            }
+          ]
+        },
+        {
+          "id": "gitea-label-list-fixed-columns-overflow-path-3",
+          "explanation": "On an organization's Settings > Labels at a phone width (390px), a long label name (up to the 50-character limit) draws its badge across the issue count and the Edit and Delete controls, making their text and icons hard to read.",
+          "sourceBugs": [
+            {
+              "index": 30,
+              "id": "gitea-org-label-long-name-covers-actions-mobile",
+              "name": "Long organization label names cover the issue count and Edit/Delete controls on mobile"
+            }
+          ],
+          "expected": "Long label names wrap or truncate within their column, so the count and the Edit and Delete controls stay readable.",
+          "actual": "At 390px, a 50-character label's badge extended from the left edge across the count column and the Edit and Delete actions, leaving their text and icons illegible over the badge. The controls still opened their dialogs. Short label names on the same page rendered cleanly.",
+          "reproSteps": [
+            "Open an organization's Settings > Labels.",
+            "Create or rename a label to a long name (about 50 characters).",
+            "View the page at a 390px-wide viewport.",
+            "Check whether the label badge covers the issue count and the Edit and Delete controls."
+          ],
+          "severity": 1,
+          "matchingGuidance": [
+            {
+              "sourceBugIndex": 30,
+              "guidance": {
+                "relatedReference": {
+                  "id": "mo-60m-gitea-2",
+                  "distinction": "Same label-list layout overlap at 390px. That entry is a repository's Labels page; this entry is an organization's Settings > Labels."
+                },
+                "otherRelatedReference": {
+                  "id": "gitea-org-label-name-overlaps-count-tablet",
+                  "distinction": "Same organization page at tablet width, where only the count is covered; at phone width the badge also covers Edit and Delete."
+                },
+                "scope": "Organization Settings > Labels at phone widths: long label names overlapping the issue count and Edit/Delete controls."
+              }
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "id": "gitea-label-usage-plural",
+      "explanation": "The one-issue usage count uses plural wording.",
+      "rootCause": {
+        "explanation": "The shared label_open_issues translation is %d open issues/pull requests regardless of count.",
+        "sourceReferences": [
+          {
+            "repository": "go-gitea/gitea",
+            "revision": "99053ce4fa2b45f1bca5837418c0c57f793ca824",
+            "path": "options/locale/locale_en-US.ini",
+            "line": 1664,
+            "url": "https://github.com/go-gitea/gitea/blob/99053ce4fa2b45f1bca5837418c0c57f793ca824/options/locale/locale_en-US.ini#L1664"
+          }
+        ]
+      },
+      "reproductionPaths": [
+        {
+          "id": "gitea-label-usage-plural-path-1",
+          "explanation": "An organization label assigned to exactly one open issue displays \"1 open issues/pull requests\" in its usage count.",
+          "sourceBugs": [
+            {
+              "index": 6,
+              "id": "gitea-novel-001",
+              "name": "Label usage count uses plural wording for one issue"
+            }
+          ],
+          "expected": "A label usage count of one uses singular wording, such as \"1 open issue/pull request\".",
+          "actual": "The label row displays \"1 open issues/pull requests\" even though exactly one open issue uses the label.",
+          "reproSteps": [
+            "Use the English locale and sign in as an account allowed to create organizations, repositories, labels, and issues. The original observation used a 1440×1000 viewport.",
+            "Through the UI, create a disposable organization and an initialized repository owned by that organization.",
+            "Open the organization Settings > Labels page and create one uniquely named label.",
+            "Create exactly one open issue in the disposable repository and assign the organization label from the issue Labels sidebar.",
+            "Return to organization Settings > Labels and inspect that label’s usage-count text. It displays \"1 open issues/pull requests\"."
+          ],
+          "severity": 1
+        }
+      ]
+    },
+    {
+      "id": "gitea-archived-label-operation-shrink",
+      "explanation": "The Archived badge shrinks into label operation icons.",
+      "rootCause": {
+        "explanation": "The operation column is fixed at 33% and its flex children include the archived label and edit/delete controls without a responsive layout or a nonshrinking badge. The label allows min-width:0 while its text stays nowrap, so text overpaints the controls.",
+        "sourceReferences": [
+          {
+            "repository": "go-gitea/gitea",
+            "revision": "99053ce4fa2b45f1bca5837418c0c57f793ca824",
+            "path": "templates/repo/issue/labels/label_list.tmpl",
+            "line": 45,
+            "url": "https://github.com/go-gitea/gitea/blob/99053ce4fa2b45f1bca5837418c0c57f793ca824/templates/repo/issue/labels/label_list.tmpl#L45"
+          },
+          {
+            "repository": "go-gitea/gitea",
+            "revision": "99053ce4fa2b45f1bca5837418c0c57f793ca824",
+            "path": "web_src/css/repo/issue-label.css",
+            "line": 31,
+            "url": "https://github.com/go-gitea/gitea/blob/99053ce4fa2b45f1bca5837418c0c57f793ca824/web_src/css/repo/issue-label.css#L31"
+          },
+          {
+            "repository": "go-gitea/gitea",
+            "revision": "99053ce4fa2b45f1bca5837418c0c57f793ca824",
+            "path": "web_src/css/modules/label.css",
+            "line": 8,
+            "url": "https://github.com/go-gitea/gitea/blob/99053ce4fa2b45f1bca5837418c0c57f793ca824/web_src/css/modules/label.css#L8"
+          }
+        ]
+      },
+      "reproductionPaths": [
+        {
+          "id": "gitea-archived-label-operation-shrink-path-1",
+          "explanation": "Archiving even a short label causes its Archived status and Edit icon to overlap in the mobile Labels list.",
+          "sourceBugs": [
+            {
+              "index": 7,
+              "id": "gitea-archived-label-badge-overlaps-edit",
+              "name": "Archived label status overlaps the Edit icon on mobile"
+            }
+          ],
+          "expected": "Reserve sufficient room for Archived status and Edit/Delete actions, or stack them, so each remains legible.",
+          "actual": "At 375px width the Archived badge for qa-label-beta runs underneath the Edit pencil icon and its text is obscured. The same overlap is visible at 320px. This occurs with a short label name independently of the long-name overflow.",
+          "reproSteps": [
+            "Open /eval/harbor-handbook/labels as eval.",
+            "Create a short label such as qa-label-beta, or edit the existing label with Updated description.",
+            "Enable Archive Label in Edit Label and Save.",
+            "Resize the viewport to 375×812 and scroll to the archived row.",
+            "Observe the Archived status badge overlaps the Edit pencil icon."
+          ],
+          "severity": 1,
+          "matchingGuidance": [
+            {
+              "sourceBugIndex": 7,
+              "guidance": {
+                "scope": "Credit the visible Archived badge/Edit-icon overlap with an ordinary short label name. This is separate from long-label-name overflow; it does not claim Edit is inoperable."
+              }
+            }
+          ]
+        },
+        {
+          "id": "gitea-archived-label-operation-shrink-path-2",
+          "explanation": "At phone width on an organization’s Settings > Labels page, an archived label’s “Archived” badge is squeezed narrower than its text, which runs under the row’s Edit pencil.",
+          "sourceBugs": [
+            {
+              "index": 12,
+              "id": "gitea-org-archived-label-badge-overlaps-edit-mobile",
+              "name": "Archived organization label status overlaps the Edit icon on mobile"
+            }
+          ],
+          "expected": "On organization Settings > Labels at 390px, the Archived badge text and the Edit/Delete icons have separate, non-overlapping space.",
+          "actual": "At 390×844 on organization Settings > Labels with an archived label, the Archived badge was about 38–40px wide while its text needed about 48px; the text extended to about x=300 while the Edit pencil started at x=291, roughly 9px of overlap. Unarchived rows and desktop widths were clean.",
+          "reproSteps": [
+            "Sign in as an organization owner, open the organization Settings > Labels, create a label and archive it.",
+            "Set the viewport to 390×844 and reload organization Settings > Labels.",
+            "Look at the archived label row and observe the “Archived” text running under the Edit pencil."
+          ],
+          "severity": 1,
+          "matchingGuidance": [
+            {
+              "sourceBugIndex": 12,
+              "guidance": {
+                "relatedReference": {
+                  "id": "gitea-archived-label-badge-overlaps-edit",
+                  "distinction": "Same label list template on a different page. That entry is a repository’s Labels page; this entry is an organization’s Settings > Labels page."
+                }
+              }
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "id": "gitea-label-name-whitespace-unvalidated",
+      "explanation": "Label creation and editing accept invisible whitespace names.",
+      "rootCause": {
+        "explanation": "CreateLabelForm checks Required but does not trim or reject a whitespace-only Title; handlers copy form.Title directly and NewLabel/UpdateLabel only normalize color.",
+        "sourceReferences": [
+          {
+            "repository": "go-gitea/gitea",
+            "revision": "99053ce4fa2b45f1bca5837418c0c57f793ca824",
+            "path": "services/forms/repo_form.go",
+            "line": 504,
+            "url": "https://github.com/go-gitea/gitea/blob/99053ce4fa2b45f1bca5837418c0c57f793ca824/services/forms/repo_form.go#L504"
+          },
+          {
+            "repository": "go-gitea/gitea",
+            "revision": "99053ce4fa2b45f1bca5837418c0c57f793ca824",
+            "path": "routers/web/repo/issue_label.go",
+            "line": 115,
+            "url": "https://github.com/go-gitea/gitea/blob/99053ce4fa2b45f1bca5837418c0c57f793ca824/routers/web/repo/issue_label.go#L115"
+          },
+          {
+            "repository": "go-gitea/gitea",
+            "revision": "99053ce4fa2b45f1bca5837418c0c57f793ca824",
+            "path": "models/issues/label.go",
+            "line": 200,
+            "url": "https://github.com/go-gitea/gitea/blob/99053ce4fa2b45f1bca5837418c0c57f793ca824/models/issues/label.go#L200"
+          }
+        ]
+      },
+      "reproductionPaths": [
+        {
+          "id": "gitea-label-name-whitespace-unvalidated-path-1",
+          "explanation": "A required label name containing only spaces can be saved. The resulting row has no visible name.",
+          "sourceBugs": [
+            {
+              "index": 8,
+              "id": "gitea-novel-016",
+              "name": "Labels accept whitespace-only names"
+            }
+          ],
+          "expected": "A whitespace-only value in the required Name field should be rejected, leaving the label unsaved and prompting the user to enter a visible name.",
+          "actual": "Saving five spaces for Name, three spaces for Description, and #112233 closed the dialog and increased the list to 1 label. The resulting row displayed only a small color mark and no visible name.",
+          "reproSteps": [
+            "Sign in with label-management permission and create a fresh private repository through the UI; initialize its main branch.",
+            "Open Issues > Labels in that repository and choose New Label.",
+            "Enter five ASCII spaces in Name, three spaces in Description, and #112233 as the color; click Save.",
+            "Observe that the dialog closes and a saved label row appears with its color mark but no visible name. Refresh or wait for the settled list to confirm persistence."
+          ],
+          "severity": 1
+        },
+        {
+          "id": "gitea-label-name-whitespace-unvalidated-path-2",
+          "explanation": "On an organization's Settings > Labels page, a label name made only of spaces is accepted, creating (or renaming to) a label with no visible name. The empty name is blocked, but spaces aren't trimmed.",
+          "sourceBugs": [
+            {
+              "index": 21,
+              "id": "gitea-org-labels-accept-whitespace-names",
+              "name": "Organization labels accept whitespace-only names"
+            }
+          ],
+          "expected": "An organization label name made only of whitespace is rejected like an empty name.",
+          "actual": "Creating an organization label named with three spaces saved a nameless label chip, which persisted after reload; Edit Label reopened it with the spaces. Applied to an issue, it showed as a blank chip and a blank row in the Labels picker.",
+          "reproSteps": [
+            "Open an organization's Settings > Labels and click New Label.",
+            "Enter only spaces as the name, pick a color, and save.",
+            "Check the label list after a reload.",
+            "Optionally edit an existing organization label's name to only spaces and save."
+          ],
+          "severity": 1,
+          "matchingGuidance": [
+            {
+              "sourceBugIndex": 21,
+              "guidance": {
+                "relatedReference": {
+                  "name": "Labels accept whitespace-only names",
+                  "distinction": "Same missing whitespace check, but that entry is a repository's Labels page; this entry is an organization's Settings > Labels page."
+                }
+              }
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "id": "gitea-label-picker-exclusive-order-ignored",
+      "explanation": "The new-issue label picker ignores saved exclusive ordering.",
+      "rootCause": {
+        "explanation": "retrieveLabelsData requests GetLabelsByRepoID with an empty sort type, yielding default name ordering rather than ExclusiveOrder ordering. The sidebar/new-issue picker consumes that AllLabels sequence.",
+        "sourceReferences": [
+          {
+            "repository": "go-gitea/gitea",
+            "revision": "99053ce4fa2b45f1bca5837418c0c57f793ca824",
+            "path": "routers/web/repo/issue_page_meta.go",
+            "line": 432,
+            "url": "https://github.com/go-gitea/gitea/blob/99053ce4fa2b45f1bca5837418c0c57f793ca824/routers/web/repo/issue_page_meta.go#L432"
+          },
+          {
+            "repository": "go-gitea/gitea",
+            "revision": "99053ce4fa2b45f1bca5837418c0c57f793ca824",
+            "path": "models/issues/label.go",
+            "line": 393,
+            "url": "https://github.com/go-gitea/gitea/blob/99053ce4fa2b45f1bca5837418c0c57f793ca824/models/issues/label.go#L393"
+          }
+        ]
+      },
+      "reproductionPaths": [
+        {
+          "id": "gitea-label-picker-exclusive-order-ignored-path-1",
+          "explanation": "When labels share a scope, the new-issue Labels selector lists them alphabetically even when their saved numeric Sort Order values require the reverse order.",
+          "sourceBugs": [
+            {
+              "index": 9,
+              "id": "gitea-exclusive-label-sort-order-ignored",
+              "name": "Exclusive label Sort Order is ignored in the new-issue Labels selector"
+            }
+          ],
+          "expected": "Within an exclusive-label scope, order the choices by their saved numeric Sort Order so org/second (20) precedes org/first (30).",
+          "actual": "After setting org/first to 30 and org/second to 20, the new-issue Labels menu displays org/first before org/second. The saved values remain visible in the label editor and next to the menu choices.",
+          "reproSteps": [
+            "Open /org/qa-labels-org/settings/labels as eval.",
+            "Create org/first and org/second, enable Exclusive for both, and set valid colors.",
+            "Edit org/first and set Sort Order to 30; save. Edit org/second and set Sort Order to 20; save.",
+            "Open /qa-labels-org/labels-sandbox/issues/new and expand Labels.",
+            "Observe org/first 30 appears before org/second 20 despite the saved numeric order."
+          ],
+          "severity": 1
+        }
+      ]
+    },
+    {
+      "id": "gitea-label-rename-exclusive-assignments-unreconciled",
+      "explanation": "Renaming into an exclusive scope does not reconcile assigned labels.",
+      "rootCause": {
+        "explanation": "UpdateLabel changes name/exclusive metadata only. It does not revisit existing IssueLabel rows to enforce the scope against other labels already assigned to those issues; exclusive conflict removal occurs during assignment instead.",
+        "sourceReferences": [
+          {
+            "repository": "go-gitea/gitea",
+            "revision": "99053ce4fa2b45f1bca5837418c0c57f793ca824",
+            "path": "models/issues/label.go",
+            "line": 240,
+            "url": "https://github.com/go-gitea/gitea/blob/99053ce4fa2b45f1bca5837418c0c57f793ca824/models/issues/label.go#L240"
+          }
+        ]
+      },
+      "reproductionPaths": [
+        {
+          "id": "gitea-label-rename-exclusive-assignments-unreconciled-path-1",
+          "explanation": "Saving a label edit never reconciles existing issue assignments, so renaming an assigned exclusive label into a scope the issue already uses leaves the issue with two labels from one exclusive scope, which the docs say scoped labels prevent.",
+          "sourceBugs": [
+            {
+              "index": 10,
+              "id": "gitea-exclusive-label-rename-keeps-conflicting-labels",
+              "name": "Renaming a label into an exclusive scope leaves two labels from that scope on an issue"
+            }
+          ],
+          "expected": "An issue or pull request never carries two labels from the same exclusive scope: the rename is refused, warned about, or the conflicting assignment is removed.",
+          "actual": "An issue has exclusive Priority/High and workflow/test. Renaming workflow/test to Priority/Test with Exclusive checked saves with no warning, and the issue now shows both Priority/High and Priority/Test, with the Labels page counting both. Adding an unrelated label to the issue leaves both in place; the conflict persists until a label from that scope is attached or the issue's labels are replaced.",
+          "reproSteps": [
+            "Create exclusive labels Priority/High and workflow/test.",
+            "Add both labels to an issue.",
+            "In the repository's Labels page, edit workflow/test, rename it to Priority/Test, keep Exclusive checked, and save.",
+            "Open the issue and observe it shows both Priority/High and Priority/Test."
+          ],
+          "severity": 3
+        }
+      ]
+    },
+    {
+      "id": "gitea-label-filter-long-label-width",
+      "explanation": "The label filter menu can exceed and escape the viewport.",
+      "rootCause": {
+        "explanation": "Label filter options render nowrap badges in a dropdown with content-driven width and no viewport-width cap. Positioning the overwide menu cannot keep its search/options on screen when a valid long label determines the intrinsic width.",
+        "sourceReferences": [
+          {
+            "repository": "go-gitea/gitea",
+            "revision": "99053ce4fa2b45f1bca5837418c0c57f793ca824",
+            "path": "templates/repo/issue/filter_item_label.tmpl",
+            "line": 36,
+            "url": "https://github.com/go-gitea/gitea/blob/99053ce4fa2b45f1bca5837418c0c57f793ca824/templates/repo/issue/filter_item_label.tmpl#L36"
+          },
+          {
+            "repository": "go-gitea/gitea",
+            "revision": "99053ce4fa2b45f1bca5837418c0c57f793ca824",
+            "path": "web_src/css/modules/label.css",
+            "line": 18,
+            "url": "https://github.com/go-gitea/gitea/blob/99053ce4fa2b45f1bca5837418c0c57f793ca824/web_src/css/modules/label.css#L18"
+          }
+        ]
+      },
+      "reproductionPaths": [
+        {
+          "id": "gitea-label-filter-long-label-width-path-1",
+          "explanation": "At phone width, once a repository has a valid long label (up to the 50-character limit), the issue list Label filter dropdown opens leftward and mostly off screen, so its search box, label options and Show archived labels control cannot be reached or scrolled into view.",
+          "sourceBugs": [
+            {
+              "index": 11,
+              "id": "gitea-label-filter-menu-offscreen-mobile",
+              "name": "Long label pushes the mobile Label filter menu off the left edge"
+            }
+          ],
+          "expected": "The Label filter menu stays within the viewport at 390px, constraining or wrapping long label names, and its search, options and Show archived labels control remain reachable.",
+          "actual": "With a 50-character label present, opening the Label filter on the repository Issues list at 390px placed the menu at x=-319 with width 403: the search input (x=-307) and the Show archived labels checkbox (x=-308) were off the left edge, and the page could not scroll horizontally to reveal them. With only short labels, or at 412px and wider, the menu opened inside the viewport.",
+          "reproSteps": [
+            "Sign in as eval and create a repository label with a 50-character unbroken name.",
+            "Set the viewport to 390×844 and open the repository Issues list.",
+            "Open the Label filter dropdown.",
+            "Observe the menu opening mostly off the left edge, with its search box and Show archived labels control unreachable."
+          ],
+          "severity": 3,
+          "matchingGuidance": [
+            {
+              "sourceBugIndex": 11,
+              "guidance": {
+                "relatedReference": {
+                  "id": "mo-60m-gitea-2",
+                  "distinction": "mo-60m-gitea-2 is long label names overlapping row metadata on the Labels management page. This entry is the issue list Label filter dropdown being positioned off screen at mobile width."
+                }
+              }
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "id": "gitea-sidebar-label-nowrap-overflow",
+      "explanation": "Assigned label badges can overflow the sidebar.",
+      "rootCause": {
+        "explanation": "RenderLabel emits a ui label with nowrap text and no truncation/wrapping constraint. The assigned-label list places it in the narrow sidebar without constraining its painted text to that width.",
+        "sourceReferences": [
+          {
+            "repository": "go-gitea/gitea",
+            "revision": "99053ce4fa2b45f1bca5837418c0c57f793ca824",
+            "path": "modules/templates/util_render.go",
+            "line": 126,
+            "url": "https://github.com/go-gitea/gitea/blob/99053ce4fa2b45f1bca5837418c0c57f793ca824/modules/templates/util_render.go#L126"
+          },
+          {
+            "repository": "go-gitea/gitea",
+            "revision": "99053ce4fa2b45f1bca5837418c0c57f793ca824",
+            "path": "web_src/css/modules/label.css",
+            "line": 18,
+            "url": "https://github.com/go-gitea/gitea/blob/99053ce4fa2b45f1bca5837418c0c57f793ca824/web_src/css/modules/label.css#L18"
+          }
+        ]
+      },
+      "reproductionPaths": [
+        {
+          "id": "gitea-sidebar-label-nowrap-overflow-path-1",
+          "explanation": "On an issue page at desktop width, a valid 50-character label assigned to the issue renders as a single unwrapped badge wider than the sidebar, extending past the sidebar border and the right edge of the viewport.",
+          "sourceBugs": [
+            {
+              "index": 13,
+              "id": "gitea-issue-sidebar-long-label-overflows-desktop",
+              "name": "Long assigned label extends out of the issue sidebar on desktop"
+            }
+          ],
+          "expected": "An assigned label in the issue sidebar wraps or truncates to fit the sidebar so its full name stays readable and the page does not scroll horizontally.",
+          "actual": "At 1440×900, a 50-character label (RR- followed by 47 W characters) assigned to an issue rendered as a badge about 490px wide in the roughly 300px sidebar. It ran past the sidebar border and the viewport edge, clipping the end of the name and adding horizontal scroll.",
+          "reproSteps": [
+            "Open a repository's Labels page and create a label named RR- followed by 47 capital W characters (50 characters total).",
+            "Open or create an issue and assign that label from the Labels sidebar.",
+            "View the issue at 1440×900 and look at the assigned label in the right sidebar."
+          ],
+          "severity": 1,
+          "matchingGuidance": [
+            {
+              "sourceBugIndex": 13,
+              "guidance": {
+                "relatedReference": {
+                  "id": "mo-60m-gitea-2",
+                  "distinction": "Same non-wrapping label badge CSS on a different page. That entry is the repository Labels list at phone width; this entry is the label assigned in an issue's sidebar at desktop width."
+                }
+              }
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "id": "gitea-label-scope-edit-unchecks-exclusive",
+      "explanation": "Editing through a temporarily unscoped name loses Exclusive.",
+      "rootCause": {
+        "explanation": "syncModalUi unconditionally clears elExclusiveInput.checked when nameHasScope is false. Restoring a valid scoped name only re-enables the field and does not restore its saved checkbox state.",
+        "sourceReferences": [
+          {
+            "repository": "go-gitea/gitea",
+            "revision": "99053ce4fa2b45f1bca5837418c0c57f793ca824",
+            "path": "web_src/js/features/comp/LabelEdit.ts",
+            "line": 33,
+            "url": "https://github.com/go-gitea/gitea/blob/99053ce4fa2b45f1bca5837418c0c57f793ca824/web_src/js/features/comp/LabelEdit.ts#L33"
+          }
+        ]
+      },
+      "reproductionPaths": [
+        {
+          "id": "gitea-label-scope-edit-unchecks-exclusive-path-1",
+          "explanation": "In the label edit dialog, Exclusive is unchecked as soon as the name has no scope (for example when 'scope/item' is cleared or shortened to 'scope/' while typing). When the name is typed back into a scoped name like 'scope/new', Exclusive stays unchecked, so saving turns an exclusive label into a non-exclusive one although its final name is still scoped. This entry is a repository's Labels page.",
+          "sourceBugs": [
+            {
+              "index": 14,
+              "id": "gitea-exclusive-label-lost-when-scope-retyped",
+              "name": "Exclusive isn't restored when an edited label name gets its scope back (repository labels)"
+            }
+          ],
+          "expected": "An exclusive label renamed to another scoped name stays exclusive (with its Sort Order), even if the name briefly had no scope while it was being typed.",
+          "actual": "Editing the exclusive label 'co-collab/secondary' (Sort Order 9999) by retyping its name as 'co-collab/aaa' unchecked Exclusive and hid Sort Order while typing. Exclusive stayed unchecked once the name was scoped again, and after saving and reopening the label was non-exclusive.",
+          "reproSteps": [
+            "On a repository's Labels page: create a label named 'scope/item', check Exclusive and save.",
+            "Edit the label and change its name to 'scope/new' by deleting the part after the slash or retyping the whole name.",
+            "Watch the Exclusive checkbox as the name loses and regains its scope, then save without touching Exclusive.",
+            "Reopen the label and check whether it is still exclusive."
+          ],
+          "severity": 3,
+          "matchingGuidance": [
+            {
+              "sourceBugIndex": 14,
+              "guidance": {
+                "relatedReference": {
+                  "id": "gitea-org-exclusive-label-lost-when-scope-retyped",
+                  "distinction": "Same loss of Exclusive when a scoped name is retyped on an organization's Settings > Labels; this entry is a repository's Labels page."
+                },
+                "scope": "Repository Labels page only."
+              }
+            }
+          ]
+        },
+        {
+          "id": "gitea-label-scope-edit-unchecks-exclusive-path-2",
+          "explanation": "In the label edit dialog, Exclusive is unchecked as soon as the name has no scope (for example when 'scope/item' is cleared or shortened to 'scope/' while typing). When the name is typed back into a scoped name like 'scope/new', Exclusive stays unchecked, so saving turns an exclusive label into a non-exclusive one although its final name is still scoped. This entry is an organization's Settings > Labels.",
+          "sourceBugs": [
+            {
+              "index": 15,
+              "id": "gitea-org-exclusive-label-lost-when-scope-retyped",
+              "name": "Exclusive isn't restored when an edited label name gets its scope back (organization labels)"
+            }
+          ],
+          "expected": "An exclusive label renamed to another scoped name stays exclusive (with its Sort Order), even if the name briefly had no scope while it was being typed.",
+          "actual": "Editing the exclusive label 'co-collab/secondary' (Sort Order 9999) by retyping its name as 'co-collab/aaa' unchecked Exclusive and hid Sort Order while typing. Exclusive stayed unchecked once the name was scoped again, and after saving and reopening the label was non-exclusive.",
+          "reproSteps": [
+            "On an organization's Settings > Labels: create a label named 'scope/item', check Exclusive and save.",
+            "Edit the label and change its name to 'scope/new' by deleting the part after the slash or retyping the whole name.",
+            "Watch the Exclusive checkbox as the name loses and regains its scope, then save without touching Exclusive.",
+            "Reopen the label and check whether it is still exclusive."
+          ],
+          "severity": 3,
+          "matchingGuidance": [
+            {
+              "sourceBugIndex": 15,
+              "guidance": {
+                "relatedReference": {
+                  "id": "gitea-exclusive-label-lost-when-scope-retyped",
+                  "distinction": "Same loss of Exclusive when a scoped name is retyped on a repository's Labels page; this entry is an organization's Settings > Labels."
+                },
+                "scope": "Organization Settings > Labels only."
+              }
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "id": "gitea-label-name-uniqueness-unenforced",
+      "explanation": "Duplicate label names are allowed within one owner.",
+      "rootCause": {
+        "explanation": "Label.Name has no composite unique constraint with RepoID/OrgID. NewLabel inserts directly and UpdateLabel updates directly without a duplicate-name lookup, permitting indistinguishable labels in both scopes.",
+        "sourceReferences": [
+          {
+            "repository": "go-gitea/gitea",
+            "revision": "99053ce4fa2b45f1bca5837418c0c57f793ca824",
+            "path": "models/issues/label.go",
+            "line": 84,
+            "url": "https://github.com/go-gitea/gitea/blob/99053ce4fa2b45f1bca5837418c0c57f793ca824/models/issues/label.go#L84"
+          },
+          {
+            "repository": "go-gitea/gitea",
+            "revision": "99053ce4fa2b45f1bca5837418c0c57f793ca824",
+            "path": "models/issues/label.go",
+            "line": 207,
+            "url": "https://github.com/go-gitea/gitea/blob/99053ce4fa2b45f1bca5837418c0c57f793ca824/models/issues/label.go#L207"
+          }
+        ]
+      },
+      "reproductionPaths": [
+        {
+          "id": "gitea-label-name-uniqueness-unenforced-path-1",
+          "explanation": "Creating or renaming a repository label to a name that already exists in that repository succeeds without any error, leaving separate labels with the same name. They appear as identical choices in the issue Labels picker but are different labels with different issue lists, although Gitea's label schema describes label names as unique within a repository.",
+          "sourceBugs": [
+            {
+              "index": 16,
+              "id": "gitea-labels-accept-duplicate-names",
+              "name": "Repository labels accept duplicate names"
+            }
+          ],
+          "expected": "A repository rejects a label name that already exists in it, so each name identifies one label.",
+          "actual": "Two repository labels named qa-crud/beta were saved and still listed after reload, with separate filter links (labels=3 and labels=5). No validation error was shown.",
+          "reproSteps": [
+            "Open a repository's Labels page and create a label named qa-duplicate.",
+            "Create another label with exactly the same name (or rename an existing label to it).",
+            "Reload the Labels page and open the Labels picker on an issue.",
+            "Check whether two labels with the same name exist."
+          ],
+          "severity": 3,
+          "matchingGuidance": [
+            {
+              "sourceBugIndex": 16,
+              "guidance": {
+                "relatedReference": {
+                  "id": "gitea-org-labels-accept-duplicate-names",
+                  "distinction": "Same missing name-uniqueness check. This entry is a repository's Labels page; that entry is an organization's Settings > Labels."
+                },
+                "otherRelatedReference": {
+                  "name": "Labels accept whitespace-only names",
+                  "distinction": "Same missing name validation in the label form, but that entry is a blank (whitespace-only) name; this entry is a name that duplicates an existing label."
+                },
+                "scope": "Duplicate label names created or renamed on a repository's Labels page."
+              }
+            }
+          ]
+        },
+        {
+          "id": "gitea-label-name-uniqueness-unenforced-path-2",
+          "explanation": "Creating or renaming an organization label to a name that already exists in that organization succeeds without any error, leaving separate organization labels with the same name.",
+          "sourceBugs": [
+            {
+              "index": 17,
+              "id": "gitea-org-labels-accept-duplicate-names",
+              "name": "Organization labels accept duplicate names"
+            }
+          ],
+          "expected": "An organization rejects a label name that already exists in it, so each name identifies one label.",
+          "actual": "In an organization, two labels named 'Org edited' were saved and listed as separate rows with their own Edit and Delete controls. No validation error was shown.",
+          "reproSteps": [
+            "Open an organization's Settings > Labels and create a label.",
+            "Create another label with exactly the same name (or rename an existing label to it).",
+            "Reload and check whether two labels with the same name exist."
+          ],
+          "severity": 3,
+          "matchingGuidance": [
+            {
+              "sourceBugIndex": 17,
+              "guidance": {
+                "relatedReference": {
+                  "id": "gitea-labels-accept-duplicate-names",
+                  "distinction": "Same missing name-uniqueness check. This entry is an organization's Settings > Labels; that entry is a repository's Labels page."
+                },
+                "scope": "Duplicate label names created or renamed on an organization's Settings > Labels."
+              }
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "id": "gitea-issue-deletion-label-count-stale",
+      "explanation": "Deleting an issue does not recount label totals.",
+      "rootCause": {
+        "explanation": "The issue deletion path removes IssueLabel rows as database cleanup but does not run the label counter updates used by detach/close operations. Persisted NumIssues/NumClosedIssues therefore retain the deleted issue.",
+        "sourceReferences": [
+          {
+            "repository": "go-gitea/gitea",
+            "revision": "99053ce4fa2b45f1bca5837418c0c57f793ca824",
+            "path": "services/issue/issue.go",
+            "line": 308,
+            "url": "https://github.com/go-gitea/gitea/blob/99053ce4fa2b45f1bca5837418c0c57f793ca824/services/issue/issue.go#L308"
+          },
+          {
+            "repository": "go-gitea/gitea",
+            "revision": "99053ce4fa2b45f1bca5837418c0c57f793ca824",
+            "path": "models/issues/label.go",
+            "line": 93,
+            "url": "https://github.com/go-gitea/gitea/blob/99053ce4fa2b45f1bca5837418c0c57f793ca824/models/issues/label.go#L93"
+          }
+        ]
+      },
+      "reproductionPaths": [
+        {
+          "id": "gitea-issue-deletion-label-count-stale-path-1",
+          "explanation": "Deleting an issue doesn't recount its labels, so the Labels page keeps showing the deleted issue in each label's open issues/pull requests count, even after reloads. Clicking the count opens a list without it. Closing the issue or removing the label recounts correctly.",
+          "sourceBugs": [
+            {
+              "index": 18,
+              "id": "gitea-label-count-keeps-deleted-issue",
+              "name": "Label open-issue counts still include a deleted issue"
+            }
+          ],
+          "expected": "Deleting an issue reduces the open issues/pull requests count of each of its labels; a label whose only issue was deleted shows 0.",
+          "actual": "Three labels each assigned only to issue #8 showed '1 open issues/pull requests'. After #8 was deleted, the Labels page still showed '1 open issues/pull requests' for all three.",
+          "reproSteps": [
+            "Create a label and add it to a single open issue; confirm the Labels page shows 1 open issue for it.",
+            "Delete that issue from its sidebar (Delete > Yes).",
+            "Open the Labels page and check the label's open issues/pull requests count, then reload."
+          ],
+          "severity": 1
+        }
+      ]
+    },
+    {
+      "id": "gitea-label-mutation-drops-sort",
+      "explanation": "Label mutations redirect without preserving the selected sort.",
+      "rootCause": {
+        "explanation": "NewLabel, UpdateLabel and DeleteLabel redirect to the bare labels path; organization handlers follow the same pattern. The submitted form/delete URL does not preserve the list sort, so returning renders default alphabetical ordering.",
+        "sourceReferences": [
+          {
+            "repository": "go-gitea/gitea",
+            "revision": "99053ce4fa2b45f1bca5837418c0c57f793ca824",
+            "path": "routers/web/repo/issue_label.go",
+            "line": 129,
+            "url": "https://github.com/go-gitea/gitea/blob/99053ce4fa2b45f1bca5837418c0c57f793ca824/routers/web/repo/issue_label.go#L129"
+          },
+          {
+            "repository": "go-gitea/gitea",
+            "revision": "99053ce4fa2b45f1bca5837418c0c57f793ca824",
+            "path": "routers/web/repo/issue_label.go",
+            "line": 163,
+            "url": "https://github.com/go-gitea/gitea/blob/99053ce4fa2b45f1bca5837418c0c57f793ca824/routers/web/repo/issue_label.go#L163"
+          },
+          {
+            "repository": "go-gitea/gitea",
+            "revision": "99053ce4fa2b45f1bca5837418c0c57f793ca824",
+            "path": "templates/repo/issue/labels/label_list.tmpl",
+            "line": 55,
+            "url": "https://github.com/go-gitea/gitea/blob/99053ce4fa2b45f1bca5837418c0c57f793ca824/templates/repo/issue/labels/label_list.tmpl#L55"
+          }
+        ]
+      },
+      "reproductionPaths": [
+        {
+          "id": "gitea-label-mutation-drops-sort-path-1",
+          "explanation": "Saving the label Edit dialog discards the selected list sort and returns to alphabetical ordering, even when issue counts did not change.",
+          "sourceBugs": [
+            {
+              "index": 22,
+              "id": "gitea-repo-label-edit-drops-sort",
+              "name": "Saving a repository label edit resets the selected list sorting"
+            }
+          ],
+          "expected": "Saving a label edit preserves the selected list ordering, as reloading or canceling the same edit does.",
+          "actual": "With Most issues selected, the two-issue label appears first. Saving its rename or description edit navigates to the bare Labels URL, makes Alphabetically active and moves it to its alphabetical position. The label edit itself saves correctly.",
+          "reproSteps": [
+            "In a writable repository, create three disposable labels A, B and C. Assign B to one open issue and C to two open issues, leaving A unused.",
+            "On Labels, choose Sort → Most issues and confirm C appears before B and A.",
+            "Edit C, change its name or description, and click Save.",
+            "Observe that the URL loses its sort query and the list returns to alphabetical order.",
+            "As controls, reselect Most issues, reload, and open Edit then Cancel; confirm those operations retain the selected sort."
+          ],
+          "severity": 3,
+          "matchingGuidance": [
+            {
+              "sourceBugIndex": 22,
+              "guidance": {
+                "relatedReference": {
+                  "id": "gitea-milestone-close-reopen-drops-search",
+                  "distinction": "The milestone reference covers status actions dropping a searched/sorted milestone view. This entry covers saving an edit from the repository Labels list and losing its selected sort; the handlers and feature differ."
+                },
+                "scope": "Covers repository Labels list sort loss after Edit → Save, including rename, description-only and unchanged-value saves. The edit succeeds and issue counts remain correct. Organization label creation and other list actions are separately reported variants; do not assume they are required for this reference."
+              }
+            }
+          ]
+        },
+        {
+          "id": "gitea-label-mutation-drops-sort-path-2",
+          "explanation": "On an organization's Labels settings, after choosing Sort > Most issues, creating or deleting a label returns the list to alphabetical order.",
+          "sourceBugs": [
+            {
+              "index": 24,
+              "id": "gitea-org-label-create-delete-resets-most-issues-sort",
+              "name": "Creating or deleting an organization label discards Most issues sorting"
+            }
+          ],
+          "expected": "The selected Most issues sorting stays applied after creating or deleting a label, so labels with more open issues or pull requests stay above labels with none.",
+          "actual": "After saving a new label (or confirming a deletion), the list reverted to alphabetical order and a label with one open pull request moved below labels with zero.",
+          "reproSteps": [
+            "In an organization, create labels with unequal open issue or pull request counts (for example one label on an open pull request and two unused labels).",
+            "Open the organization's Settings > Labels and choose Sort > Most issues.",
+            "Create a new label and save it, or delete one of the labels.",
+            "Check whether the list keeps the Most issues order."
+          ],
+          "severity": 3,
+          "matchingGuidance": [
+            {
+              "sourceBugIndex": 24,
+              "guidance": {
+                "scope": "Organization Labels settings losing the selected Most issues (or other non-default) sort after creating or deleting a label. Both triggers are the same bug."
+              }
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "id": "gitea-label-exclusion-keyboard-event-order",
+      "explanation": "Alt+Enter label exclusion loses to the dropdown keyboard handler.",
+      "rootCause": {
+        "explanation": "The exclusion listener is attached to the dropdown keydown, but Fomantic selects/activates the ordinary include anchor on Enter. Alt+click takes the explicit exclusion path; the keyboard path navigates via the include URL.",
+        "sourceReferences": [
+          {
+            "repository": "go-gitea/gitea",
+            "revision": "99053ce4fa2b45f1bca5837418c0c57f793ca824",
+            "path": "web_src/js/features/repo-issue.ts",
+            "line": 85,
+            "url": "https://github.com/go-gitea/gitea/blob/99053ce4fa2b45f1bca5837418c0c57f793ca824/web_src/js/features/repo-issue.ts#L85"
+          }
+        ]
+      },
+      "reproductionPaths": [
+        {
+          "id": "gitea-label-exclusion-keyboard-event-order-path-1",
+          "explanation": "On a repository's Pull Requests list, the Label filter says Alt+click or Alt+Enter excludes a label. Alt+click works, but highlighting a label and pressing Alt+Enter includes it, so pull requests with that label are still listed.",
+          "sourceBugs": [
+            {
+              "index": 23,
+              "id": "gitea-pr-label-filter-alt-enter-includes",
+              "name": "Alt+Enter in the pull request Label filter includes the label instead of excluding it"
+            }
+          ],
+          "expected": "Alt+Enter on a highlighted label in the pull request Label filter excludes that label, like Alt+click.",
+          "actual": "After pressing Alt+Enter on the documentation label, the list reloaded still showing the pull request that has the documentation label.",
+          "reproSteps": [
+            "On a repository's Pull Requests list, open the Label filter.",
+            "Highlight a label used by one pull request with the arrow keys and press Alt+Enter.",
+            "Check whether pull requests with that label are excluded."
+          ],
+          "severity": 3
+        }
+      ]
+    },
+    {
+      "id": "gitea-scoped-label-search-missing-slash",
+      "explanation": "Scoped-label search cannot match the saved full name.",
+      "rootCause": {
+        "explanation": "RenderLabel splits exclusive label names into separate scope and item spans without the literal slash separator. Dropdown search derives searchable text from that rendered DOM rather than the original Name, so scope/item is not a substring even though scope alone matches.",
+        "sourceReferences": [
+          {
+            "repository": "go-gitea/gitea",
+            "revision": "99053ce4fa2b45f1bca5837418c0c57f793ca824",
+            "path": "modules/templates/util_render.go",
+            "line": 145,
+            "url": "https://github.com/go-gitea/gitea/blob/99053ce4fa2b45f1bca5837418c0c57f793ca824/modules/templates/util_render.go#L145"
+          },
+          {
+            "repository": "go-gitea/gitea",
+            "revision": "99053ce4fa2b45f1bca5837418c0c57f793ca824",
+            "path": "templates/repo/issue/filter_item_label.tmpl",
+            "line": 43,
+            "url": "https://github.com/go-gitea/gitea/blob/99053ce4fa2b45f1bca5837418c0c57f793ca824/templates/repo/issue/filter_item_label.tmpl#L43"
+          },
+          {
+            "repository": "go-gitea/gitea",
+            "revision": "99053ce4fa2b45f1bca5837418c0c57f793ca824",
+            "path": "web_src/js/features/repo-issue-sidebar-combolist.ts",
+            "line": 151,
+            "url": "https://github.com/go-gitea/gitea/blob/99053ce4fa2b45f1bca5837418c0c57f793ca824/web_src/js/features/repo-issue-sidebar-combolist.ts#L151"
+          }
+        ]
+      },
+      "reproductionPaths": [
+        {
+          "id": "gitea-scoped-label-search-missing-slash-path-1",
+          "explanation": "In a repository's Issues list Label filter, searching an exclusive (scoped) label's full saved name, such as qa-org-stage/open, shows No results found, while searching its scope shows the label.",
+          "sourceBugs": [
+            {
+              "index": 25,
+              "id": "gitea-issue-list-label-filter-scoped-full-name",
+              "name": "Issue list Label filter cannot find an exclusive label by its full name"
+            }
+          ],
+          "expected": "Searching the exact full label name finds the matching filter option.",
+          "actual": "The full-name search showed No results found even though an issue visibly carried the label; searching the scope alone displayed it. Exclusive labels are shown with the scope and item as separate parts, so this search only matches them by scope, item or the two run together without the slash. Typing the label's full saved name with the slash finds nothing, although non-exclusive labels containing a slash are found by their full name.",
+          "reproSteps": [
+            "Create an exclusive label such as scope/open (an organization label works too) and assign it to an open issue.",
+            "Open the repository Issues list and its Label filter.",
+            "Search the scope alone, then search the full name including the slash."
+          ],
+          "severity": 1,
+          "matchingGuidance": [
+            {
+              "sourceBugIndex": 25,
+              "guidance": {
+                "relatedReference": {
+                  "id": "gitea-pr-list-label-filter-scoped-full-name",
+                  "distinction": "Same slash-search behavior. This entry is the repository Issues list Label filter; that entry is the repository Pull Requests list Label filter."
+                },
+                "otherRelatedReferences": [
+                  {
+                    "id": "gitea-issue-sidebar-label-picker-scoped-full-name",
+                    "distinction": "Same slash-search behavior on an issue's sidebar Labels picker."
+                  },
+                  {
+                    "id": "gitea-pr-label-picker-scoped-full-name-search",
+                    "distinction": "Same slash-search behavior on a pull request's sidebar Labels picker."
+                  }
+                ],
+                "scope": "Reports that typing an exclusive (scoped) label's full name including the slash finds nothing in the repository Issues list Label filter."
+              }
+            }
+          ]
+        },
+        {
+          "id": "gitea-scoped-label-search-missing-slash-path-2",
+          "explanation": "In a repository's Pull Requests list Label filter, searching an exclusive label's full saved name, such as qa-pr-state/one, shows No results found, while searching its scope offers the label.",
+          "sourceBugs": [
+            {
+              "index": 26,
+              "id": "gitea-pr-list-label-filter-scoped-full-name",
+              "name": "Pull request list Label filter cannot find an exclusive label by its full name"
+            }
+          ],
+          "expected": "Searching the exact full label name finds the matching filter option.",
+          "actual": "The full-name search showed No results found; searching the scope alone offered the label. Exclusive labels are shown with the scope and item as separate parts, so this search only matches them by scope, item or the two run together without the slash. Typing the label's full saved name with the slash finds nothing, although non-exclusive labels containing a slash are found by their full name.",
+          "reproSteps": [
+            "Create an exclusive label such as scope/one.",
+            "Open the repository Pull Requests list and expand its Label filter.",
+            "Search the scope alone, then search the full name including the slash."
+          ],
+          "severity": 1,
+          "matchingGuidance": [
+            {
+              "sourceBugIndex": 26,
+              "guidance": {
+                "relatedReference": {
+                  "id": "gitea-issue-list-label-filter-scoped-full-name",
+                  "distinction": "Same slash-search behavior. This entry is the repository Pull Requests list Label filter; that entry is the repository Issues list Label filter."
+                },
+                "otherRelatedReferences": [
+                  {
+                    "id": "gitea-issue-sidebar-label-picker-scoped-full-name",
+                    "distinction": "Same slash-search behavior on an issue's sidebar Labels picker."
+                  },
+                  {
+                    "id": "gitea-pr-label-picker-scoped-full-name-search",
+                    "distinction": "Same slash-search behavior on a pull request's sidebar Labels picker."
+                  }
+                ],
+                "scope": "Reports that typing an exclusive (scoped) label's full name including the slash finds nothing in the repository Pull Requests list Label filter."
+              }
+            }
+          ]
+        },
+        {
+          "id": "gitea-scoped-label-search-missing-slash-path-3",
+          "explanation": "In the issue sidebar's Labels menu, typing the complete saved name of the existing exclusive label \"Priority/Low\" removes the label from the list and shows \"No results found.\"",
+          "sourceBugs": [
+            {
+              "index": 27,
+              "id": "gitea-issue-sidebar-label-picker-scoped-full-name",
+              "name": "Issue sidebar Labels picker cannot find an exclusive label by its full name"
+            }
+          ],
+          "expected": "Filtering by the label's exact saved name \"Priority/Low\" should keep that label in the menu so it can be selected.",
+          "actual": "The menu shows \"No results found.\" and the Priority/Low label cannot be selected through the filter. Exclusive labels are shown with the scope and item as separate parts, so this search only matches them by scope, item or the two run together without the slash. Typing the label's full saved name with the slash finds nothing, although non-exclusive labels containing a slash are found by their full name.",
+          "reproSteps": [
+            "Create an exclusive label such as Priority/Low in a repository.",
+            "Open an issue and click the gear next to Labels in the sidebar.",
+            "Type the label's full name including the slash into the filter, then type only the scope or item and compare."
+          ],
+          "severity": 1,
+          "matchingGuidance": [
+            {
+              "sourceBugIndex": 27,
+              "guidance": {
+                "relatedReference": {
+                  "id": "gitea-issue-list-label-filter-scoped-full-name",
+                  "distinction": "Same slash-search behavior. This entry is an issue's sidebar Labels picker; that entry is the repository Issues list Label filter."
+                },
+                "otherRelatedReferences": [
+                  {
+                    "id": "gitea-pr-list-label-filter-scoped-full-name",
+                    "distinction": "Same slash-search behavior on the repository Pull Requests list Label filter."
+                  },
+                  {
+                    "id": "gitea-pr-label-picker-scoped-full-name-search",
+                    "distinction": "Same slash-search behavior on a pull request's sidebar Labels picker."
+                  }
+                ],
+                "scope": "Reports that typing an exclusive (scoped) label's full name including the slash finds nothing in an issue's sidebar Labels picker."
+              }
+            }
+          ]
+        },
+        {
+          "id": "gitea-scoped-label-search-missing-slash-path-4",
+          "explanation": "In a pull request's Labels sidebar picker, typing an exclusive (scoped) label's full saved name, such as scope/one, finds nothing.",
+          "sourceBugs": [
+            {
+              "index": 28,
+              "id": "gitea-pr-label-picker-scoped-full-name-search",
+              "name": "Pull request label picker cannot find an exclusive label by its full name"
+            }
+          ],
+          "expected": "Searching an exclusive label's full name including the slash finds it in the pull request Labels picker.",
+          "actual": "Typing the full name with the slash showed No results found, but the label was found by its scope, its item, or both run together without the slash, and could be applied that way. A non-exclusive label containing a slash was found by its full name. Exclusive labels are shown with the scope and item as separate parts, so this search only matches them by scope, item or the two run together without the slash. Typing the label's full saved name with the slash finds nothing, although non-exclusive labels containing a slash are found by their full name.",
+          "reproSteps": [
+            "Create an exclusive label such as scope/one.",
+            "Open a pull request and open the Labels picker in its sidebar.",
+            "Type the label's full name, including the slash, and check the results.",
+            "Type only the scope or only the item and compare."
+          ],
+          "severity": 1,
+          "matchingGuidance": [
+            {
+              "sourceBugIndex": 28,
+              "guidance": {
+                "relatedReference": {
+                  "id": "gitea-issue-list-label-filter-scoped-full-name",
+                  "distinction": "Same slash-search behavior. This entry is a pull request's sidebar Labels picker; that entry is the repository Issues list Label filter."
+                },
+                "otherRelatedReferences": [
+                  {
+                    "id": "gitea-pr-list-label-filter-scoped-full-name",
+                    "distinction": "Same slash-search behavior on the repository Pull Requests list Label filter."
+                  },
+                  {
+                    "id": "gitea-issue-sidebar-label-picker-scoped-full-name",
+                    "distinction": "Same slash-search behavior on an issue's sidebar Labels picker."
+                  }
+                ],
+                "scope": "Reports that typing an exclusive (scoped) label's full name including the slash finds nothing in a pull request's sidebar Labels picker."
+              }
+            }
+          ]
+        }
+      ]
+    }
+  ]
+}
