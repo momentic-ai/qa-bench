@@ -1,0 +1,93 @@
+[
+  {
+    "id": "wording-only-preference-treated-as-functional-failure",
+    "explanation": "Correct rejection of invalid input is called a functional defect solely because the reporter prefers more specific wording, another message or an additional error outline. In these reviewed cases valid corrections work, saved values remain intact and the requested extra feedback is not an established requirement. This does not dismiss proven silent refusal, misleading success, an applicable accessibility requirement or missing recovery.",
+    "verificationGuidance": [
+      "Verify whether invalid input is rejected, valid input works and the previous saved state survives.",
+      "Identify the applicable feedback contract rather than treating a preferred phrase or extra visual treatment as mandatory.",
+      "Separate wording preferences from an independently demonstrated missing-error, misleading-success or recovery defect."
+    ],
+    "instances": [
+      {
+        "source": "known-invalid.json",
+        "index": 0,
+        "report": {
+          "id": "gitea-pass2-015",
+          "name": "Create Tag Only reports an existing release when retrying an already-created standalone tag",
+          "summary": "Retrying Create Tag Only for an existing standalone tag is rejected on the shared New Release form with a release-exists error.",
+          "expected": "After the first Create Tag Only action, the standalone tag should exist without a release. Retrying with that existing tag may be rejected as a duplicate tag, but should not claim a release exists when the tag-only flow did not create one.",
+          "actual": "The first Create Tag Only submission creates the tag and opens its Code page. Retrying the same action for that existing tag displays “A release with this tag name already exists.” The duplicate is rejected; no publishing failure or data loss was established.",
+          "reproSteps": [
+            "Sign in as eval and open Releases > New Release in the seeded eval/harbor-handbook repository.",
+            "Enter a fresh unique tag name, keep main as the target, and leave release title and body blank.",
+            "Click Create Tag Only and confirm the tag-created message and the tag Code page.",
+            "Return through Releases > New Release, enter the same tag and confirm the Existing tag helper.",
+            "Click Create Tag Only again and observe the release-exists validation error on the form."
+          ],
+          "reason": "User-approved rejection of the wording-only complaint. The existing tag is correctly rejected as a duplicate in the shared New Release form. The user does not consider the shared release-exists wording an actionable bug for this eval; no functional failure is established."
+        }
+      }
+    ]
+  },
+  {
+    "id": "exact-editor-input-not-verified-before-renderer-claim",
+    "explanation": "Inferring a Markdown renderer failure from the intended text rather than the exact editor source. Removed emphasis markers, automatically inserted task prefixes, or a missing blank separator can produce the observed rendering correctly. A recreated input artifact is not proof of the historical keystrokes.",
+    "verificationGuidance": [
+      "Capture the literal source immediately before Preview or Save, including automatic prefixes and whitespace.",
+      "Compare exact literal input with normal typing controls and expected Markdown semantics; do not reject a renderer failure demonstrated on valid exact input."
+    ],
+    "instances": [
+      {
+        "source": "known-invalid.json",
+        "index": 1,
+        "report": {
+          "id": "gitea-pass2-014",
+          "name": "Release-notes Preview does not render Bold toolbar text in bold",
+          "summary": "The release-notes Bold toolbar inserts `**Bold phrase**`, but Preview renders the phrase in regular weight after loading.",
+          "expected": "Text formatted with the Bold toolbar should appear visibly bold in the release-notes Preview.",
+          "actual": "The Write view visibly contained `# Lifecycle Deep Bold Preview` and `**Bold phrase**`; Preview rendered the heading as a heading but displayed “Bold phrase” in regular weight, still unchanged after six seconds.",
+          "reproSteps": [
+            "Sign in as eval and open New Release in eval/harbor-handbook without publishing a release.",
+            "Compare the earlier and later Preview attempts in the original recording: the earlier editor value is plain Bold phrase, with no Markdown emphasis markers.",
+            "After the retry, the editor value contains a Markdown heading followed by **Bold phrase**. Open Preview and inspect the correctly formatted phrase.",
+            "Keep the distinction between the two inputs: plain text should preview as plain text, while the corrected Markdown should preview as bold."
+          ],
+          "reason": "User-approved rejection after reviewing the earlier and later Preview states. The earlier attempt replaced the toolbar’s Markdown markers and submitted plain text. The corrected retry preserved **Bold phrase**, rendered a strong element at semibold weight, and the user confirmed that the later Preview visibly showed bold. The observed change follows the changed input; no Preview failure is established.",
+          "matchingGuidance": {
+            "scope": "This rejection concerns the release Preview sequence only. It does not adjudicate the separate Wiki report or a same-input Preview-versus-publication mismatch."
+          }
+        }
+      }
+    ]
+  },
+  {
+    "id": "deleting-one-layer-assumed-to-delete-surviving-object-data",
+    "explanation": "Assuming that deleting a presentation layer must erase metadata still attached to a deliberately surviving underlying object. Removing a release while keeping its tag can leave title and notes on the tag without leaving the release published.",
+    "verificationGuidance": [
+      "Verify which object was deleted and which object the action explicitly preserves.",
+      "Check the deleted object’s listing separately from metadata displayed by the surviving object; do not extend this to undeletable records."
+    ],
+    "instances": [
+      {
+        "source": "known-invalid.json",
+        "index": 2,
+        "report": {
+          "id": "gitea-deleted-release-text-stays-on-tag",
+          "name": "Deleting a release leaves its title and notes visible on the tag page and feed",
+          "summary": "After Delete Release (keeping the tag), the release's title and notes still appear on the tag's page, in the tags RSS/Atom feed, and pre-filled in New Release for that tag.",
+          "expected": "The reported expectation is that deleting a release removes its title and notes from Gitea while keeping the Git tag.",
+          "actual": "After deleting a published release on a tag without its own message, /releases/tag/<tag> still showed the release title and notes, tags.rss still carried the notes, and New Release for the tag pre-filled them. The release was gone from the Releases list.",
+          "reproSteps": [
+            "Publish a release on a tag without ticking the tag-message option.",
+            "Delete the release with Delete Release (not Delete Tag).",
+            "Open the tag's page, the repository tags.rss feed, and New Release for that tag."
+          ],
+          "reason": "User-rejected after source review. Delete Release keeps the tag row and only marks it as a tag, so the title and notes it carried stay attached to the tag. The reviewer judged keeping that text on the surviving tag to be acceptable, consistent with tags being expected to show their message, rather than a defect.",
+          "matchingGuidance": {
+            "scope": "Reject reports that a deleted release's title and notes still show on its surviving tag's page, tags feed, or New Release prefill. Do not generalize to draft-release deletion leaving an undeletable record, or to the release still appearing on the Releases list."
+          }
+        }
+      }
+    ]
+  }
+]
