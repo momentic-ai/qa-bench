@@ -3,10 +3,17 @@ import { z } from "zod";
 export const MIN_MO_SESSION_TIME_BUDGET_MINUTES = 10;
 
 export const MoStatusSchema = z.object({
-  state: z.string().nullable(),
-  sessionState: z.string().optional(),
-  displayState: z.string().optional(),
-  attentionPending: z.boolean().optional(),
+  status: z.enum([
+    "running",
+    "waiting_on_agents",
+    "checking",
+    "needs_you",
+    "blocked",
+    "ready",
+    "sleeping",
+    "cancelled",
+    "failed",
+  ]),
   latestTurn: z
     .object({
       messageId: z.string(),
@@ -25,28 +32,9 @@ export type MoStatus = z.infer<typeof MoStatusSchema>;
 
 export const MoReadSchema = z.object({
   pendingInput: z.object({ id: z.string() }).nullish(),
+  pendingQuestions: z.array(z.object({ id: z.string() })).optional(),
 });
 
 export function isMoSessionReportReady(status: MoStatus): boolean {
-  if (status.attentionPending) return false;
-  const lifecycle = status.sessionState ?? status.state;
-  const display = status.displayState ?? status.state;
-  const legacyDisplayOnly =
-    status.sessionState === undefined && status.state === display;
-  if (
-    !legacyDisplayOnly &&
-    lifecycle !== "idle" &&
-    lifecycle !== "waitingOnAgents" &&
-    lifecycle !== "stopped"
-  )
-    return false;
-  return [
-    "ready",
-    "findings",
-    "incomplete",
-    "blocked",
-    "replied",
-    "sleeping",
-    "cancelled",
-  ].includes(display ?? "");
+  return ["ready", "blocked", "sleeping", "cancelled"].includes(status.status);
 }

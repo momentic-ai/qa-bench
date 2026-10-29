@@ -43,7 +43,7 @@ export class MoAgent implements EvalAgent {
   ) {
     const { timeLimitMs } = this.context;
     onReady?.();
-    const startArgs = ["start", message];
+    const startArgs = ["start", message, "--no-test-cases"];
     if (timeLimitMs) {
       const minutes = Math.ceil(timeLimitMs / 60_000);
       startArgs.push(
@@ -80,24 +80,10 @@ export class MoAgent implements EvalAgent {
     const sessionId = this.requireSessionId();
     const answered = new Set<string>();
     while (!signal.aborted) {
-      let status = MoStatusSchema.parse(
+      const status = MoStatusSchema.parse(
         JSON.parse(await this.mo(["status", sessionId], signal)),
       );
-      if (
-        status.attentionPending === undefined &&
-        isMoSessionReportReady(status)
-      ) {
-        status = MoStatusSchema.parse(
-          JSON.parse(await this.mo(["status", sessionId, "--full"], signal)),
-        );
-      }
-      const display = status.displayState ?? status.state;
-      const lifecycle = status.sessionState ?? status.state;
-      if (
-        display === "needs_you" ||
-        lifecycle === "waitingOnUser" ||
-        display === "blocked"
-      ) {
+      if (status.status === "needs_you" || status.status === "blocked") {
         // Automated evals answer each input once without extending their budget.
         const read = MoReadSchema.parse(
           JSON.parse(
@@ -115,17 +101,29 @@ export class MoAgent implements EvalAgent {
             ),
           ),
         );
-        const inputId = read.pendingInput?.id;
-        if (inputId) {
-          if (!answered.has(inputId)) {
+        const questions =
+          read.pendingQuestions ??
+          (read.pendingInput ? [read.pendingInput] : []);
+        if (questions.length > 0) {
+          for (const { id } of questions) {
+            if (answered.has(id)) continue;
             const message =
               this.finalizationMessage ??
               "No additional information is available beyond the supplied evaluation brief and setup.";
             await this.mo(
-              ["send", "--session-id", sessionId, "--wait", "0", message],
+              [
+                "send",
+                "--session-id",
+                sessionId,
+                "--question-id",
+                id,
+                "--wait",
+                "0",
+                message,
+              ],
               signal,
             );
-            answered.add(inputId);
+            answered.add(id);
           }
           await setTimeout(5000, undefined, { signal });
           continue;
@@ -135,20 +133,16 @@ export class MoAgent implements EvalAgent {
       const hasFindings =
         (status.counts?.bugs ?? status.findings?.bugs?.length ?? 0) > 0 ||
         (status.counts?.verdicts ?? status.findings?.verdicts?.length ?? 0) > 0;
-      const failedDisplay = ["cancelled", "failed_start", "failed"].includes(
-        display ?? "",
-      );
-      const terminalStop =
-        lifecycle === "stopped" && display !== "waiting_on_agents";
       if (
-        lifecycle === "failed" ||
-        failedDisplay ||
-        terminalStop ||
-        (ready && display === "blocked" && !hasFindings)
+        status.status === "failed" ||
+        status.status === "cancelled" ||
+        (ready && status.status === "blocked" && !hasFindings)
       ) {
-        throw new Error(`Mo session ${sessionId} needs attention: ${display}.`);
+        throw new Error(
+          `Mo session ${sessionId} needs attention: ${status.status}.`,
+        );
       }
-      if (ready && lifecycle === "idle" && status.latestTurn?.completedAt) {
+      if (ready && status.latestTurn?.completedAt) {
         signal.throwIfAborted();
         return;
       }

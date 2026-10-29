@@ -1,6 +1,6 @@
 import { runCommand } from "./command";
 
-const MO_CLI_VERSION = "0.27.0";
+const MO_CLI_VERSION = "0.30.0";
 
 export function runMoCommand(
   args: string[],
@@ -14,6 +14,14 @@ export async function validateMoCli() {
   if (version !== MO_CLI_VERSION) {
     throw new Error(
       `Mo evals require QA CLI ${MO_CLI_VERSION}; found ${version}. Set MO_EVAL_CLI to a ${MO_CLI_VERSION} executable.`,
+    );
+  }
+  const startHelp = await runMoCommand(["start", "--help"], {
+    timeoutMs: 10_000,
+  });
+  if (!startHelp.includes("--no-test-cases")) {
+    throw new Error(
+      `QA CLI ${version} does not support --no-test-cases. Set MO_EVAL_CLI to a ${MO_CLI_VERSION} executable with test case opt-out support.`,
     );
   }
 }
