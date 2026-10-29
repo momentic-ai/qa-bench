@@ -13,7 +13,7 @@ import { getMoCost, runMoCommand, validateMoCli } from "./cli";
 import {
   MoReadSchema,
   MoStatusSchema,
-  isMoSessionReportReady,
+  isMoSessionComplete,
 } from "./cli-schemas";
 import { MoCostSchema, MoFindingsSchema, MoReportSchema } from "./reports";
 
@@ -103,7 +103,6 @@ export class MoAgent implements EvalAgent {
           continue;
         }
       }
-      const ready = isMoSessionReportReady(status);
       const hasFindings =
         (status.counts?.bugs ?? status.findings?.bugs?.length ?? 0) > 0 ||
         (status.counts?.verdicts ?? status.findings?.verdicts?.length ?? 0) > 0;
@@ -111,13 +110,13 @@ export class MoAgent implements EvalAgent {
         status.status === "failed" ||
         status.status === "failed_start" ||
         status.status === "cancelled" ||
-        (ready && status.status === "blocked" && !hasFindings)
+        (status.status === "blocked" && !hasFindings)
       ) {
         throw new Error(
           `Mo session ${sessionId} needs attention: ${status.status}.`,
         );
       }
-      if (ready && status.latestTurn?.completedAt) {
+      if (isMoSessionComplete(status)) {
         signal.throwIfAborted();
         return;
       }
