@@ -157,18 +157,15 @@ async function runFixture({
       },
       resources.signal,
     );
+    let browserTool: Parameters<typeof bugbashBrief>[3];
+    if (agentName === "devin-qa") browserTool = "Devin native browser";
+    else if (agentName !== "mo")
+      browserTool = agentName?.endsWith("-agent-browser")
+        ? "agent-browser"
+        : "Playwright MCP";
     const run = await runAgent({
       agent,
-      message: bugbashBrief(
-        url,
-        timeLimitMs,
-        fixture,
-        agentName === "mo"
-          ? undefined
-          : agentName?.endsWith("-agent-browser")
-            ? "agent-browser"
-            : "Playwright MCP",
-      ),
+      message: bugbashBrief(url, timeLimitMs, fixture, browserTool),
       timeLimitMs: stopAfterMs,
       signal: resources.signal,
     });
