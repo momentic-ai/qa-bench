@@ -1,5 +1,6 @@
-import { mkdir, realpath, rm } from "node:fs/promises";
+import { mkdir, mkdtemp, rm } from "node:fs/promises";
 import { createRequire } from "node:module";
+import { tmpdir } from "node:os";
 import path from "node:path";
 import { z } from "zod";
 
@@ -22,10 +23,8 @@ const require = createRequire(import.meta.url);
 type CodexSetup = {
   mcpServers: Record<string, unknown>;
   env?: Record<string, string>;
-  instructions: string;
-  subagents: boolean;
-  completion?: Promise<void>;
-  filesystem?: Record<string, string>;
+  sandbox?: "workspace-write";
+  subagents?: boolean;
 };
 
 export abstract class CodexRunner implements EvalAgent {
@@ -34,6 +33,7 @@ export abstract class CodexRunner implements EvalAgent {
   private threadId: string | undefined;
   private store: FindingsStore;
   protected codexHome: string;
+  protected temporaryWorkspace: string | undefined;
   private execution = new AbortController();
   private pending: Promise<unknown>[] = [];
   private subagentFailures: {
@@ -63,31 +63,20 @@ export abstract class CodexRunner implements EvalAgent {
     // starts with the session, so Codex's own login, app-server and browser startup count too.
     onReady?.();
     await this.store.initialize();
-    const workspace = path.join(this.context.runDirectory, "workspace");
-    // TODO: Run Codex and Playwright in a dedicated remote sandbox with only their runtime and prepared checkout, without mounting the eval harness.
-    const codexRuntimeDirectory = path.dirname(
-      createRequire(require.resolve("@openai/codex/package.json")).resolve(
-        `@openai/codex-${process.platform}-${process.arch}/package.json`,
-      ),
-    );
-    // Linux resolver config can link into /run, outside the minimal runtime mounts.
-    const resolverFiles =
-      process.platform === "linux"
-        ? { [await realpath("/etc/resolv.conf")]: "read" }
-        : {};
-    const setup = await this.prepare(workspace, resolverFiles);
+    const workspace = await this.createWorkspace();
+    const setup = await this.prepare();
     await Promise.all([
       mkdir(this.codexHome, { recursive: true }),
       mkdir(workspace, { recursive: true }),
     ]);
     const env = {
-      PATH: process.env.PATH || "",
+      ...setup.env,
+      PATH: setup.env?.PATH ?? process.env.PATH ?? "",
       HOME: process.env.HOME || "",
       USERPROFILE: process.env.USERPROFILE || "",
       SYSTEMROOT: process.env.SYSTEMROOT || "",
       CODEX_HOME: this.codexHome,
       OPENAI_API_KEY: process.env.OPENAI_API_KEY || "",
-      ...setup.env,
     };
     await loginCodexWithApiKey(
       this.command,
@@ -100,7 +89,6 @@ export abstract class CodexRunner implements EvalAgent {
       env,
       async (threadId, tool, args) => {
         if (threadId !== this.threadId) {
-          // The coordinator accepts/deduplicates child evidence before it becomes a scored finding.
           throw new Error(
             "Send your findings to the parent; only the root agent accepts eval results.",
           );
@@ -117,33 +105,13 @@ export abstract class CodexRunner implements EvalAgent {
           cwd: workspace,
           runtimeWorkspaceRoots: [workspace],
           approvalPolicy: "never",
-          permissions: "eval",
+          ...(setup.sandbox ? { sandbox: setup.sandbox } : {}),
           dynamicTools: FINDINGS_TOOLS,
           config: {
             model_reasoning_effort: "medium",
-            ...(setup.env
-              ? {
-                  shell_environment_policy: {
-                    exclude: Object.keys(setup.env),
-                  },
-                }
+            ...(setup.sandbox
+              ? { sandbox_workspace_write: { network_access: true } }
               : {}),
-            // Model tools may read the prepared checkout, never the host's eval inputs or reports.
-            permissions: {
-              eval: {
-                filesystem: {
-                  ":minimal": "read",
-                  ":workspace_roots": "read",
-                  [codexRuntimeDirectory]: "read",
-                  ...resolverFiles,
-                  ...setup.filesystem,
-                },
-                network: { enabled: false },
-              },
-            },
-            // The workspace lives below the harness; do not load its ancestor instruction files.
-            project_doc_max_bytes: 0,
-            web_search: "disabled",
             mcp_servers: setup.mcpServers,
             agents: {
               enabled: setup.subagents,
@@ -156,7 +124,7 @@ export abstract class CodexRunner implements EvalAgent {
       ),
     );
     this.threadId = thread.id;
-    const task = `${message}\n\n${setup.instructions}\n\nUse submit_bug to save each bug with a stable ID, remove_bug to retract it, and record_coverage for areas explored and limitations.`;
+    const task = `${message}\n\nUse submit_bug to save each bug with a stable ID, remove_bug to retract it, and record_coverage for areas explored and limitations.`;
     process.stdout.write(
       `${this.context.fixture.name}: Codex session ${thread.id}\n`,
     );
@@ -171,16 +139,12 @@ export abstract class CodexRunner implements EvalAgent {
     const completion = this.server.waitForCompletion(
       thread.id,
       AbortSignal.any([signal, this.execution.signal]),
-      (event) => this.handleProgress(event, signal),
+      (event) => this.handleProgress(event),
       false,
     );
     // Own the observer even if termination precedes the caller awaiting completion.
     this.pending.push(Promise.allSettled([completion]));
-    return {
-      completion: setup.completion
-        ? Promise.race([completion, setup.completion])
-        : completion,
-    };
+    return { completion };
   }
 
   async send(message: string, signal: AbortSignal) {
@@ -248,14 +212,18 @@ export abstract class CodexRunner implements EvalAgent {
     return undefined;
   }
 
-  protected abstract prepare(
-    workspace: string,
-    resolverFiles: Record<string, string>,
-  ): Promise<CodexSetup>;
+  protected async createWorkspace() {
+    this.temporaryWorkspace = await mkdtemp(
+      path.join(tmpdir(), "qa-bench-agent-"),
+    );
+    return this.temporaryWorkspace;
+  }
+
+  protected abstract prepare(): Promise<CodexSetup>;
 
   protected abstract cleanup(): Promise<void>;
 
-  private async handleProgress(event: CodexNotification, signal: AbortSignal) {
+  private async handleProgress(event: CodexNotification) {
     if (
       event.method === "turn/completed" &&
       event.params?.threadId &&
@@ -268,11 +236,6 @@ export abstract class CodexRunner implements EvalAgent {
       await writeJson(
         path.join(this.context.reportDirectory, "subagent-failures.json"),
         this.subagentFailures,
-      );
-      const detail = `Subagent ${threadId} failed: ${JSON.stringify(turn.error)}`;
-      await this.send(
-        `${detail}\nDecide whether to recover this task within the remaining budget. Do not retry or reassign policy-refused work. Continue unaffected testing and record unfinished coverage as limitations.`,
-        signal,
       );
       return;
     }

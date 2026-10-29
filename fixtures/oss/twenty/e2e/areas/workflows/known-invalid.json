@@ -822,6 +822,180 @@
           "Visual auditing used sampled frames with denser checks around decisive actions; no newer-runtime claim is made."
         ]
       }
+    },
+    {
+      "name": "Newly activated manual-trigger workflow never appears in the command menu",
+      "summary": "After creating a workflow with a 'Launch manually' trigger (Availability: Global) and activating it, it isn't listed or searchable as a command in the command menu (Ctrl+K), even after a page reload. The seeded 'Quick Lead' manual workflow does appear there.",
+      "expected": "Once 'QA Flow Alpha' is activated, it is available in the command menu (like 'Quick Lead') so it can be launched manually.",
+      "actual": "The command menu lists only 'Quick Lead', 'Hello World', 'Show Notification' and 'List Companies'. Searching 'QA Flow' returns 'No results found', while searching 'Quick' shows 'Quick Lead' under Other.",
+      "reproSteps": [
+        "Go to /objects/workflows and click 'New Workflow'",
+        "Name it 'QA Flow Alpha', click 'Add a Trigger', and choose 'Launch manually' (Availability Global)",
+        "Add a Form action with a Text field and a Number field",
+        "Click Activate. The status changes to Active",
+        "Reload the page, go to /objects/people, and press Ctrl+K",
+        "Type 'QA Flow': 'No results found'. Type 'Quick': the 'Quick Lead' workflow command appears"
+      ],
+      "id": "native-twenty-u23",
+      "owningArea": "twenty/workflows",
+      "reviewEvidence": {
+        "basis": "Explicit reviewer decision U23. Fresh named-workflow control works; original is confounded by known name erasure.",
+        "userAccepted": false,
+        "sourceRevision": "35c645064f72bc4e3180a2c6c506cbbfee170007"
+      },
+      "reason": "Fresh named-workflow control works; original is confounded by known name erasure."
+    },
+    {
+      "name": "Workflow activates with a required Delay date missing",
+      "summary": "A Delay set to 'At a specific date or time' can be activated with its date empty; every execution then fails with a required-date error.",
+      "expected": "Activation validates the required delay date, highlights the missing field, and keeps the workflow in draft until a date or valid variable is supplied.",
+      "actual": "QA Untouched Defaults <record-id> became Active with Delay input {delayType:'SCHEDULED_DATE'} and no date. Run <record-id> failed at Delay <record-id>: 'Scheduled date time is required for scheduled date delay'.",
+      "reproSteps": [
+        "Create a manual workflow with a Delay action.",
+        "Choose Resume > At a specific date or time, leaving Delay until date empty.",
+        "Close the side panel and activate the workflow.",
+        "Test the activated workflow and inspect the Delay result."
+      ],
+      "id": "native-twenty-u28",
+      "owningArea": "twenty/workflows",
+      "reviewEvidence": {
+        "basis": "Explicit reviewer decision U28. Runtime correctly validates it; activation-time prevention requirement is not established.",
+        "userAccepted": false,
+        "sourceRevision": "35c645064f72bc4e3180a2c6c506cbbfee170007"
+      },
+      "reason": "Runtime correctly validates it; activation-time prevention requirement is not established."
+    },
+    {
+      "name": "Create Record fails when a Number variable is mapped into a Text field (\"Invalid string value 7 for text field\")",
+      "summary": "The variable picker lets you insert a Number-type step output (e.g. a Form Number field) into a Text field of a Create Record action. At run time the step fails because the number is passed as-is instead of being turned into text, so the whole workflow run fails.",
+      "expected": "Either the number is converted to text (the Note is created with title '7'), or the variable picker/editor stops you from mapping an incompatible type with a clear message.",
+      "actual": "The run fails. The Create Record step error is: Invalid string value 7 for text field \"title\". The workflow run status is FAILED with error 'WorkflowRun failed'. No note is created.",
+      "reproSteps": [
+        "Create a workflow with trigger Launch manually",
+        "Add a Form step with a Number field",
+        "Click + under the Form and add Create Record, Object = Notes",
+        "In Title, click the {x} variable button, then Form > Number",
+        "Click Test, enter 7 in the Number field, Submit",
+        "Check the run (Workflow Runs > latest 'Form WF' run): status Failed; the Create Record step error is 'Invalid string value 7 for text field \"title\"'"
+      ],
+      "id": "native-twenty-u30",
+      "owningArea": "twenty/workflows",
+      "reviewEvidence": {
+        "basis": "Explicit reviewer decision U30. Typed variable preservation and strict text validation are intentional.",
+        "userAccepted": false,
+        "sourceRevision": "35c645064f72bc4e3180a2c6c506cbbfee170007"
+      },
+      "reason": "Typed variable preservation and strict text validation are intentional."
+    },
+    {
+      "id": "native-twenty-final-3",
+      "name": "Activation accepts an Update Record action whose target was never configured",
+      "owningArea": "twenty/workflows",
+      "summary": "A visibly unset Update Record target fails with a required-ID error at execution, while activation still succeeds.",
+      "expected": "The action must validate its target before updating a record. No general promise that activation statically rejects every missing Update Record target was established.",
+      "actual": "With Record left at Select, execution raises the specific required record-ID/name error. Activation can mark the workflow Active. The original flow never configured a target mapping.",
+      "reproSteps": [
+        "Create a disposable manual workflow and add Update Record for Notes.",
+        "Leave Record at Select, select Title under Fields to update, and enter a title.",
+        "Test and observe the required record-ID/name validation error.",
+        "Close the run panel and activate; the version can become Active."
+      ],
+      "reason": "The target is visibly incomplete and execution correctly rejects it. Pinned activation checks do not promise full static validation of Update Record targets, and no applicable documentation or test establishes that guarantee. Reject the claimed activation-time requirement for this never-configured target; do not use this entry to reject loss of a valid saved target, concealed stale mappings, incorrect updates or copied old-step variable references.",
+      "matchingGuidance": {
+        "distinction": "Requires an originally unset, visibly Select target and a clear execution validation error. Duplicating a valid workflow and retaining original step IDs is the accepted codex-60m-twenty-8 defect, not this configuration error."
+      },
+      "reviewedBy": "hnhaefliger",
+      "reviewedAt": "2026-10-28T21:02:51.459677+00:00",
+      "reviewEvidence": {
+        "basis": "User accepted publication after original captured UI evidence and pinned source/tests review. No new independent browser run or formal judge agreement is claimed.",
+        "userAccepted": false,
+        "sourceRevision": "35c645064f72bc4e3180a2c6c506cbbfee170007",
+        "sourceReferences": [
+          "https://github.com/twentyhq/twenty/blob/35c645064f72bc4e3180a2c6c506cbbfee170007/packages/twenty-server/src/modules/workflow/workflow-trigger/utils/assert-version-can-be-activated.util.ts#L55",
+          "https://github.com/twentyhq/twenty/blob/35c645064f72bc4e3180a2c6c506cbbfee170007/packages/twenty-server/src/modules/workflow/workflow-trigger/utils/assert-version-can-be-activated.util.ts#L265",
+          "https://github.com/twentyhq/twenty/blob/35c645064f72bc4e3180a2c6c506cbbfee170007/packages/twenty-server/src/modules/workflow/workflow-trigger/workspace-services/workflow-trigger.workspace-service.ts#L141",
+          "https://github.com/twentyhq/twenty/blob/35c645064f72bc4e3180a2c6c506cbbfee170007/packages/twenty-server/src/modules/workflow/workflow-executor/workflow-actions/record-crud/update-record.workflow-action.ts#L74"
+        ],
+        "limitations": [
+          "No new browser reproduction.",
+          "Absence of activation checks alone does not prove perfect UX or immutable product policy. Rejection concerns unsupported activation-time guarantee, not all possible validation improvements.",
+          "No working configured target was lost or concealed.",
+          "Newer runtime was not tested."
+        ],
+        "userRejected": true
+      }
+    },
+    {
+      "id": "agent-browser-reviewed-initial-discard",
+      "name": "Discard Draft is offered for a new workflow but always rejects its initial draft",
+      "owningArea": "twenty/workflows",
+      "summary": "Discard Draft reports that the initial workflow version cannot be deleted and leaves the draft in place.",
+      "expected": "Initial-version deletion is intentionally prohibited, and the error explains the restriction. Offering the control alone does not establish an accepted bug.",
+      "actual": "Discard Draft reports that the initial workflow version cannot be deleted and leaves the draft in place.",
+      "reproSteps": [
+        "Create a new workflow and add a manual trigger without activating it.",
+        "Click Discard Draft and observe the initial-version deletion restriction."
+      ],
+      "reviewEvidence": {
+        "basis": "Explicit reviewer decision on the agent-browser report. No fresh independent verification is claimed.",
+        "userAccepted": false,
+        "sourceRevision": "35c645064f72bc4e3180a2c6c506cbbfee170007",
+        "userRejected": true
+      },
+      "reason": "Initial-version deletion is intentionally prohibited, and the error explains the restriction. Offering the control alone does not establish an accepted bug.",
+      "matchingGuidance": {
+        "distinction": "Reject only the stated intentional restriction or unsupported activation-time completeness claim; do not reject loss of valid configuration or execution with a valid URL."
+      }
+    },
+    {
+      "id": "agent-browser-reviewed-empty-http-url",
+      "name": "Workflow activates with an empty HTTP Request URL and fails immediately when run",
+      "owningArea": "twenty/workflows",
+      "summary": "Activation and reactivation succeed with an empty HTTP Request URL; execution fails with Invalid URL.",
+      "expected": "Execution correctly rejects the missing URL. An activation-time completeness requirement is not established, consistent with the prior missing Delay date rejection.",
+      "actual": "Activation and reactivation succeed with an empty HTTP Request URL; execution fails with Invalid URL.",
+      "reproSteps": [
+        "Create a manual workflow and add an HTTP Request action.",
+        "Leave the URL empty, close the configuration panel and activate the workflow.",
+        "Test the workflow and observe the Invalid URL execution failure."
+      ],
+      "reviewEvidence": {
+        "basis": "Explicit reviewer decision on the agent-browser report. No fresh independent verification is claimed.",
+        "userAccepted": false,
+        "sourceRevision": "35c645064f72bc4e3180a2c6c506cbbfee170007",
+        "userRejected": true
+      },
+      "reason": "Execution correctly rejects the missing URL. An activation-time completeness requirement is not established, consistent with the prior missing Delay date rejection.",
+      "matchingGuidance": {
+        "distinction": "Reject only the stated intentional restriction or unsupported activation-time completeness claim; do not reject loss of valid configuration or execution with a valid URL."
+      }
+    },
+    {
+      "id": "agent-browser-reviewed-negative-delay",
+      "name": "Workflow with a negative Delay can be activated but every run fails configuration validation",
+      "owningArea": "twenty/workflows",
+      "summary": "A negative Delay duration can be saved and activated; execution rejects it with Invalid Configuration.",
+      "expected": "The workflow must reject invalid negative Delay configuration before executing it successfully. This rejection does not establish a requirement to prevent saving or activation.",
+      "actual": "Delay -5 seconds is saved and activates, but testing fails with Invalid Configuration. A 1-second control completes; reverting to -5 restores the validation error.",
+      "reproSteps": [
+        "Create a manual workflow with a valid Create Record action and a Delay.",
+        "Set Delay Seconds to -5 and activate the workflow.",
+        "Test and observe Invalid Configuration.",
+        "Compare 1 second, which completes, then restore -5 and observe the error again."
+      ],
+      "reason": "Explicit reviewer rejection of the reported negative-Delay editor/activation validation claim; execution reports Invalid Configuration. Do not generalize to valid positive delays failing.",
+      "matchingGuidance": {
+        "distinction": "Covers the reported negative-duration input with an explicit execution validation error. Excludes positive-duration failures and loss of valid saved configuration."
+      },
+      "reviewEvidence": {
+        "basis": "Explicit reviewer rejection of this agent-browser report; no fresh independent verification is claimed.",
+        "userAccepted": false,
+        "userRejected": true,
+        "sourceRevision": "35c645064f72bc4e3180a2c6c506cbbfee170007",
+        "limitations": [
+          "The reviewer gave a rejection without an additional rationale; no broader product-intent judgment is inferred."
+        ]
+      }
     }
   ]
 }

@@ -18,10 +18,6 @@ export GITEA__picture__DISABLE_GRAVATAR=true
 export GITEA__openid__ENABLE_OPENID_SIGNIN=false
 export GITEA__openid__ENABLE_OPENID_SIGNUP=false
 export GITEA__actions__ENABLED=${GITEA__actions__ENABLED:-false}
-if [ "$FIXTURE_CASE" != gitea-pr-16829 ]; then
-  # The oldest revision needs its HTTP installer; later images support automatic installation.
-  export GITEA__security__INSTALL_LOCK=true
-fi
 if [ -x /usr/bin/s6-svscan ]; then
   # Older upstream images install s6 under /usr/bin.
   s6=/usr/bin/s6-svscan

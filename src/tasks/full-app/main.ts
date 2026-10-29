@@ -22,8 +22,10 @@ export async function runFullAppEval(options: FullAppOptions): Promise<void> {
     await runFullAppFixtures({
       agent: {
         mo: moAgent,
-        codex: codexAgent(options.browser),
-        claude: claudeAgent(options.browser),
+        "codex-playwright-mcp": codexAgent(options.browser),
+        "claude-playwright-mcp": claudeAgent(options.browser),
+        "codex-agent-browser": codexAgent(options.browser, "agent-browser"),
+        "claude-agent-browser": claudeAgent(options.browser, "agent-browser"),
       }[agent],
       options,
       runId,

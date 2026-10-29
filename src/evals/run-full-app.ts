@@ -148,7 +148,15 @@ async function runFixture({
     );
     const run = await runAgent({
       agent,
-      message: bugbashBrief(url, fixture),
+      message: bugbashBrief(
+        url,
+        fixture,
+        agentName === "mo"
+          ? undefined
+          : agentName?.endsWith("-agent-browser")
+            ? "agent-browser"
+            : "Playwright MCP",
+      ),
       signal: resources.signal,
     });
     try {

@@ -1,6 +1,10 @@
 import { Fixture, FixtureAccount } from "./types";
 
-export function bugbashBrief(url: URL, fixture: Fixture) {
+export function bugbashBrief(
+  url: URL,
+  fixture: Fixture,
+  browserTool?: "Playwright MCP" | "agent-browser",
+) {
   const sections = [
     `Find bugs in this app: ${url.href}`,
     `${fixtureAuthentication(fixture)} Do not change account credentials.`,
@@ -24,6 +28,7 @@ ${area.entryPoints.map((entry) => `- ${entry.path}: ${entry.directions}`).join("
     "Report only bugs you have verified, with expected and actual behavior and steps to reproduce.",
     "Do not read benchmark files, ground truth, or previous eval reports.",
   );
+  if (browserTool) sections.push(`Use ${browserTool}.`);
   return sections.join("\n\n");
 }
 

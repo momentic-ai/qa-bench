@@ -1,8 +1,7 @@
 #!/bin/sh
 set -eu
 
-[ -f /data/gitea/fixture-seeded ]
-[ ! -f /data/gitea/fixture-seeding ]
+sh /fixture/app/snapshot/verify.sh
 # Stop via the image's supervisor so it cannot restart Gitea while SQLite closes.
 s6-svc -d /etc/s6/gitea
 s6-svwait -d -t 30000 /etc/s6/gitea

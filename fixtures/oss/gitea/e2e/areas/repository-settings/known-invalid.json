@@ -62,6 +62,85 @@
       "matchingGuidance": {
         "scope": "Reject reports that existing approvals keep counting after the approval allowlist is changed to exclude their reviewers. Do not generalize to approvals surviving a retarget onto a protected branch, or to new approvals from non-allowlisted reviewers being counted."
       }
+    },
+    {
+      "id": "gitea-new-repo-name-slash-becomes-hyphen",
+      "name": "Repository creation silently replaces a slash in the entered name with a hyphen",
+      "summary": "The report says that entering a repository name containing a slash on New Repository creates the repository with the slash replaced by a hyphen, without any warning.",
+      "expected": "The reported expectation is that a name with a slash is rejected with a validation message instead of being changed.",
+      "actual": "Entering 'qa-creation/m7x91' as the repository name created eval/qa-creation-m7x91 with no warning.",
+      "reproSteps": [
+        "Open New Repository.",
+        "Enter a repository name containing a slash, such as qa/name, and move focus out of the field.",
+        "Create the repository and check its name."
+      ],
+      "reason": "Intended: Gitea deliberately sanitizes repository names in the browser when the name field loses focus, turning characters such as '/' into '-' (go-gitea/gitea#33986, 'Sanitize repo name for migration and new repo', with a unit test expecting this). The change is visible in the field before submitting, so it isn't silent, and a name that skips the cleanup is still rejected by the server's validation."
+    },
+    {
+      "id": "gitea-branch-rule-zero-approvals-rejected-negative",
+      "name": "Setting Required approvals to 0 is rejected as negative",
+      "summary": "The report says that saving a branch protection rule with Required approvals set to 0 fails with 'Required approvals cannot be negative.'",
+      "expected": "The reported expectation is that 0 required approvals saves successfully.",
+      "actual": "After entering 0 in Required approvals and clicking Save Rule, the editor showed 'Required approvals cannot be negative.' and the rule wasn't saved.",
+      "reproSteps": [
+        "Open a branch protection rule in repository Settings > Branches.",
+        "Enter 0 in Required approvals.",
+        "Click Save Rule."
+      ],
+      "reason": "Not reproduced: 0 required approvals saves fine in repeated attempts on desktop and mobile; only negative values are rejected, as the message says. In the report, the page was scrolled with the mouse wheel while the focused number field still held 0, which steps a number input's value down below 0 before Save Rule was clicked, so the submitted value really was negative."
+    },
+    {
+      "id": "gitea-branch-rule-large-approvals-saved-one-less",
+      "name": "Required approvals silently changes 2147483648 to 2147483647 after saving",
+      "summary": "The report says that saving a branch protection rule with Required approvals set to 2147483648 succeeds, but the rule reopens showing 2147483647.",
+      "expected": "The reported expectation is that the rule reopens with the entered 2147483648.",
+      "actual": "After entering 2147483648 in Required approvals and saving, reopening the rule was reported to show 2147483647.",
+      "reproSteps": [
+        "Open a branch protection rule in repository Settings > Branches.",
+        "Enter 2147483648 in Required approvals and click Save Rule.",
+        "Reopen the rule and check the value."
+      ],
+      "reason": "Not reproduced: 2147483648 saves and reopens as 2147483648; the value is stored as a 64-bit integer throughout. In the report, the page was scrolled with the mouse wheel while the focused number field held 2147483648, which steps a number input's value down by one before Save Rule was clicked, so 2147483647 is what was actually submitted."
+    },
+    {
+      "id": "gitea-repo-description-strips-angle-bracket-text",
+      "name": "Saved repository description omits literal <test> on the Code page",
+      "summary": "The report says that a repository description containing text in angle brackets, such as '<test>', is saved intact but the Code page sidebar shows the description without it.",
+      "expected": "The reported expectation is that the Code page shows the description exactly as entered, including '<test>'.",
+      "actual": "With the description 'QA updated description — café & <test>' saved in Settings, the Code page sidebar showed 'QA updated description — café &'.",
+      "reproSteps": [
+        "In repository Settings, set the description to text that includes '<test>' and save.",
+        "Reload Settings and confirm the full text is kept.",
+        "Open the Code page and read the description in the sidebar."
+      ],
+      "reason": "Intended: repository descriptions are rendered as restricted HTML, so tags outside a small allowed list are removed from the display, and '<test>' is treated as an unknown tag (the description sanitizer and its unit test assert this). The saved description is unchanged, as the Settings form shows, and the same text without angle brackets displays in full."
+    },
+    {
+      "id": "gitea-team-packages-no-access-page-reachable",
+      "name": "Packages page remains accessible with team Packages set to No Access",
+      "summary": "The report says that an organization member whose team has Packages set to No Access can still open a repository's Packages page by URL, and list and download its packages, even though the Packages tab is hidden.",
+      "expected": "The reported expectation is that a team with Packages set to No Access can't open or download from the repository's Packages page, like Projects and Releases set to No Access return 404.",
+      "actual": "As a member of a team with Packages set to No Access, the Packages tab was hidden, but the repository's /packages URL loaded and listed linked packages, which could be opened and downloaded. Non-members got 404.",
+      "reproSteps": [
+        "In an organization, give a team access to a private repository with Packages set to No Access.",
+        "As a member of that team, open the repository and confirm the Packages tab is hidden.",
+        "Open the repository's /packages URL directly."
+      ],
+      "reason": "Intended: packages belong to the owner (organization), not to a repository unit, and any organization member has at least read access to them. Upstream deliberately removed enforcement of a team's Packages No Access setting (go-gitea/gitea#25707), restoring \"if a user has read access for an owner, they can read packages\"; the team setting only hides the tab. Same reasoning as the rejected \"Disabled repository Packages page stays accessible\" (gitea-novel-013)."
+    },
+    {
+      "id": "gitea-removed-team-reviewer-approval-still-counts",
+      "name": "Removed reviewer-team member's approval still permits merge",
+      "summary": "The report says that after the only approving reviewer is removed from the branch protection's allowlisted reviewer team, their earlier approval still counts and the pull request can be merged.",
+      "expected": "The reported expectation is that removing the approver from the allowlisted team withdraws their approval's effect, so the pull request isn't mergeable.",
+      "actual": "After the approving user was removed from the Reviewers team (0 members), the pull request still showed as ready and merged using that earlier approval.",
+      "reproSteps": [
+        "Protect a branch to require one approval from a specific team.",
+        "Have a team member approve a pull request.",
+        "Remove that user from the team.",
+        "Check whether the pull request can still be merged."
+      ],
+      "reason": "Intended per the existing ruling: an approval is checked against the allowlist when it's given, and later allowlist or team changes don't retroactively remove it. Same reasoning as the rejected 'Restricting the approval allowlist doesn't stop earlier approvals from counting'; this entry is the reviewer being removed from the team."
     }
   ]
 }

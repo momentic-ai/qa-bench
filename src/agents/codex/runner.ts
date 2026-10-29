@@ -6,8 +6,8 @@ import { CodexCostSchema, ReportSchema } from "../../evals/reports";
 import { BenchmarkAgent } from "../../evals/types";
 
 export const codexRunner: BenchmarkAgent = {
-  name: "Codex",
-  reportDirectory: "codex",
+  name: "codex-playwright-mcp",
+  reportDirectory: "codex-playwright-mcp",
   async getReport(directory) {
     const report = ReportSchema.parse(
       JSON.parse(await readFile(path.join(directory, "report.json"), "utf8")),

@@ -234,6 +234,137 @@
         "Compare the Entire order · % header pill with the 10% channel value."
       ],
       "reason": "Intended. The header pill labels the voucher's scope and discount type, not its amount: getVoucherTypePillLabel renders scope plus % or Fixed, and its unit test expects exactly Entire order · %. Percentages can differ by channel and are shown in the Discount section. The post-run reproducer reached the same conclusion."
+    },
+    {
+      "id": "saleor-vouchers-b08",
+      "name": "Saving zero minimum order value turns the requirement off",
+      "summary": "Saving zero minimum order value turns the requirement off.",
+      "expected": "Saving should be blocked while an 'Invalid minimum spend' error is present, or the zero amount should be handled with clear feedback.",
+      "actual": "Save completes successfully with a checkmark, but reloading the voucher shows the Minimal order value toggle switched off.",
+      "reproSteps": [
+        "Create a fresh unique REQ-QA voucher with Channel-PLN and a 10% entire-order discount.",
+        "Enable Minimal order value and save a positive amount such as 12.34 PLN.",
+        "Change the enabled amount to 0, blur, and click Save.",
+        "After Voucher updated, refresh and scroll to Minimum Requirements."
+      ],
+      "reason": "Works as intended: a minimum order value of 0 means no minimum, so the requirement shows as off after saving."
+    },
+    {
+      "id": "saleor-vouchers-b09",
+      "name": "Fixed amount bulk paste silently skips negative values and truncates precision",
+      "summary": "Fixed amount bulk paste silently skips negative values and truncates precision.",
+      "expected": "Invalid or truncated pasted values should be validated with clear user feedback rather than silently skipping a row or truncating precision without notice.",
+      "actual": "Channel-PLN remains unchanged at 31.25 while Channel-USD updates to 22.34 without any validation warning, and saving reports 'Voucher updated' with the values persisting on reload.",
+      "reproSteps": [
+        "Create a unique DISC-QA voucher with code and PLN/USD channels. Select Products and Fixed amount.",
+        "Save fixed amounts PLN 31.25 and USD 42.50.",
+        "Copy a two-line column containing -5 then 22.345, focus the PLN amount and paste.",
+        "Observe PLN remains 31.25 while USD becomes 22.34; click Save.",
+        "Observe Voucher updated and reopen the voucher; amounts remain 31.25 and 22.34."
+      ],
+      "reason": "Works as intended: bulk paste skips invalid cells such as negatives and limits amounts to the currency's decimal places, the same as typing."
+    },
+    {
+      "id": "saleor-vouchers-b01",
+      "name": "Products voucher saves without required eligible assignments",
+      "summary": "Products voucher saves without required eligible assignments.",
+      "expected": "Saving is blocked with validation feedback until at least one category, collection, product, or variant is assigned.",
+      "actual": "The voucher saves successfully with a 'Voucher updated' notification and updates the header badge to 'Products · %' with all assignment groups remaining empty.",
+      "reproSteps": [
+        "As the administrator, create a fresh ELIG-QA-* voucher with a manual code, both available channels and 10% discount for each channel; save.",
+        "Select Products under What the voucher discounts.",
+        "Leave categories, collections and products/variants unassigned and click Save."
+      ],
+      "reason": "Works as intended: the edit page deliberately lets a voucher be saved before setup is finished and tracks the missing catalogue as a pending \"Required to redeem\" step (\"Finish them now or come back later\"). An empty catalogue doesn't apply to any line items, so nothing is corrupted."
+    },
+    {
+      "id": "saleor-vouchers-b04",
+      "name": "Stale voucher discount save erases a newer saved name",
+      "summary": "Stale voucher discount save erases a newer saved name.",
+      "expected": "Saving a distinct discount field should preserve the newer saved voucher name, or show a conflict requiring resolution rather than silently losing the rename.",
+      "actual": "Save showed Voucher updated; after refresh the name had reverted to QA-MULTI-MAYA-0723-JORDAN and percentage was 23.",
+      "reproSteps": [
+        "As Maya staff, create a unique QA-MULTI voucher with one code, entire-order percentage discount and Channel-PLN assigned; save it.",
+        "Open its detail in tab A with name QA-MULTI-MAYA-0723-JORDAN and percentage 17.",
+        "Open the same voucher in tab B, rename to QA-MULTI-MAYA-0723-TAB2, save and refresh to confirm persistence.",
+        "Switch back to tab A without refreshing. Confirm it still shows the original name and 17%.",
+        "Change only Channel-PLN percentage to 23 and Save.",
+        "Refresh tab A and inspect saved name and percentage."
+      ],
+      "reason": "Works as intended: saving from a stale tab overwrites a newer concurrent edit, which is last-write-wins. Like Metabase's concurrent-edit labels, the app isn't expected to merge or detect conflicting saves."
+    },
+    {
+      "id": "saleor-vouchers-b15",
+      "name": "Clearing the only draft name still triggers an unsaved-changes warning",
+      "summary": "Clearing the only draft name still triggers an unsaved-changes warning.",
+      "expected": "After restoring the edited Voucher Name field to its initial blank state, clicking Back navigates back without an unsaved changes warning.",
+      "actual": "A 'Leave without saving changes?' confirmation dialog appears upon clicking Back.",
+      "reproSteps": [
+        "As administrator, open a fresh Create Voucher form with no prerequisites or settings edited.",
+        "Enter EDIT-newdraft-undo in Voucher Name.",
+        "Select all text in Voucher Name, press Backspace and blur the field.",
+        "Click Back in the bottom action bar."
+      ],
+      "reason": "Works as intended: the unsaved-changes warning tracks whether the form was edited, not whether it returns to its original values, so typing and clearing a name still warns."
+    },
+    {
+      "id": "saleor-vouchers-b22",
+      "name": "Usage limit / minimum quantity fields can't be cleared: they jump back to 1, so retyping gives the wrong number",
+      "summary": "Usage limit / minimum quantity fields can't be cleared: they jump back to 1, so retyping gives the wrong number.",
+      "expected": "Clearing the field leaves it empty (or checks it only on blur/save), so select-all + type '5' gives 5.",
+      "actual": "After Ctrl+A + Backspace the value is instantly '1'; typing '5' then gives '15'. Saving sent usageLimit '15' and minCheckoutItemsQuantity 13, and both persisted after reload.",
+      "reproSteps": [
+        "Open /discounts/vouchers and open 'Big order discount'",
+        "Turn on 'Limit number of times this discount can be used in total' (value defaults to 1)",
+        "Click the Limit of Uses input, press Ctrl+A then Backspace: the field shows 1 instead of being empty",
+        "Type 5: the field shows 15",
+        "Do the same with 'Minimum quantity of items' and type 3: it shows 13",
+        "Save and reload: usage limit 15 and min quantity 13 are saved"
+      ],
+      "reason": "Cannot reproduce on human review: clearing the field and typing a new value saves the new value."
+    },
+    {
+      "id": "saleor-vouchers-b23",
+      "name": "Manual code dialog shows 'Code already exists' for a new, unique code and stays open",
+      "summary": "Manual code dialog shows 'Code already exists' for a new, unique code and stays open.",
+      "expected": "A unique code is added once and the dialog closes without an error.",
+      "actual": "The dialog stays open, the input is marked red with 'Code already exists', and the code (e.g. UNIQ456) already appears in the Voucher codes table. The checklist reads '2 codes ready'.",
+      "reproSteps": [
+        "Open /discounts/vouchers/add",
+        "Enter Voucher Name 'X'",
+        "Click Add code > Manual code",
+        "Type the unique code 'UNIQ456' and click Confirm",
+        "The dialog stays open showing 'Code already exists'",
+        "Click Back: the table lists UNIQ456 once and the checklist says '2 codes ready'"
+      ],
+      "reason": "Cannot reproduce on human review: confirming a unique code adds it once and closes the dialog."
+    },
+    {
+      "id": "saleor-vouchers-b24",
+      "name": "New voucher availability says two channels despite none assigned",
+      "summary": "New voucher availability says two channels despite none assigned.",
+      "expected": "Availability summary reports no assigned channels.",
+      "actual": "Availability says Voucher in 2 of 2 channels while the card immediately below says No channels assigned and setup remains 0 of 3.",
+      "reproSteps": [
+        "Open Vouchers.",
+        "Click Create voucher without assigning any channels.",
+        "Read Availability."
+      ],
+      "reason": "Cannot reproduce on human review: an untouched Create Voucher form shows 0 of 2 channels with No channels assigned."
+    },
+    {
+      "id": "saleor-vouchers-b25",
+      "name": "Adding a condition clears an unapplied voucher filter",
+      "summary": "Adding a condition clears an unapplied voucher filter.",
+      "expected": "The configured condition row is retained and a second condition row is added.",
+      "actual": "The configured condition fields are reset to empty placeholders and no additional condition row is added.",
+      "reproSteps": [
+        "Open the voucher list as an authenticated administrator and clear any applied filters.",
+        "Open Filters and configure Status is Expired without clicking Apply.",
+        "Click Add condition.",
+        "Inspect the filter panel."
+      ],
+      "reason": "Cannot reproduce on human review: a completed filter condition survives Add condition; only unfinished rows are removed."
     }
   ]
 }

@@ -39,8 +39,18 @@ import { BenchmarkAgent, Fixture } from "./types";
 const root = path.resolve(import.meta.dirname, "../..");
 const RUNNERS: Record<Agent, BenchmarkAgent> = {
   mo: moRunner,
-  codex: codexRunner,
-  claude: claudeRunner,
+  "codex-playwright-mcp": codexRunner,
+  "claude-playwright-mcp": claudeRunner,
+  "codex-agent-browser": {
+    ...codexRunner,
+    name: "codex-agent-browser",
+    reportDirectory: "codex-agent-browser",
+  },
+  "claude-agent-browser": {
+    ...claudeRunner,
+    name: "claude-agent-browser",
+    reportDirectory: "claude-agent-browser",
+  },
 };
 
 export async function gradeFixture(
@@ -242,7 +252,13 @@ export async function gradeFixture(
     outside_area_known_invalid_sha256: outsideKnownInvalidHash,
     duplicates,
     known_invalid: knownInvalidCount,
-    ...metrics(knownHits, knownInvalidCount, groundTruth.length),
+    ...metrics(
+      knownHits,
+      knownInvalidCount,
+      groundTruth.length,
+      scores.duplicate_known_hits,
+      scores.duplicate_known_invalid,
+    ),
     ...throughput(bugs.length, knownHits, report.durationSeconds),
     review_path: options.runId
       ? path.posix.join(options.runId, reviewPath)

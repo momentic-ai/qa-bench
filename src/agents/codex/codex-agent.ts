@@ -1,9 +1,15 @@
-import { mkdir, mkdtemp, realpath, rm } from "node:fs/promises";
+import { mkdir, mkdtemp, rm } from "node:fs/promises";
 import { createRequire } from "node:module";
 import { tmpdir } from "node:os";
 import path from "node:path";
 
-import { Browser, EvalAgentDefinition } from "../../evals/agent";
+import { AgentContext, Browser, EvalAgentDefinition } from "../../evals/agent";
+import {
+  BrowserTool,
+  closeAgentBrowsers,
+  prepareAgentBrowser,
+  validateAgentBrowser,
+} from "../agent-browser";
 import {
   localBrowserConnection,
   validateLocalChromium,
@@ -11,31 +17,45 @@ import {
 import { BrowserbaseSessions } from "./browserbase";
 import { CodexRunner } from "./codex-runner";
 
-const packageDirectory = path.resolve(import.meta.dirname, "../../..");
 const require = createRequire(import.meta.url);
 
 type BrowserConnection = {
   args: string[];
   env: Record<string, string>;
-  filesystem: Record<string, string>;
 };
 
 export class CodexAgent extends CodexRunner {
   protected localBrowser = false;
+  protected skillOwner: ".agents" | ".claude" = ".agents";
   private browsers: BrowserbaseSessions | undefined;
   private browserTemporaryDirectory: string | undefined;
+  private browserEnvironment: Record<string, string> | undefined;
 
-  protected async prepare(
-    _workspace: string,
-    resolverFiles: Record<string, string>,
+  constructor(
+    context: AgentContext,
+    protected browserTool: BrowserTool = "playwright-mcp",
   ) {
+    super(context);
+  }
+
+  protected async prepare() {
+    if (this.browserTool === "agent-browser") {
+      if (!this.temporaryWorkspace)
+        throw new Error("Agent workspace is missing.");
+      this.browserEnvironment = await prepareAgentBrowser(
+        this.temporaryWorkspace,
+        await this.connectBrowser(),
+        this.skillOwner,
+      );
+      return {
+        mcpServers: {},
+        env: this.browserEnvironment,
+        sandbox: "workspace-write" as const,
+      };
+    }
     return {
-      mcpServers: await this.prepareBrowserMcp(resolverFiles),
-      subagents: false,
-      filesystem: {
-        [path.join(this.context.runDirectory, "browser-artifacts")]: "read",
-      },
-      instructions: "",
+      mcpServers: await this.prepareBrowserMcp(),
+      subagents: !this.localBrowser,
     };
   }
 
@@ -44,7 +64,17 @@ export class CodexAgent extends CodexRunner {
   }
 
   protected async cleanup() {
-    await this.browsers?.stop();
+    try {
+      if (this.browserEnvironment)
+        await closeAgentBrowsers(
+          this.browserEnvironment,
+          path.join(this.context.runDirectory, "browser-artifacts"),
+        );
+    } finally {
+      await this.browsers?.stop();
+    }
+    if (this.temporaryWorkspace)
+      await rm(this.temporaryWorkspace, { recursive: true, force: true });
     if (this.browserTemporaryDirectory) {
       await rm(this.browserTemporaryDirectory, {
         recursive: true,
@@ -62,12 +92,10 @@ export class CodexAgent extends CodexRunner {
     return {
       args: [],
       env: { PLAYWRIGHT_MCP_CDP_ENDPOINT: await this.browsers.start() },
-      filesystem: {},
     };
   }
 
-  private async prepareBrowserMcp(resolverFiles: Record<string, string>) {
-    // Deep workspace paths exceed Unix socket limits; mount a short, run-owned temporary directory.
+  private async prepareBrowserMcp() {
     const browserTemporaryDirectory = await mkdtemp(
       path.join(tmpdir(), "pw-eval-"),
     );
@@ -77,57 +105,17 @@ export class CodexAgent extends CodexRunner {
       "browser-artifacts",
     );
     await mkdir(browserOutputDirectory, { recursive: true });
-    const nodeExecutable = await realpath(process.execPath);
-    const nodeModulesDirectory = await realpath(
-      path.join(packageDirectory, "node_modules"),
-    );
-    const playwrightConfig = path.join(
-      packageDirectory,
-      "playwright-config.json",
-    );
     const browser = await this.connectBrowser();
     const playwrightCommand = path.join(
       path.dirname(require.resolve("@playwright/mcp/package.json")),
       "cli.js",
     );
-    const browserPermissions = `permissions.browser={filesystem={${Object.entries(
-      {
-        ":minimal": "read",
-        ":workspace_roots": "read",
-        [browserOutputDirectory]: "write",
-        [browserTemporaryDirectory]: "write",
-        [path.join(this.codexHome, "tmp", "arg0")]: "read",
-        [nodeExecutable]: "read",
-        [nodeModulesDirectory]: "read",
-        ...resolverFiles,
-        [playwrightConfig]: "read",
-        ...browser.filesystem,
-      },
-    )
-      .map(
-        ([file, permission]) =>
-          `${JSON.stringify(file)}=${JSON.stringify(permission)}`,
-      )
-      .join(",")}},network={enabled=true}}`;
     return {
       playwright: {
         command: process.execPath,
         cwd: browserOutputDirectory,
         args: [
-          // MCP runs outside Codex's shell sandbox; give it its own filesystem boundary.
-          this.command,
-          "sandbox",
-          "--permission-profile",
-          "browser",
-          "--cd",
-          browserOutputDirectory,
-          "-c",
-          browserPermissions,
-          "--",
-          nodeExecutable,
           playwrightCommand,
-          "--config",
-          playwrightConfig,
           ...browser.args,
           "--output-dir",
           browserOutputDirectory,
@@ -143,23 +131,32 @@ export class CodexAgent extends CodexRunner {
   }
 }
 
-export function codexAgent(browser: Browser): EvalAgentDefinition {
+export function codexAgent(
+  browser: Browser,
+  browserTool: BrowserTool = "playwright-mcp",
+): EvalAgentDefinition {
   return {
-    name: "Codex",
-    reportSubdirectory: "codex",
+    name: `codex-${browserTool}`,
+    reportSubdirectory: `codex-${browserTool}`,
     concurrency: browser === "local" ? 2 : Infinity,
-    config: { browser },
+    config: {
+      browser,
+      ...(browserTool === "playwright-mcp"
+        ? { subagents: browser !== "local" }
+        : {}),
+    },
     async validateEnvironment() {
       if (!process.env.OPENAI_API_KEY)
         throw new Error("OPENAI_API_KEY is required.");
+      if (browserTool === "agent-browser") await validateAgentBrowser();
       if (browser === "local") await validateLocalChromium();
       else if (!process.env.BROWSERBASE_API_KEY)
         throw new Error("BROWSERBASE_API_KEY is required.");
     },
     create(context) {
       return browser === "local"
-        ? new LocalCodexAgent(context)
-        : new CodexAgent(context);
+        ? new LocalCodexAgent(context, browserTool)
+        : new CodexAgent(context, browserTool);
     },
   };
 }

@@ -455,8 +455,8 @@
     {
       "id": "gitea-reenabling-prs-resets-pr-settings",
       "name": "Re-enabling pull requests silently turns on branch deletion and changes merge defaults",
-      "summary": "Turning a repository's pull requests off and back on in Settings > Advanced Settings doesn't restore the previous pull request settings. While pull requests are disabled, the form shows every merge option checked and every merge style selected, so re-enabling saves those: the default merge style becomes Fast-forward only and Manually merged, Delete pull request branch after merge, and autodetect manual merge all turn on.",
-      "expected": "Re-enabling pull requests keeps the repository's previous pull request settings, or applies the same defaults as a new repository, without silently turning on branch deletion and manual merge options.",
+      "summary": "Turning a repository's pull requests off and back on in Settings > Advanced Settings doesn't restore the previous pull request settings. While pull requests are disabled, the form shows every merge option checked and every merge style selected, so re-enabling saves those: the default merge style becomes Fast-forward only and Manually merged, Delete pull request branch after merge, and autodetect manual merge all turn on. The settings page greys these options out, rather than hiding them, while the feature is off, which tells the user they'll be kept and simply inactive; saving actually deletes them.",
+      "expected": "Re-enabling pull requests keeps the repository's previous pull request settings, as the greyed-out options shown while pull requests are disabled suggest, or applies the same defaults as a new repository, without silently turning on branch deletion and manual merge options.",
       "actual": "A repository set to Create merge commit, with Manually merged, delete-branch-after-merge and autodetect manual merge unchecked, came back as Fast-forward only with all three checked after pull requests were disabled and re-enabled. The values stayed after reload, and a new pull request's merge confirmation used Fast-forward only with Delete Branch checked.",
       "reproSteps": [
         "In a repository's Settings > Advanced Settings, set Default Merge Style to Create merge commit, uncheck Manually merged, Delete pull request branch after merge by default and Enable autodetect manual merge, and save.",
@@ -464,7 +464,13 @@
         "Check Enable Repository Pull Requests again, save, and reload.",
         "Compare the pull request settings with the ones saved in the first step."
       ],
-      "severity": 3
+      "severity": 3,
+      "matchingGuidance": {
+        "relatedReference": {
+          "name": "Re-enabling the issue tracker silently turns time tracking and dependencies back on",
+          "distinction": "Same cause (saving with the feature off deletes its settings while the page only greys them out), but that entry is the issue tracker's time tracking and dependency options; this entry is the pull request merge settings."
+        }
+      }
     },
     {
       "id": "gitea-rebase-to-empty-pr-files-changed-raw-error",
@@ -630,6 +636,663 @@
           "distinction": "Same cause (the search index doesn't store assignees), but that entry is the global Pull Requests dashboard; this entry is a repository's Pull Requests list."
         }
       }
+    },
+    {
+      "id": "gitea-pr-whitespace-inline-comment-saved",
+      "name": "Whitespace-only inline review comment is saved as an empty discussion",
+      "summary": "In a pull request's Files Changed view, an empty inline comment is blocked, but one containing only spaces is accepted. It's saved as a pending review discussion that shows \"No description provided.\", and Add single comment publishes it to the timeline as a contentless review comment.",
+      "expected": "A whitespace-only inline review comment is rejected like an empty one, as the main pull request comment box does.",
+      "actual": "Entering only spaces in an inline comment and clicking Start Review saved a pending discussion showing \"No description provided.\" and increased the review counter; it persisted after reload. Add single comment with only spaces published a contentless review comment visible to other users. Replies with only spaces were also saved.",
+      "reproSteps": [
+        "Open a pull request's Files Changed tab and click the + on a changed line.",
+        "Type only spaces in the comment box and click Start Review (or Add single comment).",
+        "Check whether the comment is rejected or saved, and how it appears.",
+        "Reload the page and check the review counter and the conversation."
+      ],
+      "severity": 3
+    },
+    {
+      "id": "gitea-repo-pulls-review-requested-search-omits-pr",
+      "name": "Repository Pull Requests 'Review requested' with a search hides a pull request awaiting your review",
+      "summary": "On a repository's Pull Requests list, combining a text search with Type → Review requested shows No results, even though a matching pull request requests your review. Requesting a reviewer never refreshes the search index, so the search doesn't know about the request; Review requested without a search works.",
+      "expected": "A pull request that requests your review and matches the search stays listed when Review requested is combined with the search.",
+      "actual": "Searching for the pull request's title listed it, but choosing Review requested with that search showed No results with 0 Open and 0 Closed. Review requested without a search listed it, and posting a comment on the pull request made the combined search find it.",
+      "reproSteps": [
+        "Open a pull request and request another user's review.",
+        "As that user, open the repository's Pull Requests list and search for a word from the pull request's title; confirm it's listed.",
+        "With the search still applied, choose Type → Review requested.",
+        "Check whether the pull request is still listed, then clear the search and compare."
+      ],
+      "severity": 3
+    },
+    {
+      "id": "gitea-empty-pr-squash-merge-fails",
+      "name": "Squash merging a pull request with no remaining changes fails",
+      "summary": "When a pull request's changes are already on the target branch, the merge box says it will create an empty commit and still offers squash merging, but Create squash commit fails and the pull request stays open. The squash step commits without allowing an empty commit.",
+      "expected": "Squash merging a pull request whose changes are already on the target completes, consistent with the empty-commit notice, or squash isn't offered for it.",
+      "actual": "Confirming Create squash commit failed with a server error; after a reload the pull request was still open and unmerged. Create merge commit on the same pull request succeeded.",
+      "reproSteps": [
+        "Open a pull request, then make its branch's changes already present on the target branch (for example, revert the change on the branch, or merge the same change into the target).",
+        "Confirm the merge box says the merge will be an empty commit.",
+        "Choose Create squash commit and confirm.",
+        "Reload and check whether the pull request was merged."
+      ],
+      "severity": 3,
+      "matchingGuidance": {
+        "relatedReference": {
+          "name": "Failed squash merge of an empty pull request shows only a bare \"server error: 500\"",
+          "distinction": "Same failed squash merge, but that entry is the unhelpful bare 500 message; this entry is the merge failing and leaving the pull request open."
+        }
+      }
+    },
+    {
+      "id": "gitea-empty-pr-squash-merge-bare-500-message",
+      "name": "Failed squash merge of an empty pull request shows only a bare \"server error: 500\"",
+      "summary": "When squash merging a pull request with no remaining changes fails, the only feedback is a red \"server error: 500\" notification. It doesn't say what went wrong or what to do instead, such as using a merge commit.",
+      "expected": "A failed squash merge shows a message that explains why it failed and how to proceed.",
+      "actual": "Only a red \"server error: 500\" notification appeared, with no explanation; the squash confirmation form stayed open.",
+      "reproSteps": [
+        "Open a pull request whose changes are already on the target branch (the merge box says the merge will be an empty commit).",
+        "Choose Create squash commit and confirm.",
+        "Read the error message that appears."
+      ],
+      "severity": 1,
+      "matchingGuidance": {
+        "relatedReference": {
+          "name": "Squash merging a pull request with no remaining changes fails",
+          "distinction": "Same failed squash merge, but that entry is the merge failing; this entry is the bare, non-actionable 500 message shown for it."
+        }
+      }
+    },
+    {
+      "id": "gitea-pr-wip-toggle-truncates-long-title",
+      "name": "Adding WIP to a long pull request title silently truncates it permanently",
+      "summary": "For a pull request title near the 255-character limit, clicking \"Add WIP: prefix\" silently cuts the end of the title to make room, and \"Remove WIP: prefix\" can't restore it. No error or notification tells the user the title was shortened.",
+      "expected": "Adding the WIP prefix to a title that would exceed the limit shows an error, or saves with a clear notification that the title was shortened, instead of silently losing text.",
+      "actual": "Adding WIP to a 255-character title replaced its end with an ellipsis without any message. Removing WIP and refreshing left the title at 248 characters, permanently missing the original ending.",
+      "reproSteps": [
+        "Create a pull request with a title of about 255 characters, ending in a recognisable word.",
+        "Click \"Add WIP: prefix\", then \"Remove WIP: prefix\".",
+        "Refresh and open Edit beside the title to compare it with the original."
+      ],
+      "severity": 1
+    },
+    {
+      "id": "gitea-moved-file-hides-inline-comments",
+      "name": "Moving or renaming a reviewed file hides its inline comments in Files Changed",
+      "summary": "After a file with inline review comments is moved into a folder or renamed in a later commit, its comment threads (resolved or pending) no longer appear in the pull request's Files Changed view, even with Show outdated comments enabled. The comments are still tied to the old path.",
+      "expected": "Inline comments on a file that was later moved or renamed stay visible in Files Changed, at least as outdated comments.",
+      "actual": "After moving the reviewed file to a folder, its resolved conversation disappeared from Files Changed, and turning on Show outdated comments didn't bring it back. The Conversation tab still listed it.",
+      "reproSteps": [
+        "Open a pull request, add an inline comment on a changed file, and resolve it (or leave it pending).",
+        "Push a commit that moves the file into a folder or renames it.",
+        "Open Files Changed, enable Show outdated comments, and look for the comment."
+      ],
+      "severity": 3
+    },
+    {
+      "id": "gitea-reopened-pr-missing-update-branch",
+      "name": "Reopened pull request doesn't offer Update branch after its target advanced while it was closed",
+      "summary": "If commits are pushed to a pull request's target branch while the pull request is closed, reopening it doesn't show that the branch is behind or offer the Update branch button, even after a reload. How far behind it is only gets recalculated for open pull requests when the target changes.",
+      "expected": "After reopening, the pull request shows that its branch is behind the target and offers Update branch.",
+      "actual": "After closing the pull request, committing to its target branch and reopening it, the merge box showed no out-of-date message and no Update branch button, although comparing the branches showed the target was a commit ahead.",
+      "reproSteps": [
+        "Open a pull request whose branch is up to date with its target, then close it.",
+        "Push or commit a change directly to the target branch.",
+        "Reopen the pull request and reload the page.",
+        "Check the merge box for an out-of-date message and an Update branch button."
+      ],
+      "severity": 3
+    },
+    {
+      "id": "gitea-org-pulls-state-switch-drops-user-filters",
+      "name": "Organization Pull Requests Open/Closed switch drops the selected Author and Assignee filters",
+      "summary": "On an organization's Pull Requests page, switching between Open and Closed while an Author or Assignee filter is selected drops those filters, so pull requests by other authors or with other assignees appear.",
+      "expected": "Switching between Open and Closed keeps the selected Author and Assignee filters.",
+      "actual": "With Author and Assignee set to the same user on the Closed tab, clicking Open removed both filters from the URL and listed an unassigned pull request.",
+      "reproSteps": [
+        "In an organization repository, open two pull requests by the same author, one assigned to them and one unassigned, and close the assigned one.",
+        "On the organization's Pull Requests page, open Closed and choose that user in Author and Assignee.",
+        "Click Open.",
+        "Check whether the Author and Assignee filters are still applied."
+      ],
+      "severity": 3
+    },
+    {
+      "id": "gitea-global-pr-search-due-sort-stale",
+      "name": "Global pull-request keyword search sorts by stale due dates after sidebar updates",
+      "severity": 3,
+      "owningArea": "gitea/pull-requests",
+      "summary": "Setting or changing a pull request due date updates the database without refreshing the search index. The global PR dashboard orders keyword searches using outdated indexed dates while displaying the current saved dates.",
+      "expected": "Nearest and Farthest due-date sorting on global Pull Requests uses current saved deadlines for matching PRs.",
+      "actual": "With matching PRs due November 15 and December 20, Nearest due date can place December 20 first, and Farthest can retain an equally incorrect stale order. Reloading does not repair the ordering. Clearing the keyword or using the repository PR list sorts correctly. Posting comments on both PRs refreshes their index records and restores ordering; another due-date-only edit can break it again.",
+      "reproSteps": [
+        "Create two disposable pull requests whose titles share a fresh nonnumeric search prefix.",
+        "Set their due dates from the PR sidebar, giving the older PR an earlier date and the newer PR a later date.",
+        "Open global Pull Requests, select Created by you and Open, search for the prefix, and choose Nearest due date.",
+        "Observe the later-dated PR listed above the earlier-dated PR. Reload and compare Nearest/Farthest ordering against the displayed saved dates.",
+        "As controls, clear the keyword or use the repository PR list and confirm current-date ordering.",
+        "Post a normal comment on each PR, repeat the global keyword sort and confirm it recovers. Change only a due date and check for stale ordering again."
+      ],
+      "sourceReport": {
+        "sessionId": "bd66ed23-d8b0-5502-8fc0-7bbad86262c9",
+        "webUrl": "https://app.momentic.ai/mo/sessions/bd66ed23-d8b0-5502-8fc0-7bbad86262c9?tab=bug%3ANearest%20due%20date%20places%20a%20later%20pull%20request%20first",
+        "recording": {
+          "startedAt": 1793228274440,
+          "finishedAt": 1793228304752,
+          "agentId": "bd66ed23-d8b0-5502-8fc0-7bbad86262c9:sandbox-bugbash-v2:lists",
+          "windowId": "f14b9889-e14e-4a98-86f4-cb0b1a49b2dd",
+          "artifactId": "596ae8c0-7cd8-4d4c-a950-ae713344b81c"
+        }
+      },
+      "matchingGuidance": {
+        "relatedReference": {
+          "id": "gitea-issue-search-due-sort-ignores-new-due-dates",
+          "distinction": "The existing reference covers global Issues search after setting due dates. This entry covers global Pull Requests keyword search using stale PR deadlines. The shared missing index refresh is the cause, but the dashboard entry point differs."
+        },
+        "otherRelatedReference": {
+          "id": "gitea-issue-search-due-sort-stale-after-due-date-edit",
+          "distinction": "Related global Issues case for changing already-indexed dates; this entry covers stale PR due-date sorting."
+        },
+        "scope": "Require a keyword search on the global PR dashboard and ordering that disagrees with current saved deadlines. Pure visual query retention, repository-list ordering and undated-milestone database sorting have separate coverage. Some creation/date arrangements coincide with the stale order and appear correct; no universal reversed-order claim is made."
+      },
+      "reviewEvidence": {
+        "basis": "Explicit user approval as a related severity-3 entry after independent Codex and Claude reproductions, passing controls and coordinator source checks. Both final reviewers accepted at severity 3.",
+        "userAccepted": true,
+        "sourceRevision": "99053ce4fa2b45f1bca5837418c0c57f793ca824",
+        "severityReason": "Severity 3: incorrect ordering of matching pull requests under supported due-date sorts. Saved due dates themselves remain correct.",
+        "analysis": [
+          "Claude reproduced on two fresh PR pairs, set dates through the sidebar, and confirmed no-keyword/repository-list controls. Reindexing only one PR could make both directions wrong; comments on both restored correct ordering.",
+          "Codex reproduced after checking creation-order arrangements, repaired ordering through comments, then reproduced again with a due-date-only edit. It also confirmed desktop and narrower-width variants.",
+          "The deadline handler and model update storage and add timeline history without notifying the search indexer. The global dashboard preserves index-result ordering while loading current saved PR data for display.",
+          "Normal comments notify the indexer, explaining the repair control. The repository list uses index results for matching IDs, then sorts current database records, explaining its passing control.",
+          "Latest source retains the missing deadline refresh; latest runtime was not tested."
+        ],
+        "sourceReferences": [
+          "https://github.com/go-gitea/gitea/blob/99053ce4fa2b45f1bca5837418c0c57f793ca824/routers/web/repo/issue.go#L384-L407",
+          "https://github.com/go-gitea/gitea/blob/99053ce4fa2b45f1bca5837418c0c57f793ca824/models/issues/issue_update.go#L510-L532",
+          "https://github.com/go-gitea/gitea/blob/99053ce4fa2b45f1bca5837418c0c57f793ca824/services/indexer/notify.go#L36-L43",
+          "https://github.com/go-gitea/gitea/blob/99053ce4fa2b45f1bca5837418c0c57f793ca824/modules/indexer/issues/util.go#L100-L124",
+          "https://github.com/go-gitea/gitea/blob/99053ce4fa2b45f1bca5837418c0c57f793ca824/routers/web/user/home.go#L544-L555",
+          "https://github.com/go-gitea/gitea/blob/965d7522e0b3d323ea2da6615e7d4b39684d16e5/models/issues/issue_update.go#L530-L548"
+        ],
+        "limitations": [
+          "The exact deployed search backend and stored index contents were not directly inspected; stale index behavior is supported by source and intervention controls.",
+          "Organization dashboards and direct API deadline mutations were not independently browser-tested.",
+          "Latest runtime and complete historical fix coverage were not verified."
+        ]
+      }
+    },
+    {
+      "id": "gitea-pr-conversation-navigation-leaves-target-folded",
+      "name": "Previous and Next conversation navigation leaves target comments hidden in collapsed files",
+      "severity": 3,
+      "owningArea": "gitea/pull-requests",
+      "summary": "Files Changed conversation navigation changes the comment URL without expanding its collapsed file, leaving the target discussion hidden.",
+      "expected": "Previous and Next reveal the target conversation, expanding its file when necessary.",
+      "actual": "The URL changes to the target comment but its Viewed or manually collapsed file remains folded. The discussion stays hidden. Expanding the file manually or reloading the comment URL reveals it.",
+      "reproSteps": [
+        "Create a pull request with inline review conversations in two different files.",
+        "Mark the first file Viewed so it collapses.",
+        "Click Previous beneath the second file’s conversation.",
+        "Observe the target comment hash in the URL while the first file and its discussion remain collapsed.",
+        "Expand the first file or reload the target comment URL to reveal the discussion."
+      ],
+      "sourceReport": {
+        "sessionId": "3c735475-bbf2-5fda-9289-11d8d93febf0",
+        "webUrl": "https://app.momentic.ai/mo/sessions/3c735475-bbf2-5fda-9289-11d8d93febf0?tab=bug%3APrevious%20conversation%20link%20fails%20to%20reveal%20comment%20in%20collapsed%20Viewed%20file",
+        "recording": {
+          "startedAt": 1793216485633,
+          "finishedAt": 1793216527594,
+          "agentId": "3c735475-bbf2-5fda-9289-11d8d93febf0:sandbox-bug-reproducer:26785b01-611b-40c7-b44a-ed236943fe56",
+          "windowId": "db593623-cfe9-43e1-8a60-189159a7d5ac"
+        }
+      },
+      "matchingGuidance": {
+        "scope": "Covers Previous/Next navigation into Viewed or manually folded files. Missing comments after file renames and unrelated file-tree navigation defects have separate causes."
+      },
+      "reviewEvidence": {
+        "basis": "Explicit user acceptance at severity 3 after Claude’s final acceptance and Codex’s independently observed reproductions; Codex final verdict was pending at approval.",
+        "userAccepted": true,
+        "sourceRevision": "99053ce4fa2b45f1bca5837418c0c57f793ca824",
+        "severityReason": "Conversation navigation fails to reveal its destination; manual expansion or reload is required.",
+        "analysis": [
+          "Claude reproduced twice with working expanded-file controls, Next wraparound and manual folding.",
+          "Codex independently reproduced twice and confirmed Next, manual folding, split view, a narrower viewport and a contributor account. Final verdict pending at approval.",
+          "The navigation handler changes only the hash. The hashchange handler scrolls without unfolding; the page-load handler explicitly unfolds the target file.",
+          "Latest inspected source retains this separation; latest runtime was not tested."
+        ],
+        "sourceReferences": [
+          "https://github.com/go-gitea/gitea/blob/99053ce4fa2b45f1bca5837418c0c57f793ca824/web_src/js/features/repo-diff.ts#L119-L134",
+          "https://github.com/go-gitea/gitea/blob/99053ce4fa2b45f1bca5837418c0c57f793ca824/web_src/js/features/repo-diff.ts#L214-L244",
+          "https://github.com/go-gitea/gitea/blob/99053ce4fa2b45f1bca5837418c0c57f793ca824/web_src/js/features/repo-issue.ts#L258-L279"
+        ],
+        "limitations": [
+          "No saved comment loss observed.",
+          "Complete upstream history and latest runtime were not verified."
+        ]
+      }
+    },
+    {
+      "id": "gitea-pr-quote-reply-comment-disabled",
+      "name": "Pull-request Quote Reply populates the draft but leaves Comment disabled",
+      "severity": 3,
+      "owningArea": "gitea/pull-requests",
+      "summary": "Choosing Quote Reply populates the comment composer, but Comment stays disabled. Switching to Preview and back to Write does not enable posting the generated quote.",
+      "expected": "Quote Reply should produce a draft that can be posted using Comment without requiring an extra text edit.",
+      "actual": "Quote Reply populates Write and Preview, but Comment remains disabled. Typing a space enables submission and the quote posts successfully.",
+      "reproSteps": [
+        "Create a disposable pull request and post a discussion comment.",
+        "Edit the comment and save it.",
+        "With the reply composer empty, choose Quote Reply from that comment’s menu.",
+        "Observe the populated draft and disabled Comment button, including after switching Preview and Write.",
+        "Type a space and confirm Comment enables and posts the quote."
+      ],
+      "sourceReport": {
+        "sessionId": "9c010173-29fe-5bff-bc3a-2e745356d758",
+        "webUrl": "https://app.momentic.ai/mo/sessions/9c010173-29fe-5bff-bc3a-2e745356d758?tab=bug%3AQuote%20reply%20leaves%20the%20Comment%20button%20disabled",
+        "recording": {
+          "startedAt": 1793221082500,
+          "finishedAt": 1793221119800,
+          "agentId": "9c010173-29fe-5bff-bc3a-2e745356d758:sandbox-bugbash-v2:discussion",
+          "windowId": "0d66c2d0-78dc-4bb6-a6a9-fd01d4c8494c",
+          "artifactId": "c4c530ff-cc31-440f-9fea-f470e5775190"
+        }
+      },
+      "matchingGuidance": {
+        "relatedReference": {
+          "id": "gitea-issue-quote-reply-stale-comment-controls",
+          "distinction": "The existing reference covers Issue discussion controls after Quote Reply. This entry covers pull-request discussion Quote Reply leaving Comment disabled."
+        },
+        "scope": "Require a populated quote draft with stale disabled submission controls. Quote content lost after submission is a separate claim."
+      },
+      "reviewEvidence": {
+        "basis": "Explicit user acceptance as a related severity-3 entry after Codex independently reproduced on two fresh PRs. Final reviewer verdicts were pending when approved.",
+        "userAccepted": true,
+        "sourceRevision": "99053ce4fa2b45f1bca5837418c0c57f793ca824",
+        "severityReason": "The generated reply cannot be submitted until the user makes an extra edit.",
+        "analysis": [
+          "Codex observed the generated quote in Write and Preview on two fresh PRs while Comment remained disabled.",
+          "Typing a single space enabled Comment and allowed submission.",
+          "The shared quote handler assigns the editor value programmatically; the observed control state remains stale until a subsequent user edit."
+        ],
+        "sourceReferences": [
+          "https://github.com/go-gitea/gitea/blob/99053ce4fa2b45f1bca5837418c0c57f793ca824/web_src/js/features/repo-issue-edit.ts#L126-L151"
+        ],
+        "limitations": [
+          "Claude review and Codex final verdict were pending at user approval.",
+          "No saved-comment loss observed.",
+          "Latest runtime was not tested."
+        ]
+      }
+    },
+    {
+      "id": "gitea-reverse-fork-compare-says-equal",
+      "name": "Reversed fork comparison says the branches are equal when they differ",
+      "summary": "When a fork's branch has changes and the comparison is reversed (the fork branch as base and the upstream branch as head, for example via Switch head and base and Switch comparison type), the compare page shows \"These branches are equal\" and no files, although the branches' contents differ. It happens whenever the head is an ancestor of the base.",
+      "expected": "The reversed comparison shows the file differences between the two branches.",
+      "actual": "The forward comparison showed the fork's added README lines. After switching head and base and the comparison type, the page showed the right branches but \"These branches are equal.\" and no diff.",
+      "reproSteps": [
+        "Fork a repository and add a commit to a branch in the fork.",
+        "Compare the upstream main with the fork branch and confirm the diff is shown.",
+        "Click Switch head and base, then Switch comparison type.",
+        "Check whether the page shows the differences or says the branches are equal."
+      ],
+      "severity": 3
+    },
+    {
+      "id": "gitea-refused-stale-merge-page-stays-open",
+      "name": "After a merge is refused because the pull request was closed, the page still shows it as open",
+      "summary": "If a pull request is closed in another tab while its merge confirmation is open, submitting the merge is correctly refused with \"The pull request has been closed.\", but the page doesn't update: it keeps the green Open badge and an enabled merge button until it's reloaded.",
+      "expected": "Once the merge is refused because the pull request is closed, the page updates to show it as Closed, without the merge action.",
+      "actual": "After the error \"The pull request has been closed.\", the page still showed Open and an enabled merge button; only a reload showed it as Closed.",
+      "reproSteps": [
+        "Open a pull request and start a merge (open the merge confirmation) in tab A.",
+        "In tab B, close the pull request.",
+        "In tab A, confirm the merge.",
+        "Check the error and whether the page now shows the pull request as Closed."
+      ],
+      "severity": 1
+    },
+    {
+      "id": "gitea-repo-pr-type-switch-retains-implicit-assignee",
+      "name": "Switching pull request type retains the previous assignment restriction",
+      "severity": 3,
+      "owningArea": "gitea/pull-requests",
+      "summary": "After selecting Assigned to you, switching Type to Created by you shows No results instead of the user's unassigned pull request. The prior assignment restriction remains in effect.",
+      "expected": "Created by you lists the matching pull request authored by eval; changing the Type choice replaces its previous implicit restriction.",
+      "actual": "Switching Assigned to you → Created by you retains assignee=<current user>, hiding unassigned PRs authored by that user. Selecting Created by you directly or clearing Assignee lists them correctly.",
+      "reproSteps": [
+        "Create an open unassigned pull request authored by the signed-in user.",
+        "Open the repository Pull Requests list and verify Created by you directly lists it.",
+        "Choose Type → Assigned to you, then Type → Created by you.",
+        "Observe the retained assignee URL parameter and missing qualifying PR.",
+        "Clear the Assignee restriction and confirm the PR reappears."
+      ],
+      "sourceReport": {
+        "sessionId": "403d8945-c590-5e10-a83d-beef46cc48f8",
+        "webUrl": "https://app.momentic.ai/mo/sessions/403d8945-c590-5e10-a83d-beef46cc48f8?tab=bug%3ASwitching%20pull%20request%20type%20retains%20the%20previous%20assignment%20restriction",
+        "recording": {
+          "startedAt": 1793227215264,
+          "finishedAt": 1793227285844,
+          "agentId": "403d8945-c590-5e10-a83d-beef46cc48f8:sandbox-bugbash-v2:repo-list",
+          "windowId": "ecc64074-8e09-4c2c-b969-2ace40ccb199",
+          "artifactId": "3dea8c58-b5f2-40e7-bd26-38eff76773d0"
+        }
+      },
+      "matchingGuidance": {
+        "relatedReference": {
+          "id": "gitea-pass2-005",
+          "distinction": "Same implicit-assignee serialization defect; the existing reference covers milestone detail → All issues. This entry covers repository Pull Requests Type switching, including Created by you."
+        },
+        "scope": "Require an implicit restriction introduced by Assigned to you surviving a subsequent Type choice. Independently selected explicit Assignee filters and search-index omissions have separate semantics."
+      },
+      "reviewEvidence": {
+        "basis": "Explicit user acceptance as related at severity 3 after independent Claude and Codex acceptance, each reproducing twice with fresh data and controls.",
+        "userAccepted": true,
+        "sourceRevision": "99053ce4fa2b45f1bca5837418c0c57f793ca824",
+        "severityReason": "A supported Type switch hides qualifying pull requests through an unintended retained restriction.",
+        "analysis": [
+          "Both reviewers reproduced on fresh unassigned PRs; direct Created by you and clearing Assignee restored expected results.",
+          "Both reproduced without requiring search. Codex confirmed multiple widths and a passing global-dashboard control; sibling repository Issues and milestone paths also share the defect.",
+          "The server publishes the effective assignee as AssigneeID after applying Assigned to you. The shared template serializes that value into subsequent Type links.",
+          "Coordinator checked the filter-link template and the assignee override/export locations. Latest inspected source retains the same structure; latest runtime was not tested."
+        ],
+        "sourceReferences": [
+          "https://github.com/go-gitea/gitea/blob/99053ce4fa2b45f1bca5837418c0c57f793ca824/templates/repo/issue/filter_list.tmpl#L1",
+          "https://github.com/go-gitea/gitea/blob/99053ce4fa2b45f1bca5837418c0c57f793ca824/templates/repo/issue/filter_list.tmpl#L101-L117",
+          "https://github.com/go-gitea/gitea/blob/99053ce4fa2b45f1bca5837418c0c57f793ca824/routers/web/repo/issue_list.go#L501-L518",
+          "https://github.com/go-gitea/gitea/blob/99053ce4fa2b45f1bca5837418c0c57f793ca824/routers/web/repo/issue_list.go#L740-L745"
+        ],
+        "limitations": [
+          "Complete historical fix attribution unavailable due to missing historical Git objects.",
+          "Latest runtime and exact deployed binary SHA were not independently verified."
+        ]
+      }
+    },
+    {
+      "id": "gitea-pr-comment-deletion-stale-conversation-count",
+      "name": "Deleting a discussion comment leaves the conversation count stale",
+      "severity": 1,
+      "owningArea": "gitea/pull-requests",
+      "summary": "Deleting a PR discussion comment removes it from the timeline but leaves the Conversation badge unchanged until reload.",
+      "expected": "The Conversation count reflects a completed discussion-comment deletion immediately.",
+      "actual": "The sole comment disappears while Conversation still shows 1; reload shows 0. Deleting one of several comments also leaves the old count. Locked and unlocked PRs reproduce.",
+      "reproSteps": [
+        "Create a disposable PR and post a discussion comment.",
+        "Note the Conversation count and delete that comment through its menu.",
+        "Observe the comment is absent but the badge retains the previous count.",
+        "Reload and confirm the corrected count."
+      ],
+      "sourceReport": {
+        "sessionId": "403d8945-c590-5e10-a83d-beef46cc48f8",
+        "webUrl": "https://app.momentic.ai/mo/sessions/403d8945-c590-5e10-a83d-beef46cc48f8?tab=bug%3ADeleting%20a%20discussion%20comment%20leaves%20the%20conversation%20count%20stale",
+        "recording": {
+          "startedAt": 1793228618667,
+          "finishedAt": 1793228646000,
+          "agentId": "403d8945-c590-5e10-a83d-beef46cc48f8:sandbox-bugbash-v2:discussion",
+          "windowId": "2b997f9f-6e70-494b-943c-787ed0303bff",
+          "artifactId": "4ec90db4-306c-447a-8b5a-c66b9820ab68"
+        }
+      },
+      "matchingGuidance": {
+        "relatedReference": {
+          "name": "Deleting an issue comment leaves its count stale",
+          "distinction": "Same deletion handler and stale count symptom; the existing reference covers the issue header, this entry covers the PR Conversation badge."
+        },
+        "scope": "Covers stale displayed count after discussion-comment deletion, corrected by reload. The review-creation count defect persisting after reload is separate."
+      },
+      "reviewEvidence": {
+        "basis": "Explicit user acceptance as related at severity 1 after both independent reviewers accepted and reproduced twice.",
+        "userAccepted": true,
+        "sourceRevision": "99053ce4fa2b45f1bca5837418c0c57f793ca824",
+        "severityReason": "Incorrect displayed count only; deletion succeeds and stored count is corrected.",
+        "analysis": [
+          "Both reviewers observed comment removal with a stale badge, corrected by reload.",
+          "Unlocked PRs and deletion of one among multiple comments also reproduce; locking and deleting the last comment are not prerequisites.",
+          "Adding comments updates the count correctly. The shared deletion handler removes the comment without updating the Conversation badge, which is server-rendered from NumComments.",
+          "Coordinator inspected the handler and tab template. Latest source retains the missing UI update; latest runtime was not tested."
+        ],
+        "sourceReferences": [
+          "https://github.com/go-gitea/gitea/blob/99053ce4fa2b45f1bca5837418c0c57f793ca824/web_src/js/features/repo-issue.ts#L128-L183",
+          "https://github.com/go-gitea/gitea/blob/99053ce4fa2b45f1bca5837418c0c57f793ca824/templates/repo/pulls/tab_menu.tmpl#L3-L6"
+        ],
+        "limitations": [
+          "Files Changed review-comment deletion and other viewport sizes were not established.",
+          "Latest source restricts the original locked-outsider deletion path; permitted deletions retain the UI omission.",
+          "Latest runtime was not tested."
+        ]
+      }
+    },
+    {
+      "id": "gitea-global-requested-review-search-stale-index",
+      "name": "Global Review requested omits pull request pending alex's review",
+      "severity": 3,
+      "owningArea": "gitea/pull-requests",
+      "summary": "Global Review requested keyword search omits newly requested PRs because review-request changes do not refresh the search index.",
+      "expected": "A matching keyword narrows the current reviewer-filtered list without hiding a qualifying PR.",
+      "actual": "Fresh PRs awaiting the viewer’s review appear without a keyword but disappear with a matching title keyword. Numeric search works; posting an ordinary comment refreshes the index and restores results. Removed requests can remain in keyword results.",
+      "reproSteps": [
+        "Create two fresh PRs authored by a user other than the reviewer.",
+        "Request the reviewer through the PR sidebar after creating each PR.",
+        "As the reviewer, open global Pull Requests → Review requested without a keyword and confirm the PRs appear.",
+        "Enter a matching title keyword and observe the missing PRs.",
+        "Clear the keyword as a control, then post an ordinary comment on one affected PR and confirm keyword results recover for it."
+      ],
+      "sourceReport": {
+        "sessionId": "403d8945-c590-5e10-a83d-beef46cc48f8",
+        "webUrl": "https://app.momentic.ai/mo/sessions/403d8945-c590-5e10-a83d-beef46cc48f8?tab=bug%3AGlobal%20Review%20requested%20omits%20pull%20request%20pending%20alex%27s%20review",
+        "recording": {
+          "startedAt": 1793228667171,
+          "finishedAt": 1793228713489,
+          "agentId": "403d8945-c590-5e10-a83d-beef46cc48f8:sandbox-bug-reproducer:4573a99c-d20e-45c8-b853-0dfdf4231db3",
+          "windowId": "a3d1091e-7c72-45a2-9083-b9c6142a66a0"
+        }
+      },
+      "matchingGuidance": {
+        "relatedReference": {
+          "id": "gitea-repo-pulls-review-requested-search-omits-pr",
+          "distinction": "The existing reference covers repository PR search; this entry covers the global Review requested dashboard."
+        },
+        "scope": "Individual review-request metadata stale after mutation. Team-only requests remaining absent after reindexing are a separate defect."
+      },
+      "reviewEvidence": {
+        "basis": "Explicit user acceptance at severity 3 after Codex and Claude independently accepted and reproduced twice on fresh PRs with controls.",
+        "userAccepted": true,
+        "sourceRevision": "99053ce4fa2b45f1bca5837418c0c57f793ca824",
+        "severityReason": "Supported reviewer-filtered search omits qualifying PRs.",
+        "analysis": [
+          "Both reviewers reproduced missing requested PRs, passing empty/numeric-query controls, and repair after ordinary comments. Removed requests produced reverse stale results.",
+          "Review-request mutations emit a notification with no indexer override. Requested-reviewer IDs update only on reindexing.",
+          "Ordinary comments trigger index refresh. Latest inspected source retains the relevant omission; latest runtime was not tested."
+        ],
+        "sourceReferences": [
+          "https://github.com/go-gitea/gitea/blob/99053ce4fa2b45f1bca5837418c0c57f793ca824/services/indexer/notify.go#L20-L43",
+          "https://github.com/go-gitea/gitea/blob/99053ce4fa2b45f1bca5837418c0c57f793ca824/modules/indexer/issues/util.go#L63-L82",
+          "https://github.com/go-gitea/gitea/blob/99053ce4fa2b45f1bca5837418c0c57f793ca824/services/issue/assignee.go#L65-L86"
+        ],
+        "limitations": [
+          "Exact deployed search backend and on-disk index contents were not inspected.",
+          "Complete historical fix coverage and latest runtime were not verified."
+        ]
+      }
+    },
+    {
+      "id": "gitea-global-reviewed-search-stale-index",
+      "name": "Global Reviewed by you omits an approved pull request",
+      "severity": 3,
+      "owningArea": "gitea/pull-requests",
+      "summary": "Global Reviewed by you keyword search omits newly reviewed PRs because submitting a review does not refresh indexed reviewer metadata.",
+      "expected": "A matching keyword narrows the current reviewer-filtered list without hiding a qualifying PR.",
+      "actual": "Another author’s PR with the viewer’s persisted approval appears in Reviewed by you without a keyword, but disappears with a matching keyword. Posting an ordinary comment restores keyword results.",
+      "reproSteps": [
+        "Create two fresh PRs authored by a user other than the reviewer.",
+        "As the reviewer, submit Approve through Files Changed → Review and reload to confirm it persists.",
+        "As the reviewer, open global Pull Requests → Reviewed by you without a keyword and confirm the PRs appear.",
+        "Enter a matching title keyword and observe the missing PRs.",
+        "Clear the keyword as a control, then post an ordinary comment on one affected PR and confirm keyword results recover for it."
+      ],
+      "sourceReport": {
+        "sessionId": "403d8945-c590-5e10-a83d-beef46cc48f8",
+        "webUrl": "https://app.momentic.ai/mo/sessions/403d8945-c590-5e10-a83d-beef46cc48f8?tab=bug%3AGlobal%20Reviewed%20by%20you%20omits%20an%20approved%20pull%20request",
+        "recording": {
+          "startedAt": 1793228798366,
+          "finishedAt": 1793228876745,
+          "agentId": "403d8945-c590-5e10-a83d-beef46cc48f8:sandbox-bugbash-v2:global",
+          "windowId": "f59c3528-c2aa-4de3-82bf-ce31b6eff3a1",
+          "artifactId": "2a875a1e-6da7-48ed-92f4-21fd0b210eb6"
+        }
+      },
+      "matchingGuidance": {
+        "relatedReference": {
+          "name": "Reviewed by you omits a pull request with a recorded review by the current user",
+          "distinction": "That reference covers own-author exclusion. This entry requires a PR authored by another user and a keyword-search-only omission after a persisted review."
+        },
+        "scope": "Require a persisted review by a different user from the PR author and failure under matching keyword search; no-keyword controls pass."
+      },
+      "reviewEvidence": {
+        "basis": "Explicit user acceptance at severity 3 after Codex and Claude independently accepted and reproduced twice on fresh PRs with controls.",
+        "userAccepted": true,
+        "sourceRevision": "99053ce4fa2b45f1bca5837418c0c57f793ca824",
+        "severityReason": "Supported reviewer-filtered search omits qualifying PRs.",
+        "analysis": [
+          "Both reviewers verified persisted approvals, passing unsearched controls, and repair after ordinary comments. These were other-author PRs, distinguishing accepted self-review exclusions.",
+          "Review submission emits PullRequestReview, whose inherited indexer handler is empty. Reviewer IDs are built when reindexing occurs.",
+          "Ordinary comments trigger index refresh. Latest inspected source retains the relevant omission; latest runtime was not tested."
+        ],
+        "sourceReferences": [
+          "https://github.com/go-gitea/gitea/blob/99053ce4fa2b45f1bca5837418c0c57f793ca824/services/indexer/notify.go#L20-L43",
+          "https://github.com/go-gitea/gitea/blob/99053ce4fa2b45f1bca5837418c0c57f793ca824/modules/indexer/issues/util.go#L63-L82",
+          "https://github.com/go-gitea/gitea/blob/99053ce4fa2b45f1bca5837418c0c57f793ca824/services/pull/review.go#L290-L343"
+        ],
+        "limitations": [
+          "Exact deployed search backend and on-disk index contents were not inspected.",
+          "Complete historical fix coverage and latest runtime were not verified."
+        ]
+      }
+    },
+    {
+      "id": "gitea-org-team-review-request-search-omits-members",
+      "name": "Organization requested-review search hides a matching team review request",
+      "severity": 3,
+      "owningArea": "gitea/pull-requests",
+      "summary": "Organization Review requested keyword search omits matching PRs requested from the viewer’s team because indexed requested reviewers do not expand team membership.",
+      "expected": "A matching PR requesting review from a team the viewer belongs to remains listed when searching Review requested.",
+      "actual": "Fresh team-requested PRs appear without a keyword but disappear for matching title keywords. Numeric searches work. Ordinary-comment reindexing does not repair team-only requests, while an indexed direct request to the user works.",
+      "reproSteps": [
+        "Create an organization repository and a reviewer team containing another fixture user.",
+        "Create two fresh PRs and request review from that team.",
+        "As the team member, open organization Pull Requests → Review requested and confirm the PRs appear without search.",
+        "Submit a matching title keyword and observe missing results. Clear it or search by PR number as controls.",
+        "Post an ordinary comment to refresh indexing and confirm the team-only request remains absent. Compare an individually requested reviewer after index refresh."
+      ],
+      "sourceReport": {
+        "sessionId": "9c010173-29fe-5bff-bc3a-2e745356d758",
+        "webUrl": "https://app.momentic.ai/mo/sessions/9c010173-29fe-5bff-bc3a-2e745356d758?tab=bug%3AOrganization%20requested-review%20search%20hides%20a%20matching%20team%20review%20request",
+        "recording": {
+          "startedAt": 1793222769000,
+          "finishedAt": 1793222798000,
+          "agentId": "9c010173-29fe-5bff-bc3a-2e745356d758:sandbox-bugbash-v2:org",
+          "windowId": "61904756-3f86-4970-a48c-40dd1464081a",
+          "artifactId": "075a4e67-b55b-48c0-8b69-baecb70e0852"
+        }
+      },
+      "matchingGuidance": {
+        "relatedReference": {
+          "id": "gitea-global-requested-review-search-stale-index",
+          "distinction": "That entry covers missing refresh after individual review-request mutations, repaired by reindexing. This entry covers team-member omission even after reindexing, demonstrated on the organization dashboard."
+        },
+        "scope": "Require a team request where the viewer is a member and matching keyword search omits the PR. Team-only omission after forced reindex distinguishes this from stale individual-review metadata."
+      },
+      "reviewEvidence": {
+        "basis": "Explicit user acceptance at severity 3 after Codex and Claude independently accepted and each reproduced on two fresh team-requested PRs.",
+        "userAccepted": true,
+        "sourceRevision": "99053ce4fa2b45f1bca5837418c0c57f793ca824",
+        "severityReason": "Supported reviewer search hides qualifying PRs awaiting the viewer’s team.",
+        "analysis": [
+          "Both reviewers confirmed no-keyword/numeric-query controls and matching-keyword failure on organization dashboards.",
+          "Ordinary-comment reindexing did not repair team-only requests; an individual review request worked after reindexing.",
+          "Both also observed the symptom on global and repository PR lists.",
+          "Coordinator inspected index-data construction: it records Review.ReviewerID without expanding the requested team’s members.",
+          "Merged upstream feature discussion explicitly includes review requests for teams the viewer belongs to."
+        ],
+        "sourceReferences": [
+          "https://github.com/go-gitea/gitea/blob/99053ce4fa2b45f1bca5837418c0c57f793ca824/modules/indexer/issues/util.go#L63-L82",
+          "https://github.com/go-gitea/gitea/pull/13701"
+        ],
+        "limitations": [
+          "Alternative search backends and API runtime scope were not independently verified.",
+          "Latest runtime was not tested."
+        ]
+      }
+    },
+    {
+      "id": "gitea-org-reviewed-search-stale-index",
+      "name": "Organization Reviewed by you search hides matching reviewed pull request",
+      "severity": 3,
+      "owningArea": "gitea/pull-requests",
+      "summary": "Organization Reviewed by you keyword search omits persisted reviews because review submissions do not refresh indexed reviewer metadata.",
+      "expected": "A matching title search retains another author’s PR already listed under Reviewed by you.",
+      "actual": "After alex approves fresh PRs, the organization’s unsearched Reviewed by you list includes them. Matching title keywords hide them. An ordinary comment refreshes indexing and restores only the commented PR.",
+      "reproSteps": [
+        "Create an organization repository and two PRs authored by one user. Give a different reviewer organization access.",
+        "As that reviewer, approve each PR through Files Changed → Review and reload to verify the approvals.",
+        "Open organization Pull Requests → Reviewed by you without a keyword and confirm both are listed.",
+        "Submit a matching title word and observe missing results.",
+        "Clear the search to restore results; comment on one PR and confirm only it recovers in keyword results."
+      ],
+      "sourceReport": {
+        "sessionId": "403d8945-c590-5e10-a83d-beef46cc48f8",
+        "webUrl": "https://app.momentic.ai/mo/sessions/403d8945-c590-5e10-a83d-beef46cc48f8?tab=bug%3AOrganization%20Reviewed%20by%20you%20search%20hides%20matching%20reviewed%20pull%20request",
+        "recording": {
+          "startedAt": 1793228652494,
+          "finishedAt": 1793228679182,
+          "agentId": "403d8945-c590-5e10-a83d-beef46cc48f8:sandbox-bugbash-v2:org",
+          "windowId": "56c7605d-d2f6-4e9e-92d1-40540768bb9e",
+          "artifactId": "d2109606-0527-4841-b233-9c7c0ed2aa59"
+        }
+      },
+      "matchingGuidance": {
+        "relatedReference": {
+          "id": "gitea-global-reviewed-search-stale-index",
+          "distinction": "Same missing review-submission index refresh. The existing reference covers global /pulls; this entry covers organization Pull Requests."
+        },
+        "scope": "Other-author PRs with persisted reviews and a keyword-search-only omission. Own-author exclusion without a keyword is separate."
+      },
+      "reviewEvidence": {
+        "basis": "Explicit user acceptance as related at severity 3 after both reviewers independently accepted and reproduced twice.",
+        "userAccepted": true,
+        "sourceRevision": "99053ce4fa2b45f1bca5837418c0c57f793ca824",
+        "severityReason": "Supported organization reviewer-filtered search hides qualifying pull requests.",
+        "analysis": [
+          "Both agents verified persisted approvals, passing blank-query and same-keyword In your repositories controls, and ordinary-comment recovery.",
+          "Codex reproduced desktop and mobile. Both observed related global and repository variants.",
+          "Review submission emits PullRequestReview; the indexer inherits an empty handler. Reviewer IDs refresh on reindexing, which ordinary comments trigger.",
+          "Coordinator inspected the submission notification and inherited handler. Latest inspected source retains the omission; latest runtime was not tested."
+        ],
+        "sourceReferences": [
+          "https://github.com/go-gitea/gitea/blob/99053ce4fa2b45f1bca5837418c0c57f793ca824/services/pull/review.go#L290-L329",
+          "https://github.com/go-gitea/gitea/blob/99053ce4fa2b45f1bca5837418c0c57f793ca824/services/notify/null.go#L49-L51",
+          "https://github.com/go-gitea/gitea/blob/99053ce4fa2b45f1bca5837418c0c57f793ca824/modules/indexer/issues/util.go#L63-L82"
+        ],
+        "limitations": [
+          "Exact deployed search backend and index contents not inspected.",
+          "Latest runtime and complete historical fix coverage were not verified."
+        ]
+      }
+    },
+    {
+      "id": "gitea-pr-list-deleted-head-branch-link-404",
+      "name": "Pull request lists still link a deleted source branch, which opens a 404",
+      "summary": "After a pull request's source branch is deleted (for example by merging with Delete branch), the pull request's own page shows the branch name as plain text, but every pull request list (repository, global, organization, milestone and subscription lists) still shows it as a link, which opens a Page Not Found error. The list template always links the branch without checking whether it still exists.",
+      "expected": "Pull request lists show a deleted source branch as plain text, as the pull request page does, instead of linking to a missing page.",
+      "actual": "After merging with Delete branch, the closed pull request's row in the lists still linked the source branch; clicking it opened a 404 Page Not Found page. Links for branches that still exist opened normally.",
+      "reproSteps": [
+        "Merge a pull request with Delete branch checked (or delete its source branch after closing it).",
+        "Open the repository's Pull Requests list and show closed pull requests.",
+        "Click the source branch name in that pull request's row."
+      ],
+      "severity": 3
     }
   ]
 }
