@@ -1,0 +1,1580 @@
+[
+  {
+    "id": "unfinished-asynchronous-operation-treated-as-complete",
+    "explanation": "An optimistic edit, in-flight operation or queued background effect is treated as completed before its recorded completion. Hard reload, immediate execution or checking results too soon can expose old state without proving loss or failure of a completed operation. This covers reviewed unfinished work, not acknowledged-save loss, ordinary navigation discarding valid edits or an effect still absent after completion.",
+    "verificationGuidance": [
+      "Observe the actual completion or acknowledgement, then reread the same object or result after processing settles.",
+      "Distinguish visible optimistic state from durable saved state and avoid interrupting a multi-request operation with hard reload.",
+      "For background effects verify an eligible recipient and wait for the queue; absence immediately after the triggering action is insufficient."
+    ],
+    "instances": [
+      {
+        "source": "known-invalid.json",
+        "index": 0,
+        "report": {
+          "name": "Data permission group search leaves unrelated All Users visible",
+          "summary": "Searching permission groups for Administrators reportedly leaves All Users visible until another keyboard interaction.",
+          "expected": "Searching for Administrators filters the group list to Administrators.",
+          "actual": "The report says Administrators and All Users remain visible after typing the query and waiting ten seconds; pressing Ctrl+A or clearing and retyping makes All Users disappear.",
+          "reproSteps": [
+            "Sign in as an administrator and open Data permissions > Groups at /admin/permissions/data/group.",
+            "Type Administrators into Search for a group and wait ten seconds.",
+            "Inspect whether All Users remains visible, then press Ctrl+A without changing the query or clear and retype it."
+          ],
+          "reason": "The agent captured the screenshot before the group search was applied and mistook the unfiltered list for the completed search result. This is a premature observation, not evidence that searching for Administrators returns All Users."
+        }
+      }
+    ]
+  },
+  {
+    "id": "unsupported-input-syntax-assumed-valid",
+    "explanation": "Declaring parsing, prefill or validation broken because it rejects a plausible but unsupported input syntax or noncanonical representation. General familiarity with URI, quoting or hexadecimal conventions does not override the application’s documented/tested format; correctly formed input must be tested before attributing rejection to the parser.",
+    "verificationGuidance": [
+      "Compare the exact input, including slash counts, delimiters, quoting and accepted character case, with supported syntax.",
+      "Test the documented/canonical equivalent and inspect resulting field or saved values before claiming a supported input is rejected."
+    ],
+    "instances": [
+      {
+        "source": "known-invalid.json",
+        "index": 1,
+        "report": {
+          "id": "metabase-admin-017",
+          "name": "SQLite connection-string prefill does not populate the Filename field",
+          "summary": "SQLite connection-string prefill does not populate the Filename field.",
+          "expected": "Entering an accepted SQLite connection string should prefill the fields below, including Filename, per the note 'You can use a connection string to pre-fill the details below'.",
+          "actual": "Both reported SQLite strings (one- and two-slash forms) are rejected with a red \"Couldn't use this connection string.\" message, so Filename stays empty. The form's actual example (jdbc:sqlite:///C:/path/to/database.db, three slashes) fills Filename correctly (control).",
+          "reproSteps": [
+            "Unsaved form only; do not submit a connection attempt. Both tested paths are illustrative and need not exist for client-side prefill.",
+            "In Admin > Databases, select Add database and choose SQLite.",
+            "Enter jdbc:sqlite:/tmp/DBQA-fixture.sqlite in Connection string (optional) and blur the field.",
+            "Observe Filename remains empty. Replace the URI with the reported two-slash form jdbc:sqlite://C:/path/to/database.db and blur.",
+            "Observe Filename remains empty again."
+          ],
+          "reason": "The SQLite parser intentionally requires sqlite:///; upstream unit and e2e tests cover only that form."
+        }
+      },
+      {
+        "source": "known-invalid.json",
+        "index": 3,
+        "report": {
+          "id": "metabase-admin-044",
+          "name": "SQLite connection-string prefill turns an absolute Unix path into a relative one",
+          "summary": "SQLite connection-string prefill turns an absolute Unix path into a relative one.",
+          "expected": "Prefilling the absolute SQLite path should preserve /tmp/qa-does-not-exist/third.sqlite rather than change it to a relative path.",
+          "actual": "Paste jdbc:sqlite:///tmp/x.sqlite (absolute Unix path). Filename becomes tmp/x.sqlite (leading slash dropped) and the form still says pre-filled. The Windows placeholder example and manual entry keep the path correctly (control).",
+          "reproSteps": [
+            "Open Admin > Databases > Add a database and select SQLite.",
+            "Enter a unique display name and Filename /tmp/qa-does-not-exist/database.sqlite.",
+            "Enter jdbc:sqlite:///tmp/qa-does-not-exist/third.sqlite in Connection string, then click Display name.",
+            "Inspect the populated Filename."
+          ],
+          "reason": "Works as intended: under the common sqlite:/// convention three slashes give a relative path, and an absolute Unix path needs four slashes (sqlite:////tmp/x), which Metabase prefills correctly."
+        }
+      },
+      {
+        "source": "known-invalid.json",
+        "index": 17,
+        "report": {
+          "id": "metabase-admin-209",
+          "name": "Embedding secret key rejects a 64-character uppercase hexadecimal key",
+          "summary": "Embedding secret key rejects a 64-character uppercase hexadecimal key.",
+          "expected": "A valid 256-bit hexadecimal key accepts uppercase A–F, or the form clearly states it requires lowercase and normalizes the equivalent hexadecimal encoding.",
+          "actual": "The 64-uppercase-A key is rejected with an 'Assert failed: Invalid embedding-secret-key! Secret key must be a hexadecimal-encoded 25...' error toast. Refresh restores the prior generated key, although A is a valid hexadecimal digit.",
+          "reproSteps": [
+            "As admin open Admin > Embedding with guest embeds enabled and a generated key.",
+            "Replace Embedding secret key with AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA (64 uppercase A characters).",
+            "Blur the field.",
+            "Observe validation error; refresh the page."
+          ],
+          "reason": "Works as intended: the secret-key validation accepts lowercase hexadecimal only; lowercasing the key saves it."
+        }
+      },
+      {
+        "source": "known-invalid.json",
+        "index": 43,
+        "report": {
+          "id": "metabase-admin-573",
+          "name": "Spark SQL connection string does not prefill host or port",
+          "summary": "Spark SQL connection string does not prefill host or port.",
+          "expected": "Entering a valid Spark SQL connection string prefills the separate connection fields such as Host and Port.",
+          "actual": "Host and Port remain empty with their default placeholder values after entering the connection string.",
+          "reproSteps": [
+            "As the supplied admin, open Admin > Databases > Add a database.",
+            "Select Spark SQL in a fresh unsaved form.",
+            "Enter jdbc:sparksql;Server=qa-spark.test;Port=10001;Schema=qa_schema in Connection string (optional).",
+            "Click Display name and inspect Host and Port."
+          ],
+          "reason": "Works as intended: the reported jdbc:sparksql; string doesn't match the documented format, and the form says it couldn't use the string. A string in the documented format pre-fills Host."
+        }
+      }
+    ]
+  },
+  {
+    "id": "encoded-display-assumed-corrupted-data",
+    "explanation": "Treating an encoded field representation as corrupted connection data without checking how the server consumes it. Encoding visible in a form can be the required working representation, and decoding it prematurely can change literal percent-containing values.",
+    "verificationGuidance": [
+      "Inspect the value sent to the server and the server-side decode/connection behavior.",
+      "Distinguish cosmetic encoded text from a failed connection or a demonstrably altered database identifier."
+    ],
+    "instances": [
+      {
+        "source": "known-invalid.json",
+        "index": 2,
+        "report": {
+          "id": "metabase-admin-009",
+          "name": "PostgreSQL URI prefill keeps percent-encoded database name instead of decoding it",
+          "summary": "PostgreSQL URI prefill keeps percent-encoded database name instead of decoding it.",
+          "expected": "URI prefill should decode dbqa%20test to the database name 'dbqa test', just as it decodes dbqa%40user to dbqa@user.",
+          "actual": "Paste a PostgreSQL URI with a percent-encoded database name (…/dbqa%20test). Database name and the auto display name keep the literal %20, while username, password and query params are decoded. Unencoded names fill correctly (control).",
+          "reproSteps": [
+            "As Admin, open Databases > Add database and select PostgreSQL.",
+            "Enter postgresql://dbqa%40user:p%40ss%3Aword@dbqa.invalid:5433/dbqa%20test?sslmode=verify-full in Connection string (optional) and blur.",
+            "Read the Database name and Username inputs."
+          ],
+          "reason": "The encoded database name is the working form: the server decodes it, so the connection succeeds. Only the displayed field text keeps %20, and decoding in the form could break names that contain a literal percent sign."
+        }
+      }
+    ]
+  },
+  {
+    "id": "inventing-restrictive-free-form-validation",
+    "explanation": "Assuming an administrator-authored URL, domain, template or reusable code field must reject every value that seems malformed or unusable. These fields may deliberately accept relative links, templates, partial code or unconstrained text; saving user-provided content alone does not demonstrate a broken feature. This does not excuse corruption of valid input or an application-generated invalid value.",
+    "verificationGuidance": [
+      "Establish the documented accepted syntax and whether relative paths, templates or partial content are allowed.",
+      "Test valid configured content separately from an unusable value deliberately entered by the author.",
+      "Show a violated supported contract or concrete unintended effect rather than relying only on the absence of preferred validation."
+    ],
+    "instances": [
+      {
+        "source": "known-invalid.json",
+        "index": 4,
+        "report": {
+          "id": "metabase-admin-012",
+          "name": "Map tile server URL accepts and saves not-a-url",
+          "summary": "Map tile server URL accepts and saves not-a-url.",
+          "expected": "A value that is not a URL is rejected with a validation message.",
+          "actual": "not-a-url saves with Changes saved and persists after reload; pin maps then show no basemap.",
+          "reproSteps": [
+            "As an admin, open Admin > Settings > Maps.",
+            "Replace Map tile server URL with not-a-url and move focus away.",
+            "Observe Changes saved and reload."
+          ],
+          "reason": "Works as intended: the setting has no validation, and the docs allow a relative path as well as an http(s) URL, so not-a-url is a legal value. A well-formed but unreachable URL breaks the map the same way."
+        }
+      },
+      {
+        "source": "known-invalid.json",
+        "index": 13,
+        "report": {
+          "id": "metabase-admin-169",
+          "name": "Webhook destinations accept API-key authentication with an empty key and value",
+          "summary": "Webhook destinations accept API-key authentication with an empty key and value.",
+          "expected": "Selecting API Key authentication should require a nonempty key and value before creating or saving the destination.",
+          "actual": "Create destination succeeds with API Key and Header selected but empty Key and Value. Reloading and reopening the destination retains this incomplete configuration. Clearing previously populated Key/Value and saving is also accepted. No delivery failure is claimed.",
+          "reproSteps": [
+            "Sign in as administrator and open /admin/settings/notifications.",
+            "Click Add a webhook (or Add another).",
+            "Enter https://example.test/qa-webhook as Webhook URL, QA Blank Auth as name, and QA description as Description.",
+            "Select API Key authentication and keep Header selected. Leave both Key and Value blank.",
+            "Click Create destination.",
+            "Reload the settings page and reopen QA Blank Auth. API Key/Header remains selected with empty Key and Value."
+          ],
+          "reason": "Works as intended: nothing documents or requires API-key webhook auth to have a non-empty key and value."
+        }
+      },
+      {
+        "source": "known-invalid.json",
+        "index": 35,
+        "report": {
+          "id": "metabase-admin-427",
+          "name": "Webhook URL accepts and persists an FTP destination without validation",
+          "summary": "Webhook URL accepts and persists an FTP destination without validation.",
+          "expected": "Saving should be rejected and the form should show \"Please enter a correctly formatted URL\", because only http: and https: webhook URLs are allowed.",
+          "actual": "The modal closed after Save changes and no error appeared. After a refresh, reopening \"Edit this webhook\" showed the Webhook URL as ftp://qa-webhook.invalid/alerts.",
+          "reproSteps": [
+            "Sign in as an admin and open /admin/settings/notifications",
+            "Click Add a webhook. Enter URL https://qa-webhook.invalid/alerts, name 'QA FTP check 7731' and description 'ftp repro 7731'. Keep Authentication method set to None and click Create destination.",
+            "Click the new webhook card to open 'Edit this webhook'. Change Webhook URL to ftp://qa-webhook.invalid/alerts and click Save changes. The modal closes with no error.",
+            "Refresh the page and click the webhook card again. Webhook URL shows ftp://qa-webhook.invalid/alerts."
+          ],
+          "reason": "Works as intended: the webhook URL field accepts any well-formed URL; an unusable scheme is the admin's input choice."
+        }
+      },
+      {
+        "source": "known-invalid.json",
+        "index": 64,
+        "report": {
+          "id": "metabase-admin-b73",
+          "name": "Google authentication accepts a URL as an email domain",
+          "summary": "Google authentication accepts a URL as an email domain.",
+          "expected": "Reject a scheme/path URL as invalid for the email-domain field and retain the form for correction.",
+          "actual": "Save displays Success, then reload retains https://invalid-domain/path.",
+          "reproSteps": [
+            "Temporary provider configuration is authorized only while preserving password login and all account credentials. Restore Google to unconfigured immediately via Authentication Overview > Google menu > Deactivate > confirm; this clears client/domain.",
+            "As Admin open Authentication > Google auth with provider unconfigured.",
+            "Enter syntactically accepted Client ID qa-maps-auth.apps.googleusercontent.com.",
+            "Enter https://invalid-domain/path in Domain and click Save and enable.",
+            "Observe Success then reload and inspect Domain."
+          ],
+          "reason": "Works as intended: the Google sign-in domain is a plain admin-entered value with no documented format; saving it as typed is not broken behavior."
+        }
+      }
+    ]
+  },
+  {
+    "id": "assuming-secret-field-masking-contract",
+    "explanation": "Reporting an unmasked credential input as a confirmed product defect without a requirement that this particular field mask its contents. Visible text in an authorized configuration form alone does not establish unintended disclosure to another actor.",
+    "verificationGuidance": [
+      "Check the field’s documented behavior and applicable labeling requirements.",
+      "If alleging disclosure, demonstrate an unauthorized viewer or unintended exposure beyond the authorized input itself."
+    ],
+    "instances": [
+      {
+        "source": "known-invalid.json",
+        "index": 5,
+        "report": {
+          "id": "metabase-admin-090",
+          "name": "Webhook Basic authentication password is shown in plain text",
+          "summary": "Webhook Basic authentication password is shown in plain text.",
+          "expected": "The webhook Password field masks the entered secret.",
+          "actual": "Typing into the Basic authentication Password field shows the password as readable text.",
+          "reproSteps": [
+            "As an admin, open Admin > Settings > Notifications and add a webhook.",
+            "Select Basic authentication.",
+            "Type a password and observe it is readable."
+          ],
+          "reason": "Works as intended: nothing requires the webhook password field to be masked."
+        }
+      }
+    ]
+  },
+  {
+    "id": "wording-only-preference-treated-as-functional-failure",
+    "explanation": "Correct rejection of invalid input is called a functional defect solely because the reporter prefers more specific wording, another message or an additional error outline. In these reviewed cases valid corrections work, saved values remain intact and the requested extra feedback is not an established requirement. This does not dismiss proven silent refusal, misleading success, an applicable accessibility requirement or missing recovery.",
+    "verificationGuidance": [
+      "Verify whether invalid input is rejected, valid input works and the previous saved state survives.",
+      "Identify the applicable feedback contract rather than treating a preferred phrase or extra visual treatment as mandatory.",
+      "Separate wording preferences from an independently demonstrated missing-error, misleading-success or recovery defect."
+    ],
+    "instances": [
+      {
+        "source": "known-invalid.json",
+        "index": 6,
+        "report": {
+          "id": "metabase-admin-030",
+          "name": "Whitespace-only group rename opens a generic error dialog",
+          "summary": "Whitespace-only group rename opens a generic error dialog.",
+          "expected": "A whitespace-only group name is rejected with field validation, as an empty name is.",
+          "actual": "Done is enabled for three spaces; clicking it opens a generic Something went wrong dialog. The original name is kept.",
+          "reproSteps": [
+            "As an admin, open Admin > People > Groups and create a group.",
+            "Choose Edit Name, enter three spaces, and click Done.",
+            "Observe the generic error dialog."
+          ],
+          "reason": "Works as intended for labeling purposes: the server rejects the blank name and the original name is kept; specific validation copy here is not a hard requirement."
+        }
+      },
+      {
+        "source": "known-invalid.json",
+        "index": 62,
+        "report": {
+          "id": "metabase-admin-b56",
+          "name": "Long group names display a raw database error",
+          "summary": "Long group names display a raw database error.",
+          "expected": "A user-friendly validation error message explains the group name length limit without exposing internal database errors.",
+          "actual": "A dialog displays raw SQL exception details: 'Value too long for column \"NAME CHARACTER VARYING(255)\": ... (295)\"; SQL statement: UPDATE \"PERMISSIONS_GROUP\" SET \"NAME\" = ? WHERE \"ID\" = ? [22001-214]'.",
+          "reproSteps": [
+            "As Harbor Admin, create a uniquely named PeopleQA-Groups fixture.",
+            "Open its ellipsis > Edit Name.",
+            "Enter PeopleQA-Groups-Edge-5329 followed by ten repetitions of -ABCDEFGHIJKLMNOPQRSTUVWXYZ (295 characters total).",
+            "Click Done."
+          ],
+          "reason": "Works as intended: an overlong group name is rejected and the original name is kept, as with admin-030; specific validation wording is not required."
+        }
+      }
+    ]
+  },
+  {
+    "id": "interaction-target-or-gesture-mismatch",
+    "explanation": "An intended action is blamed for a failure even though the recorded input did not activate that action: it reached another element, used an incomplete gesture or editing mode, or simulated a different keyboard shortcut. A tool timeout, surrounding-cell click or value entered into a popup does not establish failure of the intended application control.",
+    "verificationGuidance": [
+      "Confirm the actual event target, focus, editing mode and completed gesture from the rendered UI or recording.",
+      "Repeat using the precise anchor, input, drag threshold or real keyboard shortcut; check key and modifier details for simulated events.",
+      "Verify the intended control actually ran before attributing navigation failure or value loss to it."
+    ],
+    "instances": [
+      {
+        "source": "known-invalid.json",
+        "index": 7,
+        "report": {
+          "id": "mo-30m-metabase-4",
+          "name": "Accounts Email selection leaves ID metadata in settings panel",
+          "summary": "Selecting Email in Accounts updates the field route to /field/24, but the settings panel remains populated with ID metadata after settling and a repeated selection.",
+          "expected": "After selecting Email in Accounts, the settings panel should show Email and that field’s metadata/settings, consistent with the page’s instruction to select a field to edit its settings.",
+          "actual": "The Email card became highlighted and the URL changed to /admin/datamodel/database/1/schema/1:PUBLIC/table/6/field/24, but the right panel continued to show ID as the field name, BIGINT as its data type, and Entity Key as its semantic type. This remained visible after waiting six seconds and after repeating the ID-to-Email selection.",
+          "reproSteps": [
+            "Authenticate as the Harbor account by loading the supplied saved authentication state.",
+            "Navigate to /admin/datamodel/database.",
+            "Expand Sample Database in the left sidebar and select Accounts.",
+            "Select the ID field and verify the panel shows ID, BIGINT, and Entity Key.",
+            "Select Email in the Accounts field list.",
+            "Observe the Email card and the URL /admin/datamodel/database/1/schema/1:PUBLIC/table/6/field/24. The right-side panel still shows ID, BIGINT, and Entity Key after waiting six seconds; repeat selecting ID and then Email to confirm the mismatch persists."
+          ],
+          "reason": "Selecting Email's field card navigates to field/62 and shows EMAIL and CHARACTER VARYING, including after repeating ID then Email. Clicking its editable name instead does not select field details; field/24 is ID."
+        }
+      }
+    ]
+  },
+  {
+    "id": "intended-behavior-rejection-without-recorded-rationale",
+    "explanation": "The reviewer labels the reported expectation as intended behavior but records no supporting rationale. These instances are an explicit holding group: the narrow rejection is known, while the specific model reasoning error, source semantics and general product policy are not established.",
+    "verificationGuidance": [
+      "Preserve the exact rejected claim and human decision without inventing a causal explanation.",
+      "Do not use this holding group to dismiss a similar new report without checking its own trigger, contract and evidence.",
+      "Recover the missing review rationale before assigning the instance to a more specific reasoning-error pattern."
+    ],
+    "instances": [
+      {
+        "source": "known-invalid.json",
+        "index": 8,
+        "report": {
+          "id": "metabase-data-modeling-145",
+          "name": "Clearing table display name and saving silently discards the change and closes the editor",
+          "summary": "Clearing table display name and saving silently discards the change and closes the editor.",
+          "expected": "An invalid empty name should be rejected with clear validation, or an allowed clearing should be stored/reset explicitly; Save should not silently discard the input.",
+          "actual": "After submitting an empty name, the editor closed and retained QA Reference Release Requests. Reload and reopening Edit still showed the prior name. A full-page AI assertion confirmed no validation error or warning was shown.",
+          "reproSteps": [
+            "Open Release operations, Tables in Release operations, and Release Requests.",
+            "Edit the table, set its display name to a distinct nonempty QA name and save; verify it persists.",
+            "Edit again, clear the display name completely, and click Save.",
+            "Observe the editor closes showing the prior name. Reload and reopen Edit."
+          ],
+          "reason": "Works as intended per human review."
+        }
+      },
+      {
+        "source": "known-invalid.json",
+        "index": 24,
+        "report": {
+          "id": "metabase-admin-276",
+          "name": "Iframe allowed-domain setting saves the invalid hostname “not a domain”",
+          "summary": "Iframe allowed-domain setting saves the invalid hostname “not a domain”.",
+          "expected": "A setting for allowed domains should reject hostnames containing spaces and explain the invalid entry instead of saving it as a usable domain.",
+          "actual": "The literal not a domain is accepted with Changes saved and remains after refresh.",
+          "reproSteps": [
+            "As an admin, note the current Allowed domains for iframes in dashboards so you can restore it afterwards.",
+            "Open Admin > Settings > General and scroll to Tables, X-Rays and domains.",
+            "Replace Allowed domains for iframes in dashboards with not a domain and blur.",
+            "Observe Changes saved; refresh General and inspect the saved domain list."
+          ],
+          "reason": "Works as intended per human review."
+        }
+      },
+      {
+        "source": "known-invalid.json",
+        "index": 25,
+        "report": {
+          "id": "metabase-admin-280",
+          "name": "Separator style reverts from “100.000,00” to “100,000.00” after refresh",
+          "summary": "Separator style reverts from “100.000,00” to “100,000.00” after refresh.",
+          "expected": "The saved 100.000,00 separator format should remain selected after refresh.",
+          "actual": "The dropdown initially changes to 100.000,00 and shows Changes saved, but after refresh it displays 100,000.00 again.",
+          "reproSteps": [
+            "Open Admin > Settings > Localization.",
+            "Scroll to Numbers and open Separator style.",
+            "Choose 100.000,00; observe selected format and Changes saved.",
+            "Refresh and scroll back to Numbers."
+          ],
+          "reason": "Works as intended per human review."
+        }
+      },
+      {
+        "source": "known-invalid.json",
+        "index": 38,
+        "report": {
+          "id": "metabase-admin-476",
+          "name": "Entering nonnumeric text in Price multiplier silently deletes the saved multiplier",
+          "summary": "Entering nonnumeric text in Price multiplier silently deletes the saved multiplier.",
+          "expected": "Reject nonnumeric multiplier with validation feedback, retaining the previous saved multiplier rather than saving an empty reset.",
+          "actual": "Entering nonnumeric text leaves the multiplier input empty; on blur, the saved -1.25 multiplier is cleared with a 'Formatting of Price updated' toast, preview values revert from negative (-36.83) to positive (29.46), and the reset persists across a page reload without any validation error.",
+          "reproSteps": [
+            "As admin, open Sample Database > Products > Price in Table Metadata.",
+            "Open Preview; scroll field settings to Multiply by a number.",
+            "Enter -1.25 and blur; refresh and reopen preview to verify saved negative values such as -36.83.",
+            "Replace multiplier with abc and press Tab.",
+            "Observe emptied multiplier and original positive preview values; refresh and reopen preview."
+          ],
+          "reason": "Works as intended per human review."
+        }
+      }
+    ]
+  },
+  {
+    "id": "invalid-authored-configuration-treated-as-supported-failure",
+    "explanation": "Failure of an author-created incompatible or invalid configuration is reported as failure of a supported valid workflow. The reviewed errors are recoverable or the invalid draft is blocked at normal activation; allowing configuration or Test to expose that error does not establish a guarantee to prevalidate every combination. This does not excuse corrupting a valid definition or losing unrelated saved data.",
+    "verificationGuidance": [
+      "Repair the invalid value, reference, relation or duplicate name and run a valid positive control.",
+      "Read the actual validation or execution error and distinguish invalid-draft testing from the normally activated supported flow.",
+      "Establish any promised earlier validation stage rather than inferring it from the ability to edit or save configuration."
+    ],
+    "instances": [
+      {
+        "source": "known-invalid.json",
+        "index": 9,
+        "report": {
+          "id": "metabase-data-modeling-146",
+          "name": "A segment can be saved referencing itself, making Preview fail with a recursive-definition error",
+          "summary": "A segment can be saved referencing itself, making Preview fail with a recursive-definition error.",
+          "expected": "The editor should prevent selecting or saving a circular self-reference, with actionable validation rather than saving an unusable definition.",
+          "actual": "The segment saves and retains its own name as a filter. Preview fails with 'There was a problem with your question' and 'Segment expansion failed. Check mutually recursive segment definitions.'",
+          "reproSteps": [
+            "Use disposable SEG-QA segments on Sample Database / People. Observed second fixture was SEG-QA-Dependent-20261019 and referenced retired SEG-QA-People-20261019-v2 before adding itself. Its preview worked immediately before adding the self-reference.",
+            "Create a disposable People segment filtered to State CA.",
+            "Create a second disposable segment referencing the first; verify Preview returns 90 rows. In the observed setup the first segment was subsequently retired, and the second still previewed successfully.",
+            "Edit the second segment, click Add filter and select that same second segment as an additional filter.",
+            "Enter a change reason and click Save changes. Reopen the segment and click Preview.",
+            "Open Show error details."
+          ],
+          "reason": "Works as intended per human review: saving is allowed and Preview explains the recursive definition."
+        }
+      },
+      {
+        "source": "known-invalid.json",
+        "index": 11,
+        "report": {
+          "id": "metabase-admin-214",
+          "name": "Presto Kerberos authentication rejects its own principal property as not allowed",
+          "summary": "Presto Kerberos authentication rejects its own principal property as not allowed.",
+          "expected": "The offered Kerberos principal input should be supported; unavailable credentials or host can produce an appropriate authentication/connection failure.",
+          "actual": "Save fails with 'Connection property KerberosPrincipal is not allowed' rather than accepting the form's own principal property.",
+          "reproSteps": [
+            "Open Add database > Presto; enter host qa.invalid, port8080, catalog mo_catalog, schema mo_schema, username mo_qa and a display name.",
+            "Enable Authenticate with Kerberos under advanced options.",
+            "Enter Kerberos principal mo_qa@QA.INVALID and cache-file path /tmp/mo-qa-missing-cache.",
+            "Save."
+          ],
+          "reason": "Works as intended: Presto requires the Kerberos coordinator service for Kerberos auth. The form does not mark required fields and the placeholder is an example, so the rejection of an incomplete config is driver validation with imprecise wording."
+        }
+      },
+      {
+        "source": "known-invalid.json",
+        "index": 30,
+        "report": {
+          "id": "metabase-admin-337",
+          "name": "Saving an indirect segment cycle A→B→A breaks the previously working dependent segment B",
+          "summary": "Saving an indirect segment cycle A→B→A breaks the previously working dependent segment B.",
+          "expected": "Reject the edit that introduces a circular dependency, keeping the existing dependent segment B usable.",
+          "actual": "A saves successfully referencing B while B references A. Preview displays 'There was a problem with your question' and 0 rows. Neither segment directly references itself.",
+          "reproSteps": [
+            "As Admin create a fresh SegQA-prefixed segment A on Sample Database Products with Category is Gadget; enter name/description after choosing filter, save.",
+            "Create segment B on Products filtered only by A; save and reopen B to verify 53 rows.",
+            "Open A and add B as another filter; supply a revision reason and Save changes.",
+            "Reopen B, whose definition has not changed, and click Preview; switch to the newly opened tab."
+          ],
+          "reason": "Works as intended for labeling: consistent with data-modeling-146, saving a recursive segment definition is allowed and the query error names the recursive definition."
+        }
+      }
+    ]
+  },
+  {
+    "id": "expecting-valid-state-to-clear-from-omitted-prefill",
+    "explanation": "Assuming replacing a connection string resets every existing field even when the new string supplies no replacement for that field. Prefill can intentionally update only supplied values; retaining a visibly populated port omitted from the new string is not proof of stale parsing.",
+    "verificationGuidance": [
+      "Check whether prefill is a partial update or full replacement by contract.",
+      "Compare supplied properties with the existing field values, and test an explicit replacement value separately."
+    ],
+    "instances": [
+      {
+        "source": "known-invalid.json",
+        "index": 10,
+        "report": {
+          "id": "metabase-admin-184",
+          "name": "Replacing MySQL connection string with one omitting port retains previous custom port 3307",
+          "summary": "Replacing MySQL connection string with one omitting port retains previous custom port 3307.",
+          "expected": "When replacing the connection string with one that omits the port, the Port field should clear or revert to the default (3306) rather than retaining the previous custom port.",
+          "actual": "Host, database name, and username update to match the new connection string, but the Port field remains filled with 3307 from the previous connection string.",
+          "reproSteps": [
+            "Open Admin > Databases > Add database and select MySQL.",
+            "Enter jdbc:mysql://qa_user:qa_pass@db.example.test:3307/qa_db?ssl=true and blur.",
+            "Confirm fields show host db.example.test and port 3307.",
+            "Replace the URI with jdbc:mysql://qa_second:second_pass@second.example.test/second_db and blur.",
+            "Inspect host, database, username and Port."
+          ],
+          "reason": "Works as intended: connection-string prefill only fills fields the string provides; upstream e2e tests assert a portless string keeps the existing Port."
+        }
+      }
+    ]
+  },
+  {
+    "id": "incorrect-instance-configuration-attributed-to-product",
+    "explanation": "Failure caused by an incorrect public instance URL or reverse-proxy scheme configuration is attributed to application behavior under a valid deployment. Wrong origins can make generated links unreachable, and missing original-scheme forwarding can create redirect loops. A product defect requires evidence that the correctly configured supported environment still fails.",
+    "verificationGuidance": [
+      "Verify the configured external URL, actual browser origin and required proxy forwarding headers.",
+      "Repeat with the supported configuration and inspect fresh requests, not only a page already affected by redirects.",
+      "Do not generalize an environment-specific rejection to incorrect application-generated links under valid configuration."
+    ],
+    "instances": [
+      {
+        "source": "known-invalid.json",
+        "index": 12,
+        "report": {
+          "id": "metabase-admin-260",
+          "name": "Enabling Redirect to HTTPS locks the HTTPS site in a redirect loop",
+          "summary": "Enabling Redirect to HTTPS locks the HTTPS site in a redirect loop.",
+          "expected": "Already-HTTPS requests should load normally after enabling HTTPS redirects. Only HTTP requests should redirect to HTTPS.",
+          "actual": "Immediately after enabling the switch at 16:59:22 UTC, fresh HTTPS Admin navigations failed in multiple browser sessions with ERR_TOO_MANY_REDIRECTS. Network evidence shows repeated HTTP 301 responses whose Location is the exact same HTTPS request URL (for example /admin/settings/general?qa-recovery=1). A new query string also loops. The setting was restored with a narrow cleanup PUT false from a still-open page; cached permanent redirects also needed refreshing.",
+          "reproSteps": [
+            "Sign in as an administrator at / and open /admin/settings/general. Ensure Redirect to HTTPS starts Disabled.",
+            "Enable Redirect to HTTPS and wait for Changes saved.",
+            "Open /admin/settings/general in a fresh tab or reload the HTTPS page.",
+            "Observe the browser's ERR_TOO_MANY_REDIRECTS error. Inspect the network: HTTPS requests receive 301 redirects to their identical HTTPS URLs."
+          ],
+          "reason": "Fixture issue: the sandbox proxy terminates TLS without forwarding the original scheme, so Metabase sees every request as HTTP and redirects. With a correct proxy header the same requests succeed."
+        }
+      },
+      {
+        "source": "known-invalid.json",
+        "index": 22,
+        "report": {
+          "id": "metabase-admin-274",
+          "name": "Discarding an unsaved PostgreSQL connection form opens 'Something’s gone wrong' instead of the database list",
+          "summary": "Discarding an unsaved PostgreSQL connection form opens 'Something’s gone wrong' instead of the database list.",
+          "expected": "Discard the new unsaved connection and return to the working database list.",
+          "actual": "Database list route displays 'Something’s gone wrong' with refresh/back advice. Show error details displays only 'An error occurred'.",
+          "reproSteps": [
+            "No database was created. URLs are disposable test values, not working credentials. Exact relevance of the encoded URL or advanced options to this failure is uncertain.",
+            "Open Admin > Databases > Add database (PostgreSQL).",
+            "Enter disposable connection string postgresql://qa_user:qa_demo@localhost:5432/qa_connection and blur.",
+            "Replace it with postgresql://qa%40user:demo%40pass@localhost:5433/qa%20connection?sslmode=require and blur.",
+            "Scroll down, expand Show advanced options, and verify JDBC options show sslmode=require.",
+            "Click Cancel, then Discard changes in the confirmation dialog."
+          ],
+          "reason": "Cannot reproduce: the original run overlapped another agent enabling Redirect to HTTPS behind the sandbox proxy, so every API call returned 301; discarding the form returns to the database list normally."
+        }
+      },
+      {
+        "source": "known-invalid.json",
+        "index": 28,
+        "report": {
+          "id": "metabase-admin-272",
+          "name": "Saving a new Sample Database Orders question in Our analytics shows “An error occurred”",
+          "summary": "Saving a new Sample Database Orders question in Our analytics shows “An error occurred”.",
+          "expected": "The new question is saved in the selected collection.",
+          "actual": "Save dialog stays open and displays “An error occurred”; assertion saw submit button temporarily labeled “Failed”. Question creation could not complete.",
+          "reproSteps": [
+            "As Admin, exit Admin, use New > Dashboard to create and save an empty disposable dashboard in Our analytics (used only as prerequisite context).",
+            "Use New > Question, choose Sample Database > Orders, then click Save in notebook editor.",
+            "Enter a fresh question name.",
+            "Change save location from Release overview to Our analytics using location picker > Browse > Our analytics > Select this collection.",
+            "Click Save."
+          ],
+          "reason": "Cannot reproduce: the original run overlapped another agent enabling Redirect to HTTPS behind the sandbox proxy, so follow-up API calls returned 301s; the same flow works normally."
+        }
+      },
+      {
+        "source": "known-invalid.json",
+        "index": 29,
+        "report": {
+          "id": "metabase-admin-273",
+          "name": "Saving a People segment with Source Is not Google/Facebook opens 'An error occurred' instead of the Segments list",
+          "summary": "Saving a People segment with Source Is not Google/Facebook opens 'An error occurred' instead of the Segments list.",
+          "expected": "Saving the valid exclusion segment returns to a usable list showing the new definition.",
+          "actual": "After Save changes the app navigates to /admin/datamodel/segments but replaces the list with 'An error occurred'. A settled-page assertion confirms this error state.",
+          "reproSteps": [
+            "As admin open Table Metadata > Segments > New segment.",
+            "Select Sample Database > People. Add Source Is Google, enter a unique name and description, and Save changes.",
+            "Reopen the segment; open Source filter, search Face, select Facebook as well, and Update filter.",
+            "Enter reason for changes and Save changes. Reopen segment and verify Google and Facebook selected with 1015 rows.",
+            "Open Source filter > operator Is > Is not > Update filter. The editor shows 1485 rows.",
+            "Enter reason QA exclude two sources and Save changes.",
+            "Inspect destination Segments list."
+          ],
+          "reason": "Cannot reproduce: the original run overlapped another agent enabling Redirect to HTTPS behind the sandbox proxy, so follow-up API calls returned 301s; the same flow works normally."
+        }
+      }
+    ]
+  },
+  {
+    "id": "visually-similar-names-assumed-identical",
+    "explanation": "Assuming duplicate-name validation must trim meaningful whitespace because two distinct stored names look the same when rendered. If spaces are permitted in names, a trailing space can intentionally distinguish them; visual similarity alone does not establish a duplicate-key bypass.",
+    "verificationGuidance": [
+      "Compare the exact stored strings and the documented normalization/uniqueness rule.",
+      "Demonstrate rejection requirements for whitespace-padded variants rather than assuming trimming is mandatory."
+    ],
+    "instances": [
+      {
+        "source": "known-invalid.json",
+        "index": 14,
+        "report": {
+          "id": "metabase-admin-210",
+          "name": "Trailing space bypasses webhook duplicate-name validation and creates identical-looking channel names",
+          "summary": "Trailing space bypasses webhook duplicate-name validation and creates identical-looking channel names.",
+          "expected": "Duplicate-name protection should treat visually identical names consistently, rejecting or normalizing whitespace padding.",
+          "actual": "Exact duplicate name was rejected, but adding one trailing space allowed saving. After refresh both rows display MO-comms-duplicate, despite pointing to different destinations.",
+          "reproSteps": [
+            "Edit the second name to MO-comms-duplicate and save: observe Channel with that name already exists.",
+            "Change it to MO-comms-distinct and save successfully.",
+            "Edit the second name to 'MO-comms-duplicate ' (one trailing space), save and refresh."
+          ],
+          "reason": "Works as intended: channel names may contain spaces, so a trailing space makes a distinct name."
+        }
+      }
+    ]
+  },
+  {
+    "id": "benchmark-scope-mistaken-for-product-defect",
+    "explanation": "A technical observation is submitted as an eligible benchmark bug without checking the benchmark's accepted scope. Recorded exclusions include accessibility-only claims with no accepted visible or pointer defect, API-only states unavailable through supported UI, and explicitly excluded exotic inputs. A scope exclusion does not prove the underlying technical issue cannot exist.",
+    "verificationGuidance": [
+      "Read the applicable benchmark eligibility rule and the exact recorded exclusion.",
+      "Establish the supported UI path, input domain and accepted observable impact for the new claim.",
+      "Evaluate a separately demonstrated functional failure independently; do not convert an exclusion into a universal product-correctness claim."
+    ],
+    "instances": [
+      {
+        "source": "known-invalid.json",
+        "index": 15,
+        "report": {
+          "id": "metabase-admin-168",
+          "name": "Map property choices all have the accessible name “[object Object]”",
+          "summary": "Map property choices all have the accessible name “[object Object]”.",
+          "expected": "Each property option exposes its actual property name (for example name or ISO3166-1-Alpha-3) as its accessible name.",
+          "actual": "After loading a valid GeoJSON, the accessibility snapshot shows all three choices as option “[object Object]”. Rendered DOM confirms each role=option has aria-label=\"[object Object]\", despite visible text containing distinct property names. Reproduced on both identifier and display-name dropdowns.",
+          "reproSteps": [
+            "Sign in as an administrator and open /admin/settings/maps.",
+            "Click Add a map.",
+            "Enter any map name and set the GeoJSON URL to https://raw.githubusercontent.com/datasets/geo-countries/master/data/countries.geojson, then click Load.",
+            "Open “Which property specifies the region's identifier?” using a screen reader or inspect the browser accessibility tree.",
+            "Observe that name, ISO3166-1-Alpha-3, and ISO3166-1-Alpha-2 are all announced/exposed as “[object Object]”. The region display-name selector has the same issue."
+          ],
+          "reason": "Not a product bug for labeling: the defect exists only in the accessibility tree and nothing visible or functional is broken."
+        }
+      },
+      {
+        "source": "known-invalid.json",
+        "index": 40,
+        "report": {
+          "id": "metabase-admin-521",
+          "name": "Custom field ordering ignores its advertised keyboard controls",
+          "summary": "Custom field ordering ignores its advertised keyboard controls.",
+          "expected": "Following the sortable control's instructions—Space to pick up, arrow keys to move, Space to drop—should reorder the field and save the custom order.",
+          "actual": "With Created At focused, trusted Space, ArrowUp, Space key events reach the sortable button, but data-is-dragging remains false and the order stays ID, Region, Category, Approved, Amount, Created At. Its aria-describedby instruction explicitly says to use these keys. Repeated after focusing via Tab. Mouse drag attempts were inconclusive and are not claimed as a separate defect.",
+          "reproSteps": [
+            "As admin, open Admin → Table Metadata → Release operations → Release Requests (/admin/datamodel/database/2/schema/2:public/table/9).",
+            "Click Sorting, then select Custom order.",
+            "Use Tab to focus the Created At sortable field button. It is the last field in the original database order; its accessible description instructs Space to pick up and arrow keys to move.",
+            "Press Space, ArrowUp, then Space.",
+            "Observe Created At remains after Amount and no keyboard reordering occurs. Repeat with another field if desired."
+          ],
+          "reason": "Not a product bug for labeling: the missing keyboard reorder is an accessibility-only issue with no visible or pointer-driven defect."
+        }
+      }
+    ]
+  },
+  {
+    "id": "public-error-details-assumed-required",
+    "explanation": "Expecting a public execution page to expose detailed internal errors or preserve an editable retry form when it deliberately uses a generic error screen. In the reviewed case the author also supplied a read query to a write-action executor; the generic public error does not establish a valid action failed.",
+    "verificationGuidance": [
+      "Confirm the action is valid for its executor before evaluating the public result.",
+      "Compare public error-disclosure behavior with the intended public/private boundary and test the same action in an authorized editor."
+    ],
+    "instances": [
+      {
+        "source": "known-invalid.json",
+        "index": 16,
+        "report": {
+          "id": "metabase-admin-203",
+          "name": "Submitting the public action form replaces the form with a generic 'An error occurred.' screen without retry or edit controls",
+          "summary": "Submitting the public action form replaces the form with a generic 'An error occurred.' screen without retry or edit controls.",
+          "expected": "Submitting the form should either succeed or show an actionable inline error message while keeping the form available to edit and retry.",
+          "actual": "The form is completely replaced by a generic 'An error occurred.' page with no way to edit inputs or retry.",
+          "reproSteps": [
+            "As primary admin, enable Model actions temporarily on Release operations database.",
+            "In action settings enable Make public and save; follow matching Shared action forms public link from Admin Public sharing.",
+            "Enter 827 into Qa Marker and submit the form."
+          ],
+          "reason": "Works as intended: the action's SELECT returns rows to a write executor, and public action pages deliberately hide error details behind a generic error screen."
+        }
+      }
+    ]
+  },
+  {
+    "id": "visible-input-normalization-mistaken-for-save-corruption",
+    "explanation": "A visible input transformation is attributed to silent save-time corruption even though the field or preview already shows the effective value before submission. Reviewed controls normalize unsupported characters, dates or precision; saving that displayed accepted value is different from secretly replacing a valid submitted value.",
+    "verificationGuidance": [
+      "Record the input and preview immediately before blur, Apply or Save, then compare the submitted and persisted values.",
+      "Check the field-specific normalization contract and a supported-input control.",
+      "Do not use this rejection to dismiss hidden value substitution or corruption that first occurs during a completed save."
+    ],
+    "instances": [
+      {
+        "source": "known-invalid.json",
+        "index": 18,
+        "report": {
+          "id": "metabase-admin-200",
+          "name": "Log-level reset duration changes typed 0.5 minutes into 5 minutes",
+          "summary": "Log-level reset duration changes typed 0.5 minutes into 5 minutes.",
+          "expected": "Typing 0.5 should retain the fractional duration or clearly reject it; it should not silently become 5.",
+          "actual": "Entering 0.5 through the keyboard renders 5 in Reset to defaults after, removes the positive-number validation error and enables Save. The default MULTIMODAL assertion confirmed the field displays 5, not 0.5.",
+          "reproSteps": [
+            "Open Admin Tools as the primary administrator and select Logs.",
+            "Open Customize log levels.",
+            "Replace Reset to defaults after duration with 0; observe positive-number validation.",
+            "Replace the duration by typing 0.5 with the Minutes unit selected.",
+            "Observe that the field instead displays 5 and Save is enabled."
+          ],
+          "reason": "Works as intended: the input visibly shows the value it will save before Save, matching the visible-normalization precedent."
+        }
+      },
+      {
+        "source": "known-invalid.json",
+        "index": 57,
+        "report": {
+          "id": "metabase-admin-b45",
+          "name": "Fractional relative date interval 1.5 becomes 15 days",
+          "summary": "Fractional relative date interval 1.5 becomes 15 days.",
+          "expected": "The interval should preserve 1.5 if fractional days are supported, or reject fractional input with clear validation; it should not reinterpret 1.5 as 15.",
+          "actual": "The input displays 15 without an error. The saved list definition and reopened date filter both show previous 15 days.",
+          "reproSteps": [
+            "In Admin > Table Metadata > Segments create a uniquely named Accounts segment on Sample Database with a description and Active Subscription is false; save.",
+            "Open the segment and add or edit a Created At filter. Choose Relative date range, Previous, days.",
+            "Replace the Interval with 1.5 and blur the input.",
+            "Click Update filter, enter a change reason, and Save changes.",
+            "Reopen the saved segment and its Created At filter."
+          ],
+          "reason": "Works as intended: the relative date interval takes whole numbers, and the field shows the value it will use before saving (same as dashboards-138)."
+        }
+      }
+    ]
+  },
+  {
+    "id": "claim-contradicted-by-controlled-verification",
+    "explanation": "The claimed missing, changed or unusable state is contradicted by a decisive observation or controlled verification of that same claim. Examples include an allegedly lost value remaining intact or an allegedly broken action succeeding under the stated setup. This disproves the checked allegation, not every related workflow or the possibility of a different historical failure.",
+    "verificationGuidance": [
+      "Verify the actual displayed, submitted and persisted values, and the precise action target, instead of repeating the original interpretation.",
+      "Repeat the reported setup and a positive control; record what the decisive observation actually establishes.",
+      "Keep any different trigger, transient state or accepted neighboring defect separate from the contradicted claim."
+    ],
+    "instances": [
+      {
+        "source": "known-invalid.json",
+        "index": 19,
+        "report": {
+          "id": "metabase-admin-202",
+          "name": "Segment editor reports 1 matching row for Total = -45.47, but its Preview returns 0 rows",
+          "summary": "Segment editor reports 1 matching row for Total = -45.47, but its Preview returns 0 rows.",
+          "expected": "The segment editor's matching-row count should agree with the results of Preview for the same definition.",
+          "actual": "With the chip 'Total is equal to -45.47', the editor consistently displays '1 rows'. Its Preview displays 'No results!' and 'Showing 0 rows'. A subsequent whole-page assertion confirmed that the editor still shows 1 rows, not 0.",
+          "reproSteps": [
+            "In Admin > Table Metadata > Segments, create a uniquely named QA segment on Sample Database > Orders with Total less than or equal to -1, a description, and save.",
+            "Reopen the segment. Edit its Total filter from Less than or equal to -1 to Equal to -45.47, then click Update filter.",
+            "Observe the editor's row count, then open Preview and inspect its results.",
+            "Return to the segment editor and compare its row count with Preview."
+          ],
+          "reason": "Cannot reproduce on human review: fresh runs show 0 rows in both the editor and Preview."
+        }
+      },
+      {
+        "source": "known-invalid.json",
+        "index": 27,
+        "report": {
+          "id": "metabase-admin-279",
+          "name": "Switching Database order to Auto-order shows one field order before refresh and a different order afterward",
+          "summary": "Switching Database order to Auto-order shows one field order before refresh and a different order afterward.",
+          "expected": "The field order shown after choosing Auto-order and Done should match the order shown after reopening or refreshing the same table.",
+          "actual": "Before refresh, the list and Detail preview showed ID, User ID, Product ID, Subtotal, Tax, Total, Discount, Created At, Quantity. After refresh, the list instead showed ID, Created At, Discount, Product ID, Quantity, Subtotal, Tax, Total, User ID. A whole-page AI check confirmed the changed order.",
+          "reproSteps": [
+            "Fresh setup: open Sorting, choose Alphabetical order, Done, then reload. Observe alphabetical field list.",
+            "Open Preview > Detail, then Sorting; choose Auto-order, then Database order.",
+            "Observe Database order ID, User ID, Product ID, Subtotal, Tax, Total, Discount, Created At, Quantity.",
+            "Choose Auto-order again and Done. Observe same original order before refresh.",
+            "Refresh and inspect the settled field list."
+          ],
+          "reason": "Cannot reproduce: Auto order re-sorts the list immediately to the same order shown after refresh; the before/after mismatch was misread."
+        }
+      },
+      {
+        "source": "known-invalid.json",
+        "index": 36,
+        "report": {
+          "id": "metabase-admin-426",
+          "name": "Choosing 24-hour model refresh leaves dropdown displaying Custom while removing custom settings",
+          "summary": "Choosing 24-hour model refresh leaves dropdown displaying Custom while removing custom settings.",
+          "expected": "Choosing 24 hours should display 24 hours as the selected schedule.",
+          "actual": "After choosing 24 hours, the cron input disappears but the dropdown still displays Custom….",
+          "reproSteps": [
+            "Open Admin > Performance > Model persistence as administrator and enable persistence.",
+            "Choose Custom, enter 0 9 15 * ?, blur and reload to confirm saved monthly schedule.",
+            "Open Refresh models every and choose 24 hours.",
+            "Inspect the selected schedule and custom input after saving settles."
+          ],
+          "reason": "Cannot reproduce on human review: the dropdown shows 24 hours after selecting it."
+        }
+      },
+      {
+        "source": "known-invalid.json",
+        "index": 45,
+        "report": {
+          "id": "metabase-admin-b11",
+          "name": "Turning on 'Choose when syncs and scans happen' sets field-value scanning to 'Never', and saving silently turns off scheduled scans",
+          "summary": "Turning on 'Choose when syncs and scans happen' sets field-value scanning to 'Never', and saving silently turns off scheduled scans.",
+          "expected": "When the scheduling controls appear, they show the database's current behavior: 'Regularly, on a schedule' (is_full_sync = true) with its daily schedule. Saving without touching the scan option leaves is_full_sync = true and the scan schedule unchanged.",
+          "actual": "The scan selector appears as 'Never, I'll do this manually if I need to' (value 'none'), even though GET /api/database/2 shows is_full_sync: true and a daily cache_field_values schedule. After Save changes, GET /api/database/2 returns is_full_sync: false, is_on_demand: false, schedules.cache_field_values: null. If the database already has let-user-control-scheduling = true, the same form shows 'Regularly, on a schedule' correctly, so the wrong default only appears when the toggle is first turned on.",
+          "reproSteps": [
+            "Sign in as admin and open /admin/databases/2 (Release operations, Postgres). Confirm GET /api/database/2 shows is_full_sync: true, details.let-user-control-scheduling false/absent, and a daily cache_field_values schedule.",
+            "Click 'Edit connection details', then 'Show advanced options'.",
+            "Turn on 'Choose when syncs and scans happen'.",
+            "Look at 'Scanning for Filter Values': it shows 'Never, I'll do this manually if I need to'.",
+            "Click 'Save changes' without changing that select.",
+            "GET /api/database/2: is_full_sync is now false and schedules.cache_field_values is null, so the scheduled scan was silently turned off."
+          ],
+          "reason": "Cannot reproduce on human review: the scan setting did not change to Never through the UI."
+        }
+      },
+      {
+        "source": "known-invalid.json",
+        "index": 47,
+        "report": {
+          "id": "metabase-admin-b25",
+          "name": "Saving an Orders relative-date segment changes its table to Products",
+          "summary": "Saving an Orders relative-date segment changes its table to Products.",
+          "expected": "Saving retains the selected Orders table and its date filter.",
+          "actual": "The saved list and reopened editor identify Products instead of Orders.",
+          "reproSteps": [
+            "In Admin Segments, choose New segment and select Sample Database > Orders.",
+            "Add Created At > Relative date range, set Previous 7 days and enable Include today.",
+            "Add the filter and enter a unique name and description.",
+            "Save changes and inspect the table column, then reopen the segment."
+          ],
+          "reason": "Cannot reproduce on human review: the saved segment kept its Orders table."
+        }
+      },
+      {
+        "source": "known-invalid.json",
+        "index": 56,
+        "report": {
+          "id": "metabase-admin-b44",
+          "name": "Undo hiding a table leaves it hidden",
+          "summary": "Undo hiding a table leaves it hidden.",
+          "expected": "Clicking Undo restores the table to its previous visible state with a normal eye icon",
+          "actual": "The 'Change undone' notification appears, but Release Requests remains hidden with its crossed-out eye icon",
+          "reproSteps": [
+            "Sign in as administrator and open Admin > Table Metadata.",
+            "Expand seeded Release operations and open Release Requests. If hidden, click its eye to unhide it and verify Hide table control.",
+            "Click Hide table for Release Requests.",
+            "Wait about one second for the Hid Release Requests notification, then immediately click Undo.",
+            "Observe Change undone feedback and the table's visibility icon/control."
+          ],
+          "reason": "Cannot reproduce on human review: Undo restores the hidden table."
+        }
+      },
+      {
+        "source": "known-invalid.json",
+        "index": 58,
+        "report": {
+          "id": "metabase-admin-b46",
+          "name": "Public sharing admin list public dashboard link does nothing when clicked",
+          "summary": "Public sharing admin list public dashboard link does nothing when clicked.",
+          "expected": "Clicking the public URL opens that public dashboard.",
+          "actual": "The URL stays at /admin/settings/public-sharing and the page looks the same. No /public/dashboard/ tab exists (SWITCH_TAB found only the admin page).",
+          "reproSteps": [
+            "Sign in as an admin.",
+            "Go to /admin/settings/public-sharing and make sure Enable Public Sharing is turned on.",
+            "Under Shared dashboards, find a dashboard that has a public link (in this run: MO-MAPS-QA-Public).",
+            "Click its Public Link URL (/public/dashboard/c3c1afa6-...).",
+            "Observe: the page stays on Admin Public sharing and no public dashboard tab opens."
+          ],
+          "reason": "Cannot reproduce on human review: the public dashboard link opens."
+        }
+      },
+      {
+        "source": "known-invalid.json",
+        "index": 61,
+        "report": {
+          "id": "metabase-admin-b54",
+          "name": "Switching custom mapping back to original values crashes metadata panels",
+          "summary": "Switching custom mapping back to original values crashes metadata panels.",
+          "expected": "Display values switches to Use original value while the table and field editors stay usable.",
+          "actual": "Both main metadata panels display An error occurred immediately after choosing Use original value.",
+          "reproSteps": [
+            "Open Admin > Table Metadata > Sample Database > Reviews > Rating.",
+            "Choose Custom mapping under Display values; save mappings (tested 1 to Poor QA and 5 to Excellent QA).",
+            "Edit mapping again, restore those mapped values to 1 and 5, and Save.",
+            "Open Display values dropdown and choose Use original value."
+          ],
+          "reason": "Cannot reproduce on human review: Use original value removes the mapping and the metadata panels stay usable."
+        }
+      }
+    ]
+  },
+  {
+    "id": "numeric-safe-integer-boundary-assumed-lossless",
+    "explanation": "Arbitrary integers beyond the browser's safe numeric representation are assumed to round-trip exactly without an established exact-integer guarantee. Rounding outside that range does not demonstrate corruption of ordinary supported values. An explicit precision promise or a failure within the supported range requires separate assessment.",
+    "verificationGuidance": [
+      "Check the field's supported range and representation, including the safe-integer boundary where relevant.",
+      "Compare the value during entry, the submitted payload and the stored result; a final screenshot alone does not establish when rounding occurred.",
+      "Use ordinary in-range controls and preserve any explicit exact-precision requirement."
+    ],
+    "instances": [
+      {
+        "source": "known-invalid.json",
+        "index": 20,
+        "report": {
+          "id": "metabase-admin-207",
+          "name": "Large minimum query duration silently changes from 9007199254740993 to 9007199254740992 after save",
+          "summary": "Large minimum query duration silently changes from 9007199254740993 to 9007199254740992 after save.",
+          "expected": "Retain the exact entered integer or reject an unsupported value with validation; do not silently save a different number.",
+          "actual": "The entered suffix 740993 changes to 740992 after save/reload. Readback assertion finds full value 9007199254740992; focusing and End visibly shows 740992. No rejection was shown.",
+          "reproSteps": [
+            "Open Admin > Performance > Database caching and select Adaptive.",
+            "Enter 9007199254740993 in Minimum query duration.",
+            "Save changes and reload.",
+            "Focus Minimum query duration and press End to inspect its suffix."
+          ],
+          "reason": "Works as intended: the value exceeds the largest integer the browser can represent exactly, so it rounds; no realistic cache duration is affected."
+        }
+      }
+    ]
+  },
+  {
+    "id": "fractional-integer-units-assumed-supported",
+    "explanation": "Fractional input is treated as supported precision in a control whose reviewed contract represents integer counts, offsets or raw units. Conversion or rejection of a fraction does not establish loss of supported data, and a preferred warning policy is not automatically required. Valid integer corruption and fields promising fractional precision remain separate.",
+    "verificationGuidance": [
+      "Determine the stored unit and supported numeric domain, not just whether the input accepts decimal keystrokes.",
+      "Test valid integer controls and inspect the effective value before and after submission.",
+      "Establish an explicit fractional-precision or warning contract before treating normalization as a defect."
+    ],
+    "instances": [
+      {
+        "source": "known-invalid.json",
+        "index": 21,
+        "report": {
+          "id": "metabase-admin-215",
+          "name": "Entering 1.5 decimal places silently saves 2 in field formatting",
+          "summary": "Entering 1.5 decimal places silently saves 2 in field formatting.",
+          "expected": "Reject fractional decimal-place counts with understandable validation rather than silently saving a different integer.",
+          "actual": "Entering 1.5 changed the field to 2 and displayed Formatting of Rating updated. Refresh retained 2. A whole-page multimodal assertion confirmed no validation warning or explanation of rounding.",
+          "reproSteps": [
+            "As admin, open Table Metadata → Sample Database → Reviews → Rating.",
+            "Scroll to Number of decimal places (initially blank).",
+            "Enter 1.5 and blur the input.",
+            "Refresh, reopen the formatting controls and read Number of decimal places."
+          ],
+          "reason": "Works as intended: the decimal-places field takes whole numbers and rounds a fractional entry."
+        }
+      }
+    ]
+  },
+  {
+    "id": "concurrent-save-assumed-to-merge-fields",
+    "explanation": "A stale editor is expected to merge another writer's changes or warn about conflicts even though the reviewed contract accepts last-write-wins saves. A full stale-object submission can restore its displayed fields without establishing corruption of the submitted data. This ruling does not cover a promised merge guarantee or loss without a competing write.",
+    "verificationGuidance": [
+      "Check the documented or adjudicated concurrency contract before requiring automatic merging or conflict detection.",
+      "Inspect both editors' saved baselines and submitted fields, then repeat without another writer.",
+      "Distinguish an accepted stale full-object save from a completed value disappearing without an intervening write."
+    ],
+    "instances": [
+      {
+        "source": "known-invalid.json",
+        "index": 23,
+        "report": {
+          "id": "metabase-admin-278",
+          "name": "Saving a name from a stale user editor silently restores a group membership removed in another tab",
+          "summary": "Saving a name from a stale user editor silently restores a group membership removed in another tab.",
+          "expected": "A name-only edit should preserve the completed membership removal, or warn about conflicting stale data rather than silently restoring access.",
+          "actual": "Group showed 0 members after removal. Saving only Last name to Concurrent restored the group in the People row. Refreshed group details showed 1 member, PEOPLE-QA Rowan Concurrent.",
+          "reproSteps": [
+            "As admin, create a fresh disposable PEOPLE-QA user using a unique test email and create a fresh PEOPLE-QA group under Groups. Add that user to the group.",
+            "In tab A, open People > user's ellipsis > Edit user. Change only Last name and leave the dialog open.",
+            "In tab B, open the group's details and remove that user with the row X. Verify the group shows 0 members.",
+            "Return to tab A and click Update without changing Groups.",
+            "Refresh group details in tab B."
+          ],
+          "reason": "Works as intended: the edit dialog shows and submits the user's group memberships, so saving it from an older view reapplies the groups it displays."
+        }
+      }
+    ]
+  },
+  {
+    "id": "ignoring-implicit-query-permission-dependencies",
+    "explanation": "Assuming access to a visible base table is sufficient for a query that also resolves foreign-key display names through other tables. The apparent single-table result can require implicit joins and therefore permissions on those related tables.",
+    "verificationGuidance": [
+      "Inspect the generated query, remapping and implicit joins.",
+      "Compare permissions for every required table, and test without display remapping before alleging a base-table permission failure."
+    ],
+    "instances": [
+      {
+        "source": "known-invalid.json",
+        "index": 26,
+        "report": {
+          "id": "metabase-admin-275",
+          "name": "Orders-only Query builder access lists Orders for Maya but opening it fails with 'you don't have permission to run this query'",
+          "summary": "Orders-only Query builder access lists Orders for Maya but opening it fails with 'you don't have permission to run this query'.",
+          "expected": "With Orders-only Query builder access, Maya should be able to run the plain Orders table query and see rows.",
+          "actual": "The Orders question opens with Filter, Summarize, and Editor controls available, but the result area says 'Sorry, you don't have permission to run this query.' and the footer shows 'Showing 0 rows'. A plain single-table query against Orders (limit 1) returns error_type missing-required-permissions.",
+          "reproSteps": [
+            "As an admin, put Maya Chen in the dedicated group MO-PERM-1021. Leave All Users with no Sample Database access. Give the group granular Sample Database access with Orders set to Query builder and all other tables set to No, then save.",
+            "Sign in as Maya Chen (maya@example.test).",
+            "Open /browse/databases/1 (Databases > Sample Database). Orders is the only table listed.",
+            "Click Orders and wait for results.",
+            "Observe 'Sorry, you don't have permission to run this query.' and 'Showing 0 rows'."
+          ],
+          "reason": "Works as intended: Orders displays User ID and Product ID as People and Products names, so the query joins those tables and requires access to them; documented in Metabase's permissions guide."
+        }
+      }
+    ]
+  },
+  {
+    "id": "scrollable-content-mistaken-for-missing-data",
+    "explanation": "Content outside the initially visible portion of a scrollable menu, panel or narrow input is assumed absent, incorrect or unusable. In the reviewed cases scrolling or copying reveals the complete value and the control works. This does not cover essential content that remains inaccessible through normal supported interaction.",
+    "verificationGuidance": [
+      "Inspect the full scroll container and input value, including content above or beyond the initial viewport.",
+      "Use normal scrolling, text navigation or copying to verify the complete value and the selectable control.",
+      "Retest the actual task after revealing the content; preserve a claim if normal access still fails."
+    ],
+    "instances": [
+      {
+        "source": "known-invalid.json",
+        "index": 31,
+        "report": {
+          "id": "metabase-admin-334",
+          "name": "Wrap text clips the middle of long link display labels in Admin field preview",
+          "summary": "Wrap text clips the middle of long link display labels in Admin field preview.",
+          "expected": "Wrap text should keep the full link label readable by wrapping all words properly within each cell.",
+          "actual": "Each preview cell renders two lines with the beginning and end of the text, but the middle phrase ('without changing any database rows') is missing/clipped. The issue persists after reloading the page and reopening the preview.",
+          "reproSteps": [
+            "Products is allocated to metadata. Only metadata labels were changed, no DB rows. Restore Title Display as Text, Wrap text off, empty Link text and URL afterward. Related tables remain read-only.",
+            "In Admin Table Metadata, select Sample Database Products and Title.",
+            "Set Display as Link. Set Link text to 'Mo Products temporary display label with many words to exercise multiline wrapping without changing any database rows. This label should wrap into additional lines when text wrapping is enabled in this preview.' and Link URL to the Admin datamodel URL. Blur each input.",
+            "Open Table preview and enable Wrap text.",
+            "Refresh, reopen Preview and inspect rendered link labels."
+          ],
+          "reason": "Works as intended: the wrapped text is fully present; the preview column is wider than its panel and the rest is reachable by scrolling."
+        }
+      },
+      {
+        "source": "known-invalid.json",
+        "index": 44,
+        "report": {
+          "id": "metabase-admin-577",
+          "name": "Date-range preview clips the second calendar",
+          "summary": "Date-range preview clips the second calendar.",
+          "expected": "Both calendars and their date cells/navigation controls fit within or are reachable in the preview panel.",
+          "actual": "The second calendar extends past the preview panel and is clipped.",
+          "reproSteps": [
+            "As Admin, open Table Metadata, Sample Database, Reviews.",
+            "Click empty area of Created At field card to open its settings.",
+            "Click Preview, then Filtering.",
+            "Choose Fixed date range. Observe the two-calendar Between mode at 1920×1080 desktop viewport."
+          ],
+          "reason": "Works as intended: the preview column is deliberately sized, and its container scrolls when the date picker is wider. The hidden days and the next-month arrow stay reachable by scrolling, and the preview has no submit button."
+        }
+      }
+    ]
+  },
+  {
+    "id": "unverified-failure-treated-as-established",
+    "explanation": "A reported failure is treated as established without recovering the claimed failing state after independent review could not reproduce it. Nonreproduction leaves the historical event and its cause unresolved; it does not prove the behavior impossible or intended, and a nearby accepted bug does not verify a different trigger or outcome.",
+    "verificationGuidance": [
+      "Reproduce the exact reported trigger and outcome in a fresh, isolated state, with the required permissions and completed saves.",
+      "Keep an unrecovered historical claim explicitly unverified; do not invent an intended-behavior or source-cause explanation.",
+      "Compare the exact claim with accepted nearby cases rather than borrowing their evidence."
+    ],
+    "instances": [
+      {
+        "source": "known-invalid.json",
+        "index": 32,
+        "report": {
+          "id": "metabase-admin-377",
+          "name": "Reloading Our analytics collection permissions hides the selected collection's matrix",
+          "summary": "Reloading Our analytics collection permissions hides the selected collection's matrix.",
+          "expected": "The selected Our analytics collection continues to show its permission matrix on reload.",
+          "actual": "Our analytics remains highlighted in the sidebar, but the main panel displays 'Select a collection to see its permissions' and does not show the permission matrix.",
+          "reproSteps": [
+            "Open Admin > Permissions > Collections.",
+            "Select Our analytics and observe the permission matrix.",
+            "Reload the browser page."
+          ],
+          "reason": "Cannot reproduce on human review."
+        }
+      },
+      {
+        "source": "known-invalid.json",
+        "index": 33,
+        "report": {
+          "id": "metabase-admin-381",
+          "name": "Add a map shows “An error occurred” for USA GeoJSON that Edit map successfully loads",
+          "summary": "Add a map shows “An error occurred” for USA GeoJSON that Edit map successfully loads.",
+          "expected": "The valid USA GeoJSON loads a preview and property choices, consistent with the same URL working in Edit map.",
+          "actual": "The preview shows “An error occurred”; both property selectors remain Select… and Add map is disabled. Earlier, the same URL successfully loaded and persisted the United States preview when editing a map initially created from countries.geo.json.",
+          "reproSteps": [
+            "Comparison setup if needed: create a map from https://raw.githubusercontent.com/johan/world.geo.json/master/countries.geo.json selecting name for both properties. Edit it, replace URL with the USA URL, click Refresh and save. This path loaded successfully. Test fixtures created earlier were deleted.",
+            "As administrator open Settings > Maps and click Add a map.",
+            "Enter a fresh name such as Mo Maps QA Validation.",
+            "Enter not-a-url and click Load; observe invalid-location validation.",
+            "Replace URL with https://raw.githubusercontent.com/johan/world.geo.json/master/countries/USA.geo.json and click Load.",
+            "Observe preview and property selectors."
+          ],
+          "reason": "Cannot reproduce on human review."
+        }
+      },
+      {
+        "source": "known-invalid.json",
+        "index": 34,
+        "report": {
+          "id": "metabase-admin-382",
+          "name": "Publish in Admin chart embed wizard leaves chart unpublished with no feedback",
+          "summary": "Publish in Admin chart embed wizard leaves chart unpublished with no feedback.",
+          "expected": "Clicking Publish should publish the chosen question for embedding and replace the instruction to publish, or provide an actionable error.",
+          "actual": "After clicking Publish, the modal still states “You will need to publish this question before you can embed it in another application” and retains Publish.",
+          "reproSteps": [
+            "Guest embeds were initially disabled; New embed/Agree and enable enabled them. The selected chart was initially unpublished. Parameter preview was exercised before publishing and reset to Disabled.",
+            "As the primary Admin, open Admin settings, then select Embedding in the top navigation.",
+            "Click New embed. If prompted, click Agree and enable for guest embedding.",
+            "Select Chart, click Next, and choose the seeded Release requests by region and category chart (Browse/search Release if needed). This existing chart provides the fixture; no fixture creation is required.",
+            "Click Next to reach Behavior, Parameters and Appearance. Leave Region and Category Disabled.",
+            "Click Publish above the preview and inspect the settled screen."
+          ],
+          "reason": "Cannot reproduce on human review."
+        }
+      },
+      {
+        "source": "known-invalid.json",
+        "index": 37,
+        "report": {
+          "id": "metabase-admin-473",
+          "name": "Action's Run play control opens SQL editing dialog instead of runnable form",
+          "summary": "Action's Run play control opens SQL editing dialog instead of runnable form.",
+          "expected": "Run opens the action's user-facing form so its parameter can be supplied and submitted, rather than editing its definition.",
+          "actual": "Run opens a dialog with editable SQL, Action parameters configuration and Update button. the only Run link is the one behind the modal in the underlying list.",
+          "reproSteps": [
+            "As primary admin, ensure Release operations database Model actions is enabled.",
+            "Create a fresh SQL question in Our analytics root on Release operations with SELECT 24 AS qa_sharing_value; save with unique name and turn it into a model.",
+            "Open the model's Info > Actions > New action. Enter SELECT {{qa_value}} AS qa_value and save it with a unique name; don't run it.",
+            "On the saved model's Actions list, click the play control labeled Run for the new action."
+          ],
+          "reason": "Cannot reproduce on human review."
+        }
+      },
+      {
+        "source": "known-invalid.json",
+        "index": 41,
+        "report": {
+          "id": "metabase-admin-568",
+          "name": "Creating a second webhook does not add it to the list",
+          "summary": "Creating a second webhook does not add it to the list.",
+          "expected": "Both destinations appear in the list after creation.",
+          "actual": "The dialog closed but only QA-MAPS-header was listed.",
+          "reproSteps": [
+            "In Admin Notification channels, create a webhook named QA-MAPS-header with an example.test URL and description.",
+            "Click Add another. Enter URL https://qa-maps.example.test/second, name QA-MAPS-second, description QA-MAPS second fixture, and leave authentication None.",
+            "Click Create destination and inspect the Webhooks list."
+          ],
+          "reason": "Cannot reproduce on human review."
+        }
+      },
+      {
+        "source": "known-invalid.json",
+        "index": 48,
+        "report": {
+          "id": "metabase-admin-b05",
+          "name": "Segment definition appears in French on English admin page",
+          "summary": "Segment definition appears in French on English admin page.",
+          "expected": "Definition text uses the same English language as the surrounding page, such as “Filtered by Total is between 100 and 200.”",
+          "actual": "Definition reads “Filtré par Total est compris entre 100 et 200” beside English NAME, TABLE, DEFINITION, Filter by table and New segment labels.",
+          "reproSteps": [
+            "As an admin, open Table Metadata > Segments.",
+            "Create an Orders segment with Total between 100 and 200, a name and description, then save.",
+            "Edit the segment, change its name and description, enter a reason, and save.",
+            "Inspect the definition column in the Segments list."
+          ],
+          "reason": "Cannot reproduce on human review."
+        }
+      },
+      {
+        "source": "known-invalid.json",
+        "index": 49,
+        "report": {
+          "id": "metabase-admin-b06",
+          "name": "Custom homepage enabled setting reverts after refresh",
+          "summary": "Custom homepage enabled setting reverts after refresh.",
+          "expected": "The enabled setting persists, or the UI explains why it cannot be saved.",
+          "actual": "The switch shows Enabled before refresh and Disabled after refresh.",
+          "reproSteps": [
+            "Open Admin Settings > General as the supplied administrator.",
+            "Turn on the initially Disabled Custom homepage switch.",
+            "Observe Enabled, then refresh the page."
+          ],
+          "reason": "Cannot reproduce on human review."
+        }
+      },
+      {
+        "source": "known-invalid.json",
+        "index": 51,
+        "report": {
+          "id": "metabase-admin-b08",
+          "name": "Model cache log opens to an error",
+          "summary": "Model cache log opens to an error.",
+          "expected": "The Model cache log page displays cache log records, an empty state, or an informative feature message",
+          "actual": "The page displays 'An error occurred'",
+          "reproSteps": [
+            "As the fixture administrator, open Admin > Tools.",
+            "Select Model cache log in the Tools sidebar.",
+            "Observe the settled Model cache log page."
+          ],
+          "reason": "Cannot reproduce on human review."
+        }
+      },
+      {
+        "source": "known-invalid.json",
+        "index": 52,
+        "report": {
+          "id": "metabase-admin-b16",
+          "name": "Combining locked Region with editable Category breaks embedding preview",
+          "summary": "Combining locked Region with editable Category breaks embedding preview.",
+          "expected": "Preview filters to the matching us-west Documentation row (amount 90).",
+          "actual": "Preview displays “An error occurred in your query” and “An error occurred while running the query.”",
+          "reproSteps": [
+            "As Harbor Admin, duplicate Release requests by region and category to a disposable question in your personal collection.",
+            "Open Admin > Embedding, enable guest embeds if disabled, and choose New embed > Chart.",
+            "Select the copied question and continue to configuration.",
+            "Set Region to Editable, enter initial value us-west, then change Region to Locked. Observe the two us-west rows.",
+            "Set Category to Editable and enter Documentation into the Category input in the preview, pressing Enter."
+          ],
+          "reason": "Cannot reproduce on human review."
+        }
+      },
+      {
+        "source": "known-invalid.json",
+        "index": 53,
+        "report": {
+          "id": "metabase-admin-b17",
+          "name": "Confirmed custom map deletion leaves the map in the list",
+          "summary": "Confirmed custom map deletion leaves the map in the list.",
+          "expected": "The confirmed custom map is deleted and removed from the Custom maps list.",
+          "actual": "The deletion dialog closes and a 'Changes saved' notification appears, but the custom map remains listed under Custom maps.",
+          "reproSteps": [
+            "As primary admin open Settings > Maps.",
+            "Create a fresh map named Mo Maps QA Countries, using https://raw.githubusercontent.com/johan/world.geo.json/master/countries.geo.json; Load and select name for both identifier and display name, then Add map.",
+            "Click Remove on this map's row.",
+            "In Delete custom map, click Yes and inspect the settled list."
+          ],
+          "reason": "Cannot reproduce on human review."
+        }
+      },
+      {
+        "source": "known-invalid.json",
+        "index": 54,
+        "report": {
+          "id": "metabase-admin-b18",
+          "name": "Deactivate user opens unchanged People list",
+          "summary": "Deactivate user opens unchanged People list.",
+          "expected": "Clicking 'Deactivate user' opens a deactivation confirmation dialog or deactivates the user with clear feedback.",
+          "actual": "The menu closes, but no confirmation dialog or notification appears, and the user remains listed unchanged.",
+          "reproSteps": [
+            "As Harbor Admin use Invite someone to create a unique QA user with first/last name and example.test email. Click Create then Done.",
+            "In People open the fresh user's ellipsis menu.",
+            "Choose Deactivate user.",
+            "Observe the settled page."
+          ],
+          "reason": "Cannot reproduce on human review."
+        }
+      },
+      {
+        "source": "known-invalid.json",
+        "index": 55,
+        "report": {
+          "id": "metabase-admin-b19",
+          "name": "Negative decimal places crashes table and field metadata panes",
+          "summary": "Negative decimal places crashes table and field metadata panes.",
+          "expected": "Reject an invalid negative decimal count with validation while keeping table and field settings usable.",
+          "actual": "Typing -1 causes both metadata panes to display An error occurred. The decimal input disappears, so it cannot be corrected in the current editor.",
+          "reproSteps": [
+            "As an Admin, open Table Metadata and choose Release operations > Release Requests > Amount. Use this seeded numeric field as a disposable test field; record original settings for restoration, or use an equivalent newly connected test table with a numeric amount field.",
+            "Set semantic type to Currency and leave visibility Everywhere.",
+            "Scroll to Number of decimal places. Enter 3, then open Preview to verify a value such as 120.000.",
+            "Close Preview, scroll back to Number of decimal places, and replace 3 with -1."
+          ],
+          "reason": "Cannot reproduce on human review."
+        }
+      },
+      {
+        "source": "known-invalid.json",
+        "index": 60,
+        "report": {
+          "id": "metabase-admin-602",
+          "name": "Changing Price semantic type alters unrelated display names",
+          "summary": "Changing Price semantic type alters unrelated display names.",
+          "expected": "Changing one field's semantic type should leave the table name and other fields' display names unchanged.",
+          "actual": "The Currency selection succeeds, but the table heading becomes PRODUCTS and unrelated field labels become EAN, TITLE, CATEGORY, VENDOR, RATING and CREATED_AT; sidebar still says Products.",
+          "reproSteps": [
+            "Open Admin Table Metadata as the authenticated admin and expand Sample Database.",
+            "Select Products and open the Price field using its name row.",
+            "Rename Price to Price QA metadata, blur to save, refresh, and restore its display name to Price.",
+            "Open Semantic type and select Currency; observe the Products table and field list."
+          ],
+          "reason": "Cannot reproduce on human review."
+        }
+      },
+      {
+        "source": "known-invalid.json",
+        "index": 65,
+        "report": {
+          "id": "metabase-admin-615",
+          "name": "Editable Date Range replaces embedding preview with an error",
+          "summary": "Editable Date Range replaces embedding preview with an error.",
+          "expected": "The dashboard preview updates to show the editable Date Range filter while continuing to display the dashboard cards",
+          "actual": "The dashboard preview clears and displays a red error icon in the center of the dark preview area",
+          "reproSteps": [
+            "As the supplied admin, open Embedding and select New embed.",
+            "If guest embedding is disabled, choose Agree and enable. Keep Dashboard selected and click Next.",
+            "Select Dark appearance, then open the Date Range Disabled menu and choose Editable."
+          ],
+          "reason": "Cannot reproduce on human review."
+        }
+      },
+      {
+        "source": "known-invalid.json",
+        "index": 67,
+        "report": {
+          "id": "metabase-admin-637",
+          "name": "Adding a member replaces group detail with an error",
+          "summary": "Adding a member replaces group detail with an error.",
+          "expected": "The selected user is added to the group and the group detail view displays the updated member list and count.",
+          "actual": "The group detail view is replaced by an error screen displaying \"An error occurred\".",
+          "reproSteps": [
+            "As Admin, create a fresh disposable person through Invite someone with first name QA People, last name Explorer and a unique example.test email; keep default membership.",
+            "Create a fresh disposable group with name mo-people-Équipe-20261028 (use a unique suffix if needed).",
+            "Open that group from the Groups list and confirm its empty member detail.",
+            "Click Add members, search for the disposable person's name and select it.",
+            "Click Add beside the selected person."
+          ],
+          "reason": "Cannot reproduce on human review."
+        }
+      },
+      {
+        "source": "known-invalid.json",
+        "index": 68,
+        "report": {
+          "id": "metabase-admin-639",
+          "name": "Accessible child collection errors when parent access is denied",
+          "summary": "Accessible child collection errors when parent access is denied.",
+          "expected": "The child collection loads and displays its contents and curation controls.",
+          "actual": "The main content area displays “An error occurred” while the collection remains selected in the sidebar.",
+          "reproSteps": [
+            "As primary admin, create a fresh disposable parent collection in Our analytics, then create a child inside it.",
+            "In Admin > Permissions > Collections, verify All Users has Curate on both collections.",
+            "On only the parent collection, change All Users to No access and Save changes > Yes. Leave child All Users access as Curate.",
+            "Start a separate verified Jordan member session (not in a custom group granting parent access).",
+            "Open the parent: it correctly says “Sorry, you don’t have permission to see that.”",
+            "Click the child collection shown in Jordan’s sidebar."
+          ],
+          "reason": "Cannot reproduce on human review."
+        }
+      }
+    ]
+  },
+  {
+    "id": "unsubmitted-draft-mistaken-for-save-loss",
+    "explanation": "An edited local value is assumed saved without establishing that the supported commit action ran. Enter, synthetic blur and an open editor do not universally mean the rename or form was submitted; reload restoring the old value does not prove a completed save was lost.",
+    "verificationGuidance": [
+      "Use the actual supported commit gesture for this editor and verify its completion or persistence acknowledgement.",
+      "Compare trusted outside-click, Enter, Tab or explicit Save controls as applicable; do not assume a programmatic event is equivalent.",
+      "Reopen or reread the same object after the confirmed commit before claiming saved-value loss."
+    ],
+    "instances": [
+      {
+        "source": "known-invalid.json",
+        "index": 39,
+        "report": {
+          "id": "metabase-admin-526",
+          "name": "Table rename is not saved when pressing Enter and reverts after reload",
+          "summary": "Table rename is not saved when pressing Enter and reverts after reload.",
+          "expected": "Pressing Enter to submit a new table name should save and persist the change after reload.",
+          "actual": "Pressing Enter does not update the sidebar or save the table name; upon page reload, the name reverts to the previous name ('QA-TABLE Reviews').",
+          "reproSteps": [
+            "As an admin, open Admin > Table Metadata > Sample Database > Reviews.",
+            "Rename the table to QA-TABLE Reviews and click outside the input; reload to verify this baseline persists.",
+            "Change the table name to QA-TABLE Reviews café & <sample> and press Enter.",
+            "Observe that the header and sidebar keep the old name, then reload: the name reverts to QA-TABLE Reviews."
+          ],
+          "reason": "Works as intended: the table-name input saves on blur, not on Enter, and the documented save action (clicking away) persists the name. Pressing Enter just leaves an unsaved draft in the focused input."
+        }
+      }
+    ]
+  },
+  {
+    "id": "temporary-view-state-assumed-persistent-setting",
+    "explanation": "Temporary interactive state is assumed to be a saved setting that must survive refresh or preview regeneration. A contextual list filter can require an explicit saved view, while an embedding preview can reload its configured initial values when its token changes. Loss of these unsaved runtime choices is distinct from loss of completed saved settings.",
+    "verificationGuidance": [
+      "Identify whether the value belongs to a saved view/default or only the current navigation or preview session.",
+      "Use the supported save or initial-value configuration, then verify that persisted setting survives the same transition.",
+      "Keep initial navigation using the wrong context and completed saved settings being lost as separate claims."
+    ],
+    "instances": [
+      {
+        "source": "known-invalid.json",
+        "index": 42,
+        "report": {
+          "id": "metabase-admin-569",
+          "name": "Changing a locked preview parameter clears the editable grouping",
+          "summary": "Changing a locked preview parameter clears the editable grouping.",
+          "expected": "Applying a locked Date Range preview value preserves the independently selected Year grouping on the dashboard.",
+          "actual": "Date Grouping loses the selected Year value and resets to default, causing the chart to revert from yearly to quarterly labels.",
+          "reproSteps": [
+            "As admin open Embedding settings and enable guest embeds if disabled.",
+            "Set Date Range to Locked and Date Grouping to Editable.",
+            "In dashboard preview choose Date Grouping > Year. Observe year labels 2025 and 2026.",
+            "In Previewing locked parameters choose Date Range > Previous 12 months.",
+            "Observe Date Grouping loses Year and chart displays Q4 2025 through Q3 2026."
+          ],
+          "reason": "Works as intended: changing a locked parameter regenerates the signed preview token, which reloads the preview from its configured initial values. Setting the grouping as an initial parameter value keeps it, so nothing is broken."
+        }
+      }
+    ]
+  },
+  {
+    "id": "supported-input-fallback-assumed-validation-failure",
+    "explanation": "Assuming invalid or blank input must remain as an error instead of reverting to the previous valid value, being treated as no value, or being constrained to a supported minimum. The reviewed controls deliberately use fallback/clearing behavior; showing a different parsed condition alone does not establish data corruption. This does not cover a valid accepted value that is secretly replaced.",
+    "verificationGuidance": [
+      "Identify the control’s documented/tested invalid-input and blank-input policy.",
+      "Inspect the retained calendar selection, range bounds and applied chip rather than only transient typed text.",
+      "Test a supported valid value and verify it is preserved before inferring a general save failure."
+    ],
+    "instances": [
+      {
+        "source": "known-invalid.json",
+        "index": 46,
+        "report": {
+          "id": "metabase-admin-b22",
+          "name": "Zero-day relative date filter silently saves as one day",
+          "summary": "Zero-day relative date filter silently saves as one day.",
+          "expected": "Reject an unsupported zero-day interval with validation, or preserve the explicitly entered interval instead of silently changing it.",
+          "actual": "Zero is accepted without validation. The saved list says Birth Date is yesterday; reopening the picker shows Previous 1 day, silently changing the input from 0 to 1.",
+          "reproSteps": [
+            "Create a disposable People segment with State is CA, unique name and description; save.",
+            "Edit it and add Birth Date > Relative date range.",
+            "Leave Previous selected, replace interval 30 with 0, keep day and Include today off.",
+            "Click Add filter, enter revision reason, Save changes and refresh.",
+            "Reopen the segment and click the Birth Date filter chip."
+          ],
+          "reason": "Works as intended: a relative date interval must be at least 1, so 0 days is saved as 1 day (same as querying-367)."
+        }
+      }
+    ]
+  },
+  {
+    "id": "placeholder-mistaken-for-submitted-value",
+    "explanation": "Treating an input’s placeholder as a real default and reporting validation failure when a required field was never filled. A displayed example port does not mean that port is in the submitted configuration.",
+    "verificationGuidance": [
+      "Read the input value attribute or submitted payload rather than its placeholder text.",
+      "Explicitly enter the required value and retry the same configuration."
+    ],
+    "instances": [
+      {
+        "source": "known-invalid.json",
+        "index": 50,
+        "report": {
+          "id": "metabase-admin-b07",
+          "name": "MongoDB SSH form shows an integer port assertion error",
+          "summary": "",
+          "expected": "The default ports should be usable, or the form should identify a required port value with actionable validation.",
+          "actual": "The connection alert reads “Assert failed: (integer? port)” rather than a usable connection or validation message.",
+          "reproSteps": [
+            "Open Add database as admin, select MongoDB and set a display name.",
+            "Choose Use a connection string and enter mongodb://qa-connection.invalid:27017/qa_mongo?connectTimeoutMS=1000&serverSelectionTimeoutMS=1000.",
+            "Enable SSH tunnel, use qa-ssh.invalid, username qa_ssh, Password authentication and dummy password qa_dummy_password; leave SSH port at displayed 22.",
+            "Switch to Fill out host, port and database name.",
+            "Enter Host qa-connection.invalid and Database name qa_mongo, leave MongoDB Port at displayed 27017 and click Save."
+          ],
+          "reason": "Works as intended: Port is a required field, and the placeholder 27017 is only a hint, not a value. Saving with it empty is missing required input, so the form shows an error; entering the port fixes it."
+        }
+      }
+    ]
+  },
+  {
+    "id": "missed-recovery-or-confirmation-step",
+    "explanation": "Declaring a control ineffective or a hidden state unrecoverable without completing its confirmation or using the available global recovery action. Reviewed examples include a permission confirmation before drilling down and Reset all filters restoring a hidden card.",
+    "verificationGuidance": [
+      "Inspect dialogs and page-level reset controls after the action.",
+      "Complete the confirmation or recovery and verify the resulting state.",
+      "Distinguish an extra required step from a control that fails after the complete supported workflow."
+    ],
+    "instances": [
+      {
+        "source": "known-invalid.json",
+        "index": 59,
+        "report": {
+          "id": "metabase-admin-b48",
+          "name": "Selecting 'Granular' in data permissions does nothing",
+          "summary": "Selecting 'Granular' in data permissions does nothing.",
+          "expected": "Choosing Granular opens the table-level permissions for that group/database (e.g. /admin/permissions/data/group/4/database/1), where each table's access can be set.",
+          "actual": "The popover closes, the URL stays /admin/permissions/data/group/4 (or /database/1), and the cell still shows 'Query builder only'. Opening /admin/permissions/data/group/4/database/1 directly works, so only the navigation from the option is broken. Same thing happens from the database-focused view.",
+          "reproSteps": [
+            "Log in as admin, create a group 'Marketing' in People > Groups",
+            "Go to /admin/permissions/data/group/<marketing id>",
+            "Click the Create queries dropdown for Sample Database",
+            "Click 'Granular'",
+            "Note that nothing changes and you stay on the database list"
+          ],
+          "reason": "Cannot reproduce on human review: choosing Granular shows a 'Limit access even though All Users has greater access?' confirmation, and confirming opens the table-level view."
+        }
+      }
+    ]
+  },
+  {
+    "id": "group-permission-setting-confused-with-effective-access",
+    "explanation": "Reading a save confirmation about one group’s configured permission as a statement about a user’s total effective access. Greater access through another group can remain in effect and may already have been explained by an earlier warning.",
+    "verificationGuidance": [
+      "Separate the edited group’s setting from the union of the actor’s group permissions.",
+      "Read preceding inherited-access warnings and verify effective access with the actor before claiming the save dialog revoked it."
+    ],
+    "instances": [
+      {
+        "source": "known-invalid.json",
+        "index": 63,
+        "report": {
+          "id": "metabase-admin-b72",
+          "name": "Save confirmation contradicts inherited data access warning",
+          "summary": "Save confirmation contradicts inherited data access warning.",
+          "expected": "The save confirmation should accurately describe the group's restriction without implying that members lose their greater inherited All Users access.",
+          "actual": "The initial warning says All Users higher access overrides this setting, but Save permissions says 'QA People 0702 will not be able to use the query builder or write native queries for Sample Database.'",
+          "reproSteps": [
+            "As administrator, use a custom group with a member and Query builder and native access to Sample Database; leave All Users with Query builder and native access.",
+            "In Admin Permissions Data, select that group and set Sample Database Create queries to No.",
+            "Observe the warning that All Users has greater access and will override this setting; click Revoke access.",
+            "Click Save changes and read the Save permissions confirmation."
+          ],
+          "reason": "Works as intended: the save dialog describes the group's own permission setting, and All Users' greater access was already flagged in the earlier warning."
+        }
+      }
+    ]
+  },
+  {
+    "id": "partial-credential-clear-assumed-independent-fields",
+    "explanation": "Expecting half of a composite credential to persist when clearing its key or value intentionally removes the whole unusable credential. The pair’s lifecycle differs from unrelated independently editable fields.",
+    "verificationGuidance": [
+      "Check the credential schema and how empty key/value pairs serialize.",
+      "Test whether an intact valid pair persists and distinguish pair deletion from unintended loss of a complete credential."
+    ],
+    "instances": [
+      {
+        "source": "known-invalid.json",
+        "index": 66,
+        "report": {
+          "id": "metabase-admin-620",
+          "name": "Clearing either field of a saved webhook API key erases both",
+          "summary": "Clearing either field of a saved webhook API key erases both.",
+          "expected": "Reject a missing header key or preserve the unchanged Value; do not silently erase it.",
+          "actual": "Save succeeds and both Key and Value reopen empty, although only Key was cleared. The readback AI assertion confirmed both fields are empty.",
+          "reproSteps": [
+            "Create a disposable webhook with name, description and valid-format URL.",
+            "Select API Key authentication, Header, Key X-QA-Edge and Value edge-value; save.",
+            "Reopen and confirm both fields persisted.",
+            "Clear only Key, save and reopen."
+          ],
+          "reason": "Works as intended: an API key needs both its key and its value to be valid, so clearing either field drops the whole credential."
+        }
+      }
+    ]
+  }
+]
