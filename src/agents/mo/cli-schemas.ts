@@ -1,7 +1,5 @@
 import { z } from "zod";
 
-export const MIN_MO_SESSION_TIME_BUDGET_MINUTES = 10;
-
 export const MoStatusSchema = z.object({
   state: z.string().nullable(),
   sessionState: z.string().optional(),

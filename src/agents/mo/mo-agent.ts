@@ -17,7 +17,6 @@ import {
   MoReportSchema,
 } from "../../evals/reports";
 import {
-  MIN_MO_SESSION_TIME_BUDGET_MINUTES,
   MoReadSchema,
   MoStatusSchema,
   isMoSessionReportReady,
@@ -41,16 +40,8 @@ export class MoAgent implements EvalAgent {
     _deadlineMs?: number,
     onReady?: () => number,
   ) {
-    const { timeLimitMs } = this.context;
     onReady?.();
     const startArgs = ["start", message];
-    if (timeLimitMs) {
-      const minutes = Math.ceil(timeLimitMs / 60_000);
-      startArgs.push(
-        "--time-budget",
-        String(Math.max(MIN_MO_SESSION_TIME_BUDGET_MINUTES, minutes)),
-      );
-    }
     if (this.context.effort) startArgs.push("--effort", this.context.effort);
     if (this.context.maxConcurrentSubAgents !== undefined) {
       startArgs.push(
