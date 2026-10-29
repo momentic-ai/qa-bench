@@ -1,12 +1,13 @@
 import { mkdir } from "node:fs/promises";
 import path from "node:path";
 
+import { MoEffort } from "../agents/mo/options";
 import { FixtureExecution } from "../fixtures/execution";
 import {
   DEFAULT_TIME_LIMIT_MS,
   FullAppOptions,
 } from "../tasks/full-app/options";
-import { EvalAgentDefinition, MoEffort } from "./agent";
+import { EvalAgentDefinition } from "./agent";
 import { bugbashBrief } from "./bugbash-brief";
 import { selectComparisonFixtures } from "./fixture-selection";
 import { writeJson } from "./json-file";

@@ -8,20 +8,15 @@ import {
   EvalAgent,
   EvalAgentDefinition,
 } from "../../evals/agent";
-import { getMoCost } from "../../evals/cost";
 import { writeJson } from "../../evals/json-file";
-import { runMoCommand, validateMoCli } from "../../evals/mo-cli";
-import {
-  MoCostSchema,
-  MoFindingsSchema,
-  MoReportSchema,
-} from "../../evals/reports";
+import { getMoCost, runMoCommand, validateMoCli } from "./cli";
 import {
   MIN_MO_SESSION_TIME_BUDGET_MINUTES,
   MoReadSchema,
   MoStatusSchema,
   isMoSessionReportReady,
 } from "./cli-schemas";
+import { MoCostSchema, MoFindingsSchema, MoReportSchema } from "./reports";
 
 const SessionSchema = z.object({ sessionId: z.string().min(1) });
 

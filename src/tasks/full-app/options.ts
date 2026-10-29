@@ -1,6 +1,7 @@
 import { parseArgs } from "node:util";
 
-import { Browser, MO_EFFORTS, MoEffort } from "../../evals/agent";
+import { MO_EFFORTS, MoEffort } from "../../agents/mo/options";
+import { Browser } from "../../evals/agent";
 import {
   executionOptions,
   parseExecutionOptions,

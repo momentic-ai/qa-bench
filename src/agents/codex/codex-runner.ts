@@ -6,13 +6,13 @@ import { z } from "zod";
 
 import { AgentContext, EvalAgent } from "../../evals/agent";
 import { BrowserCost, combinedCost } from "../../evals/browser-cost";
-import { getCodexCost } from "../../evals/cost";
 import { writeJson } from "../../evals/json-file";
 import {
   CodexAppServer,
   CodexNotification,
   loginCodexWithApiKey,
 } from "./codex-app-server";
+import { getCodexCost } from "./cost";
 import { FINDINGS_TOOLS, FindingsStore } from "./findings-store";
 
 // The brief can exceed the goal limit, so the objective points to the first turn, which carries it in full.

@@ -2,18 +2,6 @@ import { readFile, readdir } from "node:fs/promises";
 import path from "node:path";
 import { z } from "zod";
 
-import { runMoCommand } from "./mo-cli";
-
-export async function getMoCost(
-  sessionId: string,
-  signal: AbortSignal,
-): Promise<unknown> {
-  const stdout = await runMoCommand(["cost", sessionId], {
-    signal,
-  });
-  return JSON.parse(stdout);
-}
-
 type TokenPrices = {
   input: number;
   cachedInput: number;
@@ -103,7 +91,6 @@ export async function getCodexCost(codexHome: string): Promise<CodexCost> {
 
       const event = EventSchema.parse(JSON.parse(line));
       if (event.type === "turn_context") {
-        // Turn context records which model subsequent usage belongs to.
         model = TurnContextSchema.parse(event.payload).model ?? undefined;
         continue;
       }

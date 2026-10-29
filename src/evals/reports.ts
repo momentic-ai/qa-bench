@@ -2,7 +2,6 @@ import { z } from "zod";
 
 import { readDataset } from "./dataset";
 
-// These standalone readers validate exported files without loading the Mo runtime.
 export const FindingSchema = z
   .object({
     name: z.string(),
@@ -56,12 +55,6 @@ export async function loadGroundTruth(file: string) {
   }
   return { text, bugs: parsed.data.bugs };
 }
-export const MoFindingsSchema = z.array(
-  FindingSchema.extend({ kind: z.enum(["bug", "flag"]) }),
-);
-export const MoReportSchema = z
-  .object({ findings: z.object({ bugs: z.string() }).passthrough() })
-  .passthrough();
 export const DurationSchema = z
   .object({
     duration: z.number(),
@@ -69,13 +62,6 @@ export const DurationSchema = z
     partial: z.boolean().optional(),
     errors: z.array(z.string()).optional(),
     valid: z.boolean().optional(),
-  })
-  .passthrough();
-export const MoCostSchema = z
-  .object({
-    totals: z.array(
-      z.object({ currency: z.string(), amount: z.number() }).passthrough(),
-    ),
   })
   .passthrough();
 export const CodexCostSchema = z

@@ -1,4 +1,4 @@
-import { runCommand } from "./command";
+import { runCommand } from "../../evals/command";
 
 const MO_CLI_VERSION = "0.30.0";
 
@@ -24,4 +24,14 @@ export async function validateMoCli() {
       `QA CLI ${version} does not support --no-test-cases. Set MO_EVAL_CLI to a ${MO_CLI_VERSION} executable with test case opt-out support.`,
     );
   }
+}
+
+export async function getMoCost(
+  sessionId: string,
+  signal: AbortSignal,
+): Promise<unknown> {
+  const stdout = await runMoCommand(["cost", sessionId], {
+    signal,
+  });
+  return JSON.parse(stdout);
 }
