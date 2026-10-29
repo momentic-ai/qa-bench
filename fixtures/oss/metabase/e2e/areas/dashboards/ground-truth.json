@@ -1288,11 +1288,11 @@
     },
     {
       "id": "metabase-dashboards-b32",
-      "name": "Saving a dashboard edit clears values of filters connected only to text/heading cards",
+      "name": "Saving a dashboard edit replaces current filter values with stale remembered ones",
       "severity": 3,
-      "summary": "Saving a dashboard edit clears values of filters connected only to text/heading cards.",
+      "summary": "After any edit-mode Save, the dashboard reloads without the URL's filter values and rebuilds them from last-used values, so filters wired only to text or heading cards lose their value and other filters can revert to older remembered values.",
       "expected": "Saving dashboard layout/content changes preserves the currently applied filter values (as it does for filters connected to question columns); headings continue to show the substituted value.",
-      "actual": "On dashboard 'QA Filter Reset C' with URL ?day=2026-10-25&word=hello&text=us-east, the headings read 'Day: On October 25, 2026' / 'Word: hello'. After Edit → add a heading → Save, the URL becomes ?day=&word=&text=us-east and headings show 'Day: {{dd}}' and 'Word: {{w}}'. The 'Text' filter (mapped to the Release requests Region column) kept us-east. Also seen on a dashboard where a Date filter was connected only to a heading (date=2026-10-25 → date=) and a required Region filter mapped to text/heading/SQL-variable cards reset to its default.",
+      "actual": "On dashboard 'QA Filter Reset C' with URL ?day=2026-10-25&word=hello&text=us-east, the headings read 'Day: On October 25, 2026' / 'Word: hello'. After Edit → add a heading → Save, the URL becomes ?day=&word=&text=us-east and headings show 'Day: {{dd}}' and 'Word: {{w}}'. The 'Text' filter (mapped to the Release requests Region column) kept us-east. Also seen on a dashboard where a Date filter was connected only to a heading (date=2026-10-25 → date=) and a required Region filter mapped to text/heading/SQL-variable cards reset to its default. In another run, saving a text-card edit replaced explicit URL filter values with older remembered ones.",
       "reproSteps": [
         "Sign in as eval@momentic.ai, go to /collection/root, click New > Dashboard, name it 'Heading filter test', Create.",
         "Click the T (heading/text) dropdown > Heading and type 'Word: {{w}}'; click outside the card.",
@@ -1345,6 +1345,52 @@
         "Click Edit dashboard (pencil). Hover the 'Revenue goal for this quarter' card and click Show visualization options.",
         "On the Display tab, click the green Color swatch and choose red (#E75454). The preview turns red.",
         "Click Reset to defaults and wait 5 seconds. The swatch and bar are still red."
+      ]
+    },
+    {
+      "id": "metabase-dashboards-b66",
+      "name": "Pressing 'e' in dashboard edit mode exits and silently discards all unsaved changes",
+      "severity": 3,
+      "summary": "Pressing 'e' in dashboard edit mode exits and silently discards all unsaved changes.",
+      "expected": "Pressing 'e' while already editing should do nothing. At minimum it should show the same 'Discard your changes?' confirmation that the Cancel button shows when there are unsaved changes.",
+      "actual": "Edit mode closes right away and all unsaved cards disappear: the dashcard count went from 2 to 0 and the dashboard showed 'This dashboard is empty'. No confirmation was shown. Pressing 'e' again re-enters edit mode with an empty dashboard. Other keys ('#', space, 'h', 'H') do nothing.",
+      "reproSteps": [
+        "Log in and create a new dashboard (New > Dashboard > Create). It opens in edit mode.",
+        "Add a Text card and a Heading card using the 'T' (Add a heading or text box) menu. Optionally add a question as well.",
+        "Click an empty area of the dashboard grid so no text field is focused.",
+        "Press the 'e' key once.",
+        "Edit mode closes without any prompt and all the added cards are gone. Click Edit and they are not there, because the changes were discarded.",
+        "For comparison: with unsaved changes, clicking Cancel shows a 'Discard your changes?' confirmation."
+      ]
+    },
+    {
+      "id": "metabase-dashboards-b60",
+      "name": "Large decimal precision replaces pie percentages with zero",
+      "severity": 3,
+      "summary": "Large decimal precision replaces pie percentages with zero.",
+      "expected": "An unsupported precision should be rejected or constrained clearly; formatting must not replace nonzero percentages with zero.",
+      "actual": "101 is accepted and the four slice and legend labels all become “0”, while the donut still has four large slices and total 4,354. The zero labels remain after reload.",
+      "reproSteps": [
+        "Open dashboard 1 using the authenticated fixture session.",
+        "Use dashboard toolbar ellipsis > Duplicate, give a fresh QA name, check Only duplicate the dashboard, and Duplicate.",
+        "Edit the duplicate dashboard and open the Total orders by product category visualization editor using its chart icon.",
+        "Open Settings > Display. Set Number of decimal places to 2 and observe nonzero percentages (22.55%, 26.11%, 23.47%, 27.86%).",
+        "Replace Number of decimal places with 101 and click another field.",
+        "Save visualization, save dashboard, and reload."
+      ]
+    },
+    {
+      "id": "metabase-dashboards-b65",
+      "name": "Dashboard comparison setting displays “4 undefined” after filtering",
+      "severity": 1,
+      "summary": "Dashboard comparison setting displays “4 undefined” after filtering.",
+      "expected": "The configured comparison remains labeled “4 quarters ago”, as it is with unfiltered dashboard data.",
+      "actual": "The comparison button reads “4 undefined”. Reproduced on the original dashboard and its duplicate after reload.",
+      "reproSteps": [
+        "Sign in and open /dashboard/1 (E-commerce Insights).",
+        "Set Date Range to Past 3 months and Product Category to Gizmo (equivalently open /dashboard/1?date_range=past3months&product_category=Gizmo).",
+        "Edit the dashboard, hover Revenue per quarter, and open Show visualization options.",
+        "On the Data tab, inspect the second comparison."
       ]
     }
   ]
