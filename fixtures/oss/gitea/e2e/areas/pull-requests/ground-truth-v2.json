@@ -1,0 +1,2565 @@
+{
+  "schemaVersion": 2,
+  "sourceGroundTruth": "ground-truth.json",
+  "logicalBugs": [
+    {
+      "id": "gitea-pull-summary-commits-plural",
+      "explanation": "PR summaries use plural commits for a single commit.",
+      "rootCause": {
+        "explanation": "The pull title summary translation interpolates a count into a fixed commits string instead of selecting singular/plural wording.",
+        "sourceReferences": [
+          {
+            "repository": "go-gitea/gitea",
+            "revision": "99053ce4fa2b45f1bca5837418c0c57f793ca824",
+            "path": "options/locale/locale_en-US.ini",
+            "line": 1864,
+            "url": "https://github.com/go-gitea/gitea/blob/99053ce4fa2b45f1bca5837418c0c57f793ca824/options/locale/locale_en-US.ini#L1864"
+          }
+        ]
+      },
+      "reproductionPaths": [
+        {
+          "id": "gitea-pull-summary-commits-plural-path-1",
+          "explanation": "A pull request containing exactly one commit uses the plural “1 commits” in its merge summary.",
+          "sourceBugs": [
+            {
+              "index": 0,
+              "id": null,
+              "name": "Pull request summary uses plural commits for one commit"
+            }
+          ],
+          "expected": "The merge summary should use the singular “1 commit” when the pull request contains one commit.",
+          "actual": "The summary says “wants to merge 1 commits” while the Commits tab shows a count of 1.",
+          "reproSteps": [
+            "Sign in as eval with password momentic-eval-1 and open eval/harbor-handbook.",
+            "Create a disposable branch from main, add a small Markdown file, and commit it once on that branch.",
+            "Create a pull request from the new branch into main.",
+            "Open its conversation page and confirm that the Commits tab shows 1.",
+            "Read the merge summary and observe “1 commits” instead of “1 commit”."
+          ],
+          "severity": 1
+        }
+      ]
+    },
+    {
+      "id": "gitea-single-commit-review-action-url",
+      "explanation": "The single-commit diff renders a review action under a commit-scoped URL.",
+      "rootCause": {
+        "explanation": "The latest-commit diff qualifies as IsShowingAllCommits, enabling the review form. That form appends /reviews/submit to .Link, which on the commit view includes /commits/<sha>; only the PR-scoped review route exists.",
+        "sourceReferences": [
+          {
+            "repository": "go-gitea/gitea",
+            "revision": "99053ce4fa2b45f1bca5837418c0c57f793ca824",
+            "path": "routers/web/repo/pull.go",
+            "line": 684,
+            "url": "https://github.com/go-gitea/gitea/blob/99053ce4fa2b45f1bca5837418c0c57f793ca824/routers/web/repo/pull.go#L684"
+          },
+          {
+            "repository": "go-gitea/gitea",
+            "revision": "99053ce4fa2b45f1bca5837418c0c57f793ca824",
+            "path": "templates/repo/diff/new_review.tmpl",
+            "line": 14,
+            "url": "https://github.com/go-gitea/gitea/blob/99053ce4fa2b45f1bca5837418c0c57f793ca824/templates/repo/diff/new_review.tmpl#L14"
+          }
+        ]
+      },
+      "reproductionPaths": [
+        {
+          "id": "gitea-single-commit-review-action-url-path-1",
+          "explanation": "The latest single-commit PR diff offers an enabled Review panel, but submitting its comment uses a missing commit-scoped route and posts no review.",
+          "sourceBugs": [
+            {
+              "index": 1,
+              "id": "gitea-latest-single-commit-pr-review-submit-404",
+              "name": "Review submission from the latest single-commit PR view fails with HTTP 404"
+            }
+          ],
+          "expected": "Submitting an enabled review from the latest/head single-commit PR diff should post the review successfully through the canonical PR review-submission endpoint.",
+          "actual": "The review is not submitted. A raw JSON parse error banner appears, the page stays on the commit-filtered URL, and the text remains in the panel.",
+          "reproSteps": [
+            "Sign in as eval and create or use a PR whose latest/head commit can be selected from Files Changed.",
+            "Through the PR commit selector, open the latest single-commit diff. Confirm Review is enabled.",
+            "Open Review, type a unique comment, and click Comment.",
+            "Observe that no review is posted, the page stays on the commit-scoped URL with the draft retained, and the request reaches HTTP 404. The recorded banner exposes a JSON parsing error."
+          ],
+          "severity": 3
+        }
+      ]
+    },
+    {
+      "id": "gitea-fetch-action-non-json-errors",
+      "explanation": "Shared fetch actions assume client-error responses are JSON.",
+      "rootCause": {
+        "explanation": "fetchActionDoRequest unconditionally parses HTTP 4xx as JSON and labels parsing exceptions Network error. Plain-text missing/forbidden endpoints therefore expose a client SyntaxError instead of the server rejection.",
+        "sourceReferences": [
+          {
+            "repository": "go-gitea/gitea",
+            "revision": "99053ce4fa2b45f1bca5837418c0c57f793ca824",
+            "path": "web_src/js/features/common-fetch-action.ts",
+            "line": 38,
+            "url": "https://github.com/go-gitea/gitea/blob/99053ce4fa2b45f1bca5837418c0c57f793ca824/web_src/js/features/common-fetch-action.ts#L38"
+          }
+        ]
+      },
+      "reproductionPaths": [
+        {
+          "id": "gitea-fetch-action-non-json-errors-path-1",
+          "explanation": "A failed Review-panel submission receives a plaintext HTTP 404, but the UI labels a resulting client JSON parse exception as a network error.",
+          "sourceBugs": [
+            {
+              "index": 2,
+              "id": "gitea-pr-review-http-error-raw-json-network-feedback",
+              "name": "Review submission HTTP error is mislabeled Network error and exposes a JSON SyntaxError"
+            }
+          ],
+          "expected": "When Review submission receives an HTTP error, show understandable submission-failure feedback and preserve the draft. Distinguish an HTTP rejection from a network outage, and do not expose an internal JSON parser exception.",
+          "actual": "The server responds HTTP404 with plain text Not found. The banner says Network error followed by SyntaxError: Unexpected token N / Not found is not valid JSON. The review draft remains in the panel.",
+          "reproSteps": [
+            "Sign in as eval and open a PR’s latest/head single-commit Files Changed view, where Review is enabled.",
+            "Open Review, enter a unique comment, and click Comment.",
+            "Observe the red banner combining Network error, SyntaxError and invalid JSON details. The request reached the server and received HTTP404; it was not a transport failure."
+          ],
+          "severity": 1,
+          "matchingGuidance": [
+            {
+              "sourceBugIndex": 2,
+              "guidance": {
+                "relatedExistingReference": "codex-60m-gitea-5 covers the author’s Re-request Review sidebar workflow receiving an empty403 and the same shared parser/catch failure. This reference is scoped to Review-panel submission feedback; it does not claim a new underlying generic-parser defect."
+              }
+            }
+          ]
+        },
+        {
+          "id": "gitea-fetch-action-non-json-errors-path-2",
+          "explanation": "After an author submits a comment-only review of their own pull request, the reviewer sidebar offers Re-request review for that author. The action fails with a raw network/JSON exception on every attempt.",
+          "sourceBugs": [
+            {
+              "index": 7,
+              "id": "codex-60m-gitea-5",
+              "name": "Re-request review on the author's comment review fails with a raw JSON error"
+            }
+          ],
+          "expected": "The sidebar should offer review re-request only when it can succeed, or display a clear validation message for a self-review request.",
+          "actual": "Clicking the circular Re-request review action beside admin displays 'Network error SyntaxError: Failed to execute json on Response: Unexpected end of JSON input' and creates no review request. Reloading and repeating reproduces the error.",
+          "reproSteps": [
+            "Sign in as admin and open a pull request authored by admin, such as /admin/bugbash-code-flows/pulls/4.",
+            "Open Files Changed, choose Review, submit a Comment review.",
+            "Return to Conversation. In Reviewers, admin now appears with a Re-request review action.",
+            "Click Re-request review beside admin.",
+            "Observe the raw network/JSON error. Reload and repeat to confirm it fails again."
+          ],
+          "severity": 3
+        }
+      ]
+    },
+    {
+      "id": "gitea-reviewed-filter-excludes-self-authored",
+      "explanation": "Reviewed by you excludes the viewer’s own PRs despite recorded comment reviews.",
+      "rootCause": {
+        "explanation": "applyReviewedCondition intersects review/comment membership with issue.poster_id <> viewer. Accepted comment-only self reviews therefore cannot satisfy the filter, on global and organization dashboards.",
+        "sourceReferences": [
+          {
+            "repository": "go-gitea/gitea",
+            "revision": "99053ce4fa2b45f1bca5837418c0c57f793ca824",
+            "path": "models/issues/issue_search.go",
+            "line": 430,
+            "url": "https://github.com/go-gitea/gitea/blob/99053ce4fa2b45f1bca5837418c0c57f793ca824/models/issues/issue_search.go#L430"
+          }
+        ]
+      },
+      "reproductionPaths": [
+        {
+          "id": "gitea-reviewed-filter-excludes-self-authored-path-1",
+          "explanation": "An open PR authored by the signed-in eval records that eval’s review comment, but global Pull Requests > Reviewed by you remains at 0 and shows no results, even after refresh.",
+          "sourceBugs": [
+            {
+              "index": 3,
+              "id": null,
+              "name": "Reviewed by you omits a pull request with a recorded review by the current user"
+            }
+          ],
+          "expected": "The eval-authored PR should appear in the “Reviewed by you” view because the PR timeline records that the same eval reviewed it.",
+          "actual": "PR #8 displayed “eval reviewed now,” the submitted review comment, and eval in the Reviewers sidebar. Global Pull Requests > Reviewed by you showed a count of 0 and “No results”; this remained true after refreshing.",
+          "reproSteps": [
+            "Sign in as eval using the fixture credentials and open eval/harbor-handbook.",
+            "Create a fresh branch, add a file, and open a pull request into main authored by eval.",
+            "Open Files Changed → Review, enter a review comment, and submit with Comment.",
+            "Confirm the pull request timeline records eval’s review and the Reviewers sidebar includes eval.",
+            "Open global Pull Requests → Reviewed by you with state=open. Refresh and observe count 0 and No results despite the recorded review."
+          ],
+          "severity": 1
+        },
+        {
+          "id": "gitea-reviewed-filter-excludes-self-authored-path-2",
+          "explanation": "On an organization's Pull Requests page, 'Reviewed by you' doesn't list a pull request the user authored and submitted a Comment review on, because the filter excludes the user's own pull requests.",
+          "sourceBugs": [
+            {
+              "index": 36,
+              "id": "gitea-org-pulls-reviewed-by-you-omits-own-pr",
+              "name": "Organization Pull Requests 'Reviewed by you' omits a pull request the user reviewed"
+            }
+          ],
+          "expected": "'Reviewed by you' lists open pull requests on which the signed-in user has submitted a review.",
+          "actual": "After eval submitted a Comment review on its own pull request 'qa-org Alpha review proposal' (the timeline showed 'eval reviewed'), the organization's 'Reviewed by you' showed count 0 and No results.",
+          "reproSteps": [
+            "In an organization repository, open a pull request and submit a Comment review on it yourself.",
+            "Open the organization's Pull Requests page and choose 'Reviewed by you'.",
+            "Check whether the pull request is listed."
+          ],
+          "severity": 1,
+          "matchingGuidance": [
+            {
+              "sourceBugIndex": 36,
+              "guidance": {
+                "relatedReference": {
+                  "name": "Reviewed by you omits a pull request with a recorded review by the current user",
+                  "distinction": "Same filter cause, but that entry is the global Pull Requests dashboard; this entry is an organization's Pull Requests page."
+                }
+              }
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "id": "gitea-dashboard-issue-unit-permission-missing",
+      "explanation": "PR dashboards include repositories without usable PR units.",
+      "rootCause": {
+        "explanation": "The shared dashboard repository selection uses SearchRepositoryCondition with a unit type but actor access is checked at unit.TypeInvalid and owned repositories bypass the relevant unit condition. Disabled PR units are therefore still admitted before indexed PR listing/counting.",
+        "sourceReferences": [
+          {
+            "repository": "go-gitea/gitea",
+            "revision": "99053ce4fa2b45f1bca5837418c0c57f793ca824",
+            "path": "models/repo/repo_list.go",
+            "line": 362,
+            "url": "https://github.com/go-gitea/gitea/blob/99053ce4fa2b45f1bca5837418c0c57f793ca824/models/repo/repo_list.go#L362"
+          },
+          {
+            "repository": "go-gitea/gitea",
+            "revision": "99053ce4fa2b45f1bca5837418c0c57f793ca824",
+            "path": "routers/web/user/home.go",
+            "line": 471,
+            "url": "https://github.com/go-gitea/gitea/blob/99053ce4fa2b45f1bca5837418c0c57f793ca824/routers/web/user/home.go#L471"
+          }
+        ]
+      },
+      "reproductionPaths": [
+        {
+          "id": "gitea-dashboard-issue-unit-permission-missing-path-1",
+          "explanation": "After Pull Requests is disabled for a repository, the global dashboard still includes its open PR in results and counts, presenting an unavailable PR as actionable.",
+          "sourceBugs": [
+            {
+              "index": 4,
+              "id": "gitea-pr-dashboard-includes-disabled-unit",
+              "name": "Global Pull Requests dashboard lists and counts PRs from repositories with Pull Requests disabled"
+            }
+          ],
+          "expected": "The global Pull Requests dashboard should exclude PRs from repositories where Pull Requests is disabled, including their contribution to the displayed open count and repository grouping. Disabling the feature must not leave an actionable dashboard result leading to an unavailable detail page.",
+          "actual": "With Pull Requests disabled on qa-pull-review/pull-sandbox, the repository navigation has no Pull Requests tab, but /pulls still lists Organization release review and counts it as 1 Open and In your repositories 1. Clicking its title reaches 404 Not Found while the same administrator retains repository access.",
+          "reproSteps": [
+            "Sign in as eval with administration access to an initialized disposable repository. Create an open pull request between two changed branches, or use an existing open PR.",
+            "Open repository Settings, disable Pull Requests, and save. Confirm the repository navigation no longer has a Pull Requests tab; remain signed in as the same administrator.",
+            "Choose Pull Requests in the global navigation to open /pulls. Locate the PR from the repository whose Pull Requests feature was disabled. Observe that it remains listed and contributes to the open count and repository grouping.",
+            "Click that visible PR title. Observe 404 Not Found. The qualifying failure is retaining the unavailable PR in the global results/counts; the repository intentionally disabling its detail route is not a separate bug."
+          ],
+          "severity": 3,
+          "matchingGuidance": [
+            {
+              "sourceBugIndex": 4,
+              "guidance": {
+                "deduplication": "Latest main d49150034f has no accepted reference for disabled-repository PRs remaining in global results. The disabled issue-tracker dashboard reference concerns Issues; existing PR filter-loss references use different triggers. This reference covers global PR results and counts only; organization dashboard variants are not independently confirmed here."
+              }
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "id": "gitea-issue-index-legacy-assignee",
+      "explanation": "Keyword PR search indexes the legacy assignee instead of actual assignees.",
+      "rootCause": {
+        "explanation": "Issue index conversion reads the nonpersisted AssigneeID field rather than the current Assignees collection. Keyword queries with specific/self assignee filters miss assigned PRs while direct database filters work.",
+        "sourceReferences": [
+          {
+            "repository": "go-gitea/gitea",
+            "revision": "99053ce4fa2b45f1bca5837418c0c57f793ca824",
+            "path": "modules/indexer/issues/util.go",
+            "line": 116,
+            "url": "https://github.com/go-gitea/gitea/blob/99053ce4fa2b45f1bca5837418c0c57f793ca824/modules/indexer/issues/util.go#L116"
+          },
+          {
+            "repository": "go-gitea/gitea",
+            "revision": "99053ce4fa2b45f1bca5837418c0c57f793ca824",
+            "path": "models/issues/issue_search.go",
+            "line": 374,
+            "url": "https://github.com/go-gitea/gitea/blob/99053ce4fa2b45f1bca5837418c0c57f793ca824/models/issues/issue_search.go#L374"
+          }
+        ]
+      },
+      "reproductionPaths": [
+        {
+          "id": "gitea-issue-index-legacy-assignee-path-1",
+          "explanation": "The global Pull Requests dashboard lists an assigned PR without a query, but searching a matching title term under Assigned to you hides it while the same query under Created by you finds it.",
+          "sourceBugs": [
+            {
+              "index": 5,
+              "id": "gitea-pr-assigned-exact-search-omits-match",
+              "name": "Assigned-to-you exact search hides a matching assigned pull request"
+            }
+          ],
+          "expected": "An open PR assigned to the signed-in user remains visible under Assigned to you when an Exact search matches its title. Searching must retain the matching assigned result and its count.",
+          "actual": "Assigned to you lists the open PR Update README.md with count 1 before searching. Submitting README with Exact selected retains type=assigned but changes the count to 0 and shows No results. Created by you returns the same PR for the same query.",
+          "reproSteps": [
+            "Sign in as eval and create a disposable PR titled Update README.md, authored by eval and assigned to eval. Confirm its assignee on the PR detail.",
+            "Open global Pull Requests and select Assigned to you with state Open and an empty search. Confirm that Update README.md appears and the Assigned to you count includes it.",
+            "Enter README in Search pulls with Exact selected and submit. The URL retains type=assigned and includes q=README&search_mode=exact.",
+            "Observe that the assigned matching PR disappears, Assigned to you shows 0, and No results appears.",
+            "Choose Created by you with the same README query. Confirm the PR appears, establishing that its matching title is searchable. Return to Assigned to you and repeat the search."
+          ],
+          "severity": 3
+        },
+        {
+          "id": "gitea-issue-index-legacy-assignee-path-2",
+          "explanation": "On an organization's Pull Requests page, 'Assigned to you' with a text search shows No results even though a pull request assigned to the user matches it. The search index doesn't store current assignees.",
+          "sourceBugs": [
+            {
+              "index": 35,
+              "id": "gitea-org-pulls-assigned-search-omits-pr",
+              "name": "Organization Pull Requests 'Assigned to you' search omits a matching assigned pull request"
+            }
+          ],
+          "expected": "A pull request assigned to the signed-in user stays in the organization's 'Assigned to you' list when a search matches it.",
+          "actual": "'Assigned to you' listed 'qa-org Alpha review proposal' (count 1); after searching 'Alpha' the count became 0 with No results.",
+          "reproSteps": [
+            "In an organization repository, open a pull request and assign it to yourself.",
+            "On the organization's Pull Requests page, choose 'Assigned to you' and confirm it's listed.",
+            "Search for a word from its title.",
+            "Check whether it is still listed."
+          ],
+          "severity": 3,
+          "matchingGuidance": [
+            {
+              "sourceBugIndex": 35,
+              "guidance": {
+                "relatedReference": {
+                  "name": "Assigned-to-you exact search hides a matching assigned pull request",
+                  "distinction": "Same handler and index cause, but that entry is the global Pull Requests dashboard; this entry is an organization's Pull Requests page."
+                }
+              }
+            }
+          ]
+        },
+        {
+          "id": "gitea-issue-index-legacy-assignee-path-3",
+          "explanation": "In a repository's Pull Requests list, choosing Type > Assigned to you (or an Assignee filter) and searching for a word from an assigned pull request's title returns no results. Without a search the same pull request is listed. Keyword searches use the issue index, which only stores a legacy single-assignee field, so pull requests assigned the normal way never match.",
+          "sourceBugs": [
+            {
+              "index": 38,
+              "id": "gitea-repo-pulls-assigned-search-omits-pr",
+              "name": "Repository Pull Requests 'Assigned to you' search omits a matching assigned pull request"
+            }
+          ],
+          "expected": "Adding a search to Assigned to you only narrows the list: an open pull request assigned to the signed-in user whose title contains the search word stays listed.",
+          "actual": "Two open pull requests assigned to eval with 'zephyrqx' in their titles were listed under Assigned to you with no search. Searching 'zephyrqx' under Assigned to you showed 0 Open, 0 Closed and No results, while the same search under All or Created by you listed both.",
+          "reproSteps": [
+            "In a repository, open a pull request with a distinctive word in its title and assign it to yourself.",
+            "Open the repository's Pull Requests list and choose Type > Assigned to you; confirm the pull request is listed.",
+            "Search for the distinctive word from its title.",
+            "Check whether the pull request is still listed."
+          ],
+          "severity": 3,
+          "matchingGuidance": [
+            {
+              "sourceBugIndex": 38,
+              "guidance": {
+                "relatedReference": {
+                  "name": "Assigned-to-you exact search hides a matching assigned pull request",
+                  "distinction": "Same cause (the search index doesn't store assignees), but that entry is the global Pull Requests dashboard; this entry is a repository's Pull Requests list."
+                }
+              }
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "id": "gitea-bulk-reopen-bypasses-pr-validation",
+      "explanation": "Bulk Open bypasses PR-specific reopen validation.",
+      "rootCause": {
+        "explanation": "The bulk issue status handler invokes ReopenIssue directly. It omits the detail-page checks for an existing identical open PR and a usable source branch, allowing invalid duplicate or broken reopen states.",
+        "sourceReferences": [
+          {
+            "repository": "go-gitea/gitea",
+            "revision": "99053ce4fa2b45f1bca5837418c0c57f793ca824",
+            "path": "routers/web/repo/issue_list.go",
+            "line": 448,
+            "url": "https://github.com/go-gitea/gitea/blob/99053ce4fa2b45f1bca5837418c0c57f793ca824/routers/web/repo/issue_list.go#L448"
+          },
+          {
+            "repository": "go-gitea/gitea",
+            "revision": "99053ce4fa2b45f1bca5837418c0c57f793ca824",
+            "path": "routers/web/repo/issue_comment.go",
+            "line": 89,
+            "url": "https://github.com/go-gitea/gitea/blob/99053ce4fa2b45f1bca5837418c0c57f793ca824/routers/web/repo/issue_comment.go#L89"
+          }
+        ]
+      },
+      "reproductionPaths": [
+        {
+          "id": "gitea-bulk-reopen-bypasses-pr-validation-path-1",
+          "explanation": "Bulk Open reopens a closed PR after its head branch is deleted, bypassing the detail page’s explicit reopening prohibition and leaving a broken open PR.",
+          "sourceBugs": [
+            {
+              "index": 6,
+              "id": "gitea-bulk-reopen-deleted-head-pr",
+              "name": "Bulk Open reopens a closed PR whose head branch was deleted, leaving it broken"
+            }
+          ],
+          "expected": "Bulk Open must enforce the same deleted-head restriction as PR detail: keep the PR closed and explain that its deleted branch prevents reopening.",
+          "actual": "The detail page says the PR cannot be reopened because its branch was deleted and offers no Reopen control. Bulk Open nevertheless persists an Open state and reopened event; the resulting detail page reports missing fork information and offers no merge control.",
+          "reproSteps": [
+            "Sign in as eval and create a disposable open PR with its own head branch.",
+            "Close the PR, use Delete Branch, and confirm deletion. On the PR detail, confirm the deleted-branch notice and absence of a Reopen control.",
+            "Open the repository Pull Requests list, select Closed, select the PR’s checkbox, and click bulk Open.",
+            "Open the PR detail again. It is now Open with a reopened event, but its merge box says This pull request is broken due to missing fork information and has no merge control."
+          ],
+          "severity": 3,
+          "matchingGuidance": [
+            {
+              "sourceBugIndex": 6,
+              "guidance": {
+                "matchScope": "Deleted-head PR reopening and resulting invalid open state. The separate duplicate-open-PR bulk-reopen finding has a different constraint and outcome."
+              }
+            }
+          ]
+        },
+        {
+          "id": "gitea-bulk-reopen-bypasses-pr-validation-path-2",
+          "explanation": "Reopening a closed pull request from its own page is refused while an identical pull request is open, but selecting it in the Closed list and choosing bulk Open reopens it anyway, leaving two identical open pull requests.",
+          "sourceBugs": [
+            {
+              "index": 12,
+              "id": "gitea-bulk-open-bypasses-duplicate-pr-check",
+              "name": "Bulk Open bypasses the duplicate pull request check"
+            }
+          ],
+          "expected": "Bulk Open refuses to reopen a pull request while another open, unmerged pull request has the same source and target branches, as the pull request's own Reopen button and pull request creation do.",
+          "actual": "The pull request's Reopen button shows \"You cannot perform a reopen operation because there is a pending pull request (#N) with identical properties.\" and keeps it closed. Bulk Open from the Closed list reopens it with no message, so both identical pull requests are open and mergeable. The API state change to open behaves the same.",
+          "reproSteps": [
+            "Sign in as the fixture account. In a repository, open a pull request from a branch into main, then close it.",
+            "Open a second pull request from the same branch into main.",
+            "On the closed pull request's page, choose Reopen and observe it is refused because an identical pull request is pending.",
+            "Open the repository's Pull Requests list, switch to Closed, tick the closed pull request, and choose Open from the bulk actions.",
+            "Observe it reopens, and both identical pull requests are now listed as Open with merge controls."
+          ],
+          "severity": 3
+        }
+      ]
+    },
+    {
+      "id": "gitea-dashboard-search-drops-filters",
+      "explanation": "Dashboard keyword search discards active author and assignee filters.",
+      "rootCause": {
+        "explanation": "The dashboard search form submits type/sort/state and keyword fields but no poster/assignee inputs. Organization and global PR dashboards share this form.",
+        "sourceReferences": [
+          {
+            "repository": "go-gitea/gitea",
+            "revision": "99053ce4fa2b45f1bca5837418c0c57f793ca824",
+            "path": "templates/user/dashboard/issues.tmpl",
+            "line": 52,
+            "url": "https://github.com/go-gitea/gitea/blob/99053ce4fa2b45f1bca5837418c0c57f793ca824/templates/user/dashboard/issues.tmpl#L52"
+          }
+        ]
+      },
+      "reproductionPaths": [
+        {
+          "id": "gitea-dashboard-search-drops-filters-path-1",
+          "explanation": "Submitting text search on the global PR dashboard drops its selected Author filter and admits PRs by other authors.",
+          "sourceBugs": [
+            {
+              "index": 8,
+              "id": "gitea-pr-dashboard-search-drops-author",
+              "name": "Global /pulls text search drops the selected Author (poster) filter"
+            }
+          ],
+          "expected": "Keep the selected Author filter when submitting a text search, returning PRs matching both the keyword and author.",
+          "actual": "The URL becomes /pulls?type=your_repositories&sort=recentupdate&state=open&q=ownership&search_mode=exact with no poster parameter, and eval's PR #5 shows up in the results.",
+          "reproSteps": [
+            "Sign in as eval. Create or use an open PR by eval with a unique title token, and identify another fixture author such as alex.",
+            "Open global /pulls and select alex through Author. Confirm the eval-authored PR is excluded and poster=alex is present in the URL.",
+            "Search the unique title token and submit.",
+            "Observe poster disappears and the eval-authored matching PR is returned. A combined q-and-poster query retains the correct empty result."
+          ],
+          "severity": 3,
+          "matchingGuidance": [
+            {
+              "sourceBugIndex": 8,
+              "guidance": {
+                "scope": "Global PR dashboard Author filtering lost on text-search submission. Different from state tabs dropping filters or searching Assigned to you omitting a matching assigned PR."
+              }
+            }
+          ]
+        },
+        {
+          "id": "gitea-dashboard-search-drops-filters-path-2",
+          "explanation": "Submitting search on the top-level Pull Requests dashboard drops the selected assignee filter and displays a matching unassigned PR that was excluded before the search.",
+          "sourceBugs": [
+            {
+              "index": 10,
+              "id": null,
+              "name": "Top-level Pull Requests search drops Assignee filter and includes unassigned PR"
+            }
+          ],
+          "expected": "Search should retain the selected assignee and return only matching pull requests assigned to that user.",
+          "actual": "With Assignee=eval selected, the dashboard URL contains assignee=eval and excludes the unassigned fixture. Submitting a keyword shared by the assigned and unassigned fixtures removes assignee=eval and shows both pull requests. The unassigned result remains visible after waiting for the search to settle.",
+          "reproSteps": [
+            "Sign in as the Gitea fixture account eval. Use fresh disposable records and a unique shared title token.",
+            "Create a disposable initialized repository and two changed branches. Open two pull requests with titles containing the shared token; assign one to eval and leave the other unassigned.",
+            "Open the top-level Pull Requests dashboard at /pulls, keep the Open state, and select eval through its Assignee control.",
+            "Confirm the URL contains assignee=eval and the unassigned PR is excluded from the narrowed list.",
+            "Enter the shared token into the dashboard search and click the magnifying-glass search button.",
+            "Observe that assignee=eval disappears from the URL and the results include both fixtures, including the unassigned PR. Wait at least five seconds to confirm the broadened result remains."
+          ],
+          "severity": 3,
+          "matchingGuidance": [
+            {
+              "sourceBugIndex": 10,
+              "guidance": {
+                "scope": "Accept the independently reproduced assignee-search failure on the Pull Requests dashboard. Author, label, and Open/Closed variants are not required for matching this reference.",
+                "deduplication": "The Issues and Pull Requests reports share an implementation defect but affect separate eval product areas and record types. Keep separate grading slots under the existing grading contract. The accepted Assigned-to-you exact-search omission describes a different result and trigger."
+              }
+            }
+          ]
+        },
+        {
+          "id": "gitea-dashboard-search-drops-filters-path-3",
+          "explanation": "On an organization's Pull Requests page, submitting a text search after choosing an Author removes the Author filter, so pull requests by other authors appear. The search form doesn't carry the poster value.",
+          "sourceBugs": [
+            {
+              "index": 34,
+              "id": "gitea-org-pulls-search-drops-author-filter",
+              "name": "Organization Pull Requests search drops the selected Author filter"
+            }
+          ],
+          "expected": "Submitting a search on the organization Pull Requests page keeps the selected Author filter.",
+          "actual": "After selecting Author alex and searching 'orange', the URL no longer had poster=alex and eval's 'ListQA orange harbor' pull request was listed.",
+          "reproSteps": [
+            "In an organization repository, open pull requests by two different authors whose titles share a word.",
+            "On the organization's Pull Requests page, choose one author in the Author filter.",
+            "Search for the shared word.",
+            "Check whether pull requests by the other author appear."
+          ],
+          "severity": 3,
+          "matchingGuidance": [
+            {
+              "sourceBugIndex": 34,
+              "guidance": {
+                "relatedReference": {
+                  "name": "Global /pulls text search drops the selected Author (poster) filter",
+                  "distinction": "Same search form, but that entry is the global Pull Requests dashboard; this entry is an organization's Pull Requests page."
+                }
+              }
+            }
+          ]
+        },
+        {
+          "id": "gitea-dashboard-search-drops-filters-path-4",
+          "explanation": "On an organization's Pull Requests page, submitting a text search after choosing an Assignee removes the Assignee filter, so pull requests assigned to someone else appear. The search form doesn't carry the assignee value.",
+          "sourceBugs": [
+            {
+              "index": 37,
+              "id": "gitea-org-pulls-search-drops-assignee-filter",
+              "name": "Organization Pull Requests search drops the selected Assignee filter"
+            }
+          ],
+          "expected": "Submitting a search on the organization Pull Requests page keeps the selected Assignee filter.",
+          "actual": "With Assignee 'qa' selected and No results shown, submitting the search 'Alpha' again brought back 'qa-org Alpha review proposal', which is assigned to eval.",
+          "reproSteps": [
+            "In an organization repository, open a pull request assigned to one user.",
+            "On the organization's Pull Requests page, search for a word from its title and choose a different user in the Assignee filter; confirm No results.",
+            "Submit the search again.",
+            "Check whether the pull request assigned to the other user appears."
+          ],
+          "severity": 3,
+          "matchingGuidance": [
+            {
+              "sourceBugIndex": 37,
+              "guidance": {
+                "relatedReference": {
+                  "name": "Top-level Pull Requests search drops Assignee filter and includes unassigned PR",
+                  "distinction": "Same search form, but that entry is the global Pull Requests dashboard; this entry is an organization's Pull Requests page."
+                }
+              }
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "id": "gitea-quote-submitted-content-loss-unresolved",
+      "explanation": "A displayed PR quote is missing from the submitted comment.",
+      "rootCause": {
+        "explanation": "The report observes saved content loss, distinct from the confirmed stale Comment-button state. The pinned quote handler assigns the ComboMarkdownEditor value and the submission form reads its textarea; the exact event/editor synchronization sequence that loses the quote has not been established from source. Keep this attribution separate until the submitted form payload and active editor mode are known.",
+        "sourceReferences": [
+          {
+            "repository": "go-gitea/gitea",
+            "revision": "99053ce4fa2b45f1bca5837418c0c57f793ca824",
+            "path": "web_src/js/features/repo-issue-edit.ts",
+            "line": 125,
+            "url": "https://github.com/go-gitea/gitea/blob/99053ce4fa2b45f1bca5837418c0c57f793ca824/web_src/js/features/repo-issue-edit.ts#L125"
+          },
+          {
+            "repository": "go-gitea/gitea",
+            "revision": "99053ce4fa2b45f1bca5837418c0c57f793ca824",
+            "path": "web_src/js/features/comp/ComboMarkdownEditor.ts",
+            "line": 373,
+            "url": "https://github.com/go-gitea/gitea/blob/99053ce4fa2b45f1bca5837418c0c57f793ca824/web_src/js/features/comp/ComboMarkdownEditor.ts#L373"
+          }
+        ]
+      },
+      "reproductionPaths": [
+        {
+          "id": "gitea-quote-submitted-content-loss-unresolved-path-1",
+          "explanation": "Quote Reply visibly inserts the source comment into the editor, but the posted reply omits it; the omission persisted after refresh and a second attempt.",
+          "sourceBugs": [
+            {
+              "index": 9,
+              "id": "mo-60m-gitea-5",
+              "name": "Quote Reply drops the quoted comment when submitting a reply"
+            }
+          ],
+          "expected": "Submitting a reply composed with Quote Reply should preserve the visibly inserted quoted source along with the reply text.",
+          "actual": "In two attempts, the editor visibly showed the source quote followed by reply text before submission, but the posted reply displayed only the reply text. The omission remained after refreshing the PR conversation.",
+          "reproSteps": [
+            "Open /admin/harbor-handbook/pulls and load the supplied signed-in admin session; no credentials were entered, and the session remained signed in.",
+            "As admin, create a fresh private repository named pulls-comment-quote-20260611-4827 through the UI, initialize it with the default main branch, and create the repository.",
+            "Create branch pulls-comment-quote-feature, add pulls-comment-quote.txt with a short pulls-comment-prefixed line, and commit it through the UI.",
+            "Create an open pull request from pulls-comment-quote-feature into main.",
+            "On the pull request Conversation view, post a top-level comment: “pulls-comment: quoted source”. Open that comment’s actions menu and choose Quote Reply.",
+            "Confirm the editor visibly contains “> pulls-comment: quoted source”, append “pulls-comment: reply text” on the following line, and submit with Comment.",
+            "Inspect the posted reply at /admin/pulls-comment-quote-20260611-4827/pulls/1#issuecomment-44; it shows only “pulls-comment: reply text”. Refresh and confirm the omission persists.",
+            "To rule out accidentally replacing the quote while typing, repeat with a second top-level comment “pulls-comment: quoted source retry” and append “pulls-comment: retry reply text”; the editor visibly shows both before submission, but the posted reply shows only the reply text at /admin/pulls-comment-quote-20260611-4827/pulls/1#issuecomment-67."
+          ],
+          "severity": 3,
+          "matchingGuidance": [
+            {
+              "sourceBugIndex": 9,
+              "guidance": {
+                "acceptanceScope": "Accepted as a valid reference by user instruction; source prerequisites and remaining evidence gaps are retained below.",
+                "prerequisites": [
+                  "Programmatic quote insertion fails to synchronize the submitted field/editor instance."
+                ]
+              }
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "id": "gitea-dashboard-user-filter-no-active-indicator",
+      "explanation": "The closed dashboard assignee filter has no selected indication.",
+      "rootCause": {
+        "explanation": "filter_item_user_fetch stores selectedUsername as data for its remote dropdown but renders the same static title/classes on the closed trigger regardless of selection.",
+        "sourceReferences": [
+          {
+            "repository": "go-gitea/gitea",
+            "revision": "99053ce4fa2b45f1bca5837418c0c57f793ca824",
+            "path": "templates/repo/issue/filter_item_user_fetch.tmpl",
+            "line": 11,
+            "url": "https://github.com/go-gitea/gitea/blob/99053ce4fa2b45f1bca5837418c0c57f793ca824/templates/repo/issue/filter_item_user_fetch.tmpl#L11"
+          }
+        ]
+      },
+      "reproductionPaths": [
+        {
+          "id": "gitea-dashboard-user-filter-no-active-indicator-path-1",
+          "explanation": "The top-level Pull Requests dashboard does not visibly distinguish Assignee=eval from no explicit assignee filter while the dropdown is closed.",
+          "sourceBugs": [
+            {
+              "index": 11,
+              "id": null,
+              "name": "Pull Requests dashboard does not visibly indicate the active assignee outside the dropdown"
+            }
+          ],
+          "expected": "The collapsed filter control or another visible indicator should identify the active assignee, so the current result scope is apparent without opening the dropdown or reading the URL.",
+          "actual": "With assignee=eval active, the closed control still displays only Assignee with the same styling as the unfiltered control and no selected-name chip, avatar, or active badge. Reopening the dropdown reveals eval in its input. Without a keyword, assigned records are correctly retained and unassigned records excluded; the missing feedback is a visual-state defect, separate from search dropping the filter.",
+          "reproSteps": [
+            "Sign in as fixture account eval and open the top-level Pull Requests dashboard at /pulls with In your repositories and Open selected. Use disposable assigned and unassigned records to compare the unfiltered and filtered results.",
+            "Open Assignee, select eval, and close the dropdown. Confirm assignee=eval is in the URL and unassigned records are excluded.",
+            "Inspect the collapsed results view. The control still reads only Assignee and has no selected username, avatar, chip, or active styling to distinguish it from the unfiltered state.",
+            "Reopen Assignee and observe eval in its input; close it and observe that the selection is no longer visibly identified.",
+            "Repeat the display comparison with a keyword q and assignee=eval both present in the /pulls URL. The collapsed control still reads only Assignee. This step checks selection feedback rather than the correctness of exact-search results."
+          ],
+          "severity": 1,
+          "matchingGuidance": [
+            {
+              "sourceBugIndex": 11,
+              "guidance": {
+                "scope": "Missing indication in the collapsed results view; do not claim the selection is invisible inside the opened menu. A generic label after search has genuinely cleared the filter is not this defect.",
+                "deduplication": "Separate Issues and Pull Requests product-area references for their independently observed collapsed controls. Neither matches the accepted assignee-search broadening references, where the filter itself is removed."
+              }
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "id": "gitea-whitespace-conflict-setting-fallback-only",
+      "explanation": "Ignore Whitespace for Conflicts is only applied in the optional patch fallback.",
+      "rootCause": {
+        "explanation": "checkConflicts first attempts a three-way merge without the setting. If it conflicts and TestConflictingPatchesWithGitApply is disabled, it returns Conflict immediately. IgnoreWhitespaceConflicts is consulted only later for git apply --ignore-whitespace, so the default path never uses it.",
+        "sourceReferences": [
+          {
+            "repository": "go-gitea/gitea",
+            "revision": "99053ce4fa2b45f1bca5837418c0c57f793ca824",
+            "path": "services/pull/patch.go",
+            "line": 348,
+            "url": "https://github.com/go-gitea/gitea/blob/99053ce4fa2b45f1bca5837418c0c57f793ca824/services/pull/patch.go#L348"
+          },
+          {
+            "repository": "go-gitea/gitea",
+            "revision": "99053ce4fa2b45f1bca5837418c0c57f793ca824",
+            "path": "services/pull/patch.go",
+            "line": 399,
+            "url": "https://github.com/go-gitea/gitea/blob/99053ce4fa2b45f1bca5837418c0c57f793ca824/services/pull/patch.go#L399"
+          }
+        ]
+      },
+      "reproductionPaths": [
+        {
+          "id": "gitea-whitespace-conflict-setting-fallback-only-path-1",
+          "explanation": "The repository setting Ignore Whitespace for Conflicts saves and reloads as enabled, but conflict detection never uses it by default, so a pull request whose only difference from the base is whitespace is still marked conflicting and cannot be merged.",
+          "sourceBugs": [
+            {
+              "index": 13,
+              "id": "gitea-ignore-whitespace-conflicts-setting-has-no-effect",
+              "name": "Ignore Whitespace for Conflicts still blocks a whitespace-only pull request"
+            }
+          ],
+          "expected": "With Ignore Whitespace for Conflicts enabled, a pull request whose changes conflict with the base only in whitespace is mergeable.",
+          "actual": "With the setting saved and confirmed enabled, a fresh pull request where both branches changed the same line and differ only in the amount of whitespace shows 'This pull request has changes conflicting with the target branch', lists the file, and offers no merge button. The same pull request opened with the setting off looks identical. Comparing the branches with Ignore changes in amount of whitespace shows no differences.",
+          "reproSteps": [
+            "In a new repository, commit base.txt on main containing one line: 'Advance target branch for rebase merge QA.'",
+            "Create a branch and change that line to use two spaces after 'Advance'.",
+            "On main, change the same line to use three spaces after 'Advance'.",
+            "In Settings → Pull Requests, enable Ignore Whitespace for Conflicts, save, and reload to confirm it is checked.",
+            "Open a pull request from the branch into main and wait for the mergeability check. Observe it is marked conflicting on base.txt with no merge button."
+          ],
+          "severity": 3
+        }
+      ]
+    },
+    {
+      "id": "gitea-review-comment-count-not-recounted",
+      "explanation": "Submitting review text does not update stored conversation totals.",
+      "rootCause": {
+        "explanation": "Review submission creates/updates CommentTypeReview outside the ordinary comment recount path. NumComments remains stale until an ordinary comment triggers UpdateIssueNumComments, which includes review comments in its aggregate.",
+        "sourceReferences": [
+          {
+            "repository": "go-gitea/gitea",
+            "revision": "99053ce4fa2b45f1bca5837418c0c57f793ca824",
+            "path": "models/issues/review.go",
+            "line": 427,
+            "url": "https://github.com/go-gitea/gitea/blob/99053ce4fa2b45f1bca5837418c0c57f793ca824/models/issues/review.go#L427"
+          },
+          {
+            "repository": "go-gitea/gitea",
+            "revision": "99053ce4fa2b45f1bca5837418c0c57f793ca824",
+            "path": "models/issues/comment.go",
+            "line": 1259,
+            "url": "https://github.com/go-gitea/gitea/blob/99053ce4fa2b45f1bca5837418c0c57f793ca824/models/issues/comment.go#L1259"
+          }
+        ]
+      },
+      "reproductionPaths": [
+        {
+          "id": "gitea-review-comment-count-not-recounted-path-1",
+          "explanation": "Submitting a review with text (Comment, Approve or Request changes) saves it and shows it in the timeline, but the pull request's Conversation tab count and the PR list's comment count don't increase. Reloading doesn't fix them; the count is corrected only when an ordinary comment is later posted.",
+          "sourceBugs": [
+            {
+              "index": 14,
+              "id": "gitea-pr-review-skips-conversation-count",
+              "name": "Submitting a pull request review leaves the Conversation count unchanged"
+            }
+          ],
+          "expected": "Submitting a review increases the Conversation tab count, and the PR list's comment count, by one.",
+          "actual": "After submitting a review comment, the Conversation badge stayed the same (for example 4 → 4, or 0 with a review visible), including after reload. The next ordinary comment made the count jump by two (0 → 2) as it recounted.",
+          "reproSteps": [
+            "Open a pull request and note the Conversation tab count.",
+            "Open Files Changed > Review, enter a review message and submit it as Comment.",
+            "Return to Conversation: the review appears in the timeline but the count is unchanged, even after reload.",
+            "Post an ordinary comment and watch the count jump by two."
+          ],
+          "severity": 1
+        }
+      ]
+    },
+    {
+      "id": "gitea-manual-merge-help-missing-config-context",
+      "explanation": "Command-line merge help reads an unset autodetect flag.",
+      "rootCause": {
+        "explanation": "The instruction template checks the page-root .AutodetectManualMerge rather than the PullRequestsConfig value. The PR view does not set that root field, so it renders the disabled warning even when the repository option is on.",
+        "sourceReferences": [
+          {
+            "repository": "go-gitea/gitea",
+            "revision": "99053ce4fa2b45f1bca5837418c0c57f793ca824",
+            "path": "templates/repo/issue/view_content/pull_merge_instruction.tmpl",
+            "line": 22,
+            "url": "https://github.com/go-gitea/gitea/blob/99053ce4fa2b45f1bca5837418c0c57f793ca824/templates/repo/issue/view_content/pull_merge_instruction.tmpl#L22"
+          }
+        ]
+      },
+      "reproductionPaths": [
+        {
+          "id": "gitea-manual-merge-help-missing-config-context-path-1",
+          "explanation": "With Enable autodetect manual merge turned on in repository settings, a pull request's View command line instructions still warn that the merge cannot be detected because autodetect manual merge is not enabled.",
+          "sourceBugs": [
+            {
+              "index": 15,
+              "id": "gitea-pr-instructions-autodetect-warning-when-enabled",
+              "name": "PR command-line instructions say autodetect manual merge is disabled when it is enabled"
+            }
+          ],
+          "expected": "The command-line instructions show the 'autodetect manual merge is not enabled' warning only when the option is off.",
+          "actual": "With Enable autodetect manual merge checked and saved, the PR's expanded command line instructions said: 'Warning: This operation cannot merge pull request because \"autodetect manual merge\" is not enabled.' It showed with Manually merged both on and off.",
+          "reproSteps": [
+            "In repository Settings > Advanced, check Enable autodetect manual merge and save.",
+            "Open an open pull request's Conversation tab.",
+            "Expand View command line instructions and read the warning."
+          ],
+          "severity": 1
+        }
+      ]
+    },
+    {
+      "id": "gitea-empty-pr-diff-rejects-head-not-in-commits",
+      "explanation": "Empty PR Files Changed rejects its own head as absent from the PR commit list.",
+      "rootCause": {
+        "explanation": "The diff handler requires afterCommitID to occur in prInfo.Commits. For an equal-branches or rebase-emptied PR the list is empty; the handler returns bare HTTP 400 before rendering the page instead of an empty diff.",
+        "sourceReferences": [
+          {
+            "repository": "go-gitea/gitea",
+            "revision": "99053ce4fa2b45f1bca5837418c0c57f793ca824",
+            "path": "routers/web/repo/pull.go",
+            "line": 692,
+            "url": "https://github.com/go-gitea/gitea/blob/99053ce4fa2b45f1bca5837418c0c57f793ca824/routers/web/repo/pull.go#L692"
+          }
+        ]
+      },
+      "reproductionPaths": [
+        {
+          "id": "gitea-empty-pr-diff-rejects-head-not-in-commits-path-1",
+          "explanation": "Gitea allows creating a pull request between equal branches ('This PR will be empty'), but opening that pull request's Files Changed tab replaces the whole page with a bare HTTP 400 error, 'after commit not found in PR commits', with no navigation.",
+          "sourceBugs": [
+            {
+              "index": 16,
+              "id": "gitea-empty-pr-files-changed-raw-error",
+              "name": "Files Changed on an empty pull request shows a bare 'after commit not found in PR commits' error"
+            }
+          ],
+          "expected": "Files Changed on an empty pull request stays inside the pull request page and shows that there are no changes.",
+          "actual": "On an open pull request with zero commits, clicking Files Changed showed only the text 'after commit not found in PR commits' (HTTP 400) with no page header or navigation. The Commits tab handled the empty PR correctly.",
+          "reproSteps": [
+            "Create a new branch from main without changes.",
+            "Open New Pull Request from that branch into main; the comparison says the branches are equal and the PR will be empty. Create it.",
+            "On the new pull request, click Files Changed."
+          ],
+          "severity": 5
+        },
+        {
+          "id": "gitea-empty-pr-diff-rejects-head-not-in-commits-path-2",
+          "explanation": "When Update branch by rebase succeeds but leaves the pull request with zero commits of its own (its changes are already in the base), opening Files Changed replaces the whole page with the plain text 'after commit not found in PR commits' instead of showing the pull request with an empty diff.",
+          "sourceBugs": [
+            {
+              "index": 30,
+              "id": "gitea-rebase-to-empty-pr-files-changed-raw-error",
+              "name": "Files Changed shows a bare 'after commit not found in PR commits' error after a rebase update leaves the pull request with no commits"
+            }
+          ],
+          "expected": "After a successful branch update that leaves no commits, Files Changed still shows the pull request page with an empty comparison or a clear message.",
+          "actual": "After Update branch by rebase succeeded and the pull request showed 0 commits, clicking Files Changed opened /pulls/13/files with only the plain text 'after commit not found in PR commits'.",
+          "reproSteps": [
+            "Open a pull request whose head changes are already contained in its base branch (for example after earlier merge updates brought the base into agreement), with the base since advanced.",
+            "From the update dropdown choose Update branch by rebase and run it; confirm the pull request shows 0 commits.",
+            "Click the Files Changed tab."
+          ],
+          "severity": 5,
+          "matchingGuidance": [
+            {
+              "sourceBugIndex": 30,
+              "guidance": {
+                "relatedReference": {
+                  "name": "Files Changed on an empty pull request shows a bare 'after commit not found in PR commits' error",
+                  "distinction": "Same raw error page, but this entry reaches the empty pull request through Update branch by rebase leaving zero commits, a different entry point from the related entry."
+                }
+              }
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "id": "gitea-inline-edit-markup-not-reinitialized",
+      "explanation": "Inline PR description edits do not initialize replacement task checkboxes.",
+      "rootCause": {
+        "explanation": "saveAndRefresh replaces rendered markup and attaches reference popups, but never reruns initMarkupTasklist on that DOM. A full reload runs normal markup initialization.",
+        "sourceReferences": [
+          {
+            "repository": "go-gitea/gitea",
+            "revision": "99053ce4fa2b45f1bca5837418c0c57f793ca824",
+            "path": "web_src/js/features/repo-issue-edit.ts",
+            "line": 60,
+            "url": "https://github.com/go-gitea/gitea/blob/99053ce4fa2b45f1bca5837418c0c57f793ca824/web_src/js/features/repo-issue-edit.ts#L60"
+          },
+          {
+            "repository": "go-gitea/gitea",
+            "revision": "99053ce4fa2b45f1bca5837418c0c57f793ca824",
+            "path": "web_src/js/markup/tasklist.ts",
+            "line": 13,
+            "url": "https://github.com/go-gitea/gitea/blob/99053ce4fa2b45f1bca5837418c0c57f793ca824/web_src/js/markup/tasklist.ts#L13"
+          }
+        ]
+      },
+      "reproductionPaths": [
+        {
+          "id": "gitea-inline-edit-markup-not-reinitialized-path-1",
+          "explanation": "After editing and saving a pull request description that contains a task list, the rendered task checkboxes are disabled and cannot be toggled until the page is reloaded.",
+          "sourceBugs": [
+            {
+              "index": 17,
+              "id": "gitea-pr-description-edit-disables-task-checkboxes",
+              "name": "Saving a pull request description leaves its task checkboxes disabled until reload"
+            }
+          ],
+          "expected": "Right after saving, the PR author can toggle the description's task checkboxes, as on a fresh page load.",
+          "actual": "Saving a description with '- [ ] Verify conflict' and '- [x] Create branch' rendered both checkboxes disabled, so clicking them did nothing. Reloading the pull request made them enabled and toggling worked. Saving an unchanged task-list description had the same effect.",
+          "reproSteps": [
+            "Open a pull request you authored and choose Edit from the description's menu.",
+            "Enter a task list such as '- [ ] one' and '- [x] two' and click Save.",
+            "Try to toggle a checkbox, then reload the page and try again."
+          ],
+          "severity": 3
+        }
+      ]
+    },
+    {
+      "id": "gitea-pr-target-update-drops-server-message",
+      "explanation": "Retarget failures display statusText instead of the returned rejection.",
+      "rootCause": {
+        "explanation": "The shared title editor throws an error using resp.statusText without reading the JSON error/user_error payload. HTTP/2 statusText may be empty, so a valid closed-PR HTTP 409 becomes an empty-reason toast.",
+        "sourceReferences": [
+          {
+            "repository": "go-gitea/gitea",
+            "revision": "99053ce4fa2b45f1bca5837418c0c57f793ca824",
+            "path": "web_src/js/features/repo-issue.ts",
+            "line": 485,
+            "url": "https://github.com/go-gitea/gitea/blob/99053ce4fa2b45f1bca5837418c0c57f793ca824/web_src/js/features/repo-issue.ts#L485"
+          },
+          {
+            "repository": "go-gitea/gitea",
+            "revision": "99053ce4fa2b45f1bca5837418c0c57f793ca824",
+            "path": "routers/web/repo/pull.go",
+            "line": 1568,
+            "url": "https://github.com/go-gitea/gitea/blob/99053ce4fa2b45f1bca5837418c0c57f793ca824/routers/web/repo/pull.go#L1568"
+          }
+        ]
+      },
+      "reproductionPaths": [
+        {
+          "id": "gitea-pr-target-update-drops-server-message-path-1",
+          "explanation": "On a closed pull request, the title editor still lets the user pick a different 'merge into' branch, but Save fails with the toast 'Failed to update PR target branch:' and nothing after the colon, and the editor stays open.",
+          "sourceBugs": [
+            {
+              "index": 18,
+              "id": "gitea-closed-pr-target-change-empty-error",
+              "name": "Changing a closed pull request's target branch fails with an empty error message"
+            }
+          ],
+          "expected": "Either the target-branch control is disabled on a closed pull request, or the error clearly says the pull request must be reopened before its target can change.",
+          "actual": "On a closed pull request, Edit allowed choosing a different target branch. Save got HTTP 409 with the server message 'The pull request has been closed.', but the toast read 'Failed to update PR target branch:' with no reason, and the editor stayed open. After reopening, the same change succeeded.",
+          "reproSteps": [
+            "Close an open pull request.",
+            "Click Edit beside its title and choose a different 'merge into' branch.",
+            "Click Save and read the error toast."
+          ],
+          "severity": 1
+        }
+      ]
+    },
+    {
+      "id": "gitea-pr-target-editor-cancel-keeps-selection",
+      "explanation": "Cancel leaves a pending PR target branch selected.",
+      "rootCause": {
+        "explanation": "The shared title cancel handler only toggles visibility. It does not reset #pull-target-branch data-branch, which the next submit compares against the saved #branch_target and applies even during an unrelated title edit.",
+        "sourceReferences": [
+          {
+            "repository": "go-gitea/gitea",
+            "revision": "99053ce4fa2b45f1bca5837418c0c57f793ca824",
+            "path": "web_src/js/features/repo-issue.ts",
+            "line": 458,
+            "url": "https://github.com/go-gitea/gitea/blob/99053ce4fa2b45f1bca5837418c0c57f793ca824/web_src/js/features/repo-issue.ts#L458"
+          },
+          {
+            "repository": "go-gitea/gitea",
+            "revision": "99053ce4fa2b45f1bca5837418c0c57f793ca824",
+            "path": "web_src/js/features/repo-issue.ts",
+            "line": 480,
+            "url": "https://github.com/go-gitea/gitea/blob/99053ce4fa2b45f1bca5837418c0c57f793ca824/web_src/js/features/repo-issue.ts#L480"
+          }
+        ]
+      },
+      "reproductionPaths": [
+        {
+          "id": "gitea-pr-target-editor-cancel-keeps-selection-path-1",
+          "explanation": "In a pull request's title editor, choosing a different 'merge into' branch and clicking Cancel doesn't discard that choice. The change stays pending in the editor and is applied the next time the editor is saved, even for a title-only edit.",
+          "sourceBugs": [
+            {
+              "index": 19,
+              "id": "gitea-pr-cancel-keeps-pending-target-branch",
+              "name": "Cancelled target-branch change in the PR title editor persists"
+            }
+          ],
+          "expected": "Cancel discards the pending target-branch selection, so a later Save keeps the original target branch.",
+          "actual": "After selecting a new target branch and clicking Cancel, the summary still showed main. Clicking Edit again without reloading, changing only the title and saving retargeted the PR to the cancelled branch and added a 'changed target branch' event; the PR's diff and commits changed accordingly.",
+          "reproSteps": [
+            "Open a pull request and click Edit beside its title.",
+            "Choose a different 'merge into' branch, then click Cancel.",
+            "Without reloading, click Edit again, change only the title and click Save.",
+            "Check the PR's target branch and timeline."
+          ],
+          "severity": 3
+        }
+      ]
+    },
+    {
+      "id": "gitea-empty-wip-title-update-silent",
+      "explanation": "Removing a WIP-only title silently fails.",
+      "rootCause": {
+        "explanation": "The WIP action posts the stripped title, which is empty when the title contains only a prefix. UpdateIssueTitle returns no content without updating, while the action treats any successful HTTP status as success and reloads.",
+        "sourceReferences": [
+          {
+            "repository": "go-gitea/gitea",
+            "revision": "99053ce4fa2b45f1bca5837418c0c57f793ca824",
+            "path": "routers/web/repo/issue.go",
+            "line": 293,
+            "url": "https://github.com/go-gitea/gitea/blob/99053ce4fa2b45f1bca5837418c0c57f793ca824/routers/web/repo/issue.go#L293"
+          },
+          {
+            "repository": "go-gitea/gitea",
+            "revision": "99053ce4fa2b45f1bca5837418c0c57f793ca824",
+            "path": "web_src/js/features/repo-issue.ts",
+            "line": 432,
+            "url": "https://github.com/go-gitea/gitea/blob/99053ce4fa2b45f1bca5837418c0c57f793ca824/web_src/js/features/repo-issue.ts#L432"
+          }
+        ]
+      },
+      "reproductionPaths": [
+        {
+          "id": "gitea-empty-wip-title-update-silent-path-1",
+          "explanation": "On a draft pull request whose title is only a WIP prefix ('WIP:', '[WIP]' or 'wip:'), clicking 'Remove WIP: prefix' reloads the page with no change and no message; the PR stays a draft and can't be merged.",
+          "sourceBugs": [
+            {
+              "index": 20,
+              "id": "gitea-remove-wip-prefix-empty-title-noop",
+              "name": "Remove WIP prefix silently does nothing when the PR title is only the prefix"
+            }
+          ],
+          "expected": "Clicking 'Remove WIP: prefix' either takes the pull request out of draft or explains that a non-empty title is needed.",
+          "actual": "With the title set to exactly 'WIP:', clicking 'Remove WIP: prefix' reloaded the page; the PR stayed in Draft titled 'WIP:', the button was still shown, and no error or feedback appeared.",
+          "reproSteps": [
+            "Open a draft pull request and edit its title to exactly 'WIP:'.",
+            "Click 'Remove WIP: prefix' in the merge box.",
+            "Check the PR's title and draft status."
+          ],
+          "severity": 3
+        }
+      ]
+    },
+    {
+      "id": "gitea-fast-forward-merge-stale-base-error",
+      "explanation": "A stale fast-forward merge is reported as an internal server error.",
+      "rootCause": {
+        "explanation": "The merge form allows a style based on previously computed CommitsBehind. A newly advanced base makes the actual ff-only merge fail, but the merge error path does not translate that stale-base condition to a readable conflict response.",
+        "sourceReferences": [
+          {
+            "repository": "go-gitea/gitea",
+            "revision": "99053ce4fa2b45f1bca5837418c0c57f793ca824",
+            "path": "routers/web/repo/pull.go",
+            "line": 1013,
+            "url": "https://github.com/go-gitea/gitea/blob/99053ce4fa2b45f1bca5837418c0c57f793ca824/routers/web/repo/pull.go#L1013"
+          },
+          {
+            "repository": "go-gitea/gitea",
+            "revision": "99053ce4fa2b45f1bca5837418c0c57f793ca824",
+            "path": "services/pull/merge.go",
+            "line": 223,
+            "url": "https://github.com/go-gitea/gitea/blob/99053ce4fa2b45f1bca5837418c0c57f793ca824/services/pull/merge.go#L223"
+          }
+        ]
+      },
+      "reproductionPaths": [
+        {
+          "id": "gitea-fast-forward-merge-stale-base-error-path-1",
+          "explanation": "If the base branch gains a new commit while a 'Fast-forward only' merge confirmation is open, confirming it shows 'server error: 500' instead of explaining that the base changed. The PR correctly stays unmerged.",
+          "sourceBugs": [
+            {
+              "index": 21,
+              "id": "gitea-stale-fast-forward-merge-500",
+              "name": "Confirming a stale fast-forward-only merge after the base advances shows a server error"
+            }
+          ],
+          "expected": "The stale fast-forward-only merge is refused with a message explaining that the base branch changed (as Gitea does for other out-of-date merges), not a server error.",
+          "actual": "Confirming the fast-forward-only merge after a new commit landed on main showed 'server error: 500' and left the PR open. Reloading removed the Fast-forward only option.",
+          "reproSteps": [
+            "Open a pull request, choose Fast-forward only and open the merge confirmation; leave the tab open.",
+            "In another tab, commit a different change directly to the base branch.",
+            "Return to the first tab without reloading and confirm the merge."
+          ],
+          "severity": 1
+        }
+      ]
+    },
+    {
+      "id": "gitea-locked-pr-review-endpoints-unchecked",
+      "explanation": "PR review and code-comment paths do not enforce conversation locks.",
+      "rootCause": {
+        "explanation": "CreateCodeComment and SubmitReview check ordinary PR permissions/review validity but omit the IsLocked/nonwriter check used by ordinary CreateComment. Locking therefore blocks only the general discussion path.",
+        "sourceReferences": [
+          {
+            "repository": "go-gitea/gitea",
+            "revision": "99053ce4fa2b45f1bca5837418c0c57f793ca824",
+            "path": "routers/web/repo/pull_review.go",
+            "line": 223,
+            "url": "https://github.com/go-gitea/gitea/blob/99053ce4fa2b45f1bca5837418c0c57f793ca824/routers/web/repo/pull_review.go#L223"
+          },
+          {
+            "repository": "go-gitea/gitea",
+            "revision": "99053ce4fa2b45f1bca5837418c0c57f793ca824",
+            "path": "services/pull/review.go",
+            "line": 94,
+            "url": "https://github.com/go-gitea/gitea/blob/99053ce4fa2b45f1bca5837418c0c57f793ca824/services/pull/review.go#L94"
+          },
+          {
+            "repository": "go-gitea/gitea",
+            "revision": "99053ce4fa2b45f1bca5837418c0c57f793ca824",
+            "path": "routers/web/repo/issue_comment.go",
+            "line": 62,
+            "url": "https://github.com/go-gitea/gitea/blob/99053ce4fa2b45f1bca5837418c0c57f793ca824/routers/web/repo/issue_comment.go#L62"
+          }
+        ]
+      },
+      "reproductionPaths": [
+        {
+          "id": "gitea-locked-pr-review-endpoints-unchecked-path-1",
+          "explanation": "After a pull request's conversation is locked, users without write access (including the PR's own author when not a collaborator) can no longer post general comments, but can still post inline code comments, submit reviews (Comment, Approve, Request changes) and reply to review threads.",
+          "sourceBugs": [
+            {
+              "index": 22,
+              "id": "gitea-locked-pr-allows-review-comments",
+              "name": "Users without write access can still post reviews and code comments on a locked pull request"
+            }
+          ],
+          "expected": "On a locked pull request, every commenting path, including code comments, reviews and review-thread replies, refuses users without write access, as general comments do.",
+          "actual": "After the owner locked a fork PR, a non-collaborator saw no general comment editor and a general comment POST was refused, but from Files Changed they published an inline 'Add single comment' and a summary Comment review, both visible while the PR stayed locked. A different non-collaborator who wasn't the author posted a review-thread reply and Approve and Request changes reviews the same way.",
+          "reproSteps": [
+            "Have a user without write access open a pull request (or use any non-collaborator on a public repository's PR).",
+            "As the repository owner, choose Lock conversation on the PR.",
+            "As the non-collaborator, open Files Changed and add a single inline comment, then submit a Comment review.",
+            "Check whether the comments were published while the PR is locked."
+          ],
+          "severity": 3
+        }
+      ]
+    },
+    {
+      "id": "gitea-manual-only-merge-style-hidden",
+      "explanation": "The merge-form availability condition omits manual merge.",
+      "rootCause": {
+        "explanation": "pull_merge_box renders the general merge style selector only if an automatic style is enabled. AllowManualMerge appears inside the selector but is omitted from its enclosing OR condition.",
+        "sourceReferences": [
+          {
+            "repository": "go-gitea/gitea",
+            "revision": "99053ce4fa2b45f1bca5837418c0c57f793ca824",
+            "path": "templates/repo/issue/view_content/pull_merge_box.tmpl",
+            "line": 213,
+            "url": "https://github.com/go-gitea/gitea/blob/99053ce4fa2b45f1bca5837418c0c57f793ca824/templates/repo/issue/view_content/pull_merge_box.tmpl#L213"
+          }
+        ]
+      },
+      "reproductionPaths": [
+        {
+          "id": "gitea-manual-only-merge-style-hidden-path-1",
+          "explanation": "When Manually merged is the only merge style enabled in repository settings, an open, mergeable pull request says 'This pull request cannot be merged because all repository merge options are disabled' and offers no Manually merged control. Enabling any automatic style makes Manually merged appear in the merge dropdown.",
+          "sourceBugs": [
+            {
+              "index": 23,
+              "id": "gitea-manual-merge-only-hidden-on-mergeable-pr",
+              "name": "With only Manually merged enabled, a mergeable PR says all merge options are disabled and hides the manual option"
+            }
+          ],
+          "expected": "When Manually merged is enabled, it is offered on a mergeable pull request even if it is the only enabled merge style.",
+          "actual": "With the five automatic styles unchecked and Manually merged checked, a mergeable PR showed 'cannot be merged because all repository merge options are disabled' with no manual-merge control. After also enabling Create merge commit, the merge dropdown offered Manually merged, which opened the merge-commit-ID form. A conflicting PR showed the separate manual-merge form either way.",
+          "reproSteps": [
+            "In repository Settings, uncheck all five automatic merge styles, keep Manually merged checked and save.",
+            "Open an open, mergeable pull request and look at the merge box.",
+            "Enable Create merge commit as well, save, and check the merge dropdown again."
+          ],
+          "severity": 3
+        }
+      ]
+    },
+    {
+      "id": "gitea-manual-merge-skips-branch-deletion",
+      "explanation": "Manually merged returns before the requested branch deletion.",
+      "rootCause": {
+        "explanation": "MergePullRequest handles manuallyMerged and returns after MergedManually and redirect. The DeleteBranchAfterMerge cleanup is only reached by the later ordinary merge path.",
+        "sourceReferences": [
+          {
+            "repository": "go-gitea/gitea",
+            "revision": "99053ce4fa2b45f1bca5837418c0c57f793ca824",
+            "path": "routers/web/repo/pull.go",
+            "line": 1030,
+            "url": "https://github.com/go-gitea/gitea/blob/99053ce4fa2b45f1bca5837418c0c57f793ca824/routers/web/repo/pull.go#L1030"
+          },
+          {
+            "repository": "go-gitea/gitea",
+            "revision": "99053ce4fa2b45f1bca5837418c0c57f793ca824",
+            "path": "routers/web/repo/pull.go",
+            "line": 1188,
+            "url": "https://github.com/go-gitea/gitea/blob/99053ce4fa2b45f1bca5837418c0c57f793ca824/routers/web/repo/pull.go#L1188"
+          }
+        ]
+      },
+      "reproductionPaths": [
+        {
+          "id": "gitea-manual-merge-skips-branch-deletion-path-1",
+          "explanation": "Marking a pull request as Manually merged with the form's Delete Branch option checked (or pre-checked by the repository default) records the merge but never deletes the source branch.",
+          "sourceBugs": [
+            {
+              "index": 24,
+              "id": "gitea-manual-merge-ignores-delete-branch",
+              "name": "Manually merged ignores the checked Delete Branch option"
+            }
+          ],
+          "expected": "Confirming Manually merged with Delete Branch checked deletes the source branch, as the other merge styles do.",
+          "actual": "After confirming Manually merged with Delete Branch checked, the PR showed 'Manually merged' and the timeline recorded the manual merge, but the PR still offered 'The branch … can now be deleted' with a Delete Branch button, and the source branch still opened with its files.",
+          "reproSteps": [
+            "Open a pull request whose merge box offers Manually merged.",
+            "Choose Manually merged, enter a merge commit ID that is on the base branch and check Delete Branch.",
+            "Confirm, then check whether the source branch still exists."
+          ],
+          "severity": 3,
+          "matchingGuidance": [
+            {
+              "sourceBugIndex": 24,
+              "guidance": {
+                "relatedReference": {
+                  "id": "gitea-manual-merge-only-hidden-on-mergeable-pr",
+                  "distinction": "Both concern Manually merged. That entry is the option being hidden when it's the only enabled merge style; this entry is the Delete Branch choice being ignored when it's used."
+                }
+              }
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "id": "gitea-merge-box-refresh-missing-author-context",
+      "explanation": "Merge-box refresh omits context required for the WIP removal button.",
+      "rootCause": {
+        "explanation": "The full PR page sets IsIssuePoster; the separately rendered merge_box response does not provide the same page context. Replacing the box after reopen removes author-only controls until full-page navigation restores that field.",
+        "sourceReferences": [
+          {
+            "repository": "go-gitea/gitea",
+            "revision": "99053ce4fa2b45f1bca5837418c0c57f793ca824",
+            "path": "routers/web/repo/pull.go",
+            "line": 635,
+            "url": "https://github.com/go-gitea/gitea/blob/99053ce4fa2b45f1bca5837418c0c57f793ca824/routers/web/repo/pull.go#L635"
+          },
+          {
+            "repository": "go-gitea/gitea",
+            "revision": "99053ce4fa2b45f1bca5837418c0c57f793ca824",
+            "path": "web_src/js/features/repo-issue-pull.ts",
+            "line": 128,
+            "url": "https://github.com/go-gitea/gitea/blob/99053ce4fa2b45f1bca5837418c0c57f793ca824/web_src/js/features/repo-issue-pull.ts#L128"
+          }
+        ]
+      },
+      "reproductionPaths": [
+        {
+          "id": "gitea-merge-box-refresh-missing-author-context-path-1",
+          "explanation": "After closing and reopening a draft (WIP) pull request, the merge box first shows the 'Remove WIP: prefix' button, then about two seconds later its automatic refresh redraws the box without it. Reloading the page brings the button back.",
+          "sourceBugs": [
+            {
+              "index": 25,
+              "id": "gitea-reopened-wip-pr-loses-remove-wip-button",
+              "name": "Reopened draft pull request loses its Remove WIP prefix button after the merge box refreshes"
+            }
+          ],
+          "expected": "The Remove WIP prefix button stays available to the PR author or a writer after the merge box refreshes.",
+          "actual": "After reopening a WIP pull request, 'Remove WIP: prefix' appeared, then disappeared when the merge box refreshed itself about two seconds later, leaving no button until a manual reload.",
+          "reproSteps": [
+            "Open a pull request whose title starts with 'WIP:' and close it.",
+            "Reopen it and watch the merge box for a few seconds.",
+            "Reload the page and look at the merge box again."
+          ],
+          "severity": 1,
+          "matchingGuidance": [
+            {
+              "sourceBugIndex": 25,
+              "guidance": {
+                "relatedReference": {
+                  "id": "gitea-remove-wip-prefix-empty-title-noop",
+                  "distinction": "Both concern the Remove WIP prefix button. That entry is the button doing nothing when the title is only the prefix; this entry is the button disappearing after the merge box auto-refresh on a reopened PR."
+                }
+              }
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "id": "gitea-pr-push-event-force-flag-not-persisted",
+      "explanation": "Force pushes are stored/rendered as ordinary commit additions.",
+      "rootCause": {
+        "explanation": "CreatePushPullComment carries IsForcePush on CreateCommentOptions and chooses old/new IDs accordingly, but comment persistence does not transfer that flag into the Comment record. The renderer consequently labels the two IDs as added commits.",
+        "sourceReferences": [
+          {
+            "repository": "go-gitea/gitea",
+            "revision": "99053ce4fa2b45f1bca5837418c0c57f793ca824",
+            "path": "services/pull/comment.go",
+            "line": 59,
+            "url": "https://github.com/go-gitea/gitea/blob/99053ce4fa2b45f1bca5837418c0c57f793ca824/services/pull/comment.go#L59"
+          },
+          {
+            "repository": "go-gitea/gitea",
+            "revision": "99053ce4fa2b45f1bca5837418c0c57f793ca824",
+            "path": "models/issues/comment.go",
+            "line": 772,
+            "url": "https://github.com/go-gitea/gitea/blob/99053ce4fa2b45f1bca5837418c0c57f793ca824/models/issues/comment.go#L772"
+          }
+        ]
+      },
+      "reproductionPaths": [
+        {
+          "id": "gitea-pr-push-event-force-flag-not-persisted-path-1",
+          "explanation": "After a pull request's branch is updated by rebase (or force-pushed), the Conversation timeline says the user 'added 2 commits' and lists both the old and the rewritten commit, although the pull request now contains one commit. The force-push isn't recorded on the stored push event, so it is rendered as an ordinary push.",
+          "sourceBugs": [
+            {
+              "index": 26,
+              "id": "gitea-pr-rebase-update-shown-as-added-commits",
+              "name": "Rebasing or force-pushing a pull request branch is shown as adding commits"
+            }
+          ],
+          "expected": "A rebase or force-push appears in the timeline as a force-push replacing the earlier commit, and the timeline doesn't claim commits were added that the pull request doesn't contain.",
+          "actual": "After Update branch by rebase on a one-commit pull request, the timeline said 'added 2 commits' and listed the old commit and the rebased commit with the same message. The Commits tab and the header showed one commit. Updating by merge was described correctly.",
+          "reproSteps": [
+            "Open a pull request with one commit whose base branch has since advanced.",
+            "Choose Update branch by rebase from the branch-update dropdown.",
+            "Open the Conversation timeline and compare its newest entry with the Commits tab."
+          ],
+          "severity": 3
+        }
+      ]
+    },
+    {
+      "id": "gitea-pr-reopen-checks-base-name-in-head-repo",
+      "explanation": "Cross-repository reopen validates the wrong branch name.",
+      "rootCause": {
+        "explanation": "CreateComment’s reopen path checks IsBranchExist(pull.HeadRepo,pull.BaseBranch). It should check the source HeadBranch in that repository; a fork without the target branch name is incorrectly treated as having a deleted source.",
+        "sourceReferences": [
+          {
+            "repository": "go-gitea/gitea",
+            "revision": "99053ce4fa2b45f1bca5837418c0c57f793ca824",
+            "path": "routers/web/repo/issue_comment.go",
+            "line": 122,
+            "url": "https://github.com/go-gitea/gitea/blob/99053ce4fa2b45f1bca5837418c0c57f793ca824/routers/web/repo/issue_comment.go#L122"
+          }
+        ]
+      },
+      "reproductionPaths": [
+        {
+          "id": "gitea-pr-reopen-checks-base-name-in-head-repo-path-1",
+          "explanation": "Reopening a closed pull request whose source branch is in a different repository (for example from a fork) fails with 'The origin branch is delete, cannot reopen.' even though the source branch still exists. The check looks for the target branch's name in the source repository, so it only passes if the source repository happens to have a branch with that name.",
+          "sourceBugs": [
+            {
+              "index": 27,
+              "id": "gitea-cross-repo-pr-reopen-reports-branch-deleted",
+              "name": "Closed cross-repository pull request can't be reopened because its existing source branch is reported deleted"
+            }
+          ],
+          "expected": "A closed, unmerged cross-repository pull request whose source branch still exists can be reopened.",
+          "actual": "After closing the pull request and clicking Reopen, it stayed Closed with the error 'The origin branch is delete, cannot reopen.' The source branch link still opened the branch and its latest commit, and repeated Reopen gave the same error.",
+          "reproSteps": [
+            "Create a pull request from a branch in one repository into a differently named branch of another repository (for example between a repository and its fork).",
+            "Close the pull request without deleting any branch.",
+            "Click Reopen.",
+            "Check whether it reopens, and confirm the source branch still exists."
+          ],
+          "severity": 3
+        }
+      ]
+    },
+    {
+      "id": "gitea-rebase-update-feedback-unresolved",
+      "explanation": "A failed rebase update reportedly returns without feedback.",
+      "rootCause": {
+        "explanation": "The pinned UpdatePullRequest handler explicitly flashes merge/rebase conflicts and generic errors before redirecting. The report’s missing feedback cannot be explained as a missing error branch in this handler. The error propagation or redirected flash rendering path needs further evidence.",
+        "sourceReferences": [
+          {
+            "repository": "go-gitea/gitea",
+            "revision": "99053ce4fa2b45f1bca5837418c0c57f793ca824",
+            "path": "routers/web/repo/pull.go",
+            "line": 971,
+            "url": "https://github.com/go-gitea/gitea/blob/99053ce4fa2b45f1bca5837418c0c57f793ca824/routers/web/repo/pull.go#L971"
+          },
+          {
+            "repository": "go-gitea/gitea",
+            "revision": "99053ce4fa2b45f1bca5837418c0c57f793ca824",
+            "path": "routers/web/repo/pull.go",
+            "line": 1001,
+            "url": "https://github.com/go-gitea/gitea/blob/99053ce4fa2b45f1bca5837418c0c57f793ca824/routers/web/repo/pull.go#L1001"
+          }
+        ]
+      },
+      "reproductionPaths": [
+        {
+          "id": "gitea-rebase-update-feedback-unresolved-path-1",
+          "explanation": "When 'Update branch by rebase' can't rebase a pull request's branch (for example because earlier commits conflict when replayed, even though the current files were reconciled), the page simply reloads: the branch is still out of date, its commits are unchanged, and nothing explains why the update didn't happen. The defect is the missing failure feedback, not that the rebase failed.",
+          "sourceBugs": [
+            {
+              "index": 28,
+              "id": "gitea-failed-rebase-update-no-error",
+              "name": "Failed rebase update shows no error and leaves the PR unchanged"
+            }
+          ],
+          "expected": "If updating a pull request branch by rebase fails, the page says so and explains why, instead of appearing to do nothing.",
+          "actual": "On a pull request whose history included an earlier resolved conflict, choosing Update branch by rebase returned to the same page with the same five commits, the out-of-date warning and the default update button, and no error or success message anywhere.",
+          "reproSteps": [
+            "Open a pull request that is behind its base branch and whose head history contains a commit that conflicts with the base when replayed (for example, a conflict that was later resolved by a merge update).",
+            "From the update dropdown choose Update branch by rebase and click it.",
+            "Check whether the branch was updated, and whether any error explains why it wasn't."
+          ],
+          "severity": 1
+        }
+      ]
+    },
+    {
+      "id": "gitea-disabled-pr-unit-options-reset",
+      "explanation": "Disabling PRs deletes saved PR unit options.",
+      "rootCause": {
+        "explanation": "Advanced settings removes the unit when disabled rather than retaining its configuration. The next settings render falls back to default checked values; re-enabling constructs a new unit from those defaults and loses previous merge/deletion options.",
+        "sourceReferences": [
+          {
+            "repository": "go-gitea/gitea",
+            "revision": "99053ce4fa2b45f1bca5837418c0c57f793ca824",
+            "path": "routers/web/repo/setting/setting.go",
+            "line": 624,
+            "url": "https://github.com/go-gitea/gitea/blob/99053ce4fa2b45f1bca5837418c0c57f793ca824/routers/web/repo/setting/setting.go#L624"
+          }
+        ]
+      },
+      "reproductionPaths": [
+        {
+          "id": "gitea-disabled-pr-unit-options-reset-path-1",
+          "explanation": "Turning a repository's pull requests off and back on in Settings > Advanced Settings doesn't restore the previous pull request settings. While pull requests are disabled, the form shows every merge option checked and every merge style selected, so re-enabling saves those: the default merge style becomes Fast-forward only and Manually merged, Delete pull request branch after merge, and autodetect manual merge all turn on. The settings page greys these options out, rather than hiding them, while the feature is off, which tells the user they'll be kept and simply inactive; saving actually deletes them.",
+          "sourceBugs": [
+            {
+              "index": 29,
+              "id": "gitea-reenabling-prs-resets-pr-settings",
+              "name": "Re-enabling pull requests silently turns on branch deletion and changes merge defaults"
+            }
+          ],
+          "expected": "Re-enabling pull requests keeps the repository's previous pull request settings, as the greyed-out options shown while pull requests are disabled suggest, or applies the same defaults as a new repository, without silently turning on branch deletion and manual merge options.",
+          "actual": "A repository set to Create merge commit, with Manually merged, delete-branch-after-merge and autodetect manual merge unchecked, came back as Fast-forward only with all three checked after pull requests were disabled and re-enabled. The values stayed after reload, and a new pull request's merge confirmation used Fast-forward only with Delete Branch checked.",
+          "reproSteps": [
+            "In a repository's Settings > Advanced Settings, set Default Merge Style to Create merge commit, uncheck Manually merged, Delete pull request branch after merge by default and Enable autodetect manual merge, and save.",
+            "Uncheck Enable Repository Pull Requests and save.",
+            "Check Enable Repository Pull Requests again, save, and reload.",
+            "Compare the pull request settings with the ones saved in the first step."
+          ],
+          "severity": 3,
+          "matchingGuidance": [
+            {
+              "sourceBugIndex": 29,
+              "guidance": {
+                "relatedReference": {
+                  "name": "Re-enabling the issue tracker silently turns time tracking and dependencies back on",
+                  "distinction": "Same cause (saving with the feature off deletes its settings while the page only greys them out), but that entry is the issue tracker's time tracking and dependency options; this entry is the pull request merge settings."
+                }
+              }
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "id": "gitea-pr-create-no-submit-time-duplicate-check",
+      "explanation": "Submitting a stale compare form creates duplicate open PRs.",
+      "rootCause": {
+        "explanation": "The compare GET checks for an existing branch pair, but the web create POST does not revalidate uniqueness at the mutation boundary. Two forms can therefore create the same open head/base pair.",
+        "sourceReferences": [
+          {
+            "repository": "go-gitea/gitea",
+            "revision": "99053ce4fa2b45f1bca5837418c0c57f793ca824",
+            "path": "routers/web/repo/pull.go",
+            "line": 1265,
+            "url": "https://github.com/go-gitea/gitea/blob/99053ce4fa2b45f1bca5837418c0c57f793ca824/routers/web/repo/pull.go#L1265"
+          }
+        ]
+      },
+      "reproductionPaths": [
+        {
+          "id": "gitea-pr-create-no-submit-time-duplicate-check-path-1",
+          "explanation": "If the New Pull Request form on a compare page is submitted after a pull request for the same head and base branches was opened elsewhere (for example in another tab), Gitea creates a second open pull request for the same branches without any warning. The web create path doesn't check for an existing open pull request, although the compare page normally shows View Pull Request for such a pair and the API refuses duplicates.",
+          "sourceBugs": [
+            {
+              "index": 31,
+              "id": "gitea-stale-compare-form-creates-duplicate-pr",
+              "name": "Submitting an outdated compare form creates a second open pull request for the same branches"
+            }
+          ],
+          "expected": "Submitting the form when an open pull request already exists for the same head and base is refused and points to the existing pull request.",
+          "actual": "With the compare form for qa-creation-edge-0712 into main left open in one tab, a pull request was created from a second tab (#16). Submitting the original form then created #17. Both were open for the same branches with the same commit.",
+          "reproSteps": [
+            "Open the compare page for a changed branch into main and expand New Pull Request, but don't submit.",
+            "In a second tab, open the same comparison and create the pull request.",
+            "Back in the first tab, without refreshing, click Create Pull Request.",
+            "Check whether a second open pull request exists for the same branches."
+          ],
+          "severity": 3,
+          "matchingGuidance": [
+            {
+              "sourceBugIndex": 31,
+              "guidance": {
+                "relatedReference": {
+                  "name": "Bulk Open bypasses the duplicate pull request check",
+                  "distinction": "Same missing duplicate check, but that entry reopens closed pull requests in bulk from the list; this entry creates a new duplicate from an outdated compare form."
+                }
+              }
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "id": "gitea-pr-rebase-diff-stat-refresh-race",
+      "explanation": "PR totals can use stale comparison data immediately after rebase.",
+      "rootCause": {
+        "explanation": "Branch update schedules asynchronous PR checking and redirects after a fixed delay. The conversation view can read cached merge-base/stat data before recalculation, while Files Changed recomputes current diff data. This attribution is a timing hypothesis pending tracing the exact cached stat values.",
+        "sourceReferences": [
+          {
+            "repository": "go-gitea/gitea",
+            "revision": "99053ce4fa2b45f1bca5837418c0c57f793ca824",
+            "path": "routers/web/repo/pull.go",
+            "line": 1006,
+            "url": "https://github.com/go-gitea/gitea/blob/99053ce4fa2b45f1bca5837418c0c57f793ca824/routers/web/repo/pull.go#L1006"
+          },
+          {
+            "repository": "go-gitea/gitea",
+            "revision": "99053ce4fa2b45f1bca5837418c0c57f793ca824",
+            "path": "services/pull/update.go",
+            "line": 62,
+            "url": "https://github.com/go-gitea/gitea/blob/99053ce4fa2b45f1bca5837418c0c57f793ca824/services/pull/update.go#L62"
+          }
+        ]
+      },
+      "reproductionPaths": [
+        {
+          "id": "gitea-pr-rebase-diff-stat-refresh-race-path-1",
+          "explanation": "Immediately after Update branch by rebase, the pull request's +/- totals beside the tabs include changes from the base branch (for example +3 -1 instead of +2 -1). Files Changed shows the correct totals, and the Conversation page corrects itself after navigating away and back.",
+          "sourceBugs": [
+            {
+              "index": 32,
+              "id": "gitea-rebase-update-overcounts-diff-stats",
+              "name": "Pull request diff totals overcount right after Update branch by rebase"
+            }
+          ],
+          "expected": "After a rebase update, the pull request's +/- totals count only its own changes against the current base, matching Files Changed.",
+          "actual": "On a pull request showing +2 -1, after main gained a one-line file and the branch was updated by rebase, the Conversation page showed +3 -1. Files Changed showed +2 -1 with only README changed, and returning to Conversation then showed +2 -1.",
+          "reproSteps": [
+            "Open a pull request that changes one file, and note its +/- totals.",
+            "Add a new file to the base branch so the pull request is out of date.",
+            "Choose Update branch by rebase and run it.",
+            "Compare the totals shown right after the update with Files Changed, then return to Conversation."
+          ],
+          "severity": 1
+        }
+      ]
+    },
+    {
+      "id": "gitea-pr-retarget-empty-status-not-reset",
+      "explanation": "Retargeting retains the old empty PR status.",
+      "rootCause": {
+        "explanation": "ChangeTargetBranch changes merge base/base branch and invokes checks, but the existing Empty status can survive when the new diff is nonempty because status calculation does not unconditionally reset it. The merge box renders IsEmpty from the stale status.",
+        "sourceReferences": [
+          {
+            "repository": "go-gitea/gitea",
+            "revision": "99053ce4fa2b45f1bca5837418c0c57f793ca824",
+            "path": "services/pull/pull.go",
+            "line": 225,
+            "url": "https://github.com/go-gitea/gitea/blob/99053ce4fa2b45f1bca5837418c0c57f793ca824/services/pull/pull.go#L225"
+          },
+          {
+            "repository": "go-gitea/gitea",
+            "revision": "99053ce4fa2b45f1bca5837418c0c57f793ca824",
+            "path": "services/pull/check.go",
+            "line": 50,
+            "url": "https://github.com/go-gitea/gitea/blob/99053ce4fa2b45f1bca5837418c0c57f793ca824/services/pull/check.go#L50"
+          }
+        ]
+      },
+      "reproductionPaths": [
+        {
+          "id": "gitea-pr-retarget-empty-status-not-reset-path-1",
+          "explanation": "If a pull request's diff had become empty against its old base and it is then retargeted to a branch where it does add changes, the merge panel keeps saying 'The changes on this branch are already on the target branch. This will be an empty commit.' while Files Changed shows real changes. The empty status from the old base is never cleared when the target changes; merging still works.",
+          "sourceBugs": [
+            {
+              "index": 33,
+              "id": "gitea-retargeted-pr-keeps-stale-empty-status",
+              "name": "Retargeted pull request still says its changes are already on the target branch"
+            }
+          ],
+          "expected": "After retargeting, the merge panel describes the pull request against its new target; a pull request that adds files isn't described as empty.",
+          "actual": "Pull request #13, retargeted to main after its diff against the old base had become empty, showed two added files (2 additions) in Files Changed, while Conversation's merge panel said 'The changes on this branch are already on the target branch. This will be an empty commit.'",
+          "reproSteps": [
+            "Open a pull request whose changes are already contained in its current base branch, so its merge panel says it will be an empty commit.",
+            "Edit the pull request and change its target to a branch that doesn't contain those changes; save.",
+            "Compare Files Changed with the merge panel on the Conversation tab."
+          ],
+          "severity": 1
+        }
+      ]
+    },
+    {
+      "id": "gitea-inline-review-whitespace-content",
+      "explanation": "Inline review comments accept whitespace-only content.",
+      "rootCause": {
+        "explanation": "The code-comment form checks Required/nonempty rather than trimmed content and CreateCodeComment persists that content. This path does not use SubmitReviewForm.HasEmptyContent’s trim-based review-body validation.",
+        "sourceReferences": [
+          {
+            "repository": "go-gitea/gitea",
+            "revision": "99053ce4fa2b45f1bca5837418c0c57f793ca824",
+            "path": "routers/web/repo/pull_review.go",
+            "line": 95,
+            "url": "https://github.com/go-gitea/gitea/blob/99053ce4fa2b45f1bca5837418c0c57f793ca824/routers/web/repo/pull_review.go#L95"
+          },
+          {
+            "repository": "go-gitea/gitea",
+            "revision": "99053ce4fa2b45f1bca5837418c0c57f793ca824",
+            "path": "services/pull/review.go",
+            "line": 94,
+            "url": "https://github.com/go-gitea/gitea/blob/99053ce4fa2b45f1bca5837418c0c57f793ca824/services/pull/review.go#L94"
+          }
+        ]
+      },
+      "reproductionPaths": [
+        {
+          "id": "gitea-inline-review-whitespace-content-path-1",
+          "explanation": "In a pull request's Files Changed view, an empty inline comment is blocked, but one containing only spaces is accepted. It's saved as a pending review discussion that shows \"No description provided.\", and Add single comment publishes it to the timeline as a contentless review comment.",
+          "sourceBugs": [
+            {
+              "index": 39,
+              "id": "gitea-pr-whitespace-inline-comment-saved",
+              "name": "Whitespace-only inline review comment is saved as an empty discussion"
+            }
+          ],
+          "expected": "A whitespace-only inline review comment is rejected like an empty one, as the main pull request comment box does.",
+          "actual": "Entering only spaces in an inline comment and clicking Start Review saved a pending discussion showing \"No description provided.\" and increased the review counter; it persisted after reload. Add single comment with only spaces published a contentless review comment visible to other users. Replies with only spaces were also saved.",
+          "reproSteps": [
+            "Open a pull request's Files Changed tab and click the + on a changed line.",
+            "Type only spaces in the comment box and click Start Review (or Add single comment).",
+            "Check whether the comment is rejected or saved, and how it appears.",
+            "Reload the page and check the review counter and the conversation."
+          ],
+          "severity": 3
+        }
+      ]
+    },
+    {
+      "id": "gitea-review-request-index-not-invalidated",
+      "explanation": "Review request changes do not update indexed requested reviewers.",
+      "rootCause": {
+        "explanation": "Request-review mutations emit a notification whose indexer implementation is inherited as a no-op. Requested reviewer IDs are rebuilt only during a later issue reindex such as an ordinary comment.",
+        "sourceReferences": [
+          {
+            "repository": "go-gitea/gitea",
+            "revision": "99053ce4fa2b45f1bca5837418c0c57f793ca824",
+            "path": "services/indexer/notify.go",
+            "line": 21,
+            "url": "https://github.com/go-gitea/gitea/blob/99053ce4fa2b45f1bca5837418c0c57f793ca824/services/indexer/notify.go#L21"
+          },
+          {
+            "repository": "go-gitea/gitea",
+            "revision": "99053ce4fa2b45f1bca5837418c0c57f793ca824",
+            "path": "services/issue/assignee.go",
+            "line": 21,
+            "url": "https://github.com/go-gitea/gitea/blob/99053ce4fa2b45f1bca5837418c0c57f793ca824/services/issue/assignee.go#L21"
+          },
+          {
+            "repository": "go-gitea/gitea",
+            "revision": "99053ce4fa2b45f1bca5837418c0c57f793ca824",
+            "path": "modules/indexer/issues/util.go",
+            "line": 119,
+            "url": "https://github.com/go-gitea/gitea/blob/99053ce4fa2b45f1bca5837418c0c57f793ca824/modules/indexer/issues/util.go#L119"
+          }
+        ]
+      },
+      "reproductionPaths": [
+        {
+          "id": "gitea-review-request-index-not-invalidated-path-1",
+          "explanation": "On a repository's Pull Requests list, combining a text search with Type → Review requested shows No results, even though a matching pull request requests your review. Requesting a reviewer never refreshes the search index, so the search doesn't know about the request; Review requested without a search works.",
+          "sourceBugs": [
+            {
+              "index": 40,
+              "id": "gitea-repo-pulls-review-requested-search-omits-pr",
+              "name": "Repository Pull Requests 'Review requested' with a search hides a pull request awaiting your review"
+            }
+          ],
+          "expected": "A pull request that requests your review and matches the search stays listed when Review requested is combined with the search.",
+          "actual": "Searching for the pull request's title listed it, but choosing Review requested with that search showed No results with 0 Open and 0 Closed. Review requested without a search listed it, and posting a comment on the pull request made the combined search find it.",
+          "reproSteps": [
+            "Open a pull request and request another user's review.",
+            "As that user, open the repository's Pull Requests list and search for a word from the pull request's title; confirm it's listed.",
+            "With the search still applied, choose Type → Review requested.",
+            "Check whether the pull request is still listed, then clear the search and compare."
+          ],
+          "severity": 3
+        },
+        {
+          "id": "gitea-review-request-index-not-invalidated-path-2",
+          "explanation": "Global Review requested keyword search omits newly requested PRs because review-request changes do not refresh the search index.",
+          "sourceBugs": [
+            {
+              "index": 54,
+              "id": "gitea-global-requested-review-search-stale-index",
+              "name": "Global Review requested omits pull request pending alex's review"
+            }
+          ],
+          "expected": "A matching keyword narrows the current reviewer-filtered list without hiding a qualifying PR.",
+          "actual": "Fresh PRs awaiting the viewer’s review appear without a keyword but disappear with a matching title keyword. Numeric search works; posting an ordinary comment refreshes the index and restores results. Removed requests can remain in keyword results.",
+          "reproSteps": [
+            "Create two fresh PRs authored by a user other than the reviewer.",
+            "Request the reviewer through the PR sidebar after creating each PR.",
+            "As the reviewer, open global Pull Requests → Review requested without a keyword and confirm the PRs appear.",
+            "Enter a matching title keyword and observe the missing PRs.",
+            "Clear the keyword as a control, then post an ordinary comment on one affected PR and confirm keyword results recover for it."
+          ],
+          "severity": 3,
+          "matchingGuidance": [
+            {
+              "sourceBugIndex": 54,
+              "guidance": {
+                "relatedReference": {
+                  "id": "gitea-repo-pulls-review-requested-search-omits-pr",
+                  "distinction": "The existing reference covers repository PR search; this entry covers the global Review requested dashboard."
+                },
+                "scope": "Individual review-request metadata stale after mutation. Team-only requests remaining absent after reindexing are a separate defect."
+              }
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "id": "gitea-empty-squash-commit-not-allowed",
+      "explanation": "Empty PR squash merges fail without a usable explanation.",
+      "rootCause": {
+        "explanation": "doMergeStyleSquash invokes git commit without --allow-empty although the merge UI permits an empty commit. Git rejects the no-change commit; the generic merge server-error path yields only HTTP 500 feedback. The operation failure and opaque feedback share this reproduction trigger.",
+        "sourceReferences": [
+          {
+            "repository": "go-gitea/gitea",
+            "revision": "99053ce4fa2b45f1bca5837418c0c57f793ca824",
+            "path": "services/pull/merge_squash.go",
+            "line": 71,
+            "url": "https://github.com/go-gitea/gitea/blob/99053ce4fa2b45f1bca5837418c0c57f793ca824/services/pull/merge_squash.go#L71"
+          },
+          {
+            "repository": "go-gitea/gitea",
+            "revision": "99053ce4fa2b45f1bca5837418c0c57f793ca824",
+            "path": "routers/web/repo/pull.go",
+            "line": 1013,
+            "url": "https://github.com/go-gitea/gitea/blob/99053ce4fa2b45f1bca5837418c0c57f793ca824/routers/web/repo/pull.go#L1013"
+          }
+        ]
+      },
+      "reproductionPaths": [
+        {
+          "id": "gitea-empty-squash-commit-not-allowed-path-1",
+          "explanation": "When a pull request's changes are already on the target branch, the merge box says it will create an empty commit and still offers squash merging, but Create squash commit fails and the pull request stays open. The squash step commits without allowing an empty commit.",
+          "sourceBugs": [
+            {
+              "index": 41,
+              "id": "gitea-empty-pr-squash-merge-fails",
+              "name": "Squash merging a pull request with no remaining changes fails"
+            },
+            {
+              "index": 42,
+              "id": "gitea-empty-pr-squash-merge-bare-500-message",
+              "name": "Failed squash merge of an empty pull request shows only a bare \"server error: 500\""
+            }
+          ],
+          "expected": "Squash merging a pull request whose changes are already on the target completes, consistent with the empty-commit notice, or squash isn't offered for it.",
+          "actual": "Confirming Create squash commit failed with a server error; after a reload the pull request was still open and unmerged. Create merge commit on the same pull request succeeded.",
+          "reproSteps": [
+            "Open a pull request, then make its branch's changes already present on the target branch (for example, revert the change on the branch, or merge the same change into the target).",
+            "Confirm the merge box says the merge will be an empty commit.",
+            "Choose Create squash commit and confirm.",
+            "Reload and check whether the pull request was merged."
+          ],
+          "severity": 3,
+          "matchingGuidance": [
+            {
+              "sourceBugIndex": 41,
+              "guidance": {
+                "relatedReference": {
+                  "name": "Failed squash merge of an empty pull request shows only a bare \"server error: 500\"",
+                  "distinction": "Same failed squash merge, but that entry is the unhelpful bare 500 message; this entry is the merge failing and leaving the pull request open."
+                }
+              }
+            },
+            {
+              "sourceBugIndex": 42,
+              "guidance": {
+                "relatedReference": {
+                  "name": "Squash merging a pull request with no remaining changes fails",
+                  "distinction": "Same failed squash merge, but that entry is the merge failing; this entry is the bare, non-actionable 500 message shown for it."
+                }
+              }
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "id": "gitea-wip-prefix-title-truncation",
+      "explanation": "Adding WIP silently truncates long saved titles.",
+      "rootCause": {
+        "explanation": "The client prepends WIP to the existing title and posts it without a length check. ChangeIssueTitle uses EllipsisDisplayString(...,255), silently replacing the end of the saved title rather than rejecting the oversized edit.",
+        "sourceReferences": [
+          {
+            "repository": "go-gitea/gitea",
+            "revision": "99053ce4fa2b45f1bca5837418c0c57f793ca824",
+            "path": "models/issues/issue_update.go",
+            "line": 219,
+            "url": "https://github.com/go-gitea/gitea/blob/99053ce4fa2b45f1bca5837418c0c57f793ca824/models/issues/issue_update.go#L219"
+          },
+          {
+            "repository": "go-gitea/gitea",
+            "revision": "99053ce4fa2b45f1bca5837418c0c57f793ca824",
+            "path": "web_src/js/features/repo-issue.ts",
+            "line": 413,
+            "url": "https://github.com/go-gitea/gitea/blob/99053ce4fa2b45f1bca5837418c0c57f793ca824/web_src/js/features/repo-issue.ts#L413"
+          }
+        ]
+      },
+      "reproductionPaths": [
+        {
+          "id": "gitea-wip-prefix-title-truncation-path-1",
+          "explanation": "For a pull request title near the 255-character limit, clicking \"Add WIP: prefix\" silently cuts the end of the title to make room, and \"Remove WIP: prefix\" can't restore it. No error or notification tells the user the title was shortened.",
+          "sourceBugs": [
+            {
+              "index": 43,
+              "id": "gitea-pr-wip-toggle-truncates-long-title",
+              "name": "Adding WIP to a long pull request title silently truncates it permanently"
+            }
+          ],
+          "expected": "Adding the WIP prefix to a title that would exceed the limit shows an error, or saves with a clear notification that the title was shortened, instead of silently losing text.",
+          "actual": "Adding WIP to a 255-character title replaced its end with an ellipsis without any message. Removing WIP and refreshing left the title at 248 characters, permanently missing the original ending.",
+          "reproSteps": [
+            "Create a pull request with a title of about 255 characters, ending in a recognisable word.",
+            "Click \"Add WIP: prefix\", then \"Remove WIP: prefix\".",
+            "Refresh and open Edit beside the title to compare it with the original."
+          ],
+          "severity": 1
+        }
+      ]
+    },
+    {
+      "id": "gitea-review-file-rename-path-not-remapped",
+      "explanation": "Renamed files lose their inline review threads in Files Changed.",
+      "rootCause": {
+        "explanation": "Code comments are associated with their stored TreePath and the diff/comment loading path does not remap that path through later Git renames. Threads remain attached to the old path even when outdated comments are shown.",
+        "sourceReferences": [
+          {
+            "repository": "go-gitea/gitea",
+            "revision": "99053ce4fa2b45f1bca5837418c0c57f793ca824",
+            "path": "services/pull/review.go",
+            "line": 94,
+            "url": "https://github.com/go-gitea/gitea/blob/99053ce4fa2b45f1bca5837418c0c57f793ca824/services/pull/review.go#L94"
+          },
+          {
+            "repository": "go-gitea/gitea",
+            "revision": "99053ce4fa2b45f1bca5837418c0c57f793ca824",
+            "path": "models/issues/comment.go",
+            "line": 287,
+            "url": "https://github.com/go-gitea/gitea/blob/99053ce4fa2b45f1bca5837418c0c57f793ca824/models/issues/comment.go#L287"
+          }
+        ]
+      },
+      "reproductionPaths": [
+        {
+          "id": "gitea-review-file-rename-path-not-remapped-path-1",
+          "explanation": "After a file with inline review comments is moved into a folder or renamed in a later commit, its comment threads (resolved or pending) no longer appear in the pull request's Files Changed view, even with Show outdated comments enabled. The comments are still tied to the old path.",
+          "sourceBugs": [
+            {
+              "index": 44,
+              "id": "gitea-moved-file-hides-inline-comments",
+              "name": "Moving or renaming a reviewed file hides its inline comments in Files Changed"
+            }
+          ],
+          "expected": "Inline comments on a file that was later moved or renamed stay visible in Files Changed, at least as outdated comments.",
+          "actual": "After moving the reviewed file to a folder, its resolved conversation disappeared from Files Changed, and turning on Show outdated comments didn't bring it back. The Conversation tab still listed it.",
+          "reproSteps": [
+            "Open a pull request, add an inline comment on a changed file, and resolve it (or leave it pending).",
+            "Push a commit that moves the file into a folder or renames it.",
+            "Open Files Changed, enable Show outdated comments, and look for the comment."
+          ],
+          "severity": 3
+        }
+      ]
+    },
+    {
+      "id": "gitea-reopened-pr-divergence-stale",
+      "explanation": "Reopening a PR does not refresh divergence skipped while closed.",
+      "rootCause": {
+        "explanation": "Push-triggered PR checks select only open unmerged PRs; target advances while closed do not update CommitsBehind. Reopen invokes the conflict-check workflow without the same divergence update, so branch-update controls use stale zero-behind state.",
+        "sourceReferences": [
+          {
+            "repository": "go-gitea/gitea",
+            "revision": "99053ce4fa2b45f1bca5837418c0c57f793ca824",
+            "path": "services/pull/pull.go",
+            "line": 386,
+            "url": "https://github.com/go-gitea/gitea/blob/99053ce4fa2b45f1bca5837418c0c57f793ca824/services/pull/pull.go#L386"
+          },
+          {
+            "repository": "go-gitea/gitea",
+            "revision": "99053ce4fa2b45f1bca5837418c0c57f793ca824",
+            "path": "routers/web/repo/issue_comment.go",
+            "line": 100,
+            "url": "https://github.com/go-gitea/gitea/blob/99053ce4fa2b45f1bca5837418c0c57f793ca824/routers/web/repo/issue_comment.go#L100"
+          }
+        ]
+      },
+      "reproductionPaths": [
+        {
+          "id": "gitea-reopened-pr-divergence-stale-path-1",
+          "explanation": "If commits are pushed to a pull request's target branch while the pull request is closed, reopening it doesn't show that the branch is behind or offer the Update branch button, even after a reload. How far behind it is only gets recalculated for open pull requests when the target changes.",
+          "sourceBugs": [
+            {
+              "index": 45,
+              "id": "gitea-reopened-pr-missing-update-branch",
+              "name": "Reopened pull request doesn't offer Update branch after its target advanced while it was closed"
+            }
+          ],
+          "expected": "After reopening, the pull request shows that its branch is behind the target and offers Update branch.",
+          "actual": "After closing the pull request, committing to its target branch and reopening it, the merge box showed no out-of-date message and no Update branch button, although comparing the branches showed the target was a commit ahead.",
+          "reproSteps": [
+            "Open a pull request whose branch is up to date with its target, then close it.",
+            "Push or commit a change directly to the target branch.",
+            "Reopen the pull request and reload the page.",
+            "Check the merge box for an out-of-date message and an Update branch button."
+          ],
+          "severity": 3
+        }
+      ]
+    },
+    {
+      "id": "gitea-dashboard-navigation-drops-user-filters",
+      "explanation": "Dashboard state links omit selected author and assignee.",
+      "rootCause": {
+        "explanation": "Open/Closed links use $queryLink, which omits poster/assignee, rather than $queryLinkWithFilter. Global/organization PRs share the issue dashboard template.",
+        "sourceReferences": [
+          {
+            "repository": "go-gitea/gitea",
+            "revision": "99053ce4fa2b45f1bca5837418c0c57f793ca824",
+            "path": "templates/user/dashboard/issues.tmpl",
+            "line": 39,
+            "url": "https://github.com/go-gitea/gitea/blob/99053ce4fa2b45f1bca5837418c0c57f793ca824/templates/user/dashboard/issues.tmpl#L39"
+          }
+        ]
+      },
+      "reproductionPaths": [
+        {
+          "id": "gitea-dashboard-navigation-drops-user-filters-path-1",
+          "explanation": "On an organization's Pull Requests page, switching between Open and Closed while an Author or Assignee filter is selected drops those filters, so pull requests by other authors or with other assignees appear.",
+          "sourceBugs": [
+            {
+              "index": 46,
+              "id": "gitea-org-pulls-state-switch-drops-user-filters",
+              "name": "Organization Pull Requests Open/Closed switch drops the selected Author and Assignee filters"
+            }
+          ],
+          "expected": "Switching between Open and Closed keeps the selected Author and Assignee filters.",
+          "actual": "With Author and Assignee set to the same user on the Closed tab, clicking Open removed both filters from the URL and listed an unassigned pull request.",
+          "reproSteps": [
+            "In an organization repository, open two pull requests by the same author, one assigned to them and one unassigned, and close the assigned one.",
+            "On the organization's Pull Requests page, open Closed and choose that user in Author and Assignee.",
+            "Click Open.",
+            "Check whether the Author and Assignee filters are still applied."
+          ],
+          "severity": 3
+        }
+      ]
+    },
+    {
+      "id": "gitea-deadline-index-not-invalidated",
+      "explanation": "PR due-date changes do not refresh indexed deadline sorting.",
+      "rootCause": {
+        "explanation": "UpdateIssueDeadline updates saved deadline/history but does not notify the indexer. Keyword PR searches sort the last indexed deadline until a later supported indexing notification.",
+        "sourceReferences": [
+          {
+            "repository": "go-gitea/gitea",
+            "revision": "99053ce4fa2b45f1bca5837418c0c57f793ca824",
+            "path": "models/issues/issue_update.go",
+            "line": 510,
+            "url": "https://github.com/go-gitea/gitea/blob/99053ce4fa2b45f1bca5837418c0c57f793ca824/models/issues/issue_update.go#L510"
+          },
+          {
+            "repository": "go-gitea/gitea",
+            "revision": "99053ce4fa2b45f1bca5837418c0c57f793ca824",
+            "path": "services/indexer/notify.go",
+            "line": 142,
+            "url": "https://github.com/go-gitea/gitea/blob/99053ce4fa2b45f1bca5837418c0c57f793ca824/services/indexer/notify.go#L142"
+          }
+        ]
+      },
+      "reproductionPaths": [
+        {
+          "id": "gitea-deadline-index-not-invalidated-path-1",
+          "explanation": "Setting or changing a pull request due date updates the database without refreshing the search index. The global PR dashboard orders keyword searches using outdated indexed dates while displaying the current saved dates.",
+          "sourceBugs": [
+            {
+              "index": 47,
+              "id": "gitea-global-pr-search-due-sort-stale",
+              "name": "Global pull-request keyword search sorts by stale due dates after sidebar updates"
+            }
+          ],
+          "expected": "Nearest and Farthest due-date sorting on global Pull Requests uses current saved deadlines for matching PRs.",
+          "actual": "With matching PRs due November 15 and December 20, Nearest due date can place December 20 first, and Farthest can retain an equally incorrect stale order. Reloading does not repair the ordering. Clearing the keyword or using the repository PR list sorts correctly. Posting comments on both PRs refreshes their index records and restores ordering; another due-date-only edit can break it again.",
+          "reproSteps": [
+            "Create two disposable pull requests whose titles share a fresh nonnumeric search prefix.",
+            "Set their due dates from the PR sidebar, giving the older PR an earlier date and the newer PR a later date.",
+            "Open global Pull Requests, select Created by you and Open, search for the prefix, and choose Nearest due date.",
+            "Observe the later-dated PR listed above the earlier-dated PR. Reload and compare Nearest/Farthest ordering against the displayed saved dates.",
+            "As controls, clear the keyword or use the repository PR list and confirm current-date ordering.",
+            "Post a normal comment on each PR, repeat the global keyword sort and confirm it recovers. Change only a due date and check for stale ordering again."
+          ],
+          "severity": 3,
+          "matchingGuidance": [
+            {
+              "sourceBugIndex": 47,
+              "guidance": {
+                "relatedReference": {
+                  "id": "gitea-issue-search-due-sort-ignores-new-due-dates",
+                  "distinction": "The existing reference covers global Issues search after setting due dates. This entry covers global Pull Requests keyword search using stale PR deadlines. The shared missing index refresh is the cause, but the dashboard entry point differs."
+                },
+                "otherRelatedReference": {
+                  "id": "gitea-issue-search-due-sort-stale-after-due-date-edit",
+                  "distinction": "Related global Issues case for changing already-indexed dates; this entry covers stale PR due-date sorting."
+                },
+                "scope": "Require a keyword search on the global PR dashboard and ordering that disagrees with current saved deadlines. Pure visual query retention, repository-list ordering and undated-milestone database sorting have separate coverage. Some creation/date arrangements coincide with the stale order and appear correct; no universal reversed-order claim is made."
+              }
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "id": "gitea-conversation-navigation-does-not-unfold",
+      "explanation": "Conversation navigation does not expand a collapsed target file.",
+      "rootCause": {
+        "explanation": "Previous/Next changes only the location hash. The hashchange path scrolls without unfolding; the initial page-load path explicitly unfolds target files, explaining why reload works.",
+        "sourceReferences": [
+          {
+            "repository": "go-gitea/gitea",
+            "revision": "99053ce4fa2b45f1bca5837418c0c57f793ca824",
+            "path": "web_src/js/features/repo-diff.ts",
+            "line": 120,
+            "url": "https://github.com/go-gitea/gitea/blob/99053ce4fa2b45f1bca5837418c0c57f793ca824/web_src/js/features/repo-diff.ts#L120"
+          },
+          {
+            "repository": "go-gitea/gitea",
+            "revision": "99053ce4fa2b45f1bca5837418c0c57f793ca824",
+            "path": "web_src/js/features/repo-diff.ts",
+            "line": 242,
+            "url": "https://github.com/go-gitea/gitea/blob/99053ce4fa2b45f1bca5837418c0c57f793ca824/web_src/js/features/repo-diff.ts#L242"
+          }
+        ]
+      },
+      "reproductionPaths": [
+        {
+          "id": "gitea-conversation-navigation-does-not-unfold-path-1",
+          "explanation": "Files Changed conversation navigation changes the comment URL without expanding its collapsed file, leaving the target discussion hidden.",
+          "sourceBugs": [
+            {
+              "index": 48,
+              "id": "gitea-pr-conversation-navigation-leaves-target-folded",
+              "name": "Previous and Next conversation navigation leaves target comments hidden in collapsed files"
+            }
+          ],
+          "expected": "Previous and Next reveal the target conversation, expanding its file when necessary.",
+          "actual": "The URL changes to the target comment but its Viewed or manually collapsed file remains folded. The discussion stays hidden. Expanding the file manually or reloading the comment URL reveals it.",
+          "reproSteps": [
+            "Create a pull request with inline review conversations in two different files.",
+            "Mark the first file Viewed so it collapses.",
+            "Click Previous beneath the second file’s conversation.",
+            "Observe the target comment hash in the URL while the first file and its discussion remain collapsed.",
+            "Expand the first file or reload the target comment URL to reveal the discussion."
+          ],
+          "severity": 3,
+          "matchingGuidance": [
+            {
+              "sourceBugIndex": 48,
+              "guidance": {
+                "scope": "Covers Previous/Next navigation into Viewed or manually folded files. Missing comments after file renames and unrelated file-tree navigation defects have separate causes."
+              }
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "id": "gitea-quote-does-not-notify-editor-change",
+      "explanation": "Quote Reply leaves the Comment button in its empty state.",
+      "rootCause": {
+        "explanation": "The shared quote handler programmatically assigns editor.value without emitting the change event used by syncUiState, so the disabled button remains stale until a user edit triggers synchronization.",
+        "sourceReferences": [
+          {
+            "repository": "go-gitea/gitea",
+            "revision": "99053ce4fa2b45f1bca5837418c0c57f793ca824",
+            "path": "web_src/js/features/repo-issue-edit.ts",
+            "line": 125,
+            "url": "https://github.com/go-gitea/gitea/blob/99053ce4fa2b45f1bca5837418c0c57f793ca824/web_src/js/features/repo-issue-edit.ts#L125"
+          },
+          {
+            "repository": "go-gitea/gitea",
+            "revision": "99053ce4fa2b45f1bca5837418c0c57f793ca824",
+            "path": "web_src/js/features/repo-issue.ts",
+            "line": 525,
+            "url": "https://github.com/go-gitea/gitea/blob/99053ce4fa2b45f1bca5837418c0c57f793ca824/web_src/js/features/repo-issue.ts#L525"
+          }
+        ]
+      },
+      "reproductionPaths": [
+        {
+          "id": "gitea-quote-does-not-notify-editor-change-path-1",
+          "explanation": "Choosing Quote Reply populates the comment composer, but Comment stays disabled. Switching to Preview and back to Write does not enable posting the generated quote.",
+          "sourceBugs": [
+            {
+              "index": 49,
+              "id": "gitea-pr-quote-reply-comment-disabled",
+              "name": "Pull-request Quote Reply populates the draft but leaves Comment disabled"
+            }
+          ],
+          "expected": "Quote Reply should produce a draft that can be posted using Comment without requiring an extra text edit.",
+          "actual": "Quote Reply populates Write and Preview, but Comment remains disabled. Typing a space enables submission and the quote posts successfully.",
+          "reproSteps": [
+            "Create a disposable pull request and post a discussion comment.",
+            "Edit the comment and save it.",
+            "With the reply composer empty, choose Quote Reply from that comment’s menu.",
+            "Observe the populated draft and disabled Comment button, including after switching Preview and Write.",
+            "Type a space and confirm Comment enables and posts the quote."
+          ],
+          "severity": 3,
+          "matchingGuidance": [
+            {
+              "sourceBugIndex": 49,
+              "guidance": {
+                "relatedReference": {
+                  "id": "gitea-issue-quote-reply-stale-comment-controls",
+                  "distinction": "The existing reference covers Issue discussion controls after Quote Reply. This entry covers pull-request discussion Quote Reply leaving Comment disabled."
+                },
+                "scope": "Require a populated quote draft with stale disabled submission controls. Quote content lost after submission is a separate claim."
+              }
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "id": "gitea-ancestor-comparison-empty-range",
+      "explanation": "Reversed ancestor comparisons confuse an empty commit range with identical trees.",
+      "rootCause": {
+        "explanation": "Compare logic uses the base-to-head commit range and merge-base-oriented diff when the head is an ancestor of the base. That range contains no new head commits even though the trees differ, leading to the equal-branches empty display.",
+        "sourceReferences": [
+          {
+            "repository": "go-gitea/gitea",
+            "revision": "99053ce4fa2b45f1bca5837418c0c57f793ca824",
+            "path": "routers/web/repo/compare.go",
+            "line": 732,
+            "url": "https://github.com/go-gitea/gitea/blob/99053ce4fa2b45f1bca5837418c0c57f793ca824/routers/web/repo/compare.go#L732"
+          }
+        ]
+      },
+      "reproductionPaths": [
+        {
+          "id": "gitea-ancestor-comparison-empty-range-path-1",
+          "explanation": "When a fork's branch has changes and the comparison is reversed (the fork branch as base and the upstream branch as head, for example via Switch head and base and Switch comparison type), the compare page shows \"These branches are equal\" and no files, although the branches' contents differ. It happens whenever the head is an ancestor of the base.",
+          "sourceBugs": [
+            {
+              "index": 50,
+              "id": "gitea-reverse-fork-compare-says-equal",
+              "name": "Reversed fork comparison says the branches are equal when they differ"
+            }
+          ],
+          "expected": "The reversed comparison shows the file differences between the two branches.",
+          "actual": "The forward comparison showed the fork's added README lines. After switching head and base and the comparison type, the page showed the right branches but \"These branches are equal.\" and no diff.",
+          "reproSteps": [
+            "Fork a repository and add a commit to a branch in the fork.",
+            "Compare the upstream main with the fork branch and confirm the diff is shown.",
+            "Click Switch head and base, then Switch comparison type.",
+            "Check whether the page shows the differences or says the branches are equal."
+          ],
+          "severity": 3
+        }
+      ]
+    },
+    {
+      "id": "gitea-merge-rejection-does-not-refresh-pr-state",
+      "explanation": "A rejected stale merge leaves the old Open UI.",
+      "rootCause": {
+        "explanation": "The merge request error path displays the returned error without refreshing the issue state or merge availability. A correctly rejected already-closed PR therefore retains its previous page badge and controls.",
+        "sourceReferences": [
+          {
+            "repository": "go-gitea/gitea",
+            "revision": "99053ce4fa2b45f1bca5837418c0c57f793ca824",
+            "path": "web_src/js/features/common-fetch-action.ts",
+            "line": 38,
+            "url": "https://github.com/go-gitea/gitea/blob/99053ce4fa2b45f1bca5837418c0c57f793ca824/web_src/js/features/common-fetch-action.ts#L38"
+          },
+          {
+            "repository": "go-gitea/gitea",
+            "revision": "99053ce4fa2b45f1bca5837418c0c57f793ca824",
+            "path": "routers/web/repo/pull.go",
+            "line": 1013,
+            "url": "https://github.com/go-gitea/gitea/blob/99053ce4fa2b45f1bca5837418c0c57f793ca824/routers/web/repo/pull.go#L1013"
+          }
+        ]
+      },
+      "reproductionPaths": [
+        {
+          "id": "gitea-merge-rejection-does-not-refresh-pr-state-path-1",
+          "explanation": "If a pull request is closed in another tab while its merge confirmation is open, submitting the merge is correctly refused with \"The pull request has been closed.\", but the page doesn't update: it keeps the green Open badge and an enabled merge button until it's reloaded.",
+          "sourceBugs": [
+            {
+              "index": 51,
+              "id": "gitea-refused-stale-merge-page-stays-open",
+              "name": "After a merge is refused because the pull request was closed, the page still shows it as open"
+            }
+          ],
+          "expected": "Once the merge is refused because the pull request is closed, the page updates to show it as Closed, without the merge action.",
+          "actual": "After the error \"The pull request has been closed.\", the page still showed Open and an enabled merge button; only a reload showed it as Closed.",
+          "reproSteps": [
+            "Open a pull request and start a merge (open the merge confirmation) in tab A.",
+            "In tab B, close the pull request.",
+            "In tab A, confirm the merge.",
+            "Check the error and whether the page now shows the pull request as Closed."
+          ],
+          "severity": 1
+        }
+      ]
+    },
+    {
+      "id": "gitea-issue-type-all-retains-derived-assignee",
+      "explanation": "Changing PR Type retains the previous implicit assignee.",
+      "rootCause": {
+        "explanation": "The issue handler exports the effective self assignee after Type=assigned; shared filter_list copies that AssigneeID into subsequent Type links. Created by you therefore retains an unintended assignment restriction.",
+        "sourceReferences": [
+          {
+            "repository": "go-gitea/gitea",
+            "revision": "99053ce4fa2b45f1bca5837418c0c57f793ca824",
+            "path": "templates/repo/issue/filter_list.tmpl",
+            "line": 1,
+            "url": "https://github.com/go-gitea/gitea/blob/99053ce4fa2b45f1bca5837418c0c57f793ca824/templates/repo/issue/filter_list.tmpl#L1"
+          },
+          {
+            "repository": "go-gitea/gitea",
+            "revision": "99053ce4fa2b45f1bca5837418c0c57f793ca824",
+            "path": "routers/web/repo/issue_list.go",
+            "line": 513,
+            "url": "https://github.com/go-gitea/gitea/blob/99053ce4fa2b45f1bca5837418c0c57f793ca824/routers/web/repo/issue_list.go#L513"
+          }
+        ]
+      },
+      "reproductionPaths": [
+        {
+          "id": "gitea-issue-type-all-retains-derived-assignee-path-1",
+          "explanation": "After selecting Assigned to you, switching Type to Created by you shows No results instead of the user's unassigned pull request. The prior assignment restriction remains in effect.",
+          "sourceBugs": [
+            {
+              "index": 52,
+              "id": "gitea-repo-pr-type-switch-retains-implicit-assignee",
+              "name": "Switching pull request type retains the previous assignment restriction"
+            }
+          ],
+          "expected": "Created by you lists the matching pull request authored by eval; changing the Type choice replaces its previous implicit restriction.",
+          "actual": "Switching Assigned to you → Created by you retains assignee=<current user>, hiding unassigned PRs authored by that user. Selecting Created by you directly or clearing Assignee lists them correctly.",
+          "reproSteps": [
+            "Create an open unassigned pull request authored by the signed-in user.",
+            "Open the repository Pull Requests list and verify Created by you directly lists it.",
+            "Choose Type → Assigned to you, then Type → Created by you.",
+            "Observe the retained assignee URL parameter and missing qualifying PR.",
+            "Clear the Assignee restriction and confirm the PR reappears."
+          ],
+          "severity": 3,
+          "matchingGuidance": [
+            {
+              "sourceBugIndex": 52,
+              "guidance": {
+                "relatedReference": {
+                  "id": "gitea-pass2-005",
+                  "distinction": "Same implicit-assignee serialization defect; the existing reference covers milestone detail → All issues. This entry covers repository Pull Requests Type switching, including Created by you."
+                },
+                "scope": "Require an implicit restriction introduced by Assigned to you surviving a subsequent Type choice. Independently selected explicit Assignee filters and search-index omissions have separate semantics."
+              }
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "id": "gitea-comment-delete-header-count-stale",
+      "explanation": "Deleting a PR comment does not update its conversation badge.",
+      "rootCause": {
+        "explanation": "The shared deletion handler removes the comment node and updates review counters but never refreshes the Conversation badge rendered from NumComments.",
+        "sourceReferences": [
+          {
+            "repository": "go-gitea/gitea",
+            "revision": "99053ce4fa2b45f1bca5837418c0c57f793ca824",
+            "path": "web_src/js/features/repo-issue.ts",
+            "line": 131,
+            "url": "https://github.com/go-gitea/gitea/blob/99053ce4fa2b45f1bca5837418c0c57f793ca824/web_src/js/features/repo-issue.ts#L131"
+          },
+          {
+            "repository": "go-gitea/gitea",
+            "revision": "99053ce4fa2b45f1bca5837418c0c57f793ca824",
+            "path": "templates/repo/pulls/tab_menu.tmpl",
+            "line": 6,
+            "url": "https://github.com/go-gitea/gitea/blob/99053ce4fa2b45f1bca5837418c0c57f793ca824/templates/repo/pulls/tab_menu.tmpl#L6"
+          }
+        ]
+      },
+      "reproductionPaths": [
+        {
+          "id": "gitea-comment-delete-header-count-stale-path-1",
+          "explanation": "Deleting a PR discussion comment removes it from the timeline but leaves the Conversation badge unchanged until reload.",
+          "sourceBugs": [
+            {
+              "index": 53,
+              "id": "gitea-pr-comment-deletion-stale-conversation-count",
+              "name": "Deleting a discussion comment leaves the conversation count stale"
+            }
+          ],
+          "expected": "The Conversation count reflects a completed discussion-comment deletion immediately.",
+          "actual": "The sole comment disappears while Conversation still shows 1; reload shows 0. Deleting one of several comments also leaves the old count. Locked and unlocked PRs reproduce.",
+          "reproSteps": [
+            "Create a disposable PR and post a discussion comment.",
+            "Note the Conversation count and delete that comment through its menu.",
+            "Observe the comment is absent but the badge retains the previous count.",
+            "Reload and confirm the corrected count."
+          ],
+          "severity": 1,
+          "matchingGuidance": [
+            {
+              "sourceBugIndex": 53,
+              "guidance": {
+                "relatedReference": {
+                  "name": "Deleting an issue comment leaves its count stale",
+                  "distinction": "Same deletion handler and stale count symptom; the existing reference covers the issue header, this entry covers the PR Conversation badge."
+                },
+                "scope": "Covers stale displayed count after discussion-comment deletion, corrected by reload. The review-creation count defect persisting after reload is separate."
+              }
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "id": "gitea-review-submission-index-not-invalidated",
+      "explanation": "Submitting reviews does not refresh indexed reviewer metadata.",
+      "rootCause": {
+        "explanation": "SubmitReview emits PullRequestReview; indexerNotifier inherits its empty implementation. ReviewedIDs are rebuilt only on later reindex, so indexed keyword searches miss persisted approvals.",
+        "sourceReferences": [
+          {
+            "repository": "go-gitea/gitea",
+            "revision": "99053ce4fa2b45f1bca5837418c0c57f793ca824",
+            "path": "services/pull/review.go",
+            "line": 329,
+            "url": "https://github.com/go-gitea/gitea/blob/99053ce4fa2b45f1bca5837418c0c57f793ca824/services/pull/review.go#L329"
+          },
+          {
+            "repository": "go-gitea/gitea",
+            "revision": "99053ce4fa2b45f1bca5837418c0c57f793ca824",
+            "path": "services/notify/null.go",
+            "line": 50,
+            "url": "https://github.com/go-gitea/gitea/blob/99053ce4fa2b45f1bca5837418c0c57f793ca824/services/notify/null.go#L50"
+          },
+          {
+            "repository": "go-gitea/gitea",
+            "revision": "99053ce4fa2b45f1bca5837418c0c57f793ca824",
+            "path": "modules/indexer/issues/util.go",
+            "line": 118,
+            "url": "https://github.com/go-gitea/gitea/blob/99053ce4fa2b45f1bca5837418c0c57f793ca824/modules/indexer/issues/util.go#L118"
+          }
+        ]
+      },
+      "reproductionPaths": [
+        {
+          "id": "gitea-review-submission-index-not-invalidated-path-1",
+          "explanation": "Global Reviewed by you keyword search omits newly reviewed PRs because submitting a review does not refresh indexed reviewer metadata.",
+          "sourceBugs": [
+            {
+              "index": 55,
+              "id": "gitea-global-reviewed-search-stale-index",
+              "name": "Global Reviewed by you omits an approved pull request"
+            }
+          ],
+          "expected": "A matching keyword narrows the current reviewer-filtered list without hiding a qualifying PR.",
+          "actual": "Another author’s PR with the viewer’s persisted approval appears in Reviewed by you without a keyword, but disappears with a matching keyword. Posting an ordinary comment restores keyword results.",
+          "reproSteps": [
+            "Create two fresh PRs authored by a user other than the reviewer.",
+            "As the reviewer, submit Approve through Files Changed → Review and reload to confirm it persists.",
+            "As the reviewer, open global Pull Requests → Reviewed by you without a keyword and confirm the PRs appear.",
+            "Enter a matching title keyword and observe the missing PRs.",
+            "Clear the keyword as a control, then post an ordinary comment on one affected PR and confirm keyword results recover for it."
+          ],
+          "severity": 3,
+          "matchingGuidance": [
+            {
+              "sourceBugIndex": 55,
+              "guidance": {
+                "relatedReference": {
+                  "name": "Reviewed by you omits a pull request with a recorded review by the current user",
+                  "distinction": "That reference covers own-author exclusion. This entry requires a PR authored by another user and a keyword-search-only omission after a persisted review."
+                },
+                "scope": "Require a persisted review by a different user from the PR author and failure under matching keyword search; no-keyword controls pass."
+              }
+            }
+          ]
+        },
+        {
+          "id": "gitea-review-submission-index-not-invalidated-path-2",
+          "explanation": "Organization Reviewed by you keyword search omits persisted reviews because review submissions do not refresh indexed reviewer metadata.",
+          "sourceBugs": [
+            {
+              "index": 57,
+              "id": "gitea-org-reviewed-search-stale-index",
+              "name": "Organization Reviewed by you search hides matching reviewed pull request"
+            }
+          ],
+          "expected": "A matching title search retains another author’s PR already listed under Reviewed by you.",
+          "actual": "After alex approves fresh PRs, the organization’s unsearched Reviewed by you list includes them. Matching title keywords hide them. An ordinary comment refreshes indexing and restores only the commented PR.",
+          "reproSteps": [
+            "Create an organization repository and two PRs authored by one user. Give a different reviewer organization access.",
+            "As that reviewer, approve each PR through Files Changed → Review and reload to verify the approvals.",
+            "Open organization Pull Requests → Reviewed by you without a keyword and confirm both are listed.",
+            "Submit a matching title word and observe missing results.",
+            "Clear the search to restore results; comment on one PR and confirm only it recovers in keyword results."
+          ],
+          "severity": 3,
+          "matchingGuidance": [
+            {
+              "sourceBugIndex": 57,
+              "guidance": {
+                "relatedReference": {
+                  "id": "gitea-global-reviewed-search-stale-index",
+                  "distinction": "Same missing review-submission index refresh. The existing reference covers global /pulls; this entry covers organization Pull Requests."
+                },
+                "scope": "Other-author PRs with persisted reviews and a keyword-search-only omission. Own-author exclusion without a keyword is separate."
+              }
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "id": "gitea-team-review-request-not-expanded-in-index",
+      "explanation": "Team review requests are not expanded to member IDs in the index.",
+      "rootCause": {
+        "explanation": "Issue index conversion adds Review.ReviewerID for requested reviews, without expanding ReviewerTeamID membership. A viewer’s team-only request therefore cannot match their user ID even after reindexing.",
+        "sourceReferences": [
+          {
+            "repository": "go-gitea/gitea",
+            "revision": "99053ce4fa2b45f1bca5837418c0c57f793ca824",
+            "path": "modules/indexer/issues/util.go",
+            "line": 76,
+            "url": "https://github.com/go-gitea/gitea/blob/99053ce4fa2b45f1bca5837418c0c57f793ca824/modules/indexer/issues/util.go#L76"
+          }
+        ]
+      },
+      "reproductionPaths": [
+        {
+          "id": "gitea-team-review-request-not-expanded-in-index-path-1",
+          "explanation": "Organization Review requested keyword search omits matching PRs requested from the viewer’s team because indexed requested reviewers do not expand team membership.",
+          "sourceBugs": [
+            {
+              "index": 56,
+              "id": "gitea-org-team-review-request-search-omits-members",
+              "name": "Organization requested-review search hides a matching team review request"
+            }
+          ],
+          "expected": "A matching PR requesting review from a team the viewer belongs to remains listed when searching Review requested.",
+          "actual": "Fresh team-requested PRs appear without a keyword but disappear for matching title keywords. Numeric searches work. Ordinary-comment reindexing does not repair team-only requests, while an indexed direct request to the user works.",
+          "reproSteps": [
+            "Create an organization repository and a reviewer team containing another fixture user.",
+            "Create two fresh PRs and request review from that team.",
+            "As the team member, open organization Pull Requests → Review requested and confirm the PRs appear without search.",
+            "Submit a matching title keyword and observe missing results. Clear it or search by PR number as controls.",
+            "Post an ordinary comment to refresh indexing and confirm the team-only request remains absent. Compare an individually requested reviewer after index refresh."
+          ],
+          "severity": 3,
+          "matchingGuidance": [
+            {
+              "sourceBugIndex": 56,
+              "guidance": {
+                "relatedReference": {
+                  "id": "gitea-global-requested-review-search-stale-index",
+                  "distinction": "That entry covers missing refresh after individual review-request mutations, repaired by reindexing. This entry covers team-member omission even after reindexing, demonstrated on the organization dashboard."
+                },
+                "scope": "Require a team request where the viewer is a member and matching keyword search omits the PR. Team-only omission after forced reindex distinguishes this from stale individual-review metadata."
+              }
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "id": "gitea-pr-list-links-deleted-head-branch",
+      "explanation": "PR lists always link the source branch even when deleted.",
+      "rootCause": {
+        "explanation": "The shared issue-list PR branch markup constructs /src/branch/HeadBranch without the branch-existence guard used by the PR detail page. Deleted heads remain actionable links to 404 across list surfaces.",
+        "sourceReferences": [
+          {
+            "repository": "go-gitea/gitea",
+            "revision": "99053ce4fa2b45f1bca5837418c0c57f793ca824",
+            "path": "templates/shared/issuelist.tmpl",
+            "line": 62,
+            "url": "https://github.com/go-gitea/gitea/blob/99053ce4fa2b45f1bca5837418c0c57f793ca824/templates/shared/issuelist.tmpl#L62"
+          }
+        ]
+      },
+      "reproductionPaths": [
+        {
+          "id": "gitea-pr-list-links-deleted-head-branch-path-1",
+          "explanation": "After a pull request's source branch is deleted (for example by merging with Delete branch), the pull request's own page shows the branch name as plain text, but every pull request list (repository, global, organization, milestone and subscription lists) still shows it as a link, which opens a Page Not Found error. The list template always links the branch without checking whether it still exists.",
+          "sourceBugs": [
+            {
+              "index": 58,
+              "id": "gitea-pr-list-deleted-head-branch-link-404",
+              "name": "Pull request lists still link a deleted source branch, which opens a 404"
+            }
+          ],
+          "expected": "Pull request lists show a deleted source branch as plain text, as the pull request page does, instead of linking to a missing page.",
+          "actual": "After merging with Delete branch, the closed pull request's row in the lists still linked the source branch; clicking it opened a 404 Page Not Found page. Links for branches that still exist opened normally.",
+          "reproSteps": [
+            "Merge a pull request with Delete branch checked (or delete its source branch after closing it).",
+            "Open the repository's Pull Requests list and show closed pull requests.",
+            "Click the source branch name in that pull request's row."
+          ],
+          "severity": 3
+        }
+      ]
+    }
+  ]
+}
