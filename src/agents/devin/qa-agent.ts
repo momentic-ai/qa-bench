@@ -103,7 +103,12 @@ Persist verified findings incrementally using provide_structured_output with the
     this.launch = this.createSession(prompt, profile.profile_id, title);
     await this.launch;
     await this.saveSession();
-    if (this.session?.security_profile?.profile_id !== profile.profile_id)
+    const confirmation = AbortSignal.any([signal, AbortSignal.timeout(60_000)]);
+    while (!this.session?.security_profile) {
+      await delay(1000, undefined, { signal: confirmation });
+      await this.refresh(confirmation);
+    }
+    if (this.session.security_profile.profile_id !== profile.profile_id)
       throw new Error("Devin did not confirm the requested security profile.");
     signal.throwIfAborted();
     return { completion: this.observe(signal) };
@@ -152,6 +157,7 @@ Persist verified findings incrementally using provide_structured_output with the
       signal.throwIfAborted();
       await this.refresh(signal);
       if (
+        this.session?.status === "exit" ||
         this.session?.status_detail === "finished" ||
         this.session?.status_detail === "waiting_for_user"
       ) {
@@ -205,7 +211,12 @@ Persist verified findings incrementally using provide_structured_output with the
       `sessions/${encodeURIComponent(this.session.session_id)}`,
       { method: "DELETE" },
     );
-    await this.refresh();
+    const stopped = AbortSignal.timeout(120_000);
+    while (true) {
+      await this.refresh(stopped);
+      if (this.session.status === "exit") return;
+      await delay(2000, undefined, { signal: stopped });
+    }
   }
 
   async collectResults(signal: AbortSignal) {
