@@ -4,7 +4,7 @@
   "logicalBugs": [
     {
       "id": "metabase-fullscreen-portal-root",
-      "explanation": "Dashboard info is rendered outside the fullscreen subtree.",
+      "explanation": "The More info control becomes ineffective in dashboard fullscreen mode because its dialog is not visible until fullscreen is closed.",
       "rootCause": {
         "explanation": "The dashboard enters element fullscreen while the info UI is mounted through a portal outside that element. The browser only presents descendants of the fullscreen element, so the already-open dialog appears after fullscreen exits.",
         "sourceReferences": [
@@ -42,7 +42,7 @@
     },
     {
       "id": "metabase-seed-dashboard-filter-mapping",
-      "explanation": "Product breakdown is not connected to the advertised dashboard filter.",
+      "explanation": "The Product breakdown card continues to show every category when the dashboard is filtered to one.",
       "rootCause": {
         "explanation": "Dashboard filtering applies only stored dashcard parameter_mappings. This card has no effective Product Category mapping in the seed; the application cannot infer a mapping from adjacent text or charts. Seed records need separate inspection.",
         "sourceReferences": [
@@ -80,7 +80,7 @@
     },
     {
       "id": "metabase-seed-chart-static-title",
-      "explanation": "Revenue per quarter has a static title despite dynamic time grouping.",
+      "explanation": "A dashboard card retains a quarterly title while showing monthly revenue and month-over-month comparison.",
       "rootCause": {
         "explanation": "A saved card title is independent of the dashboard temporal-unit parameter. Changing grouping does not rewrite card names, so the seed title becomes misleading when Month is selected.",
         "sourceReferences": [
@@ -118,7 +118,7 @@
     },
     {
       "id": "metabase-parameter-widget-draft-reset",
-      "explanation": "Resetting a filter does not synchronize an already-open picker draft.",
+      "explanation": "Reset changes the applied dashboard filter but leaves the open checklist on its prior selection.",
       "rootCause": {
         "explanation": "The widget keeps selection in local draft state while dashboard reset updates the applied parameterValues. The open picker does not reinitialize its checked selections for that external reset.",
         "sourceReferences": [
@@ -156,7 +156,7 @@
     },
     {
       "id": "metabase-seed-survey-content",
-      "explanation": "E-commerce dashboard presents unrelated wine-review data.",
+      "explanation": "Customer survey responses in the E-commerce Insights customer satisfaction section are wine/distillery reviews rather than feedback about the dashboard's displayed e-commerce products.",
       "rootCause": {
         "explanation": "This is a seeded query/content mismatch: the survey card selects review bodies whose dataset concerns wine rather than the dashboard products. Rendering source only consumes the stored card query and rows.",
         "sourceReferences": [
@@ -196,7 +196,7 @@
     },
     {
       "id": "metabase-dashboard-copy-link-cards",
-      "explanation": "Dashboard copy drops Link virtual cards.",
+      "explanation": "Duplicating a dashboard omits its Link cards while preserving other card types, so the copy silently loses saved navigation links.",
       "rootCause": {
         "explanation": "update-cards-for-copy explicitly preserves iframe, text and heading virtual cards but omits link. Link cards have no card_id in id->new-card, so they fall through to the nil/discard branch.",
         "sourceReferences": [
@@ -213,12 +213,17 @@
       "reproductionPaths": [
         {
           "id": "metabase-dashboard-copy-link-cards-dashboards-path-1",
-          "explanation": "External Link cards are omitted from dashboard copies in both duplication modes. Fresh source6→copy7 testing with heading, text, iframe, and external link preserves all other card types but loses the link. Duplicating a tab preserves the link, isolating this to dashboard duplication.",
+          "explanation": "Dashboard copy drops Link virtual cards.",
           "sourceBugs": [
             {
               "index": 5,
               "id": "codex-60m-metabase-1",
               "name": "Dashboard duplication silently drops external Link cards"
+            },
+            {
+              "index": 68,
+              "id": "metabase-dashboards-491",
+              "name": "Duplicating dashboard drops the “All subscriptions in table view” link on the Most recent subscription card"
             }
           ],
           "expected": "Dashboard duplication preserves external Link cards on their corresponding tabs, as tab duplication does.",
@@ -232,34 +237,49 @@
             "Observe the external Link card is absent while other cards and the tab remain. Open Edit mode to confirm the card was omitted.",
             "As a control, duplicate the source tab: its Link card is preserved."
           ],
-          "severity": 3
-        },
-        {
-          "id": "metabase-dashboard-copy-link-cards-dashboards-path-2",
-          "explanation": "Duplicating dashboard drops the “All subscriptions in table view” link on the Most recent subscription card.",
-          "sourceBugs": [
+          "severity": 3,
+          "sourceReproductions": [
             {
-              "index": 68,
-              "id": "metabase-dashboards-491",
-              "name": "Duplicating dashboard drops the “All subscriptions in table view” link on the Most recent subscription card"
+              "sourceBugIndices": [
+                5
+              ],
+              "explanation": "External Link cards are omitted from dashboard copies in both duplication modes. Fresh source6→copy7 testing with heading, text, iframe, and external link preserves all other card types but loses the link. Duplicating a tab preserves the link, isolating this to dashboard duplication.",
+              "expected": "Dashboard duplication preserves external Link cards on their corresponding tabs, as tab duplication does.",
+              "actual": "The copied dashboard retains tabs, headings, text, iframe and question cards but omits external Link cards. Edit mode confirms the link card is absent.",
+              "reproSteps": [
+                "Sign in and create or open a test dashboard.",
+                "Enter Edit mode, choose Add a link or iframe > Link, enter https://example.com, and press Enter.",
+                "Save the dashboard and verify the link is visible on its tab. Reproduced sources include dashboard3 Details QA and dashboard6 Details QA.",
+                "Choose More > Duplicate, name the copy, and confirm Duplicate. Reproduced in both default full-copy mode and Only duplicate dashboard mode.",
+                "Open the corresponding tab on the copied dashboard.",
+                "Observe the external Link card is absent while other cards and the tab remain. Open Edit mode to confirm the card was omitted.",
+                "As a control, duplicate the source tab: its Link card is preserved."
+              ],
+              "severity": 3
+            },
+            {
+              "sourceBugIndices": [
+                68
+              ],
+              "explanation": "Duplicating dashboard drops the “All subscriptions in table view” link on the Most recent subscription card.",
+              "expected": "Duplicating E-commerce Insights preserves the “All subscriptions in table view” link below Most recent subscription on the Website Analysis tab.",
+              "actual": "On the duplicated dashboard (QA-PopCopy-Fidelity-A), the “All subscriptions in table view” link below Most recent subscription on the Website Analysis tab is missing.",
+              "reproSteps": [
+                "Open E-commerce Insights at /dashboard/1 and select Website Analysis; scroll to Most recent subscription and note the All subscriptions in table view link below it.",
+                "Open the dashboard title ellipsis menu and choose Duplicate.",
+                "Enter a unique QA-PopCopy name, check Only duplicate the dashboard, and click Duplicate.",
+                "In the created dashboard select Website Analysis and scroll below Most recent subscription.",
+                "Reload and revisit the tab: the All subscriptions in table view link is missing."
+              ],
+              "severity": 3
             }
-          ],
-          "expected": "Duplicating E-commerce Insights preserves the “All subscriptions in table view” link below Most recent subscription on the Website Analysis tab.",
-          "actual": "On the duplicated dashboard (QA-PopCopy-Fidelity-A), the “All subscriptions in table view” link below Most recent subscription on the Website Analysis tab is missing.",
-          "reproSteps": [
-            "Open E-commerce Insights at /dashboard/1 and select Website Analysis; scroll to Most recent subscription and note the All subscriptions in table view link below it.",
-            "Open the dashboard title ellipsis menu and choose Duplicate.",
-            "Enter a unique QA-PopCopy name, check Only duplicate the dashboard, and click Duplicate.",
-            "In the created dashboard select Website Analysis and scroll below Most recent subscription.",
-            "Reload and revisit the tab: the All subscriptions in table view link is missing."
-          ],
-          "severity": 3
+          ]
         }
       ]
     },
     {
       "id": "metabase-dashboard-copy-auto-apply",
-      "explanation": "Dashboard copy resets disabled Auto-apply filters.",
+      "explanation": "Duplicating a dashboard resets a disabled Auto-apply filters setting, so the copy runs filter changes immediately instead of requiring the source dashboard’s manual Apply action.",
       "rootCause": {
         "explanation": "The copy endpoint builds dashboard-data from an explicit whitelist of name, description, parameters, creator, collection, position and width; auto_apply_filters is omitted and takes its default.",
         "sourceReferences": [
@@ -300,7 +320,7 @@
     },
     {
       "id": "metabase-dashboard-tab-url-reconciliation",
-      "explanation": "Removed/restored tabs leave stale URL selection and blank content.",
+      "explanation": "Deleting the selected dashboard tab, or navigating Back to a deleted tab, can leave no tab selected and show an empty dashboard even though surviving tabs still contain cards.",
       "rootCause": {
         "explanation": "useDashboardUrlQuery router listener parses nextLocation.query.tab and dispatches selectTab for any nonempty changed tab ID without checking that getTabs contains it. Thus a stale browser-history/URL tab can overwrite the reducer's repaired selectedTabId with a deleted ID and hide content.",
         "sourceReferences": [
@@ -383,7 +403,7 @@
     },
     {
       "id": "metabase-required-empty-url-param",
-      "explanation": "An explicit empty URL value bypasses a required parameter default.",
+      "explanation": "An empty URL value clears a dashboard filter configured with a default and Always require a value, allowing its mapped question to return unfiltered data.",
       "rootCause": {
         "explanation": "getParameterValueFromQueryParams returns null immediately for maybeParameterValue === empty string, before checking required/default. This URL-clearing branch therefore bypasses the required-value rule.",
         "sourceReferences": [
@@ -424,7 +444,7 @@
     },
     {
       "id": "metabase-dashboard-sql-parameter-cardinality",
-      "explanation": "Dashboard filter cardinality does not match a mapped SQL variable.",
+      "explanation": "Changing a dashboard filter or its SQL-variable mapping from multiple values to a single value can retain hidden multiple selections: the chip, allowed cardinality and card query disagree, causing stale multi-value results or query errors.",
       "rootCause": {
         "explanation": "A dashboard multi-value parameter is forwarded to a single-value native template tag without coercing the applied values to the target tag cardinality. Changing widget configuration also leaves already-applied multiple values intact.",
         "sourceReferences": [
@@ -485,7 +505,7 @@
     },
     {
       "id": "metabase-dashboard-date-time-truncation",
-      "explanation": "Dashboard Before/After filters discard selected time.",
+      "explanation": "Dashboard After or Before date filters ignore the selected time.",
       "rootCause": {
         "explanation": "Date parameter normalization/serialization uses the calendar-date operator representation rather than the full datetime endpoint, dropping time before the chart request.",
         "sourceReferences": [
@@ -524,7 +544,7 @@
     },
     {
       "id": "metabase-dashboard-default-edit-mutates-applied",
-      "explanation": "Editing or discarding filter defaults mutates the active remembered filter.",
+      "explanation": "Editing or removing a dashboard filter’s default changes the active/remembered filter before the dashboard edit is saved; Cancel/Discard can leave the canceled default applied or clear the previous selection.",
       "rootCause": {
         "explanation": "setParameterDefaultValue updates the parameter definition and immediately dispatches setParameterValue; edit cancellation restores the definition but not the applied/last-used parameter state.",
         "sourceReferences": [
@@ -607,7 +627,7 @@
     },
     {
       "id": "metabase-date-between-tab-reselection",
-      "explanation": "Re-selecting Between rewrites an existing date range.",
+      "explanation": "Re-clicking the selected Between tab rewrites the date range.",
       "rootCause": {
         "explanation": "Date picker tab selection reconstructs an initial range even when the selected mode is already Between instead of preserving the current endpoints.",
         "sourceReferences": [
@@ -648,7 +668,7 @@
     },
     {
       "id": "metabase-required-parameter-text-clear",
-      "explanation": "Required SQL-mapped dashboard filters can be cleared by text input.",
+      "explanation": "Required dashboard filter mapped to a SQL variable can be cleared from its text input.",
       "rootCause": {
         "explanation": "The native/text widget forwards an empty edited value without applying the required parameter default/validation used by the clear affordance.",
         "sourceReferences": [
@@ -689,7 +709,7 @@
     },
     {
       "id": "metabase-date-range-mobile-overflow",
-      "explanation": "Fixed-date range picker overflows mobile viewport.",
+      "explanation": "Fixed date range picker overflows the viewport on phones.",
       "rootCause": {
         "explanation": "The date picker renders its two-calendar/fixed-width range content without constraining it to available phone width.",
         "sourceReferences": [
@@ -728,7 +748,7 @@
     },
     {
       "id": "metabase-number-range-order-validation",
-      "explanation": "Between numeric filters cannot recover from reversed endpoints or apply reversed defaults.",
+      "explanation": "A dashboard numeric Between control mishandles reversed endpoints: reversed defaults can be applied, and reopening then swapping the endpoints into valid order can leave Update disabled.",
       "rootCause": {
         "explanation": "getUpdateButtonProps uses areParameterValuesIdentical for current/default/draft comparison. That helper sorts every array before comparing, treating ordered Between endpoints as an unordered selection: [100,50] equals [50,100], disabling a corrective update or labeling a reversed draft Set to default. NumberInputWidget also passes isValid unconditionally, so reversed ranges are not separately rejected.",
         "sourceReferences": [
@@ -790,7 +810,7 @@
     },
     {
       "id": "metabase-markdown-list-horizontal-alignment",
-      "explanation": "Centered Markdown cards leave bullet markers at the left.",
+      "explanation": "Center-aligned text card leaves Markdown bullet markers at the left edge.",
       "rootCause": {
         "explanation": "Text applies text-align:center to the Markdown container while list-item markers remain outside their content box under standard list styling; marker positioning is not changed with alignment.",
         "sourceReferences": [
@@ -828,7 +848,7 @@
     },
     {
       "id": "metabase-markdown-overflow-vertical-alignment",
-      "explanation": "Bottom/middle aligned text content overflows above the scroll origin.",
+      "explanation": "Bottom- or middle-aligned text cards hide overflowing content above the scroll area.",
       "rootCause": {
         "explanation": "Text applies justify-center/justify-end on a flex-column Markdown container even when its content exceeds available height, positioning overflow before scrollTop=0 and making the top unreachable.",
         "sourceReferences": [
@@ -868,7 +888,7 @@
     },
     {
       "id": "metabase-chart-settings-reset-transaction",
-      "explanation": "Reset to defaults escapes the visualization editor cancel boundary.",
+      "explanation": "“Reset to defaults” in dashboard chart settings does not behave like an ordinary draft edit: canceling can retain the reset, and an already-customized color can fail to visibly reset.",
       "rootCause": {
         "explanation": "Visualization reset changes settings through the parent update path rather than keeping an independent complete draft/snapshot, so closing with Cancel cannot restore all previous settings, including progress color.",
         "sourceReferences": [
@@ -928,7 +948,7 @@
     },
     {
       "id": "metabase-chart-settings-click-behavior-loss",
-      "explanation": "Changing chart settings drops a dashboard custom click action.",
+      "explanation": "Changing a dashboard card's visualization settings resets its click behavior to drill-through.",
       "rootCause": {
         "explanation": "Dashcard visualization settings save replaces the settings object without preserving the separate click_behavior entry, falling back to default drill-through.",
         "sourceReferences": [
@@ -967,7 +987,7 @@
     },
     {
       "id": "metabase-dashboard-blank-name-validation",
-      "explanation": "Dashboard title edits accept whitespace and fail without field feedback.",
+      "explanation": "Dashboard inline-title and edit forms accept whitespace-only names; inline editing leaves a blank title until reload, while the edit form reports “Save failed” without explaining the invalid name.",
       "rootCause": {
         "explanation": "Dashboard title editing/submission checks raw nonempty input instead of trimmed content; the API rejects the nonblank name contract but the inline/editor state is not restored or explained.",
         "sourceReferences": [
@@ -1026,7 +1046,7 @@
     },
     {
       "id": "metabase-deleted-dashboard-search-index",
-      "explanation": "Permanent deletion leaves a dashboard in trash search results.",
+      "explanation": "Opening a permanently deleted dashboard from trash search shows a not-found page.",
       "rootCause": {
         "explanation": "Search result indexing/invalidation outlives the deleted dashboard entity; clicking the stale hit requests a removed dashboard and produces Not found.",
         "sourceReferences": [
@@ -1065,7 +1085,7 @@
     },
     {
       "id": "metabase-history-missing-actor-name",
-      "explanation": "Dashboard History displays undefined for missing actor names.",
+      "explanation": "Opening a dashboard, model or metric History can show “undefined modified this” instead of an actor name when the history actor lacks a common_name.",
       "rootCause": {
         "explanation": "Timeline revision copy reads r.user.common_name directly for another actor, without reconstructing a name or providing a fallback when the seeded revision user lacks that property.",
         "sourceReferences": [
@@ -1103,7 +1123,7 @@
     },
     {
       "id": "metabase-inline-parameter-copy-options",
-      "explanation": "Duplicating a card does not preserve all inline parameter options.",
+      "explanation": "Duplicating a card drops its local filter default and required-value setting.",
       "rootCause": {
         "explanation": "duplicateParameters passes _.omit(parameter,\"id\") into createParameter, but createParameter constructs a fresh object containing only id, name, slug, type and sectionId. Default, required, widget/source configuration and other inline options are discarded.",
         "sourceReferences": [
@@ -1143,7 +1163,7 @@
     },
     {
       "id": "metabase-tab-copy-parameter-ownership",
-      "explanation": "Duplicating tabs shallow-copies parameter identities and mappings.",
+      "explanation": "Duplicating a dashboard tab leaves copied local text/heading filters tied to the original tab: copied text may show an uninterpolated placeholder, and opening its filter settings can jump to the source tab.",
       "rootCause": {
         "explanation": "duplicateTab copies sourceDashCard by spread and replaces only id/dashboard_tab_id/isDirty. It does not clone dashboard parameters or rewrite inline parameter ownership and text mappings to the new card/tab.",
         "sourceReferences": [
@@ -1208,7 +1228,7 @@
     },
     {
       "id": "metabase-dashboard-info-creator-access",
-      "explanation": "Dashboard info omits an otherwise valid creator.",
+      "explanation": "For a dashboard created by another user, a member’s More info panel omits the creator row even though the dashboard has a valid creator.",
       "rootCause": {
         "explanation": "DashboardDetails fetches the creator with useGetUserQuery(dashboard.creator_id) and renders the entire creator row only when creator exists. A member denied that user-detail endpoint sees no creator fallback even though the dashboard itself is readable.",
         "sourceReferences": [
@@ -1248,7 +1268,7 @@
     },
     {
       "id": "metabase-internal-link-editor-serialization",
-      "explanation": "Opening and saving an internal link corrupts its destination.",
+      "explanation": "Opening an internal link card’s editor corrupts its destination when saved.",
       "rootCause": {
         "explanation": "LinkViz editor parses a saved internal URL into entity/link state and serializes it back with a different destination representation, even when the user makes no change.",
         "sourceReferences": [
@@ -1290,7 +1310,7 @@
     },
     {
       "id": "metabase-upper-only-number-range-serialization",
-      "explanation": "Upper-only numeric ranges reload as lower-only ranges.",
+      "explanation": "Valid upper-only Between filter reverses to lower-only after reload.",
       "rootCause": {
         "explanation": "The approximate public source deserializeNumberParameterValue explicitly preserves a two-item [null,upper] array for number/between. Endpoint position must therefore be lost earlier in URL/value transport or the actual runtime implementation; this parser alone does not establish the root.",
         "sourceReferences": [
@@ -1329,7 +1349,7 @@
     },
     {
       "id": "metabase-archived-empty-dashboard-actions",
-      "explanation": "Archived empty dashboards expose an Add chart action.",
+      "explanation": "Trashed empty dashboards still offer Add a chart, leading to a permission error on Save.",
       "rootCause": {
         "explanation": "The empty dashboard state chooses its creation action from edit capability without also checking archived state, allowing an invalid edit/save flow on a trashed dashboard.",
         "sourceReferences": [
@@ -1370,7 +1390,7 @@
     },
     {
       "id": "metabase-empty-raw-parameter-label",
-      "explanation": "A custom label for empty raw filter value does not survive reload.",
+      "explanation": "Selecting a custom filter label configured with an empty raw value resets after page refresh.",
       "rootCause": {
         "explanation": "Parameter URL parsing treats an empty raw string as null/cleared, so a selected display label whose actual value is empty cannot round-trip as a selection.",
         "sourceReferences": [
@@ -1409,7 +1429,7 @@
     },
     {
       "id": "metabase-dashboard-history-position-noise",
-      "explanation": "Dashboard History reports unrelated pin/card/tab changes.",
+      "explanation": "Dashboard History attributes unrelated pin, card or tab changes to a title/description edit or trash operation, particularly on the first edit after reverting a revision.",
       "rootCause": {
         "explanation": "Dashboard revision serialization/restoration retains normalized positional/card/tab metadata; subsequent rename/edit diff compares different snapshots and reports those non-user edits as changes.",
         "sourceReferences": [
@@ -1468,7 +1488,7 @@
     },
     {
       "id": "metabase-same-dashboard-link-history",
-      "explanation": "Back from a same-dashboard link restores the wrong filter state.",
+      "explanation": "Back navigation from a same-dashboard custom URL retains the clicked category instead of restoring the source filter state.",
       "rootCause": {
         "explanation": "Dashboard parameter synchronization updates the current URL/history state while following a link to the same dashboard, overwriting or reapplying the clicked category instead of retaining a distinct prior parameter snapshot.",
         "sourceReferences": [
@@ -1507,7 +1527,7 @@
     },
     {
       "id": "metabase-gauge-click-targets",
-      "explanation": "Gauge custom destinations have no click target on the scalar value/arc.",
+      "explanation": "Gauge card accepts a custom URL click destination but clicking its value or arc does nothing.",
       "rootCause": {
         "explanation": "Gauge forwards onVisualizationClick to segment labels; its main scalar value and arc do not produce the click object required for a custom destination.",
         "sourceReferences": [
@@ -1546,7 +1566,7 @@
     },
     {
       "id": "metabase-funnel-bar-click-destination",
-      "explanation": "Funnel Bar display does not emit custom destination clicks.",
+      "explanation": "Funnel card's Bar chart display ignores saved custom dashboard click destination.",
       "rootCause": {
         "explanation": "The funnel bar renderer transforms rows for the display without preserving/dispatching the dashboard click context needed for saved custom click behavior.",
         "sourceReferences": [
@@ -1585,7 +1605,7 @@
     },
     {
       "id": "metabase-progress-goal-input-feedback",
-      "explanation": "Progress Goal numeric editing loses intermediate digits.",
+      "explanation": "Typing 100000.5 into progress-card Goal loses digits and leaves 05 with Goal 0 preview.",
       "rootCause": {
         "explanation": "Progress Goal is controlled through numeric parsing and immediate visualization setting feedback; incomplete decimal/input states are reformatted and sent back to the active input rather than retained as text until commit.",
         "sourceReferences": [
@@ -1623,7 +1643,7 @@
     },
     {
       "id": "metabase-conditional-format-remapped-id",
-      "explanation": "Table conditional formatting fails for a remapped ID value.",
+      "explanation": "A saved conditional-formatting rule on a dashboard table’s remapped ID column fails to color the matching row.",
       "rootCause": {
         "explanation": "Conditional formatting compares the displayed/remapped value against the raw-field rule without consistently resolving the remapped column/value pair.",
         "sourceReferences": [
@@ -1664,7 +1684,7 @@
     },
     {
       "id": "metabase-funnel-editor-order-default",
-      "explanation": "Opening funnel visualization settings changes its stage ordering.",
+      "explanation": "Opening Checkout funnel visualization editor changes stage order and baseline before any edit.",
       "rootCause": {
         "explanation": "Funnel settings/default normalization recomputes row sorting and first-stage baseline when the editor preview is initialized rather than preserving the saved display settings unchanged.",
         "sourceReferences": [
@@ -1704,19 +1724,33 @@
     },
     {
       "id": "metabase-search-before-inclusive",
-      "explanation": "Creation-date Before includes the selected day.",
+      "explanation": "Search Creation date “Before” includes items created on the selected calendar day, rather than excluding that day as the filter label implies.",
       "rootCause": {
-        "explanation": "Search date-range conversion expands the upper bound through the end of the selected day and applies an inclusive bound, contradicting the Before label.",
+        "explanation": "The absolute ~date decoder returns the selected date as :end. Search requests date-string->range with inclusive-end? false, whose adjust-inclusive-range-if-needed adds one day to the end; search then compares timestamp-date < that advanced bound. This makes Before include the selected day. The conversion must distinguish an already-exclusive Before endpoint from an inclusive range endpoint.",
         "sourceReferences": [
           {
             "repository": "metabase/metabase",
             "revision": "f42632893810325d9f74375a4cd29bd31d8daefa",
-            "path": "frontend/src/metabase/search/components/filters/CreatedAtFilter.tsx",
-            "line": 8,
-            "url": "https://github.com/metabase/metabase/blob/f42632893810325d9f74375a4cd29bd31d8daefa/frontend/src/metabase/search/components/filters/CreatedAtFilter.tsx#L8"
+            "path": "src/metabase/query_processor/parameters/dates.clj",
+            "line": 370,
+            "url": "https://github.com/metabase/metabase/blob/f42632893810325d9f74375a4cd29bd31d8daefa/src/metabase/query_processor/parameters/dates.clj#L370"
+          },
+          {
+            "repository": "metabase/metabase",
+            "revision": "f42632893810325d9f74375a4cd29bd31d8daefa",
+            "path": "src/metabase/query_processor/parameters/dates.clj",
+            "line": 416,
+            "url": "https://github.com/metabase/metabase/blob/f42632893810325d9f74375a4cd29bd31d8daefa/src/metabase/query_processor/parameters/dates.clj#L416"
+          },
+          {
+            "repository": "metabase/metabase",
+            "revision": "f42632893810325d9f74375a4cd29bd31d8daefa",
+            "path": "src/metabase/search/filter.clj",
+            "line": 69,
+            "url": "https://github.com/metabase/metabase/blob/f42632893810325d9f74375a4cd29bd31d8daefa/src/metabase/search/filter.clj#L69"
           }
         ],
-        "analysisStatus": "inferred"
+        "analysisStatus": "source-supported"
       },
       "reproductionPaths": [
         {
@@ -1743,7 +1777,7 @@
     },
     {
       "id": "metabase-timestamp-click-date-range",
-      "explanation": "Timestamp click mappings build an invalid dashboard date range.",
+      "explanation": "Clicking a timestamp column configured to update Date Range causes dashboard chart errors.",
       "rootCause": {
         "explanation": "Dashboard click parameter mapping serializes a timestamp/datetime cell directly into a date-range parameter instead of using that parameter operator and expected range encoding.",
         "sourceReferences": [
@@ -1783,7 +1817,7 @@
     },
     {
       "id": "metabase-undo-card-tab-move",
-      "explanation": "Undoing a card move leaves an invalid tab/card save payload.",
+      "explanation": "Undoing a card move from its destination tab makes dashboard Save fail.",
       "rootCause": {
         "explanation": "Move/undo restores a dashcard tab assignment from stale destination/source state, but the tab normalization/save payload no longer recognizes the restored assignment.",
         "sourceReferences": [
@@ -1824,7 +1858,7 @@
     },
     {
       "id": "metabase-tab-strip-scroll-measurement",
-      "explanation": "Entering edit mode leaves the last tab clipped without a scroll arrow.",
+      "explanation": "Entering dashboard edit mode while scrolled to the last tabs hides the right-scroll arrow even though the final tab is clipped.",
       "rootCause": {
         "explanation": "DashboardTabs scroll/overflow state is measured before edit controls change available width and is not recalculated for that transition.",
         "sourceReferences": [
@@ -1863,7 +1897,7 @@
     },
     {
       "id": "metabase-decimal-precision-range",
-      "explanation": "Excessive decimal precision breaks charts or silently falls back.",
+      "explanation": "Number formatting accepts excessive decimal precision such as 101 without validation; metadata previews and saved charts then render incorrect integers or zero labels, or show a chart error.",
       "rootCause": {
         "explanation": "The shared decimals setting has only nonnegative/integer checks and no formatter maximum. Values above the supported precision range reach scalar/gauge/pie number formatters, producing warnings or fallback integer/zero labels.",
         "sourceReferences": [
@@ -1946,7 +1980,7 @@
     },
     {
       "id": "metabase-combo-preview-save-aggregation",
-      "explanation": "Combo chart preview and saved chart aggregate series differently.",
+      "explanation": "Dashboard combo preview shows Average of Total 470.31, but saving changes June value to 235.15.",
       "rootCause": {
         "explanation": "Dashboard chart editor preview and saved multiseries transform use different series/column mapping settings, so the same displayed Average is regrouped/re-aggregated after save.",
         "sourceReferences": [
@@ -1985,7 +2019,7 @@
     },
     {
       "id": "metabase-new-dashboard-error-page-state",
-      "explanation": "Creating a dashboard from an error route retains the old error screen.",
+      "explanation": "Creating a dashboard from a missing or denied dashboard leaves the error page open.",
       "rootCause": {
         "explanation": "Dashboard creation navigation reuses DashboardApp state that still contains the previous missing/denied dashboard error rather than resetting it for the newly created dashboard.",
         "sourceReferences": [
@@ -2025,7 +2059,7 @@
     },
     {
       "id": "metabase-dashboard-modal-close-url",
-      "explanation": "Canceling dashboard modals drops selected tab query.",
+      "explanation": "Canceling Duplicate or Move strips the selected dashboard tab from the URL.",
       "rootCause": {
         "explanation": "The routed Duplicate/Move modal close location is constructed from the dashboard pathname without retaining its tab query, replacing the selected-tab URL on cancellation.",
         "sourceReferences": [
@@ -2064,7 +2098,7 @@
     },
     {
       "id": "metabase-dashboard-cancel-back-url",
-      "explanation": "Canceling navigation from dashboard editing leaves the destination URL.",
+      "explanation": "Canceling Back navigation keeps dashboard editor but leaves collection URL.",
       "rootCause": {
         "explanation": "Route cancellation retains the dashboard editor but fails to restore the browser/router URL from the already attempted collection transition, leaving view state and address inconsistent.",
         "sourceReferences": [
@@ -2105,7 +2139,7 @@
     },
     {
       "id": "metabase-removed-parameter-click-mapping",
-      "explanation": "Removing a filter leaves a stale custom click action.",
+      "explanation": "Deleting a dashboard filter leaves card click actions pointing to the removed target. After save and reload, the click-behavior editor still claims the column updates a filter, while clicking neither filters the dashboard nor opens the standard drill menu.",
       "rootCause": {
         "explanation": "removeParameter removes dashboard/card parameter mappings but does not remove references to that parameter in visualization_settings.click_behavior, so clicks target a nonexistent filter.",
         "sourceReferences": [
@@ -2147,7 +2181,7 @@
     },
     {
       "id": "metabase-copy-cleared-description",
-      "explanation": "Clearing description in dashboard duplication restores source description.",
+      "explanation": "Clearing Description during dashboard duplication restores the source description in the copy.",
       "rootCause": {
         "explanation": "The copy endpoint uses (or description (:description existing-dashboard)); the cleared form normalizes to nil, which is treated as an absent override and replaced with source description.",
         "sourceReferences": [
@@ -2188,7 +2222,7 @@
     },
     {
       "id": "metabase-filter-whitespace-label",
-      "explanation": "Dashboard filters accept whitespace-only labels.",
+      "explanation": "Whitespace-only filter labels save as unnamed dashboard controls.",
       "rootCause": {
         "explanation": "parameters/utils/dashboards.setParameterName spreads the parameter and assigns name:name plus slugify(name) without trimming or rejecting blank-after-trim names. Whitespace labels persist while their slug can be empty.",
         "sourceReferences": [
@@ -2228,7 +2262,7 @@
     },
     {
       "id": "metabase-tab-duplicate-missing-card-data",
-      "explanation": "Duplicating a tab can throw while copying an unfetched card result.",
+      "explanation": "Duplicating a dashboard tab can silently do nothing when one of its cards has no fetched result, leaving no copy or explanation.",
       "rootCause": {
         "explanation": "duplicateTab indexes state.dashcardData[sourceDashCard.id][sourceDashCard.card_id] without optional chaining; a tab with a nonvirtual card whose data was not loaded causes the reducer to throw instead of duplicating.",
         "sourceReferences": [
@@ -2267,7 +2301,7 @@
     },
     {
       "id": "metabase-trendline-regression-domain",
-      "explanation": "Trend line fits transformed/indexed coordinates incorrectly.",
+      "explanation": "A chart trend line is calculated on the wrong coordinates and appears far from the plotted series instead of fitting the visible values.",
       "rootCause": {
         "explanation": "Regression fitting and chart-axis/date transformation do not use the same x coordinate origin/scale, so the computed line is displaced from the plotted time series.",
         "sourceReferences": [
@@ -2306,7 +2340,7 @@
     },
     {
       "id": "metabase-card-filter-checkbox-events",
-      "explanation": "Card-local filter checkbox clicks fail to update draft selection.",
+      "explanation": "In a dashboard card's filter dropdown, clicking an available value checkbox does not select it, leaving Update filter disabled and preventing the value from being applied.",
       "rootCause": {
         "explanation": "Inline parameter dropdown selection is intercepted by the surrounding dashcard/edit interaction layer before the widget selection update takes effect.",
         "sourceReferences": [
@@ -2346,7 +2380,7 @@
     },
     {
       "id": "metabase-nested-pie-parent-click",
-      "explanation": "Inner pie-ring clicks filter the first child instead of the parent group.",
+      "explanation": "Clicking a parent group on the inner ring of a nested pie chart applies the first child category’s filter instead of the selected parent group.",
       "rootCause": {
         "explanation": "The pie click event maps the aggregate parent node to one representative leaf row, losing the full parent grouping context and producing the first child category filter.",
         "sourceReferences": [
@@ -2387,7 +2421,7 @@
     },
     {
       "id": "metabase-row-log-zero-minimum",
-      "explanation": "Row charts allow logarithmic scale with invalid zero minimum.",
+      "explanation": "Selecting Log scale with the default manual minimum0 makes the Row chart disappear without validation.",
       "rootCause": {
         "explanation": "The chart settings accept manual minimum zero while log scale is selected and do not validate the logarithmic domain before rendering, leaving an empty chart.",
         "sourceReferences": [
@@ -2427,7 +2461,7 @@
     },
     {
       "id": "metabase-relative-date-numeric-validation",
-      "explanation": "Relative-date offsets accept unsupported fractions or reject zero.",
+      "explanation": "Relative dashboard date offsets accept unsupported fractional values that break card queries, while changing a valid offset to zero can leave the old filter applied despite the updated preview.",
       "rootCause": {
         "explanation": "The shared relative-date numeric controls/parser assume positive integers but do not validate/canonicalize typed fractions and zero consistently with preview/query serialization.",
         "sourceReferences": [
@@ -2487,7 +2521,7 @@
     },
     {
       "id": "metabase-multiseries-hide-empty",
-      "explanation": "Hide empty checks only the primary card result.",
+      "explanation": "Hide-empty setting hides a multi-series card even when its added question has plotted results.",
       "rootCause": {
         "explanation": "The approximate public source shouldHideCard already calls hasRows(dashcardData), which scans all query results, rather than checking just the main card. The report therefore requires tracing which series were present in the runtime dashcardData map or examining the actual build; a blanket main-card-only predicate is contradicted by this source.",
         "sourceReferences": [
@@ -2526,7 +2560,7 @@
     },
     {
       "id": "metabase-parameter-type-applied-state",
-      "explanation": "Changing parameter operator/type retains incompatible applied values.",
+      "explanation": "Changing a dashboard filter’s operator or type retains incompatible remembered values instead of its new default; the displayed chip and picker disagree, and mapped cards can fail to query.",
       "rootCause": {
         "explanation": "setParameterType resets mappings and changes the parameter definition via setParamType/restoreValueConfigIfNeeded, but never dispatches a corresponding conversion/reset of the existing parameterValues. A prior Quarter/range value can therefore remain applied under a new parameter type/operator.",
         "sourceReferences": [
@@ -2585,24 +2619,31 @@
       ]
     },
     {
-      "id": "metabase-search-relative-preview-boundary",
-      "explanation": "Search relative-date preview disagrees with applied boundary.",
+      "id": "metabase-search-date-ranges-server-timezone",
+      "explanation": "Search Creation date and Last edit filters can include or exclude recently created items on the wrong calendar day near midnight: browser-local fixed-date choices or relative-date previews disagree with the server-clock search boundary.",
       "rootCause": {
-        "explanation": "Relative search date preview derives a browser-local absolute date while the server query normalizes the serialized relative interval using a different day/timezone or endpoint boundary.",
+        "explanation": "Search date-range-filter-clause calls date-string->range without a viewer timezone. Relative decoding obtains t/local-date-time on the server, while the search comparison casts stored timestamps to date; browser-local date picks and previews therefore need not describe the same day near a timezone boundary. Exact fixture timezone configuration remains a prerequisite of each report.",
         "sourceReferences": [
           {
             "repository": "metabase/metabase",
             "revision": "f42632893810325d9f74375a4cd29bd31d8daefa",
-            "path": "frontend/src/metabase/search/components/SearchFilterDatePicker/SearchFilterDatePicker.tsx",
-            "line": 17,
-            "url": "https://github.com/metabase/metabase/blob/f42632893810325d9f74375a4cd29bd31d8daefa/frontend/src/metabase/search/components/SearchFilterDatePicker/SearchFilterDatePicker.tsx#L17"
+            "path": "src/metabase/search/filter.clj",
+            "line": 69,
+            "url": "https://github.com/metabase/metabase/blob/f42632893810325d9f74375a4cd29bd31d8daefa/src/metabase/search/filter.clj#L69"
+          },
+          {
+            "repository": "metabase/metabase",
+            "revision": "f42632893810325d9f74375a4cd29bd31d8daefa",
+            "path": "src/metabase/query_processor/parameters/dates.clj",
+            "line": 454,
+            "url": "https://github.com/metabase/metabase/blob/f42632893810325d9f74375a4cd29bd31d8daefa/src/metabase/query_processor/parameters/dates.clj#L454"
           }
         ],
         "analysisStatus": "inferred"
       },
       "reproductionPaths": [
         {
-          "id": "metabase-search-relative-preview-boundary-dashboards-path-1",
+          "id": "metabase-search-date-ranges-server-timezone-dashboards-path-1",
           "explanation": "Dashboard search relative-date preview advertises Oct 24, but applying it excludes dashboards returned for that fixed date.",
           "sourceBugs": [
             {
@@ -2626,7 +2667,7 @@
     },
     {
       "id": "metabase-card-copy-parameter-mappings",
-      "explanation": "Duplicating dashboard cards leaves incorrect filter mappings/ownership.",
+      "explanation": "Copying a dashboard card or tab fails to give the copied card correct filter mappings: it can show unfiltered data or claim its filter is on another tab even when the copied filter is visible on the same tab.",
       "rootCause": {
         "explanation": "duplicateCard changes dashcard ID and duplicates inline parameter IDs, but not every associated parameter/card ownership reference is remapped consistently, causing a lost dashboard filter connection or an own-card parameter classified as another tab.",
         "sourceReferences": [
@@ -2687,7 +2728,7 @@
     },
     {
       "id": "metabase-restricted-link-save-roundtrip",
-      "explanation": "Saving an unrelated dashboard edit overwrites inaccessible private-link metadata.",
+      "explanation": "Member saving an unrelated text edit makes a private-dashboard link show permission denied even to its owner.",
       "rootCause": {
         "explanation": "A reader without access sees redacted link entity metadata; dashboard save serializes that redacted representation over the stored link, so the original private destination becomes inaccessible even to its owner.",
         "sourceReferences": [
@@ -2727,7 +2768,7 @@
     },
     {
       "id": "metabase-combined-series-click-parameter",
-      "explanation": "Combined-series clicks lose the mapped category value.",
+      "explanation": "Dashboard destination accepts Product Category mapping on combined-series chart but click clears the category filter.",
       "rootCause": {
         "explanation": "ClickMappings resolves the destination parameter against untransformed source column names, while combined-series chart clicks expose remapped column IDs, leaving the mapped value undefined and clearing the filter.",
         "sourceReferences": [
@@ -2766,7 +2807,7 @@
     },
     {
       "id": "metabase-xray-aggregation-context",
-      "explanation": "Aggregate X-ray links omit needed grouping/filter context.",
+      "explanation": "Opening Automatic insights → X-ray from an aggregated dashboard revenue/orders result produces an empty dashboard instead of insights for the selected aggregate.",
       "rootCause": {
         "explanation": "Automatic insights builds X-ray query context from the clicked aggregation without retaining all temporal grouping and parameter constraints, yielding an empty analysis query.",
         "sourceReferences": [
@@ -2805,7 +2846,7 @@
     },
     {
       "id": "metabase-xray-state-filter-scope",
-      "explanation": "State X-ray charts omit the selected state predicate.",
+      "explanation": "South Dakota X-ray says State is SD but includes revenue from other states.",
       "rootCause": {
         "explanation": "X-ray card generation does not consistently propagate the source State=SD filter to every generated revenue query, while the dashboard description still reflects the selected state.",
         "sourceReferences": [
@@ -2845,7 +2886,7 @@
     },
     {
       "id": "metabase-map-state-zoom-geometry",
-      "explanation": "State zoom chooses a map without compatible geospatial columns.",
+      "explanation": "Revenue by state “Zoom in: State” opens an unusable map with geospatial-column guidance.",
       "rootCause": {
         "explanation": "The map zoom drill generates a new map query/display without ensuring the breakout provides the geospatial columns required by the target map mode.",
         "sourceReferences": [
@@ -2884,7 +2925,7 @@
     },
     {
       "id": "metabase-compact-currency-style",
-      "explanation": "Compact number setting resets currency Name style.",
+      "explanation": "Scalar Compact number changes selected currency Name label back to Symbol.",
       "rootCause": {
         "explanation": "Scalar number formatting applies compact defaults by rewriting currency_style to symbol, overriding the independently selected Name setting.",
         "sourceReferences": [
@@ -2924,7 +2965,7 @@
     },
     {
       "id": "metabase-markdown-url-parameter-encoding",
-      "explanation": "Filter values with spaces break Markdown links.",
+      "explanation": "Text-card Markdown link becomes raw, non-clickable syntax when mapped filter value contains spaces.",
       "rootCause": {
         "explanation": "fillParametersInText supports urlEncode but defaults it to false. Text calls it with escapeMarkdown:true and never enables urlEncode, so spaces in substituted filter values remain literal spaces in Markdown destinations and invalidate the link syntax.",
         "sourceReferences": [
@@ -2964,7 +3005,7 @@
     },
     {
       "id": "metabase-tab-history-forward-overwrite",
-      "explanation": "Changing filters destroys browser Forward tab history.",
+      "explanation": "After switching dashboard tabs, using browser Back, and changing a filter on the restored tab, browser Forward fails to restore the subsequently visited tab and its filter state.",
       "rootCause": {
         "explanation": "useDashboardUrlQuery listens to browser navigation and dispatches selectTab when the URL tab changes. A separate effect treats the resulting queryParams.tab change as a new user tab change and dispatches push, creating a new entry after Back and clearing the previous Forward history.",
         "sourceReferences": [
@@ -3004,7 +3045,7 @@
     },
     {
       "id": "metabase-parameter-widget-style-restore",
-      "explanation": "Changing filter operator overwrites an unsaved widget-style edit.",
+      "explanation": "While configuring a dashboard filter, choosing a new widget style and then changing its operator restores the previously saved style. For example, changing Is to Is not immediately replaces an unsaved Search box choice with Input box.",
       "rootCause": {
         "explanation": "restoreParameterMappingsIfNeeded replaces the edited parameter with parameterToRestore from dashboardBeforeEditing via setParamType. That full prior object includes the old widget settings, overwriting a widget-style change made earlier in the current unsaved edit.",
         "sourceReferences": [
@@ -3044,7 +3085,7 @@
     },
     {
       "id": "metabase-sql-like-wildcard-escaping",
-      "explanation": "Text prefix filters treat literal percent as SQL wildcard.",
+      "explanation": "Text Contains, Does not contain, Starts with or Ends with filters interpret literal %, _ or backslash as SQL LIKE pattern syntax, returning rows that disagree with the entered text match.",
       "rootCause": {
         "explanation": "SQL starts-with/contains/ends-with generate LIKE patterns by concatenating user values with wildcards without escaping literal %/_ or backslashes. This shared compiler serves notebook text filters and SQL field-filter operators, so literal-percent matching becomes wildcard matching.",
         "sourceReferences": [
@@ -3098,7 +3139,7 @@
     },
     {
       "id": "metabase-scatter-click-destination",
-      "explanation": "Scatter points do not invoke custom URL destinations.",
+      "explanation": "A scatter chart accepts and saves a custom URL click destination, but clicking its plotted points does not open that destination.",
       "rootCause": {
         "explanation": "The scatter renderer/settings permit saved click behavior but the point event path does not produce or dispatch the custom destination click context consistently.",
         "sourceReferences": [
@@ -3138,7 +3179,7 @@
     },
     {
       "id": "metabase-custom-url-dialog-partial-save",
-      "explanation": "Closing custom URL dialog retains edited link text but discards URL.",
+      "explanation": "Closing the custom URL dialog with X keeps edited link text but discards the edited URL.",
       "rootCause": {
         "explanation": "CustomURLPicker keeps url in local state until Done/handleSubmit, but passes updateSettings directly to CustomLinkText. Link text is therefore committed immediately while the URL remains an uncommitted local draft.",
         "sourceReferences": [
@@ -3181,7 +3222,7 @@
     },
     {
       "id": "metabase-tab-query-disables-last-used-filters",
-      "explanation": "A dashboard tab URL overwrites remembered filter values.",
+      "explanation": "Opening a dashboard via a tab URL (?tab=...) discards and overwrites the user's last-used filter values.",
       "rootCause": {
         "explanation": "getParameterValueFromQueryParams uses Object.keys(params).length > 0 to decide whether URL parameters exist. A tab query alone makes hasQueryParams true, so every absent filter falls back to its default instead of lastUsedValues.",
         "sourceReferences": [
@@ -3220,24 +3261,24 @@
       ]
     },
     {
-      "id": "metabase-relative-date-preview-input-state",
-      "explanation": "Relative-date preview and applied interval diverge after blur.",
+      "id": "metabase-relative-interval-display-state-diverges",
+      "explanation": "Typing a fractional relative-date interval such as 0.5 and blurring can leave the numeric input showing 1 while the preview and applied filter use 5 units.",
       "rootCause": {
-        "explanation": "The numeric input fallback/normalization changes its displayed value on blur while preview or applied relative-date serialization retains the earlier raw value, causing inconsistent intervals.",
+        "explanation": "DateIntervalPicker uses NumberInputWithFallbackValue with decimal entry disabled. The component keeps a display string separately from the parent interval; transient fractional text followed by fallback-on-blur can leave displayed and applied numbers inconsistent. The precise fixture transaction ordering is inferred, rather than runtime-verified.",
         "sourceReferences": [
           {
             "repository": "metabase/metabase",
             "revision": "f42632893810325d9f74375a4cd29bd31d8daefa",
-            "path": "frontend/src/metabase/querying/filters/components/DatePicker/NumberInputWithFallbackValue/NumberInputWithFallbackValue.tsx",
-            "line": 6,
-            "url": "https://github.com/metabase/metabase/blob/f42632893810325d9f74375a4cd29bd31d8daefa/frontend/src/metabase/querying/filters/components/DatePicker/NumberInputWithFallbackValue/NumberInputWithFallbackValue.tsx#L6"
+            "path": "frontend/src/metabase/querying/filters/components/DatePicker/RelativeDatePicker/DateIntervalPicker/DateIntervalPicker.tsx",
+            "line": 75,
+            "url": "https://github.com/metabase/metabase/blob/f42632893810325d9f74375a4cd29bd31d8daefa/frontend/src/metabase/querying/filters/components/DatePicker/RelativeDatePicker/DateIntervalPicker/DateIntervalPicker.tsx#L75"
           }
         ],
         "analysisStatus": "inferred"
       },
       "reproductionPaths": [
         {
-          "id": "metabase-relative-date-preview-input-state-dashboards-path-1",
+          "id": "metabase-relative-interval-display-state-diverges-dashboards-path-1",
           "explanation": "Relative date preview disagrees with interval after blur.",
           "sourceBugs": [
             {
@@ -3261,7 +3302,7 @@
     },
     {
       "id": "metabase-dashboard-save-remembered-filters",
-      "explanation": "Saving dashboard metadata restores stale remembered filter values.",
+      "explanation": "After any edit-mode Save, the dashboard reloads without the URL's filter values and rebuilds them from last-used values, so filters wired only to text or heading cards lose their value and other filters can revert to older remembered values.",
       "rootCause": {
         "explanation": "After saving, updateDashboard calls fetchDashboard with queryParams:null and options.preserveParameters:false to clear editing state. This deliberately discards current parameter state and reinitializes from default/last-used values; the source comment documents a related race on slow networks.",
         "sourceReferences": [
@@ -3302,7 +3343,7 @@
     },
     {
       "id": "metabase-dashboard-move-last-editor-cache",
-      "explanation": "Dashboard move leaves last-editor metadata stale.",
+      "explanation": "Moving a dashboard to another collection leaves its last-editor information unchanged until the dashboard is refreshed.",
       "rootCause": {
         "explanation": "The move mutation updates collection_id while the mounted dashboard info retains the old last_edit_info object; its cache is not refreshed from the server until reload.",
         "sourceReferences": [
@@ -3342,7 +3383,7 @@
     },
     {
       "id": "metabase-numeric-custom-label-roundtrip",
-      "explanation": "Numeric custom labels disappear and duplicate after reload.",
+      "explanation": "After numeric dashboard-filter selections are reloaded, their custom labels disappear and the option list can show duplicate entries for the same values.",
       "rootCause": {
         "explanation": "Parameter URL/selection parsing coerces numeric raw values while custom-list options retain another raw value type; strict option matching fails, creating raw-value duplicates without the saved labels.",
         "sourceReferences": [
@@ -3382,7 +3423,7 @@
     },
     {
       "id": "metabase-dashboard-edit-hotkey-discards",
-      "explanation": "Pressing e while editing silently exits and discards the draft.",
+      "explanation": "Pressing 'e' in dashboard edit mode exits and silently discards all unsaved changes.",
       "rootCause": {
         "explanation": "The dashboard keyboard shortcut toggles edit state regardless of isEditing/dirty state, invoking the cancel/discard path without a confirmation.",
         "sourceReferences": [
@@ -3423,7 +3464,7 @@
     },
     {
       "id": "metabase-comparison-undefined-unit",
-      "explanation": "Comparison labels display undefined after filtering.",
+      "explanation": "Filtering a dashboard card can make its comparison label display a number followed by “undefined” instead of the comparison time unit.",
       "rootCause": {
         "explanation": "Comparison period label generation indexes an unavailable temporal unit/period descriptor after filtered series normalization, interpolating undefined rather than a valid unit label.",
         "sourceReferences": [
