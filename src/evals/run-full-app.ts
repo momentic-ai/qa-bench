@@ -7,7 +7,6 @@ import {
   FullAppOptions,
 } from "../tasks/full-app/options";
 import { EvalAgentDefinition, MoEffort } from "./agent";
-import { basicBugbashBrief } from "./basic-brief";
 import { bugbashBrief } from "./bugbash-brief";
 import { selectComparisonFixtures } from "./fixture-selection";
 import { writeJson } from "./json-file";
@@ -160,17 +159,16 @@ async function runFixture({
     );
     const run = await runAgent({
       agent,
-      message:
+      message: bugbashBrief(
+        url,
+        timeLimitMs,
+        fixture,
         agentName === "mo"
-          ? bugbashBrief(url, stopAfterMs, fixture)
-          : basicBugbashBrief(
-              url,
-              stopAfterMs,
-              fixture,
-              agentName?.endsWith("-agent-browser")
-                ? "agent-browser"
-                : "Playwright MCP",
-            ),
+          ? undefined
+          : agentName?.endsWith("-agent-browser")
+            ? "agent-browser"
+            : "Playwright MCP",
+      ),
       timeLimitMs: stopAfterMs,
       signal: resources.signal,
     });
