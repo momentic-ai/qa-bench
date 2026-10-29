@@ -162,7 +162,7 @@
     },
     {
       "id": "twenty-record-pages-activities-opening-a-new-note-immediately-after-typing-permanently-loses-its-body",
-      "explanation": "The note side panel does not flush pending body edits when Open navigates to the full record. Reproduced twice; waiting before Open preserves the content.",
+      "explanation": "Pending Note or Task body edits are silently lost when the rich-text editor unmounts before its save delay, including opening the full record or leaving the body tab. Waiting for autosave preserves the same text.",
       "rootCause": {
         "explanation": "RichTextFieldEditor debounces document handling by 500ms and persistence by a further 300ms. It does not flush these callbacks on unmount, so opening another record or switching away from the body tab can discard the pending document before it reaches the server.",
         "sourceReferences": [
@@ -239,7 +239,7 @@
     },
     {
       "id": "twenty-record-pages-activities-escape-commits-annual-revenue-edit-instead-of-cancelling-it",
-      "explanation": "Pressing Escape in an Annual Revenue editor commits the pending amount instead of preserving the previously saved value.",
+      "explanation": "Pressing Escape in record detail Currency or Address editors commits the pending draft instead of cancelling it and preserving the saved value.",
       "rootCause": {
         "explanation": "FieldWidgetInputContextProvider implements Escape by persisting the supplied newValue and then closing the editor, the same sequence as Enter. Currency and Address editors supply their pending drafts, so Escape commits instead of discarding them.",
         "sourceReferences": [
@@ -568,12 +568,17 @@
       "reproductionPaths": [
         {
           "id": "twenty-record-pages-activities-note-body-preview-drops-later-inline-text-fragments-within-one-paragraph-record-pages-activities-path-1",
-          "explanation": "The Note Body field and list preview hide later text runs in the same paragraph even though the saved body is complete.",
+          "explanation": "Preview a saved Note paragraph containing multiple inline text runs, including formatting or link nodes; only the first text fragment is shown although the saved paragraph is complete.",
           "sourceBugs": [
             {
               "index": 40,
               "id": "workflows-pass3-f6009d0c",
               "name": "Note Body preview drops later inline text fragments within one paragraph"
+            },
+            {
+              "index": 50,
+              "id": "record-pages-activities-loop-330e1500",
+              "name": "Linking Note text makes its Body preview omit that text"
             }
           ],
           "expected": "Formatting a word or inserting a workflow variable within a single paragraph should not remove the remaining inline text from its Body preview.",
@@ -594,39 +599,7 @@
                 "No mobile/tablet/other-role scope established.",
                 "Latest runtime untested."
               ]
-            }
-          ],
-          "sourceConstraints": [
-            {
-              "sourceBugIndex": 40,
-              "constraints": {
-                "matchingGuidance": "Covers Note Body field/list previews returning only the first text run of a single paragraph, including formatting and workflow variable/literal combinations in either order. Saved rich-text and markdown remain complete. Excludes saved-body loss, search indexing, intentional multiline preview truncation and untested Task-row behavior."
-              }
-            }
-          ]
-        },
-        {
-          "id": "twenty-record-pages-activities-note-body-preview-drops-later-inline-text-fragments-within-one-paragraph-record-pages-activities-path-2",
-          "explanation": "After the only paragraph in a Note becomes a hyperlink, its editor still shows the text but the saved Fields Body preview becomes blank after reload. Plain text remains visible; a partially linked paragraph omits its linked fragment.",
-          "sourceBugs": [
-            {
-              "index": 50,
-              "id": "record-pages-activities-loop-330e1500",
-              "name": "Linking Note text makes its Body preview omit that text"
-            }
-          ],
-          "expected": "Applying a supported hyperlink should preserve the linked text in the plain-text Body preview.",
-          "actual": "After the only paragraph in a Note becomes a hyperlink, its editor still shows the text but the saved Fields Body preview becomes blank after reload. Plain text remains visible; a partially linked paragraph omits its linked fragment.",
-          "reproSteps": [
-            "Create a fresh Note with a plain paragraph and confirm its Body preview.",
-            "Select the paragraph and create a hyperlink, save and reload.",
-            "Compare the visible editor text with the blank Fields Body preview; repeat on a separate Note and retain a plain-text control."
-          ],
-          "severity": 1,
-          "matchingGuidance": {
-            "distinction": "Match this entry’s stated entry point, trigger and visible failure. Shared source mechanisms alone do not establish broader caller or operation coverage."
-          },
-          "evidenceLimitations": [
+            },
             {
               "sourceBugIndex": 50,
               "limitations": [
@@ -639,12 +612,92 @@
           ],
           "sourceConstraints": [
             {
+              "sourceBugIndex": 40,
+              "constraints": {
+                "matchingGuidance": "Covers Note Body field/list previews returning only the first text run of a single paragraph, including formatting and workflow variable/literal combinations in either order. Saved rich-text and markdown remain complete. Excludes saved-body loss, search indexing, intentional multiline preview truncation and untested Task-row behavior."
+              }
+            },
+            {
               "sourceBugIndex": 50,
               "constraints": {
                 "matchingGuidance": {
                   "distinction": "Match this entry’s stated entry point, trigger and visible failure. Shared source mechanisms alone do not establish broader caller or operation coverage."
                 }
               }
+            }
+          ],
+          "sourceReproductions": [
+            {
+              "sourceBugIndices": [
+                40
+              ],
+              "explanation": "The Note Body field and list preview hide later text runs in the same paragraph even though the saved body is complete.",
+              "expected": "Formatting a word or inserting a workflow variable within a single paragraph should not remove the remaining inline text from its Body preview.",
+              "actual": "A paragraph such as Alpha plain, bold BoldMiddle, and omega tail previews only Alpha plain in Fields Body and the list Body cell. The Note editor and saved content retain the full paragraph. Single-run plain text previews correctly.",
+              "reproSteps": [
+                "Create a fresh Note with one paragraph containing plain text, a bold middle word, and a plain-text suffix. Save and reload.",
+                "Compare its Note editor with Fields > Body and the table Body cell. Observe that only the first inline text fragment appears in the previews.",
+                "Compare a fresh Note with the same content as one plain-text run; its preview includes the complete line.",
+                "A workflow Create Record or Create or Update Record Body containing a variable and adjacent literal text also creates multiple inline fragments and reproduces the same preview omission."
+              ],
+              "severity": 1,
+              "matchingGuidance": "Covers Note Body field/list previews returning only the first text run of a single paragraph, including formatting and workflow variable/literal combinations in either order. Saved rich-text and markdown remain complete. Excludes saved-body loss, search indexing, intentional multiline preview truncation and untested Task-row behavior.",
+              "evidenceLimitations": [
+                {
+                  "sourceBugIndex": 40,
+                  "limitations": [
+                    "Saved data is complete; no Note body loss or workflow execution failure observed.",
+                    "No mobile/tablet/other-role scope established.",
+                    "Latest runtime untested."
+                  ]
+                }
+              ],
+              "sourceConstraints": [
+                {
+                  "sourceBugIndex": 40,
+                  "constraints": {
+                    "matchingGuidance": "Covers Note Body field/list previews returning only the first text run of a single paragraph, including formatting and workflow variable/literal combinations in either order. Saved rich-text and markdown remain complete. Excludes saved-body loss, search indexing, intentional multiline preview truncation and untested Task-row behavior."
+                  }
+                }
+              ]
+            },
+            {
+              "sourceBugIndices": [
+                50
+              ],
+              "explanation": "After the only paragraph in a Note becomes a hyperlink, its editor still shows the text but the saved Fields Body preview becomes blank after reload. Plain text remains visible; a partially linked paragraph omits its linked fragment.",
+              "expected": "Applying a supported hyperlink should preserve the linked text in the plain-text Body preview.",
+              "actual": "After the only paragraph in a Note becomes a hyperlink, its editor still shows the text but the saved Fields Body preview becomes blank after reload. Plain text remains visible; a partially linked paragraph omits its linked fragment.",
+              "reproSteps": [
+                "Create a fresh Note with a plain paragraph and confirm its Body preview.",
+                "Select the paragraph and create a hyperlink, save and reload.",
+                "Compare the visible editor text with the blank Fields Body preview; repeat on a separate Note and retain a plain-text control."
+              ],
+              "severity": 1,
+              "matchingGuidance": {
+                "distinction": "Match this entry’s stated entry point, trigger and visible failure. Shared source mechanisms alone do not establish broader caller or operation coverage."
+              },
+              "evidenceLimitations": [
+                {
+                  "sourceBugIndex": 50,
+                  "limitations": [
+                    "Linked text remains stored and visible in the editor; this is preview omission, not body data loss.",
+                    "The full-link and partial-link cases differ from truncating a later plain-text run.",
+                    "Tasks, other rich-text consumers and newer runtime are unverified; the newer editor rewrite is not a verified targeted fix.",
+                    "Approved under the requested Codex-only policy; independent Claude agreement is not claimed."
+                  ]
+                }
+              ],
+              "sourceConstraints": [
+                {
+                  "sourceBugIndex": 50,
+                  "constraints": {
+                    "matchingGuidance": {
+                      "distinction": "Match this entry’s stated entry point, trigger and visible failure. Shared source mechanisms alone do not establish broader caller or operation coverage."
+                    }
+                  }
+                }
+              ]
             }
           ]
         }
@@ -1248,7 +1301,7 @@
     },
     {
       "id": "twenty-record-pages-activities-slash-command-selection-leaves-a-literal-slash-in-note-content",
-      "explanation": "Selecting a block type from the rich-text slash menu retains the command-trigger slash and places the cursor before it. Reported variant (mo-30m-twenty-4): Selecting Heading 1 in a new dashboard’s Rich Text widget formats the text but leaves the slash command trigger visible at the end of the heading, including after saving and leaving edit mode. Count this as the same reference rather than a separate bug.",
+      "explanation": "Choosing an item from the rich-text slash menu can leave the command-trigger slash in saved content, including Note editing and dashboard Rich Text widgets.",
       "rootCause": {
         "explanation": "The custom File slash command inserts a file before the cursor block without removing the slash-trigger text from that block. Unlike the standard slash insertion helper, this custom insertion leaves the original slash paragraph intact.",
         "sourceReferences": [
@@ -1345,7 +1398,7 @@
     },
     {
       "id": "twenty-record-pages-activities-opportunity-timeline-activity-descriptions-are-clipped-without-a-reveal-option-at-",
-      "explanation": "At 390×844, the new opportunity’s Timeline update and creation descriptions are visibly cut off at the right edge, and scrolling or tapping does not reveal their remaining text.",
+      "explanation": "On narrow Opportunity record pages, Timeline creation and field-update descriptions are clipped at the right edge with no usable way to reveal the remainder.",
       "rootCause": {
         "explanation": "Timeline field-diff values are constrained to a 24px single-line overflow-hidden container. On narrow Opportunity records the content is clipped without an expansion or tooltip on the full diff description.",
         "sourceReferences": [
@@ -2501,10 +2554,10 @@
       ]
     },
     {
-      "id": "twenty-record-pages-activities-invalid-saved-domain-edits-stay-open-without-any-validation-explanation",
-      "explanation": "Explicitly saving an invalid edit to a saved Company Domain is refused without a validation explanation, toast or inline message.",
+      "id": "twenty-multi-value-field-rejection-has-no-explanation",
+      "explanation": "Explicitly saving an invalid Domain, Linkedin, Email or Phone edit leaves the record-field editor open and preserves the previous value without explaining why the change was rejected. Existing items can also suppress the error outline, leaving no useful validation feedback.",
       "rootCause": {
-        "explanation": "Validation uses an empty errorMessage and omits the explanatory error prop; outer red error state is also suppressed when saved items exist. The missing text is source-confirmed, while the requirement to explain refused edits is the human-approved UI contract.",
+        "explanation": "LinksFieldInput, EmailsFieldInput and PhonesFieldInput supply validation failures with empty errorMessage values. MultiItemFieldInput rejects the draft in its shared Enter/save path without forwarding a useful explanatory message to MultiItemBaseInput, whose message renders only for nonempty text. The shared rejection boundary therefore suppresses validation feedback across these field types.",
         "sourceReferences": [
           {
             "repository": "twentyhq/twenty",
@@ -2575,13 +2628,48 @@
             "path": "packages/twenty-front/src/modules/object-record/record-inline-cell/components/RecordInlineCellEditMode.tsx",
             "line": 98,
             "url": "https://github.com/twentyhq/twenty/blob/35c645064f72bc4e3180a2c6c506cbbfee170007/packages/twenty-front/src/modules/object-record/record-inline-cell/components/RecordInlineCellEditMode.tsx#L98-L105"
+          },
+          {
+            "repository": "twentyhq/twenty",
+            "revision": "35c645064f72bc4e3180a2c6c506cbbfee170007",
+            "path": "packages/twenty-front/src/modules/object-record/record-field/ui/meta-types/input/components/EmailsFieldInput.tsx",
+            "line": 58,
+            "url": "https://github.com/twentyhq/twenty/blob/35c645064f72bc4e3180a2c6c506cbbfee170007/packages/twenty-front/src/modules/object-record/record-field/ui/meta-types/input/components/EmailsFieldInput.tsx#L58-L76"
+          },
+          {
+            "repository": "twentyhq/twenty",
+            "revision": "35c645064f72bc4e3180a2c6c506cbbfee170007",
+            "path": "packages/twenty-front/src/modules/object-record/record-field/ui/meta-types/input/components/MultiItemFieldInput.tsx",
+            "line": 344,
+            "url": "https://github.com/twentyhq/twenty/blob/35c645064f72bc4e3180a2c6c506cbbfee170007/packages/twenty-front/src/modules/object-record/record-field/ui/meta-types/input/components/MultiItemFieldInput.tsx#L344-L367"
+          },
+          {
+            "repository": "twentyhq/twenty",
+            "revision": "35c645064f72bc4e3180a2c6c506cbbfee170007",
+            "path": "packages/twenty-front/src/modules/object-record/record-field/ui/validation-schemas/phoneSchema.ts",
+            "line": 4,
+            "url": "https://github.com/twentyhq/twenty/blob/35c645064f72bc4e3180a2c6c506cbbfee170007/packages/twenty-front/src/modules/object-record/record-field/ui/validation-schemas/phoneSchema.ts#L4-L11"
+          },
+          {
+            "repository": "twentyhq/twenty",
+            "revision": "35c645064f72bc4e3180a2c6c506cbbfee170007",
+            "path": "packages/twenty-front/src/modules/object-record/record-field/ui/meta-types/input/components/PhonesFieldInput.tsx",
+            "line": 120,
+            "url": "https://github.com/twentyhq/twenty/blob/35c645064f72bc4e3180a2c6c506cbbfee170007/packages/twenty-front/src/modules/object-record/record-field/ui/meta-types/input/components/PhonesFieldInput.tsx#L120-L134"
+          },
+          {
+            "repository": "twentyhq/twenty",
+            "revision": "35c645064f72bc4e3180a2c6c506cbbfee170007",
+            "path": "packages/twenty-front/src/modules/object-record/record-field/ui/meta-types/input/components/PhonesFieldInput.tsx",
+            "line": 30,
+            "url": "https://github.com/twentyhq/twenty/blob/35c645064f72bc4e3180a2c6c506cbbfee170007/packages/twenty-front/src/modules/object-record/record-field/ui/meta-types/input/components/PhonesFieldInput.tsx#L30-L43"
           }
         ],
         "analysisStatus": "source-supported"
       },
       "reproductionPaths": [
         {
-          "id": "twenty-record-pages-activities-invalid-saved-domain-edits-stay-open-without-any-validation-explanation-record-pages-activities-path-1",
+          "id": "twenty-multi-value-field-rejection-has-no-explanation-record-pages-activities-path-1",
           "explanation": "Explicitly saving an invalid edit to a saved Company Domain is refused without a validation explanation, toast or inline message.",
           "sourceBugs": [
             {
@@ -2621,6 +2709,135 @@
                 "matchingGuidance": {
                   "distinctFromNegativeReference": "record-pages-activities-invalid-domain-email-outline-only",
                   "distinction": "The older negative concerns a required red outline specifically. This positive covers absence of any explanation after explicit invalid Domain save. A report proving missing explanatory feedback matches this positive even when it also mentions the outline. Intended invalid-value rejection, blocked invalid persistence and outline-only presentation are not themselves accepted defects."
+                }
+              }
+            }
+          ]
+        },
+        {
+          "id": "twenty-multi-value-field-rejection-has-no-explanation-record-pages-activities-path-2",
+          "explanation": "Explicitly saving an invalid Email leaves the editor open without explaining why the edit was rejected.",
+          "sourceBugs": [
+            {
+              "index": 38,
+              "id": "record-pages-activities-pass3-8be7e9fe",
+              "name": "Rejected Email edits provide no explanatory validation feedback"
+            }
+          ],
+          "expected": "An invalid Email edit rejected after Enter or the save checkmark should display an explanatory validation message.",
+          "actual": "After editing a saved valid email to not-an-email and pressing Enter or the checkmark, the editor remains open without a message or toast. The previously saved valid email remains intact; valid corrections save normally.",
+          "reproSteps": [
+            "Create a Person with a valid saved email and reopen its Email editor.",
+            "Replace the email with not-an-email and press Enter or the save checkmark.",
+            "Observe that the editor remains open without an explanatory validation message.",
+            "Correct it to another valid email and verify that saving closes the editor and persists after reload."
+          ],
+          "severity": 1,
+          "matchingGuidance": "Related to the Company Domain validation-feedback entry record-pages-activities-pass2-7de91897, but covers the Email field and its validator. Invalid values are correctly rejected: do not match a claim that invalid emails were saved, valid edits failed, or saved data was lost. No particular outline color is required. The outline-only Domain/Email negative excludes this demonstrated missing explanation after an explicit save.",
+          "evidenceLimitations": [
+            {
+              "sourceBugIndex": 38,
+              "limitations": [
+                "Invalid values were not stored, valid edits worked, and no data loss was observed.",
+                "Newer runtime was not tested."
+              ]
+            }
+          ],
+          "sourceConstraints": [
+            {
+              "sourceBugIndex": 38,
+              "constraints": {
+                "matchingGuidance": "Related to the Company Domain validation-feedback entry record-pages-activities-pass2-7de91897, but covers the Email field and its validator. Invalid values are correctly rejected: do not match a claim that invalid emails were saved, valid edits failed, or saved data was lost. No particular outline color is required. The outline-only Domain/Email negative excludes this demonstrated missing explanation after an explicit save."
+              }
+            }
+          ]
+        },
+        {
+          "id": "twenty-multi-value-field-rejection-has-no-explanation-record-pages-activities-path-3",
+          "explanation": "An invalid edit to an existing Person Linkedin link is refused while the editor provides no explanation.",
+          "sourceBugs": [
+            {
+              "index": 45,
+              "id": "record-pages-activities-loop-0be835cf",
+              "name": "Rejected saved Linkedin edits provide no explanatory validation feedback"
+            }
+          ],
+          "expected": "An explicit save refused for invalid URL input should explain the validation failure and preserve the saved link.",
+          "actual": "Replacing a saved Linkedin link with not-a-url and pressing Enter leaves the editor open with the invalid draft, no explanatory text or notification, and the original saved link unchanged. Valid corrections save and persist. An initially empty link field displays its error outline, while the populated editor remains neutral.",
+          "reproSteps": [
+            "Create a Person and save a valid Linkedin URL.",
+            "Reopen its Linkedin editor, replace the edit draft with not-a-url and press Enter.",
+            "Observe the editor stays open without explanatory validation feedback. Escape and reload to confirm the original valid URL remains.",
+            "Repeat on another fresh Person. Compare a valid replacement, which saves and persists, and an invalid initially empty link field, which displays its error outline."
+          ],
+          "severity": 1,
+          "matchingGuidance": {
+            "relatedReferenceId": "record-pages-activities-pass2-7de91897",
+            "additionalRelatedReferenceId": "record-pages-activities-pass3-8be7e9fe",
+            "distinction": "This entry covers a Person’s saved Linkedin link. Related positives cover Company Domain and Email edits. Do not use the outline-only negative to reject a report that establishes absent explanatory feedback after a refused explicit save; do not require a specific red border alone."
+          },
+          "evidenceLimitations": [
+            {
+              "sourceBugIndex": 45,
+              "limitations": [
+                "Joint scope is an invalid edit to a Person’s existing saved Linkedin link. Additional URLs, Emails, other link fields and table-cell entry points are excluded.",
+                "The invalid URL is refused and the previous saved link remains intact; valid corrections save normally.",
+                "The claim requires missing explanatory feedback after an explicit refused save; a particular outline color alone is not the defect.",
+                "The inspected newer editor changes error handling but suppresses a helper through noErrorHelper; no visible explanatory-message fix or newer-runtime result is claimed."
+              ]
+            }
+          ],
+          "sourceConstraints": [
+            {
+              "sourceBugIndex": 45,
+              "constraints": {
+                "matchingGuidance": {
+                  "relatedReferenceId": "record-pages-activities-pass2-7de91897",
+                  "additionalRelatedReferenceId": "record-pages-activities-pass3-8be7e9fe",
+                  "distinction": "This entry covers a Person’s saved Linkedin link. Related positives cover Company Domain and Email edits. Do not use the outline-only negative to reject a report that establishes absent explanatory feedback after a refused explicit save; do not require a specific red border alone."
+                }
+              }
+            }
+          ]
+        },
+        {
+          "id": "twenty-multi-value-field-rejection-has-no-explanation-record-pages-activities-path-4",
+          "explanation": "Explicitly saving a validator-refused edit to a saved Person Phone leaves a pale red outline and the editor open without explanatory text or toast. The previous saved number remains; a valid replacement saves normally.",
+          "sourceBugs": [
+            {
+              "index": 51,
+              "id": "record-pages-activities-pass3-2bbdb4ce",
+              "name": "Rejected saved Phone edits lack an explanatory message"
+            }
+          ],
+          "expected": "An explicitly refused Phone save should explain its validation failure rather than relying on a subtle outline alone.",
+          "actual": "Explicitly saving a validator-refused edit to a saved Person Phone leaves a pale red outline and the editor open without explanatory text or toast. The previous saved number remains; a valid replacement saves normally.",
+          "reproSteps": [
+            "Open a fresh Person with a saved Phone and attempt an invalid phone edit through its normal editor.",
+            "Explicitly save and inspect feedback: the editor remains open with an outline but no explanation.",
+            "Reload to verify the original number remains; compare a valid replacement and repeat with fresh data."
+          ],
+          "severity": 1,
+          "matchingGuidance": {
+            "distinction": "Match this entry’s stated entry point, trigger and visible failure. Shared source mechanisms alone do not establish broader caller or operation coverage."
+          },
+          "evidenceLimitations": [
+            {
+              "sourceBugIndex": 51,
+              "limitations": [
+                "The saved number remains intact and invalid text is not accepted. Valid replacement controls save.",
+                "Original historical footage was not reviewed; the described feedback failure was reproduced on fresh data.",
+                "Exact library-version equivalence, other roles, Table editing and newer runtime remain unverified. The Domain feedback reference does not establish Phone coverage.",
+                "Approved under the requested Codex-only policy; independent Claude agreement is not claimed."
+              ]
+            }
+          ],
+          "sourceConstraints": [
+            {
+              "sourceBugIndex": 51,
+              "constraints": {
+                "matchingGuidance": {
+                  "distinction": "Match this entry’s stated entry point, trigger and visible failure. Shared source mechanisms alone do not establish broader caller or operation coverage."
                 }
               }
             }
@@ -2701,7 +2918,7 @@
     },
     {
       "id": "twenty-record-pages-activities-note-and-task-pdf-exports-corrupt-japanese-text-while-preserving-saved-source-cont",
-      "explanation": "PDF export renders saved Japanese characters as missing or corrupted glyphs.",
+      "explanation": "Twenty Note and Task PDF exports render saved Japanese text as missing or corrupted glyphs, while the original editor content remains intact.",
       "rootCause": {
         "explanation": "Browser PDF exporter registers Inter and relies on BlockNote exporter fonts without tested-script fallback coverage. Actual PDF writes affected bytes as Helvetica/WinAnsi; exact react-pdf fallback branch untraced.",
         "sourceReferences": [
@@ -2820,77 +3037,6 @@
                 "Other bulk commands were not verified.",
                 "Newer source changes visibility handling; newer deletion runtime was not tested."
               ]
-            }
-          ]
-        }
-      ]
-    },
-    {
-      "id": "twenty-record-pages-activities-rejected-email-edits-provide-no-explanatory-validation-feedback",
-      "explanation": "Explicitly saving an invalid Email leaves the editor open without explaining why the edit was rejected.",
-      "rootCause": {
-        "explanation": "EmailsFieldInput supplies an empty errorMessage. MultiItemFieldInput refuses invalid submissions but does not forward explanatory error text; MultiItemBaseInput displays text only for a nonempty error message.",
-        "sourceReferences": [
-          {
-            "repository": "twentyhq/twenty",
-            "revision": "35c645064f72bc4e3180a2c6c506cbbfee170007",
-            "path": "packages/twenty-front/src/modules/object-record/record-field/ui/meta-types/input/components/EmailsFieldInput.tsx",
-            "line": 58,
-            "url": "https://github.com/twentyhq/twenty/blob/35c645064f72bc4e3180a2c6c506cbbfee170007/packages/twenty-front/src/modules/object-record/record-field/ui/meta-types/input/components/EmailsFieldInput.tsx#L58-L76"
-          },
-          {
-            "repository": "twentyhq/twenty",
-            "revision": "35c645064f72bc4e3180a2c6c506cbbfee170007",
-            "path": "packages/twenty-front/src/modules/object-record/record-field/ui/meta-types/input/components/MultiItemFieldInput.tsx",
-            "line": 221,
-            "url": "https://github.com/twentyhq/twenty/blob/35c645064f72bc4e3180a2c6c506cbbfee170007/packages/twenty-front/src/modules/object-record/record-field/ui/meta-types/input/components/MultiItemFieldInput.tsx#L221-L258"
-          },
-          {
-            "repository": "twentyhq/twenty",
-            "revision": "35c645064f72bc4e3180a2c6c506cbbfee170007",
-            "path": "packages/twenty-front/src/modules/object-record/record-field/ui/meta-types/input/components/MultiItemBaseInput.tsx",
-            "line": 122,
-            "url": "https://github.com/twentyhq/twenty/blob/35c645064f72bc4e3180a2c6c506cbbfee170007/packages/twenty-front/src/modules/object-record/record-field/ui/meta-types/input/components/MultiItemBaseInput.tsx#L122-L172"
-          }
-        ],
-        "analysisStatus": "source-supported"
-      },
-      "reproductionPaths": [
-        {
-          "id": "twenty-record-pages-activities-rejected-email-edits-provide-no-explanatory-validation-feedback-record-pages-activities-path-1",
-          "explanation": "Explicitly saving an invalid Email leaves the editor open without explaining why the edit was rejected.",
-          "sourceBugs": [
-            {
-              "index": 38,
-              "id": "record-pages-activities-pass3-8be7e9fe",
-              "name": "Rejected Email edits provide no explanatory validation feedback"
-            }
-          ],
-          "expected": "An invalid Email edit rejected after Enter or the save checkmark should display an explanatory validation message.",
-          "actual": "After editing a saved valid email to not-an-email and pressing Enter or the checkmark, the editor remains open without a message or toast. The previously saved valid email remains intact; valid corrections save normally.",
-          "reproSteps": [
-            "Create a Person with a valid saved email and reopen its Email editor.",
-            "Replace the email with not-an-email and press Enter or the save checkmark.",
-            "Observe that the editor remains open without an explanatory validation message.",
-            "Correct it to another valid email and verify that saving closes the editor and persists after reload."
-          ],
-          "severity": 1,
-          "matchingGuidance": "Related to the Company Domain validation-feedback entry record-pages-activities-pass2-7de91897, but covers the Email field and its validator. Invalid values are correctly rejected: do not match a claim that invalid emails were saved, valid edits failed, or saved data was lost. No particular outline color is required. The outline-only Domain/Email negative excludes this demonstrated missing explanation after an explicit save.",
-          "evidenceLimitations": [
-            {
-              "sourceBugIndex": 38,
-              "limitations": [
-                "Invalid values were not stored, valid edits worked, and no data loss was observed.",
-                "Newer runtime was not tested."
-              ]
-            }
-          ],
-          "sourceConstraints": [
-            {
-              "sourceBugIndex": 38,
-              "constraints": {
-                "matchingGuidance": "Related to the Company Domain validation-feedback entry record-pages-activities-pass2-7de91897, but covers the Email field and its validator. Invalid values are correctly rejected: do not match a claim that invalid emails were saved, valid edits failed, or saved data was lost. No particular outline color is required. The outline-only Domain/Email negative excludes this demonstrated missing explanation after an explicit save."
-              }
             }
           ]
         }
@@ -3071,10 +3217,10 @@
       ]
     },
     {
-      "id": "twenty-record-pages-activities-cleared-company-domain-and-linkedin-values-render-blank-instead-of-empty-in-timeli",
-      "explanation": "Clearing a Company Domain Name or Linkedin saves correctly, but its Timeline row shows only the field label and arrow instead of identifying the new value as Empty.",
+      "id": "twenty-timeline-composite-empty-value-detection",
+      "explanation": "Clearing a Company Domain, Linkedin or Annual Revenue saves the removal, but its Timeline change row displays a blank destination after the arrow instead of Empty. Reload preserves the blank row; ordinary text clears and a numeric zero render correctly.",
       "rootCause": {
-        "explanation": "Timeline’s shallow composite emptiness check recognizes null, undefined and empty strings but not empty arrays. A cleared Links value contains secondaryLinks:[], so it takes normal field rendering instead of the Empty branch; the empty Links display then renders nothing.",
+        "explanation": "EventFieldDiff determines composite emptiness with Object.values(...).every(isValueEmpty), where only null, undefined and the empty string are empty. A cleared Links value still contains secondaryLinks:[], and a cleared Currency value can retain currencyCode alongside null amountMicros. Both are classified as nonempty and sent to a field renderer that has no meaningful value to display.",
         "sourceReferences": [
           {
             "repository": "twentyhq/twenty",
@@ -3103,13 +3249,69 @@
             "path": "packages/twenty-server/src/engine/core-modules/event-emitter/utils/object-record-changed-values.ts",
             "line": 105,
             "url": "https://github.com/twentyhq/twenty/blob/35c645064f72bc4e3180a2c6c506cbbfee170007/packages/twenty-server/src/engine/core-modules/event-emitter/utils/object-record-changed-values.ts#L105-L128"
+          },
+          {
+            "repository": "twentyhq/twenty",
+            "revision": "35c645064f72bc4e3180a2c6c506cbbfee170007",
+            "path": "packages/twenty-front/src/modules/object-record/record-field/ui/meta-types/input/components/CurrencyFieldInput.tsx",
+            "line": 50,
+            "url": "https://github.com/twentyhq/twenty/blob/35c645064f72bc4e3180a2c6c506cbbfee170007/packages/twenty-front/src/modules/object-record/record-field/ui/meta-types/input/components/CurrencyFieldInput.tsx#L50-L80"
+          },
+          {
+            "repository": "twentyhq/twenty",
+            "revision": "35c645064f72bc4e3180a2c6c506cbbfee170007",
+            "path": "packages/twenty-front/src/modules/page-layout/widgets/field/components/FieldWidgetInputContextProvider.tsx",
+            "line": 28,
+            "url": "https://github.com/twentyhq/twenty/blob/35c645064f72bc4e3180a2c6c506cbbfee170007/packages/twenty-front/src/modules/page-layout/widgets/field/components/FieldWidgetInputContextProvider.tsx#L28-L37"
+          },
+          {
+            "repository": "twentyhq/twenty",
+            "revision": "35c645064f72bc4e3180a2c6c506cbbfee170007",
+            "path": "packages/twenty-front/src/modules/object-record/record-field/ui/hooks/usePersistField.ts",
+            "line": 268,
+            "url": "https://github.com/twentyhq/twenty/blob/35c645064f72bc4e3180a2c6c506cbbfee170007/packages/twenty-front/src/modules/object-record/record-field/ui/hooks/usePersistField.ts#L268-L283"
+          },
+          {
+            "repository": "twentyhq/twenty",
+            "revision": "35c645064f72bc4e3180a2c6c506cbbfee170007",
+            "path": "packages/twenty-front/src/modules/object-record/hooks/useUpdateOneRecord.ts",
+            "line": 153,
+            "url": "https://github.com/twentyhq/twenty/blob/35c645064f72bc4e3180a2c6c506cbbfee170007/packages/twenty-front/src/modules/object-record/hooks/useUpdateOneRecord.ts#L153-L194"
+          },
+          {
+            "repository": "twentyhq/twenty",
+            "revision": "35c645064f72bc4e3180a2c6c506cbbfee170007",
+            "path": "packages/twenty-server/src/engine/api/graphql/workspace-resolver-builder/factories/update-one-resolver.factory.ts",
+            "line": 31,
+            "url": "https://github.com/twentyhq/twenty/blob/35c645064f72bc4e3180a2c6c506cbbfee170007/packages/twenty-server/src/engine/api/graphql/workspace-resolver-builder/factories/update-one-resolver.factory.ts#L31-L57"
+          },
+          {
+            "repository": "twentyhq/twenty",
+            "revision": "35c645064f72bc4e3180a2c6c506cbbfee170007",
+            "path": "packages/twenty-front/src/modules/object-record/record-field/ui/meta-types/input/components/CurrencyFieldInput.tsx",
+            "line": 52,
+            "url": "https://github.com/twentyhq/twenty/blob/35c645064f72bc4e3180a2c6c506cbbfee170007/packages/twenty-front/src/modules/object-record/record-field/ui/meta-types/input/components/CurrencyFieldInput.tsx#L52"
+          },
+          {
+            "repository": "twentyhq/twenty",
+            "revision": "35c645064f72bc4e3180a2c6c506cbbfee170007",
+            "path": "packages/twenty-front/src/modules/activities/timeline-activities/rows/main-object/components/EventFieldDiff.tsx",
+            "line": 75,
+            "url": "https://github.com/twentyhq/twenty/blob/35c645064f72bc4e3180a2c6c506cbbfee170007/packages/twenty-front/src/modules/activities/timeline-activities/rows/main-object/components/EventFieldDiff.tsx#L75"
+          },
+          {
+            "repository": "twentyhq/twenty",
+            "revision": "35c645064f72bc4e3180a2c6c506cbbfee170007",
+            "path": "packages/twenty-front/src/modules/activities/timeline-activities/rows/main-object/components/EventFieldDiff.tsx",
+            "line": 74,
+            "url": "https://github.com/twentyhq/twenty/blob/35c645064f72bc4e3180a2c6c506cbbfee170007/packages/twenty-front/src/modules/activities/timeline-activities/rows/main-object/components/EventFieldDiff.tsx#L74"
           }
         ],
         "analysisStatus": "source-supported"
       },
       "reproductionPaths": [
         {
-          "id": "twenty-record-pages-activities-cleared-company-domain-and-linkedin-values-render-blank-instead-of-empty-in-timeli-record-pages-activities-path-1",
+          "id": "twenty-timeline-composite-empty-value-detection-record-pages-activities-path-1",
           "explanation": "Clearing a Company Domain Name or Linkedin saves correctly, but its Timeline row shows only the field label and arrow instead of identifying the new value as Empty.",
           "sourceBugs": [
             {
@@ -3148,6 +3350,48 @@
               "constraints": {
                 "matchingGuidance": {
                   "distinction": "Covers Company Domain Name and Linkedin clear-history presentation, with the saved field correctly cleared. No save failure, lost history or retained old field value is claimed. Emails, Currency and untested composite types are excluded from the joint verified scope."
+                }
+              }
+            }
+          ]
+        },
+        {
+          "id": "twenty-timeline-composite-empty-value-detection-record-pages-activities-path-2",
+          "explanation": "After successfully clearing Company Annual Revenue, Timeline displays a blank destination after the change arrow instead of Empty. Reload retains the blank label. An ordinary Name clear displays Empty and a revenue value of 0 renders 0.",
+          "sourceBugs": [
+            {
+              "index": 55,
+              "id": "record-pages-activities-loop-b9fcaee9",
+              "name": "Cleared Currency Timeline value omits the Empty label"
+            }
+          ],
+          "expected": "A saved empty Currency change should have the same intelligible empty-value presentation as the ordinary empty-field control.",
+          "actual": "After successfully clearing Company Annual Revenue, Timeline displays a blank destination after the change arrow instead of Empty. Reload retains the blank label. An ordinary Name clear displays Empty and a revenue value of 0 renders 0.",
+          "reproSteps": [
+            "Create a Company with Annual Revenue and save it.",
+            "Clear Annual Revenue through the normal record editor and let the save finish.",
+            "Inspect the Timeline change before and after reload; compare an ordinary Name clear and a 0 revenue value."
+          ],
+          "severity": 1,
+          "matchingGuidance": {
+            "distinction": "The currency value is successfully cleared; this is missing empty-value presentation, not failed saving."
+          },
+          "evidenceLimitations": [
+            {
+              "sourceBugIndex": 55,
+              "limitations": [
+                "The currency value is successfully cleared; this is missing empty-value presentation, not failed saving.",
+                "Retention of the old value before refresh was not reproduced and is excluded. Other currency callers and newer runtime were not tested.",
+                "Codex-only approval; no independent Claude agreement is represented. Latest runtime was not tested."
+              ]
+            }
+          ],
+          "sourceConstraints": [
+            {
+              "sourceBugIndex": 55,
+              "constraints": {
+                "matchingGuidance": {
+                  "distinction": "The currency value is successfully cleared; this is missing empty-value presentation, not failed saving."
                 }
               }
             }
@@ -3347,94 +3591,6 @@
                   "relatedReferenceId": "record-pages-activities-pass3-6526f51f",
                   "relatedReferenceName": "Calendar all-day summary disagrees with event-detail timestamps",
                   "distinction": "Both concern record Calendar summary information. This entry requires a confirmed canceled event rendered without cancellation styling; contradictory all-day timestamps alone belong to the related entry. No shared historical cause is asserted."
-                }
-              }
-            }
-          ]
-        }
-      ]
-    },
-    {
-      "id": "twenty-record-pages-activities-rejected-saved-linkedin-edits-provide-no-explanatory-validation-feedback",
-      "explanation": "An invalid edit to an existing Person Linkedin link is refused while the editor provides no explanation.",
-      "rootCause": {
-        "explanation": "Links validation returns an empty error message. The outer field error is enabled only when no saved links exist. The shared input rejects the invalid draft without closing, supplies no explanatory error text, and the populated input’s conditional error border is overridden by border:none.",
-        "sourceReferences": [
-          {
-            "repository": "twentyhq/twenty",
-            "revision": "35c645064f72bc4e3180a2c6c506cbbfee170007",
-            "path": "packages/twenty-front/src/modules/object-record/record-field/ui/meta-types/input/components/LinksFieldInput.tsx",
-            "line": 64,
-            "url": "https://github.com/twentyhq/twenty/blob/35c645064f72bc4e3180a2c6c506cbbfee170007/packages/twenty-front/src/modules/object-record/record-field/ui/meta-types/input/components/LinksFieldInput.tsx#L64-L100"
-          },
-          {
-            "repository": "twentyhq/twenty",
-            "revision": "35c645064f72bc4e3180a2c6c506cbbfee170007",
-            "path": "packages/twenty-front/src/modules/object-record/record-field/ui/meta-types/input/components/MultiItemFieldInput.tsx",
-            "line": 221,
-            "url": "https://github.com/twentyhq/twenty/blob/35c645064f72bc4e3180a2c6c506cbbfee170007/packages/twenty-front/src/modules/object-record/record-field/ui/meta-types/input/components/MultiItemFieldInput.tsx#L221-L258"
-          },
-          {
-            "repository": "twentyhq/twenty",
-            "revision": "35c645064f72bc4e3180a2c6c506cbbfee170007",
-            "path": "packages/twenty-front/src/modules/object-record/record-field/ui/meta-types/input/components/MultiItemFieldInput.tsx",
-            "line": 344,
-            "url": "https://github.com/twentyhq/twenty/blob/35c645064f72bc4e3180a2c6c506cbbfee170007/packages/twenty-front/src/modules/object-record/record-field/ui/meta-types/input/components/MultiItemFieldInput.tsx#L344-L367"
-          },
-          {
-            "repository": "twentyhq/twenty",
-            "revision": "35c645064f72bc4e3180a2c6c506cbbfee170007",
-            "path": "packages/twenty-front/src/modules/object-record/record-field/ui/meta-types/input/components/MultiItemBaseInput.tsx",
-            "line": 21,
-            "url": "https://github.com/twentyhq/twenty/blob/35c645064f72bc4e3180a2c6c506cbbfee170007/packages/twenty-front/src/modules/object-record/record-field/ui/meta-types/input/components/MultiItemBaseInput.tsx#L21-L27"
-          }
-        ],
-        "analysisStatus": "source-supported"
-      },
-      "reproductionPaths": [
-        {
-          "id": "twenty-record-pages-activities-rejected-saved-linkedin-edits-provide-no-explanatory-validation-feedback-record-pages-activities-path-1",
-          "explanation": "An invalid edit to an existing Person Linkedin link is refused while the editor provides no explanation.",
-          "sourceBugs": [
-            {
-              "index": 45,
-              "id": "record-pages-activities-loop-0be835cf",
-              "name": "Rejected saved Linkedin edits provide no explanatory validation feedback"
-            }
-          ],
-          "expected": "An explicit save refused for invalid URL input should explain the validation failure and preserve the saved link.",
-          "actual": "Replacing a saved Linkedin link with not-a-url and pressing Enter leaves the editor open with the invalid draft, no explanatory text or notification, and the original saved link unchanged. Valid corrections save and persist. An initially empty link field displays its error outline, while the populated editor remains neutral.",
-          "reproSteps": [
-            "Create a Person and save a valid Linkedin URL.",
-            "Reopen its Linkedin editor, replace the edit draft with not-a-url and press Enter.",
-            "Observe the editor stays open without explanatory validation feedback. Escape and reload to confirm the original valid URL remains.",
-            "Repeat on another fresh Person. Compare a valid replacement, which saves and persists, and an invalid initially empty link field, which displays its error outline."
-          ],
-          "severity": 1,
-          "matchingGuidance": {
-            "relatedReferenceId": "record-pages-activities-pass2-7de91897",
-            "additionalRelatedReferenceId": "record-pages-activities-pass3-8be7e9fe",
-            "distinction": "This entry covers a Person’s saved Linkedin link. Related positives cover Company Domain and Email edits. Do not use the outline-only negative to reject a report that establishes absent explanatory feedback after a refused explicit save; do not require a specific red border alone."
-          },
-          "evidenceLimitations": [
-            {
-              "sourceBugIndex": 45,
-              "limitations": [
-                "Joint scope is an invalid edit to a Person’s existing saved Linkedin link. Additional URLs, Emails, other link fields and table-cell entry points are excluded.",
-                "The invalid URL is refused and the previous saved link remains intact; valid corrections save normally.",
-                "The claim requires missing explanatory feedback after an explicit refused save; a particular outline color alone is not the defect.",
-                "The inspected newer editor changes error handling but suppresses a helper through noErrorHelper; no visible explanatory-message fix or newer-runtime result is claimed."
-              ]
-            }
-          ],
-          "sourceConstraints": [
-            {
-              "sourceBugIndex": 45,
-              "constraints": {
-                "matchingGuidance": {
-                  "relatedReferenceId": "record-pages-activities-pass2-7de91897",
-                  "additionalRelatedReferenceId": "record-pages-activities-pass3-8be7e9fe",
-                  "distinction": "This entry covers a Person’s saved Linkedin link. Related positives cover Company Domain and Email edits. Do not use the outline-only negative to reject a report that establishes absent explanatory feedback after a refused explicit save; do not require a specific red border alone."
                 }
               }
             }
@@ -3704,10 +3860,10 @@
       ]
     },
     {
-      "id": "twenty-record-pages-activities-mobile-record-header-ellipsis-covers-the-end-of-its-record-counter",
-      "explanation": "A long record title can collapse the header’s action-button column, placing the ellipsis over the record-position counter.",
+      "id": "twenty-page-header-long-title-overlaps-actions",
+      "explanation": "A long record or settings-page title squeezes the page header action area until controls overlap. Record ellipsis can cover the position counter, and settings Edit actions can overlap the title instead of remaining separately usable.",
       "rootCause": {
-        "explanation": "PageCardHeader gives the breadcrumb an auto-sized grid track and lets the action track shrink to zero. The right-aligned button container then spills left over the breadcrumb counter instead of reserving its minimum content width.",
+        "explanation": "PageCardHeader allocates its left breadcrumb/title track as minmax(0, auto) and its right action track as minmax(0, 1fr). The right wrapper can shrink to zero while its child controls retain intrinsic widths. A long left title therefore leaves action children painting over one another rather than reserving their required width.",
         "sourceReferences": [
           {
             "repository": "twentyhq/twenty",
@@ -3736,13 +3892,27 @@
             "path": "packages/twenty-front/src/pages/object-record/RecordShowPageHeader.tsx",
             "line": 23,
             "url": "https://github.com/twentyhq/twenty/blob/35c645064f72bc4e3180a2c6c506cbbfee170007/packages/twenty-front/src/pages/object-record/RecordShowPageHeader.tsx#L23-L35"
+          },
+          {
+            "repository": "twentyhq/twenty",
+            "revision": "35c645064f72bc4e3180a2c6c506cbbfee170007",
+            "path": "packages/twenty-front/src/modules/ui/layout/page/components/PageCardHeader.tsx",
+            "line": 33,
+            "url": "https://github.com/twentyhq/twenty/blob/35c645064f72bc4e3180a2c6c506cbbfee170007/packages/twenty-front/src/modules/ui/layout/page/components/PageCardHeader.tsx#L33"
+          },
+          {
+            "repository": "twentyhq/twenty",
+            "revision": "35c645064f72bc4e3180a2c6c506cbbfee170007",
+            "path": "packages/twenty-front/src/modules/command-menu-item/edit/components/CommandMenuItemEditButton.tsx",
+            "line": 13,
+            "url": "https://github.com/twentyhq/twenty/blob/35c645064f72bc4e3180a2c6c506cbbfee170007/packages/twenty-front/src/modules/command-menu-item/edit/components/CommandMenuItemEditButton.tsx#L13"
           }
         ],
         "analysisStatus": "source-supported"
       },
       "reproductionPaths": [
         {
-          "id": "twenty-record-pages-activities-mobile-record-header-ellipsis-covers-the-end-of-its-record-counter-record-pages-activities-path-1",
+          "id": "twenty-page-header-long-title-overlaps-actions-record-pages-activities-path-1",
           "explanation": "A long record title can collapse the header’s action-button column, placing the ellipsis over the record-position counter.",
           "sourceBugs": [
             {
@@ -3782,89 +3952,6 @@
                 "matchingGuidance": {
                   "relatedReferenceName": "Mobile record layout header overlaps the title with Edit actions",
                   "distinction": "Match normal record viewing where the ellipsis covers the rank/total counter with a long title. Distinguish customization action/title overlap and intentionally compact table titles."
-                }
-              }
-            }
-          ]
-        }
-      ]
-    },
-    {
-      "id": "twenty-record-pages-activities-rejected-saved-phone-edits-lack-an-explanatory-message",
-      "explanation": "Explicitly saving a validator-refused edit to a saved Person Phone leaves a pale red outline and the editor open without explanatory text or toast. The previous saved number remains; a valid replacement saves normally.",
-      "rootCause": {
-        "explanation": "Phone validation intentionally requires libphonenumber isValid(). Its wrapper supplies empty errorMessage, and shared MultiItemFieldInput passes error state without explanatory text to MultiItemBaseInput. The valid-save failure is disproven; missing feedback is directly observed.",
-        "sourceReferences": [
-          {
-            "repository": "twentyhq/twenty",
-            "revision": "35c645064f72bc4e3180a2c6c506cbbfee170007",
-            "path": "packages/twenty-front/src/modules/object-record/record-field/ui/validation-schemas/phoneSchema.ts",
-            "line": 4,
-            "url": "https://github.com/twentyhq/twenty/blob/35c645064f72bc4e3180a2c6c506cbbfee170007/packages/twenty-front/src/modules/object-record/record-field/ui/validation-schemas/phoneSchema.ts#L4-L11"
-          },
-          {
-            "repository": "twentyhq/twenty",
-            "revision": "35c645064f72bc4e3180a2c6c506cbbfee170007",
-            "path": "packages/twenty-front/src/modules/object-record/record-field/ui/meta-types/input/components/PhonesFieldInput.tsx",
-            "line": 120,
-            "url": "https://github.com/twentyhq/twenty/blob/35c645064f72bc4e3180a2c6c506cbbfee170007/packages/twenty-front/src/modules/object-record/record-field/ui/meta-types/input/components/PhonesFieldInput.tsx#L120-L134"
-          },
-          {
-            "repository": "twentyhq/twenty",
-            "revision": "35c645064f72bc4e3180a2c6c506cbbfee170007",
-            "path": "packages/twenty-front/src/modules/object-record/record-field/ui/meta-types/input/components/MultiItemFieldInput.tsx",
-            "line": 343,
-            "url": "https://github.com/twentyhq/twenty/blob/35c645064f72bc4e3180a2c6c506cbbfee170007/packages/twenty-front/src/modules/object-record/record-field/ui/meta-types/input/components/MultiItemFieldInput.tsx#L343-L367"
-          },
-          {
-            "repository": "twentyhq/twenty",
-            "revision": "35c645064f72bc4e3180a2c6c506cbbfee170007",
-            "path": "packages/twenty-front/src/modules/object-record/record-field/ui/meta-types/input/components/PhonesFieldInput.tsx",
-            "line": 30,
-            "url": "https://github.com/twentyhq/twenty/blob/35c645064f72bc4e3180a2c6c506cbbfee170007/packages/twenty-front/src/modules/object-record/record-field/ui/meta-types/input/components/PhonesFieldInput.tsx#L30-L43"
-          }
-        ],
-        "analysisStatus": "source-supported"
-      },
-      "reproductionPaths": [
-        {
-          "id": "twenty-record-pages-activities-rejected-saved-phone-edits-lack-an-explanatory-message-record-pages-activities-path-1",
-          "explanation": "Explicitly saving a validator-refused edit to a saved Person Phone leaves a pale red outline and the editor open without explanatory text or toast. The previous saved number remains; a valid replacement saves normally.",
-          "sourceBugs": [
-            {
-              "index": 51,
-              "id": "record-pages-activities-pass3-2bbdb4ce",
-              "name": "Rejected saved Phone edits lack an explanatory message"
-            }
-          ],
-          "expected": "An explicitly refused Phone save should explain its validation failure rather than relying on a subtle outline alone.",
-          "actual": "Explicitly saving a validator-refused edit to a saved Person Phone leaves a pale red outline and the editor open without explanatory text or toast. The previous saved number remains; a valid replacement saves normally.",
-          "reproSteps": [
-            "Open a fresh Person with a saved Phone and attempt an invalid phone edit through its normal editor.",
-            "Explicitly save and inspect feedback: the editor remains open with an outline but no explanation.",
-            "Reload to verify the original number remains; compare a valid replacement and repeat with fresh data."
-          ],
-          "severity": 1,
-          "matchingGuidance": {
-            "distinction": "Match this entry’s stated entry point, trigger and visible failure. Shared source mechanisms alone do not establish broader caller or operation coverage."
-          },
-          "evidenceLimitations": [
-            {
-              "sourceBugIndex": 51,
-              "limitations": [
-                "The saved number remains intact and invalid text is not accepted. Valid replacement controls save.",
-                "Original historical footage was not reviewed; the described feedback failure was reproduced on fresh data.",
-                "Exact library-version equivalence, other roles, Table editing and newer runtime remain unverified. The Domain feedback reference does not establish Phone coverage.",
-                "Approved under the requested Codex-only policy; independent Claude agreement is not claimed."
-              ]
-            }
-          ],
-          "sourceConstraints": [
-            {
-              "sourceBugIndex": 51,
-              "constraints": {
-                "matchingGuidance": {
-                  "distinction": "Match this entry’s stated entry point, trigger and visible failure. Shared source mechanisms alone do not establish broader caller or operation coverage."
                 }
               }
             }
@@ -4144,109 +4231,6 @@
               "constraints": {
                 "matchingGuidance": {
                   "distinction": "The exact deletion-history requirement is inferred from activity-history documentation and the working unlink control, not an exhaustive CRUD-history promise."
-                }
-              }
-            }
-          ]
-        }
-      ]
-    },
-    {
-      "id": "twenty-record-pages-activities-cleared-currency-timeline-value-omits-the-empty-label",
-      "explanation": "After successfully clearing Company Annual Revenue, Timeline displays a blank destination after the change arrow instead of Empty. Reload retains the blank label. An ordinary Name clear displays Empty and a revenue value of 0 renders 0.",
-      "rootCause": {
-        "explanation": "Currency clearing retains a nonempty currencyCode alongside null amountMicros. Timeline composite emptiness requires every property to be null/undefined/empty, so the currency object fails the empty check even though CurrencyDisplay has no amount to render.",
-        "sourceReferences": [
-          {
-            "repository": "twentyhq/twenty",
-            "revision": "35c645064f72bc4e3180a2c6c506cbbfee170007",
-            "path": "packages/twenty-front/src/modules/object-record/record-field/ui/meta-types/input/components/CurrencyFieldInput.tsx",
-            "line": 50,
-            "url": "https://github.com/twentyhq/twenty/blob/35c645064f72bc4e3180a2c6c506cbbfee170007/packages/twenty-front/src/modules/object-record/record-field/ui/meta-types/input/components/CurrencyFieldInput.tsx#L50-L80"
-          },
-          {
-            "repository": "twentyhq/twenty",
-            "revision": "35c645064f72bc4e3180a2c6c506cbbfee170007",
-            "path": "packages/twenty-front/src/modules/page-layout/widgets/field/components/FieldWidgetInputContextProvider.tsx",
-            "line": 28,
-            "url": "https://github.com/twentyhq/twenty/blob/35c645064f72bc4e3180a2c6c506cbbfee170007/packages/twenty-front/src/modules/page-layout/widgets/field/components/FieldWidgetInputContextProvider.tsx#L28-L37"
-          },
-          {
-            "repository": "twentyhq/twenty",
-            "revision": "35c645064f72bc4e3180a2c6c506cbbfee170007",
-            "path": "packages/twenty-front/src/modules/object-record/record-field/ui/hooks/usePersistField.ts",
-            "line": 268,
-            "url": "https://github.com/twentyhq/twenty/blob/35c645064f72bc4e3180a2c6c506cbbfee170007/packages/twenty-front/src/modules/object-record/record-field/ui/hooks/usePersistField.ts#L268-L283"
-          },
-          {
-            "repository": "twentyhq/twenty",
-            "revision": "35c645064f72bc4e3180a2c6c506cbbfee170007",
-            "path": "packages/twenty-front/src/modules/object-record/hooks/useUpdateOneRecord.ts",
-            "line": 153,
-            "url": "https://github.com/twentyhq/twenty/blob/35c645064f72bc4e3180a2c6c506cbbfee170007/packages/twenty-front/src/modules/object-record/hooks/useUpdateOneRecord.ts#L153-L194"
-          },
-          {
-            "repository": "twentyhq/twenty",
-            "revision": "35c645064f72bc4e3180a2c6c506cbbfee170007",
-            "path": "packages/twenty-server/src/engine/api/graphql/workspace-resolver-builder/factories/update-one-resolver.factory.ts",
-            "line": 31,
-            "url": "https://github.com/twentyhq/twenty/blob/35c645064f72bc4e3180a2c6c506cbbfee170007/packages/twenty-server/src/engine/api/graphql/workspace-resolver-builder/factories/update-one-resolver.factory.ts#L31-L57"
-          },
-          {
-            "repository": "twentyhq/twenty",
-            "revision": "35c645064f72bc4e3180a2c6c506cbbfee170007",
-            "path": "packages/twenty-front/src/modules/object-record/record-field/ui/meta-types/input/components/CurrencyFieldInput.tsx",
-            "line": 52,
-            "url": "https://github.com/twentyhq/twenty/blob/35c645064f72bc4e3180a2c6c506cbbfee170007/packages/twenty-front/src/modules/object-record/record-field/ui/meta-types/input/components/CurrencyFieldInput.tsx#L52"
-          },
-          {
-            "repository": "twentyhq/twenty",
-            "revision": "35c645064f72bc4e3180a2c6c506cbbfee170007",
-            "path": "packages/twenty-front/src/modules/activities/timeline-activities/rows/main-object/components/EventFieldDiff.tsx",
-            "line": 75,
-            "url": "https://github.com/twentyhq/twenty/blob/35c645064f72bc4e3180a2c6c506cbbfee170007/packages/twenty-front/src/modules/activities/timeline-activities/rows/main-object/components/EventFieldDiff.tsx#L75"
-          }
-        ],
-        "analysisStatus": "source-supported"
-      },
-      "reproductionPaths": [
-        {
-          "id": "twenty-record-pages-activities-cleared-currency-timeline-value-omits-the-empty-label-record-pages-activities-path-1",
-          "explanation": "After successfully clearing Company Annual Revenue, Timeline displays a blank destination after the change arrow instead of Empty. Reload retains the blank label. An ordinary Name clear displays Empty and a revenue value of 0 renders 0.",
-          "sourceBugs": [
-            {
-              "index": 55,
-              "id": "record-pages-activities-loop-b9fcaee9",
-              "name": "Cleared Currency Timeline value omits the Empty label"
-            }
-          ],
-          "expected": "A saved empty Currency change should have the same intelligible empty-value presentation as the ordinary empty-field control.",
-          "actual": "After successfully clearing Company Annual Revenue, Timeline displays a blank destination after the change arrow instead of Empty. Reload retains the blank label. An ordinary Name clear displays Empty and a revenue value of 0 renders 0.",
-          "reproSteps": [
-            "Create a Company with Annual Revenue and save it.",
-            "Clear Annual Revenue through the normal record editor and let the save finish.",
-            "Inspect the Timeline change before and after reload; compare an ordinary Name clear and a 0 revenue value."
-          ],
-          "severity": 1,
-          "matchingGuidance": {
-            "distinction": "The currency value is successfully cleared; this is missing empty-value presentation, not failed saving."
-          },
-          "evidenceLimitations": [
-            {
-              "sourceBugIndex": 55,
-              "limitations": [
-                "The currency value is successfully cleared; this is missing empty-value presentation, not failed saving.",
-                "Retention of the old value before refresh was not reproduced and is excluded. Other currency callers and newer runtime were not tested.",
-                "Codex-only approval; no independent Claude agreement is represented. Latest runtime was not tested."
-              ]
-            }
-          ],
-          "sourceConstraints": [
-            {
-              "sourceBugIndex": 55,
-              "constraints": {
-                "matchingGuidance": {
-                  "distinction": "The currency value is successfully cleared; this is missing empty-value presentation, not failed saving."
                 }
               }
             }
