@@ -1,22 +1,6 @@
 {
   "bugs": [
     {
-      "id": "gitea-scoped-label-full-name-search-rejected",
-      "name": "Exclusive label Priority/Low cannot be found by its complete saved name in issue Labels filter",
-      "summary": "In the issue sidebar's Labels menu, typing the complete saved name of the existing exclusive label \"Priority/Low\" removes the label from the list and shows \"No results found.\"",
-      "expected": "Filtering by the label's exact saved name \"Priority/Low\" should keep that label in the menu so it can be selected.",
-      "actual": "The menu shows \"No results found.\" and the Priority/Low label cannot be selected through the filter.",
-      "reproSteps": [
-        "Use the saved session for the disposable fixture admin account (eval).",
-        "Open /eval/harbor-handbook/labels and confirm that the exclusive label Priority/Low exists (it is shown as a split 'Priority | Low' badge).",
-        "Open /eval/harbor-handbook/issues/1 ('Expand the onboarding checklist').",
-        "Click the gear next to Labels in the right sidebar.",
-        "Type Priority/Low into the Filter Label box.",
-        "The menu shows 'No results found.'"
-      ],
-      "reason": "User rejected this claim after checking that both scope and value can be searched together. The picker searches rendered text with the scope and value concatenated: for the exclusive label foo/foo1, foo, foo1 and foofoo1 all find it. The literal slash query foo/foo1 and space query foo foo1 do not match. The reported full-name miss is real, but a requirement to normalize slash/space separators is not established; it is not a failure to search both components. Reject this exact separator-formatting claim, not a report where scope, value or the concatenated text actually fails."
-    },
-    {
       "id": "gitea-label-template-dropdown-mobile-scroll",
       "name": "Label template dropdown partially obscures Advanced option text behind the selection control",
       "summary": "The report claims the empty Labels page's label-set dropdown renders the Advanced option underneath the selection control on mobile, leaving only its trailing text visible.",
@@ -111,20 +95,6 @@
       "reason": "Intended: the count link opens the issue list filtered by the label without a state, and Gitea deliberately shows all states when there are no open issues but some closed ones (upstream #12200, \"Default to showing closed Issues/PR list when there are only closed issues/PRs\"). The link text labels the count, not the destination's state."
     },
     {
-      "id": "gitea-pr-label-picker-scoped-full-name-search",
-      "name": "Pull request label picker cannot find an exclusive label by its full name",
-      "summary": "The report says that in a pull request's Labels sidebar picker, typing an exclusive (scoped) label's full saved name, such as scope/one, finds nothing.",
-      "expected": "The reported expectation is that searching for an exclusive label's full name including the slash finds it in the pull request Labels picker.",
-      "actual": "Typing the full name with the slash showed No results found, but the label was found by its scope, its item, or both run together without the slash, and could be applied that way. A non-exclusive label containing a slash was found by its full name.",
-      "reproSteps": [
-        "Create an exclusive label such as scope/one.",
-        "Open a pull request and open the Labels picker in its sidebar.",
-        "Type the label's full name, including the slash, and check the results.",
-        "Type only the scope or only the item and compare."
-      ],
-      "reason": "Not a bug: exclusive labels are displayed with the scope and item as separate parts, without the slash, and the picker searches that displayed text, so they're found by scope, item or the two together. Matching the slash-separated form isn't an established requirement. Same reasoning as the rejected issue-sidebar version (\"Exclusive label Priority/Low cannot be found by its complete saved name in issue Labels filter\"); this entry is the pull request sidebar."
-    },
-    {
       "id": "gitea-bulk-label-menu-assigns-archived-labels",
       "name": "Bulk label actions assign archived organization labels",
       "summary": "The report says that the issue list's bulk Label menu still offers archived organization labels and lets them be applied to selected issues, although the issue sidebar hides archived labels.",
@@ -136,6 +106,23 @@
         "Choose the archived label and check whether it's applied."
       ],
       "reason": "Intended: the bulk Label menu is a single add/remove toggle, so archived labels have to stay listed (marked Archived) for them to be removed from issues in bulk, and upstream supports archived labels there. Hiding archived labels applies to suggestions when assigning labels to a single issue, not to the bulk menu."
+    },
+    {
+      "id": "gitea-label-color-picker-cancel-error-banner",
+      "name": "Canceling a label dialog with the color picker open shows a JavaScript error",
+      "summary": "The report says that choosing a color in the label dialog's color picker and clicking Cancel while the picker is still open shows a JavaScript error banner: Cannot read properties of null (reading '0') from the color picker script.",
+      "expected": "The reported expectation is that canceling the label dialog closes it without any error.",
+      "actual": "The error banner appeared after Cancel during the test session. The recorded stack shows the color picker's attribute callback being run by the testing tool's page serializer, not by Gitea or by the Cancel click.",
+      "reproSteps": [
+        "Open a repository's Labels page and click New Label.",
+        "Click the color input to open the color picker and choose a color, leaving the picker open.",
+        "Click Cancel.",
+        "Check for a JavaScript error banner."
+      ],
+      "reason": "Caused by the testing tool, not Gitea. The error is thrown inside the color picker library when its color attribute becomes null. Gitea only ever sets that attribute to the input's string value. The recorded stack shows the call coming from the test agent's page serializer stripping attributes from a cloned copy of the picker, which runs the picker's own attribute callback in the page. Canceling the dialog in an ordinary browser does not show the error.",
+      "matchingGuidance": {
+        "scope": "Any report of a color picker JavaScript error banner (for example reading '0' or 'toLowerCase' of null) in a label dialog, whatever action preceded it. The related gitea-label-color-picker-hue-error-banner rejection covers the hue-strip trigger; both come from the testing tool."
+      }
     }
   ]
 }
