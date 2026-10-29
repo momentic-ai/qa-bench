@@ -1251,6 +1251,25 @@
       "owningArea": "gitea/issues",
       "severity": 3,
       "sourceCause": "The Issues dashboards choose which repositories to search with SearchRepositoryCondition (models/repo/repo_list.go), passing UnitType Issues (routers/web/user/home.go). That condition never enforces the Issues unit for the repositories it admits: the actor access check uses AccessibleRepositoryCondition(actor, unit.TypeInvalid), which ignores units, and in an organization context owner_id = organization admits every organization-owned repository, while UnitType is applied only to collaborative repositories the organization doesn't own. Issues are then loaded from the indexer with no per-issue permission check. So any repository the user can reach for some other unit passes, whether its issue tracker is disabled (the separate entry 'Issue dashboards list and count issues from repositories with the issue tracker disabled') or the user's team has Issues No Access (this entry). Both bugs come from this one missing unit check, but they are distinct triggers and are labeled as separate bugs."
+    },
+    {
+      "id": "gitea-remove-inaccessible-dependency-blank-page",
+      "name": "Removing a dependency on an issue you can't read opens a blank page and keeps the dependency",
+      "summary": "On an issue that depends on an issue the user can't read, the sidebar shows a lock and says the user can still remove the dependency. Confirming Remove opens a completely blank page, and the dependency is not removed.",
+      "expected": "Confirming Remove deletes the dependency and returns to the issue, as it does for dependencies the user can read.",
+      "actual": "After confirming Remove on the locked 'Depends on' dependency, the browser landed on the dependency delete URL showing an empty document with no message or controls. Reopening the issue showed the dependency still in place and no error.",
+      "reproSteps": [
+        "Make an issue in one repository depend on an issue in a private repository.",
+        "Sign in as a user who can write to the first repository but can't read the private one, and open the first issue.",
+        "In the sidebar, the dependency shows a lock with the tooltip that you can remove it; click its remove icon and confirm.",
+        "Check the page shown and whether the dependency was removed."
+      ],
+      "sourceCause": "Two defects combine. The issue sidebar template gives locked 'Depends on' rows data-modal-dependency-type=\"blocking\" (templates/repo/issue/sidebar/issue_dependencies.tmpl:94), while readable 'Depends on' rows use \"blockedBy\" (line 69). RemoveIssueDependency (models/issues/dependency.go) therefore deletes the reversed pair, which doesn't exist, and returns ErrDependencyNotExists. The RemoveDependency handler (routers/web/repo/issue_dependency.go:133-137) handles that error by setting a flash message and returning without a redirect or body, so the browser receives an empty 200 response and shows a blank page.",
+      "matchingGuidance": {
+        "scope": "Removing a locked (unreadable) dependency from an issue's sidebar leads to a blank page, or the dependency is not removed."
+      },
+      "owningArea": "gitea/issues",
+      "severity": 5
     }
   ]
 }
