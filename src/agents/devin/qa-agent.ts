@@ -91,11 +91,11 @@ Do not use web_search, DeepWiki (including devin_ask_wiki_question), or any othe
 
 The network profile restricts the VM, but some built-in retrieval tools remain available. Their availability is not permission to use them. Do not bypass the restrictions, request broader network access, change security settings, or create child sessions. If a flow needs a blocked external resource, record it as a coverage limitation.
 
-Persist verified findings incrementally using provide_structured_output with the supplied schema. Include complete reproduction steps and observed evidence in each finding. Keep areasExplored and limitations current. A final chat reply does not submit findings.`;
+Before testing, initialize provide_structured_output with empty bugs, areasExplored and limitations arrays. Keep is_final=false while testing. Update structured output immediately after each verified bug and completed workflow. Include complete reproduction steps and observed evidence in each finding. Keep areasExplored and limitations current, and mark is_final=true only when the work is complete or the budget ends. A final chat reply does not submit findings.`;
     const title = `momentic-qa-${randomUUID()}`;
     await writeJson(
       path.join(this.context.reportDirectory, "devin-launch-intent.json"),
-      { title, profileId: profile.profile_id },
+      { title, profileId: profile.profile_id, prompt },
     );
     onReady?.();
     signal.throwIfAborted();
