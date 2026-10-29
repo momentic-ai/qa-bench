@@ -1063,6 +1063,113 @@
           "Latest runtime was not tested."
         ]
       }
+    },
+    {
+      "id": "gitea-global-requested-review-search-stale-index",
+      "name": "Global Review requested omits pull request pending alex's review",
+      "severity": 3,
+      "owningArea": "gitea/pull-requests",
+      "summary": "Global Review requested keyword search omits newly requested PRs because review-request changes do not refresh the search index.",
+      "expected": "A matching keyword narrows the current reviewer-filtered list without hiding a qualifying PR.",
+      "actual": "Fresh PRs awaiting the viewer’s review appear without a keyword but disappear with a matching title keyword. Numeric search works; posting an ordinary comment refreshes the index and restores results. Removed requests can remain in keyword results.",
+      "reproSteps": [
+        "Create two fresh PRs authored by a user other than the reviewer.",
+        "Request the reviewer through the PR sidebar after creating each PR.",
+        "As the reviewer, open global Pull Requests → Review requested without a keyword and confirm the PRs appear.",
+        "Enter a matching title keyword and observe the missing PRs.",
+        "Clear the keyword as a control, then post an ordinary comment on one affected PR and confirm keyword results recover for it."
+      ],
+      "sourceReport": {
+        "sessionId": "403d8945-c590-5e10-a83d-beef46cc48f8",
+        "webUrl": "https://app.momentic.ai/mo/sessions/403d8945-c590-5e10-a83d-beef46cc48f8?tab=bug%3AGlobal%20Review%20requested%20omits%20pull%20request%20pending%20alex%27s%20review",
+        "recording": {
+          "startedAt": 1793228667171,
+          "finishedAt": 1793228713489,
+          "agentId": "403d8945-c590-5e10-a83d-beef46cc48f8:sandbox-bug-reproducer:4573a99c-d20e-45c8-b853-0dfdf4231db3",
+          "windowId": "a3d1091e-7c72-45a2-9083-b9c6142a66a0"
+        }
+      },
+      "matchingGuidance": {
+        "relatedReference": {
+          "id": "gitea-repo-pulls-review-requested-search-omits-pr",
+          "distinction": "The existing reference covers repository PR search; this entry covers the global Review requested dashboard."
+        },
+        "scope": "Individual review-request metadata stale after mutation. Team-only requests remaining absent after reindexing are a separate defect."
+      },
+      "reviewEvidence": {
+        "basis": "Explicit user acceptance at severity 3 after Codex and Claude independently accepted and reproduced twice on fresh PRs with controls.",
+        "userAccepted": true,
+        "sourceRevision": "99053ce4fa2b45f1bca5837418c0c57f793ca824",
+        "severityReason": "Supported reviewer-filtered search omits qualifying PRs.",
+        "analysis": [
+          "Both reviewers reproduced missing requested PRs, passing empty/numeric-query controls, and repair after ordinary comments. Removed requests produced reverse stale results.",
+          "Review-request mutations emit a notification with no indexer override. Requested-reviewer IDs update only on reindexing.",
+          "Ordinary comments trigger index refresh. Latest inspected source retains the relevant omission; latest runtime was not tested."
+        ],
+        "sourceReferences": [
+          "https://github.com/go-gitea/gitea/blob/99053ce4fa2b45f1bca5837418c0c57f793ca824/services/indexer/notify.go#L20-L43",
+          "https://github.com/go-gitea/gitea/blob/99053ce4fa2b45f1bca5837418c0c57f793ca824/modules/indexer/issues/util.go#L63-L82",
+          "https://github.com/go-gitea/gitea/blob/99053ce4fa2b45f1bca5837418c0c57f793ca824/services/issue/assignee.go#L65-L86"
+        ],
+        "limitations": [
+          "Exact deployed search backend and on-disk index contents were not inspected.",
+          "Complete historical fix coverage and latest runtime were not verified."
+        ]
+      }
+    },
+    {
+      "id": "gitea-global-reviewed-search-stale-index",
+      "name": "Global Reviewed by you omits an approved pull request",
+      "severity": 3,
+      "owningArea": "gitea/pull-requests",
+      "summary": "Global Reviewed by you keyword search omits newly reviewed PRs because submitting a review does not refresh indexed reviewer metadata.",
+      "expected": "A matching keyword narrows the current reviewer-filtered list without hiding a qualifying PR.",
+      "actual": "Another author’s PR with the viewer’s persisted approval appears in Reviewed by you without a keyword, but disappears with a matching keyword. Posting an ordinary comment restores keyword results.",
+      "reproSteps": [
+        "Create two fresh PRs authored by a user other than the reviewer.",
+        "As the reviewer, submit Approve through Files Changed → Review and reload to confirm it persists.",
+        "As the reviewer, open global Pull Requests → Reviewed by you without a keyword and confirm the PRs appear.",
+        "Enter a matching title keyword and observe the missing PRs.",
+        "Clear the keyword as a control, then post an ordinary comment on one affected PR and confirm keyword results recover for it."
+      ],
+      "sourceReport": {
+        "sessionId": "403d8945-c590-5e10-a83d-beef46cc48f8",
+        "webUrl": "https://app.momentic.ai/mo/sessions/403d8945-c590-5e10-a83d-beef46cc48f8?tab=bug%3AGlobal%20Reviewed%20by%20you%20omits%20an%20approved%20pull%20request",
+        "recording": {
+          "startedAt": 1793228798366,
+          "finishedAt": 1793228876745,
+          "agentId": "403d8945-c590-5e10-a83d-beef46cc48f8:sandbox-bugbash-v2:global",
+          "windowId": "f59c3528-c2aa-4de3-82bf-ce31b6eff3a1",
+          "artifactId": "2a875a1e-6da7-48ed-92f4-21fd0b210eb6"
+        }
+      },
+      "matchingGuidance": {
+        "relatedReference": {
+          "name": "Reviewed by you omits a pull request with a recorded review by the current user",
+          "distinction": "That reference covers own-author exclusion. This entry requires a PR authored by another user and a keyword-search-only omission after a persisted review."
+        },
+        "scope": "Require a persisted review by a different user from the PR author and failure under matching keyword search; no-keyword controls pass."
+      },
+      "reviewEvidence": {
+        "basis": "Explicit user acceptance at severity 3 after Codex and Claude independently accepted and reproduced twice on fresh PRs with controls.",
+        "userAccepted": true,
+        "sourceRevision": "99053ce4fa2b45f1bca5837418c0c57f793ca824",
+        "severityReason": "Supported reviewer-filtered search omits qualifying PRs.",
+        "analysis": [
+          "Both reviewers verified persisted approvals, passing unsearched controls, and repair after ordinary comments. These were other-author PRs, distinguishing accepted self-review exclusions.",
+          "Review submission emits PullRequestReview, whose inherited indexer handler is empty. Reviewer IDs are built when reindexing occurs.",
+          "Ordinary comments trigger index refresh. Latest inspected source retains the relevant omission; latest runtime was not tested."
+        ],
+        "sourceReferences": [
+          "https://github.com/go-gitea/gitea/blob/99053ce4fa2b45f1bca5837418c0c57f793ca824/services/indexer/notify.go#L20-L43",
+          "https://github.com/go-gitea/gitea/blob/99053ce4fa2b45f1bca5837418c0c57f793ca824/modules/indexer/issues/util.go#L63-L82",
+          "https://github.com/go-gitea/gitea/blob/99053ce4fa2b45f1bca5837418c0c57f793ca824/services/pull/review.go#L290-L343"
+        ],
+        "limitations": [
+          "Exact deployed search backend and on-disk index contents were not inspected.",
+          "Complete historical fix coverage and latest runtime were not verified."
+        ]
+      }
     }
   ]
 }
