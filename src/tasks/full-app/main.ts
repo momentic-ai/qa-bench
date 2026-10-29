@@ -1,5 +1,6 @@
 import { claudeAgent } from "../../agents/claude/claude-agent";
 import { codexAgent } from "../../agents/codex/codex-agent";
+import { devinQaAgent } from "../../agents/devin/qa-agent";
 import { moAgent } from "../../agents/mo/mo-agent";
 import { selectComparisonFixtures } from "../../evals/fixture-selection";
 import { createRunId } from "../../evals/report-files";
@@ -22,6 +23,7 @@ export async function runFullAppEval(options: FullAppOptions): Promise<void> {
     await runFullAppFixtures({
       agent: {
         mo: moAgent,
+        "devin-qa": devinQaAgent,
         "codex-playwright-mcp": codexAgent(options.browser),
         "claude-playwright-mcp": claudeAgent(options.browser),
         "codex-agent-browser": codexAgent(options.browser, "agent-browser"),

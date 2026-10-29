@@ -6,6 +6,7 @@ import { z } from "zod";
 
 export const AgentSchema = z.enum([
   "mo",
+  "devin-qa",
   "codex-playwright-mcp",
   "claude-playwright-mcp",
   "codex-agent-browser",
