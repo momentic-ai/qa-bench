@@ -1,0 +1,888 @@
+{
+  "schemaVersion": 2,
+  "sourceGroundTruth": "ground-truth.json",
+  "logicalBugs": [
+    {
+      "id": "gitea-settings-repositories-empty-page",
+      "explanation": "Repository settings confuse an empty page with an empty account.",
+      "rootCause": {
+        "explanation": "The repositories template selects its no-repositories message from the paginated collection, and the handler never clamps an out-of-range page before fetching it.",
+        "sourceReferences": [
+          {
+            "repository": "go-gitea/gitea",
+            "revision": "99053ce4fa2b45f1bca5837418c0c57f793ca824",
+            "path": "templates/user/settings/repos.tmpl",
+            "line": 83,
+            "url": "https://github.com/go-gitea/gitea/blob/99053ce4fa2b45f1bca5837418c0c57f793ca824/templates/user/settings/repos.tmpl#L83"
+          }
+        ]
+      },
+      "reproductionPaths": [
+        {
+          "id": "gitea-settings-repositories-empty-page-path-1",
+          "explanation": "Requesting an out-of-range page in repository settings displays `You do not own any repositories` even though the account owns repositories.",
+          "sourceBugs": [
+            {
+              "index": 0,
+              "id": null,
+              "name": "Out-of-range repository settings page falsely claims the account owns no repositories"
+            }
+          ],
+          "expected": "Out-of-range pagination should not claim that an account with repositories owns none.",
+          "actual": "Requesting an out-of-range page in repository settings displays `You do not own any repositories` even though the account owns repositories.",
+          "reproSteps": [
+            "Open the authenticated account's repository settings and confirm that owned repositories are listed.",
+            "Open the same repository settings route with an out-of-range page such as `?page=999`.",
+            "Observe that the page falsely says `You do not own any repositories` instead of indicating that the requested page has no results."
+          ],
+          "severity": 3
+        }
+      ]
+    },
+    {
+      "id": "gitea-user-card-mobile-sizing",
+      "explanation": "Follower cards retain desktop content geometry on narrow screens.",
+      "rootCause": {
+        "explanation": "The user card CSS retains a floated 48px avatar and fixed content margins while the grid narrows, leaving insufficient width for names and metadata.",
+        "sourceReferences": [
+          {
+            "repository": "go-gitea/gitea",
+            "revision": "99053ce4fa2b45f1bca5837418c0c57f793ca824",
+            "path": "web_src/css/repo.css",
+            "line": 1369,
+            "url": "https://github.com/go-gitea/gitea/blob/99053ce4fa2b45f1bca5837418c0c57f793ca824/web_src/css/repo.css#L1369"
+          }
+        ]
+      },
+      "reproductionPaths": [
+        {
+          "id": "gitea-user-card-mobile-sizing-path-1",
+          "explanation": "At mobile width, follower cards retain content sizing and secondary fields that do not fit their grid columns, fragmenting display names and URLs.",
+          "sourceBugs": [
+            {
+              "index": 1,
+              "id": "gitea-novel-015",
+              "name": "Follower card content does not scale to mobile grid columns"
+            }
+          ],
+          "expected": "Adapt avatar/icon sizing, typography or displayed fields to the available mobile card width so follower identity remains readable. A three-column grid is acceptable; compact content, deliberate truncation or omitting secondary fields can satisfy this without making each card fill the row.",
+          "actual": "In the recorded 390×844 view, the follower card occupies roughly 120px while its avatar and text consume most of that width. The display name Eval Profile Sample 2026 splits within words, including Eva / l, and the website wraps into many short fragments. The supplied review screenshot shows the same mismatch between narrow columns and the retained avatar, type and metadata content.",
+          "reproSteps": [
+            "Use the supplied authenticated eval session and set the viewport to 390 by 844 CSS pixels. Precondition: eval follows target profile mo-followerslist-4827639 and has display name Eval Profile Sample 2026 plus a website URL.",
+            "Open the target profile at /mo-followerslist-4827639 and click its visible 1 Followers count.",
+            "Inspect the follower card’s avatar, display name and website. Observe that the retained content sizing and fields leave too little room for the name beside the avatar, splitting it within words, while the URL wraps into many short lines.",
+            "Assess whether the content remains readable within the mobile column. The reported defect is the content scaling and prioritization; retaining three columns or unused slots when only one follower exists is acceptable."
+          ],
+          "severity": 1
+        }
+      ]
+    },
+    {
+      "id": "gitea-profile-empty-full-name-ignored",
+      "explanation": "An existing full name cannot be cleared.",
+      "rootCause": {
+        "explanation": "ProfilePost sets the optional FullName update only when form.FullName is nonempty; clearing the field therefore omits the update.",
+        "sourceReferences": [
+          {
+            "repository": "go-gitea/gitea",
+            "revision": "99053ce4fa2b45f1bca5837418c0c57f793ca824",
+            "path": "routers/web/user/setting/profile.go",
+            "line": 107,
+            "url": "https://github.com/go-gitea/gitea/blob/99053ce4fa2b45f1bca5837418c0c57f793ca824/routers/web/user/setting/profile.go#L107"
+          }
+        ]
+      },
+      "reproductionPaths": [
+        {
+          "id": "gitea-profile-empty-full-name-ignored-path-1",
+          "explanation": "Submitting an empty Full Name reports success but leaves the previous name saved; it remains populated after refresh.",
+          "sourceBugs": [
+            {
+              "index": 2,
+              "id": null,
+              "name": "Profile editor cannot clear Full Name"
+            }
+          ],
+          "expected": "After submitting the profile form with Full Name empty, the optional field should remain empty and the cleared value should persist after refresh.",
+          "actual": "The form displayed “Your profile has been updated,” but Full Name still showed “mo-gitea-05-account-profile-temp.” Refreshing the profile page showed the same saved value.",
+          "reproSteps": [
+            "Sign in as eval.",
+            "Open the eval account menu, choose Settings, and open Profile at /user/settings. The Full Name field was already populated with the disposable value rather than blank.",
+            "Set Full Name to mo-gitea-05-account-profile-temp and click Update Profile; the page reports that the profile has been updated.",
+            "Clear Full Name and click Update Profile again.",
+            "Observe the success message while the Full Name field still contains mo-gitea-05-account-profile-temp. Refresh /user/settings and verify the value remains populated."
+          ],
+          "severity": 3
+        }
+      ]
+    },
+    {
+      "id": "gitea-block-missing-user-server-error",
+      "explanation": "Blocking an unknown user is treated as an internal failure.",
+      "rootCause": {
+        "explanation": "BlockedUsersPost sends every GetUserByName error, including not-found, to ServerError instead of returning form validation.",
+        "sourceReferences": [
+          {
+            "repository": "go-gitea/gitea",
+            "revision": "99053ce4fa2b45f1bca5837418c0c57f793ca824",
+            "path": "routers/web/shared/user/block.go",
+            "line": 40,
+            "url": "https://github.com/go-gitea/gitea/blob/99053ce4fa2b45f1bca5837418c0c57f793ca824/routers/web/shared/user/block.go#L40"
+          }
+        ]
+      },
+      "reproductionPaths": [
+        {
+          "id": "gitea-block-missing-user-server-error-path-1",
+          "explanation": "Submitting a unique username that does not exist on the Blocked users page opens a 500 error page.",
+          "sourceBugs": [
+            {
+              "index": 3,
+              "id": null,
+              "name": "Blocking a nonexistent username returns HTTP 500"
+            }
+          ],
+          "expected": "The form should reject an unknown user with a validation message.",
+          "actual": "Submitting a unique username that does not exist on the Blocked users page opens a 500 error page.",
+          "reproSteps": [
+            "Open User Settings → Blocked users.",
+            "Enter a unique nonexistent username and click Block.",
+            "Observe the 500 Internal Server Error page."
+          ],
+          "severity": 5
+        }
+      ]
+    },
+    {
+      "id": "gitea-user-cards-missing-empty-state",
+      "explanation": "Empty follower lists have no explanation.",
+      "rootCause": {
+        "explanation": "user_cards ranges over Cards and emits a pager but supplies no else branch for an empty collection.",
+        "sourceReferences": [
+          {
+            "repository": "go-gitea/gitea",
+            "revision": "99053ce4fa2b45f1bca5837418c0c57f793ca824",
+            "path": "templates/repo/user_cards.tmpl",
+            "line": 18,
+            "url": "https://github.com/go-gitea/gitea/blob/99053ce4fa2b45f1bca5837418c0c57f793ca824/templates/repo/user_cards.tmpl#L18"
+          }
+        ]
+      },
+      "reproductionPaths": [
+        {
+          "id": "gitea-user-cards-missing-empty-state-path-1",
+          "explanation": "The 0 Followers link opens a blank content area with no explanation or empty-state text.",
+          "sourceBugs": [
+            {
+              "index": 4,
+              "id": null,
+              "name": "Zero-followers profile tab has no empty state"
+            }
+          ],
+          "expected": "The Followers tab should explain that the account has no followers.",
+          "actual": "The 0 Followers link opens a blank content area with no explanation or empty-state text.",
+          "reproSteps": [
+            "Open the eval profile and click 0 Followers.",
+            "Observe the empty content area at ?tab=followers."
+          ],
+          "severity": 1
+        }
+      ]
+    },
+    {
+      "id": "gitea-profile-description-grammar",
+      "explanation": "The English profile introduction contains a grammatical error.",
+      "rootCause": {
+        "explanation": "The profile_desc locale literal says profile is show rather than shown.",
+        "sourceReferences": [
+          {
+            "repository": "go-gitea/gitea",
+            "revision": "99053ce4fa2b45f1bca5837418c0c57f793ca824",
+            "path": "options/locale/locale_en-US.ini",
+            "line": 735,
+            "url": "https://github.com/go-gitea/gitea/blob/99053ce4fa2b45f1bca5837418c0c57f793ca824/options/locale/locale_en-US.ini#L735"
+          }
+        ]
+      },
+      "reproductionPaths": [
+        {
+          "id": "gitea-profile-description-grammar-path-1",
+          "explanation": "The profile settings introduction says “Control how your profile is show to other users.”",
+          "sourceBugs": [
+            {
+              "index": 5,
+              "id": null,
+              "name": "Public Profile description uses incorrect grammar"
+            }
+          ],
+          "expected": "The sentence should say “shown to other users.”",
+          "actual": "The profile settings introduction says “Control how your profile is show to other users.”",
+          "reproSteps": [
+            "Open User Settings → Profile.",
+            "Read the Public Profile introductory sentence."
+          ],
+          "severity": 1
+        }
+      ]
+    },
+    {
+      "id": "gitea-follow-does-not-refresh-user-cards",
+      "explanation": "Follow changes leave the visible follower list stale.",
+      "rootCause": {
+        "explanation": "The follow controls target only #profile-avatar-card; user-cards refreshes on refreshUserCards, and this flow does not refresh that separate list.",
+        "sourceReferences": [
+          {
+            "repository": "go-gitea/gitea",
+            "revision": "99053ce4fa2b45f1bca5837418c0c57f793ca824",
+            "path": "templates/shared/user/profile_big_avatar.tmpl",
+            "line": 114,
+            "url": "https://github.com/go-gitea/gitea/blob/99053ce4fa2b45f1bca5837418c0c57f793ca824/templates/shared/user/profile_big_avatar.tmpl#L114"
+          }
+        ]
+      },
+      "reproductionPaths": [
+        {
+          "id": "gitea-follow-does-not-refresh-user-cards-path-1",
+          "explanation": "On a user's Followers tab, clicking Unfollow updates the sidebar count and button to Follow, but your follower card stays in the list until the page is reloaded.",
+          "sourceBugs": [
+            {
+              "index": 6,
+              "id": "mo-30m-gitea-0",
+              "name": "Unfollowing a user from their Followers tab leaves your card in the list until reload"
+            }
+          ],
+          "expected": "After clicking Unfollow on a user's Followers tab, your card is removed from the Followers list, matching the updated follower count.",
+          "actual": "The sidebar shows the lower follower count and a Follow button, but your card stays in the Followers list, even after waiting. Reloading removes it.",
+          "reproSteps": [
+            "Sign in, open another user's profile, and follow them.",
+            "Open their Followers tab and confirm your card is listed.",
+            "Click Unfollow in the sidebar.",
+            "Check whether your card is removed from the list, then reload and check again."
+          ],
+          "severity": 1,
+          "matchingGuidance": [
+            {
+              "sourceBugIndex": 6,
+              "guidance": {
+                "relatedReference": {
+                  "name": "Following a user from their Followers tab doesn't add your card to the list until reload",
+                  "distinction": "Same Followers tab and cause (Follow/Unfollow refreshes only the sidebar), but that entry is Follow not adding your card; this entry is Unfollow leaving your card."
+                }
+              }
+            }
+          ]
+        },
+        {
+          "id": "gitea-follow-does-not-refresh-user-cards-path-2",
+          "explanation": "On a user's Followers tab, clicking Follow updates the sidebar count and button to Unfollow, but your follower card isn't added to the list until the page is reloaded.",
+          "sourceBugs": [
+            {
+              "index": 15,
+              "id": "gitea-followers-tab-follow-does-not-add-card",
+              "name": "Following a user from their Followers tab doesn't add your card to the list until reload"
+            }
+          ],
+          "expected": "After clicking Follow on a user's Followers tab, your card appears in the Followers list, matching the updated follower count.",
+          "actual": "The sidebar shows the new follower count and an Unfollow button, but the list keeps its previous cards (or stays empty for a user with no followers). Reloading shows your card.",
+          "reproSteps": [
+            "Sign in and open another user's profile whom you don't follow.",
+            "Open their Followers tab and note the cards listed.",
+            "Click Follow in the sidebar.",
+            "Check whether your card appears in the list, then reload and check again."
+          ],
+          "severity": 1,
+          "matchingGuidance": [
+            {
+              "sourceBugIndex": 15,
+              "guidance": {
+                "relatedReference": {
+                  "name": "Unfollowing a user from their Followers tab leaves your card in the list until reload",
+                  "distinction": "Same Followers tab and cause (Follow/Unfollow refreshes only the sidebar), but that entry is Unfollow leaving your card in the list; this entry is Follow not adding your card."
+                }
+              }
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "id": "gitea-avatar-file-input-mobile-width",
+      "explanation": "The native avatar file chooser overflows narrow settings forms.",
+      "rootCause": {
+        "explanation": "The file input is rendered without a responsive width/max-width constraint, retaining the native chooser intrinsic width.",
+        "sourceReferences": [
+          {
+            "repository": "go-gitea/gitea",
+            "revision": "99053ce4fa2b45f1bca5837418c0c57f793ca824",
+            "path": "templates/shared/avatar_upload_crop.tmpl",
+            "line": 3,
+            "url": "https://github.com/go-gitea/gitea/blob/99053ce4fa2b45f1bca5837418c0c57f793ca824/templates/shared/avatar_upload_crop.tmpl#L3"
+          }
+        ]
+      },
+      "reproductionPaths": [
+        {
+          "id": "gitea-avatar-file-input-mobile-width-path-1",
+          "explanation": "At a 320px width, the avatar file input extends past the settings card and is clipped by the viewport.",
+          "sourceBugs": [
+            {
+              "index": 7,
+              "id": "gitea-novel-014",
+              "name": "Mobile avatar file input is clipped"
+            }
+          ],
+          "expected": "At a 320×700 viewport, the avatar file chooser should fit within the Avatar card without its control border extending beyond the viewport. Filename truncation within a correctly sized control is acceptable.",
+          "actual": "On /user/settings, the file chooser’s outlined field continues past the Avatar card’s right edge and reaches the viewport edge, where it is clipped. The clipping remained visible after waiting five seconds.",
+          "reproSteps": [
+            "Set the browser viewport to 320×700 CSS pixels and sign in with the authorized fixture account.",
+            "Choose Settings from the account menu to open /user/settings.",
+            "Scroll to the Avatar card and inspect the Choose new avatar file chooser.",
+            "Observe that its outlined field extends beyond the card and is clipped at the viewport’s right edge; wait for the layout to settle and confirm the overflow remains."
+          ],
+          "severity": 1
+        }
+      ]
+    },
+    {
+      "id": "gitea-profile-validation-loses-draft",
+      "explanation": "Profile validation redraws persisted values over submitted edits.",
+      "rootCause": {
+        "explanation": "ProfilePost returns tplSettingsProfile on HasError before updating the user, while the template binds fields to SignedUser rather than the submitted form.",
+        "sourceReferences": [
+          {
+            "repository": "go-gitea/gitea",
+            "revision": "99053ce4fa2b45f1bca5837418c0c57f793ca824",
+            "path": "routers/web/user/setting/profile.go",
+            "line": 64,
+            "url": "https://github.com/go-gitea/gitea/blob/99053ce4fa2b45f1bca5837418c0c57f793ca824/routers/web/user/setting/profile.go#L64"
+          }
+        ]
+      },
+      "reproductionPaths": [
+        {
+          "id": "gitea-profile-validation-loses-draft-path-1",
+          "explanation": "Submitting a profile with an unsupported Website URL displays a validation error but re-renders the profile form with previously saved values, discarding unsaved Full Name, Biography, Website, and Location edits.",
+          "sourceBugs": [
+            {
+              "index": 8,
+              "id": "gitea-profile-validation-discards-unsaved-edits",
+              "name": "Profile edits are cleared after invalid Website URL submission"
+            }
+          ],
+          "expected": "Reject the Website URL while retaining all submitted profile values in the form so the user can correct the URL without losing other edits.",
+          "actual": "With Website set to ftp://example.com/profile and distinct unsaved values in Full Name, Biography and Location, Update Profile displays `form.Website \"Url\" is not a valid URL.` and all four fields immediately revert to their previously saved values without a manual reload, discarding the submitted draft. In the recorded fixture the previously saved values were blank.",
+          "reproSteps": [
+            "Sign in and open Settings > Profile. Record the currently saved Full Name, Biography, Website and Location values.",
+            "Enter distinct new draft values in Full Name, Biography and Location; enter ftp://example.com/profile as Website.",
+            "Click Update Profile. Observe the Website URL validation error.",
+            "Inspect the four fields immediately without refreshing: they contain their previously saved values, losing the submitted draft. Correcting the Website URL now requires re-entering the other edits."
+          ],
+          "severity": 3,
+          "matchingGuidance": [
+            {
+              "sourceBugIndex": 8,
+              "guidance": {
+                "scope": "Unsaved submitted draft input is lost after recoverable validation, including the rejected Website value itself reverting to the saved URL. A report of only the rejected Website field switching back to its saved value is this bug. Already saved profile values are not erased."
+              }
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "id": "gitea-repo-search-dropdown-auto-direction",
+      "explanation": "Repository filter menus can open above the phone viewport.",
+      "rootCause": {
+        "explanation": "The shared search dropdowns have neither explicit downward class nor bounded scroll region; common-page leaves their direction on Fomantic auto, whose viewport guessing can clip the menu.",
+        "sourceReferences": [
+          {
+            "repository": "go-gitea/gitea",
+            "revision": "99053ce4fa2b45f1bca5837418c0c57f793ca824",
+            "path": "templates/shared/repo_search.tmpl",
+            "line": 12,
+            "url": "https://github.com/go-gitea/gitea/blob/99053ce4fa2b45f1bca5837418c0c57f793ca824/templates/shared/repo_search.tmpl#L12"
+          }
+        ]
+      },
+      "reproductionPaths": [
+        {
+          "id": "gitea-repo-search-dropdown-auto-direction-path-1",
+          "explanation": "On a user profile's repository tabs at phone width, the Filter and Sort menus open upward from their buttons even though there is room below, so their top options are cut off above the screen and cannot be scrolled into view.",
+          "sourceBugs": [
+            {
+              "index": 9,
+              "id": "gitea-profile-repo-filter-sort-menus-open-offscreen-mobile",
+              "name": "Profile repository Filter and Sort menus open above the mobile viewport"
+            }
+          ],
+          "expected": "At phone width the profile Filter and Sort menus open where all options are visible, or the menu scrolls so every option can be reached.",
+          "actual": "At 390×844 on a profile's Starred tab with the page scrolled to the top, Filter opened upward starting about 21px above the viewport, cutting off Clear Filter, and Sort started about 18px above it, cutting off Newest. At 320px wide Newest was mostly hidden. Scrolling up did not reveal them. Desktop widths and Explore > Repositories open normally.",
+          "reproSteps": [
+            "Sign in and open your profile's Starred (or Repositories) tab at 390×844, scrolled to the top.",
+            "Tap Filter next to the repository search box and look at the top of the menu.",
+            "Close it, tap Sort, and look at the top option, Newest."
+          ],
+          "severity": 1
+        }
+      ]
+    },
+    {
+      "id": "gitea-validation-untranslated-field-name",
+      "explanation": "Validation messages expose internal form field translation keys.",
+      "rootCause": {
+        "explanation": "Validate constructs form.<GoField> labels; Website has no matching translated field label and URL validation appends its internal Url message argument.",
+        "sourceReferences": [
+          {
+            "repository": "go-gitea/gitea",
+            "revision": "99053ce4fa2b45f1bca5837418c0c57f793ca824",
+            "path": "modules/web/middleware/binding.go",
+            "line": 130,
+            "url": "https://github.com/go-gitea/gitea/blob/99053ce4fa2b45f1bca5837418c0c57f793ca824/modules/web/middleware/binding.go#L130"
+          }
+        ]
+      },
+      "reproductionPaths": [
+        {
+          "id": "gitea-validation-untranslated-field-name-path-1",
+          "explanation": "Saving the profile with an invalid Website URL shows an error banner that names the field with an internal translation key, form.Website\"Url\", instead of the readable field name.",
+          "sourceBugs": [
+            {
+              "index": 10,
+              "id": "gitea-profile-website-validation-shows-internal-key",
+              "name": "Profile Website validation error shows an internal field key"
+            }
+          ],
+          "expected": "The Website validation error names the field in readable language, for example 'Website is not a valid URL'.",
+          "actual": "Entering ftp://example.org (or a javascript: or mailto: value) in Website and clicking Update Profile showed the banner `form.Website\"Url\" is not a valid URL.` at both mobile and desktop widths.",
+          "reproSteps": [
+            "Open Settings > Profile.",
+            "Enter ftp://example.org in Website and click Update Profile.",
+            "Read the error banner at the top of the page."
+          ],
+          "severity": 1,
+          "matchingGuidance": [
+            {
+              "sourceBugIndex": 10,
+              "guidance": {
+                "relatedReference": {
+                  "id": "gitea-profile-validation-discards-unsaved-edits",
+                  "distinction": "Same invalid Website submission. That entry is the other profile edits being cleared; this entry is the error banner's wording exposing an internal field key."
+                }
+              }
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "id": "gitea-profile-website-client-server-schemes",
+      "explanation": "Website validation accepts different URL schemes in browser and server.",
+      "rootCause": {
+        "explanation": "The field uses generic HTML type=url but the server applies ValidSiteUrl, which requires an allowed site scheme. Unsupported URLs pass the former and fail the latter.",
+        "sourceReferences": [
+          {
+            "repository": "go-gitea/gitea",
+            "revision": "99053ce4fa2b45f1bca5837418c0c57f793ca824",
+            "path": "services/forms/user_form.go",
+            "line": 217,
+            "url": "https://github.com/go-gitea/gitea/blob/99053ce4fa2b45f1bca5837418c0c57f793ca824/services/forms/user_form.go#L217"
+          }
+        ]
+      },
+      "reproductionPaths": [
+        {
+          "id": "gitea-profile-website-client-server-schemes-path-1",
+          "explanation": "The Website field's browser check accepts any URL scheme, so values such as javascript:, mailto: or ftp: URLs pass it and are only rejected by the server after submitting, while text such as fooo is blocked in the browser with 'Please enter a URL.'",
+          "sourceBugs": [
+            {
+              "index": 11,
+              "id": "gitea-profile-website-browser-server-validation-mismatch",
+              "name": "Profile Website validation differs between the browser and the server"
+            }
+          ],
+          "expected": "The Website field applies the same rule before and after submitting: a value the server rejects, such as a non-http(s) URL, is flagged in the browser like other invalid input.",
+          "actual": "Entering fooo shows the browser tooltip 'Please enter a URL.' and the form is not submitted. Entering javascript:alert('ProfileQA') (or ftp://example.org) passes the browser check, submits, and the server responds with `form.Website\"Url\" is not a valid URL.`",
+          "reproSteps": [
+            "Sign in and open Settings > Profile.",
+            "Enter fooo in Website and click Update Profile. Observe the browser's 'Please enter a URL.' tooltip and that the page is not submitted.",
+            "Enter javascript:alert('ProfileQA') in Website and click Update Profile. Observe that the browser accepts it and the server returns the Website validation error."
+          ],
+          "severity": 1,
+          "matchingGuidance": [
+            {
+              "sourceBugIndex": 11,
+              "guidance": {
+                "relatedReference": {
+                  "id": "gitea-profile-validation-discards-unsaved-edits",
+                  "distinction": "Same server-rejected Website submission. That entry is the submitted profile values being replaced by saved ones; this entry is the browser check accepting values the server rejects."
+                },
+                "otherRelatedReference": {
+                  "id": "gitea-profile-website-validation-shows-internal-key",
+                  "distinction": "That entry is the server error banner's wording; this entry is which values reach the server at all."
+                }
+              }
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "id": "gitea-admin-block-cannot-unblock",
+      "explanation": "Stored blocks of administrator accounts cannot be removed.",
+      "rootCause": {
+        "explanation": "CanUnblockUser checks IsUserBlockedBy; that helper unconditionally returns false for admins despite an existing stored block, making unblock fail.",
+        "sourceReferences": [
+          {
+            "repository": "go-gitea/gitea",
+            "revision": "99053ce4fa2b45f1bca5837418c0c57f793ca824",
+            "path": "models/user/block.go",
+            "line": 52,
+            "url": "https://github.com/go-gitea/gitea/blob/99053ce4fa2b45f1bca5837418c0c57f793ca824/models/user/block.go#L52"
+          }
+        ]
+      },
+      "reproductionPaths": [
+        {
+          "id": "gitea-admin-block-cannot-unblock-path-1",
+          "explanation": "A regular user can block an administrator account, and the block is listed under Settings > Blocked Users, but clicking Unblock on it fails with 'cannot unblock the user' and the administrator stays on the list.",
+          "sourceBugs": [
+            {
+              "index": 12,
+              "id": "gitea-unblock-admin-user-fails",
+              "name": "Unblocking an administrator account from Blocked Users fails"
+            }
+          ],
+          "expected": "Clicking Unblock removes the blocked administrator from the Blocked Users list, as it does for any other blocked user.",
+          "actual": "A non-admin user blocked the administrator account eval from its profile, and eval was listed under Blocked Users. Clicking Unblock showed 'Failed to unblock user: cannot unblock the user', and eval stayed on the list after refresh.",
+          "reproSteps": [
+            "Sign in as a non-admin user and open an administrator's profile.",
+            "Click Block user and confirm.",
+            "Open Settings > Blocked Users and click Unblock for the administrator."
+          ],
+          "severity": 3
+        }
+      ]
+    },
+    {
+      "id": "gitea-heatmap-day-timezone-mismatch",
+      "explanation": "Contribution calendar clicks and activity filtering use different day boundaries.",
+      "rootCause": {
+        "explanation": "ActivityHeatmap constructs the clicked date in the browser timezone, while FeedDateCond parses that date using DefaultUILocation, so the requested time interval need not match the calendar bucket.",
+        "sourceReferences": [
+          {
+            "repository": "go-gitea/gitea",
+            "revision": "99053ce4fa2b45f1bca5837418c0c57f793ca824",
+            "path": "models/activities/action.go",
+            "line": 463,
+            "url": "https://github.com/go-gitea/gitea/blob/99053ce4fa2b45f1bca5837418c0c57f793ca824/models/activities/action.go#L463"
+          }
+        ]
+      },
+      "reproductionPaths": [
+        {
+          "id": "gitea-heatmap-day-timezone-mismatch-path-1",
+          "explanation": "The profile contribution calendar groups activity by the browser's local day, but clicking a day filters the activity list by that date in the server's timezone. For viewers in another timezone, a day's square can open an empty list or a list that doesn't match its contribution count.",
+          "sourceBugs": [
+            {
+              "index": 13,
+              "id": "gitea-heatmap-day-filter-timezone-mismatch",
+              "name": "Clicking a contribution calendar day shows the wrong activity when the browser and server timezones differ"
+            }
+          ],
+          "expected": "Clicking a calendar day lists the activity counted in that day's square.",
+          "actual": "In a Los Angeles browser against a UTC server, the square '12 contributions - Oct 23, 2026' opened ?date=2026-10-23 with no activity, while the next square '6 contributions - Oct 24' listed 18 entries. In a UTC browser the same click listed exactly the advertised entries. The dashboard calendar behaves the same.",
+          "reproSteps": [
+            "Set the browser timezone several hours away from the server's (for example America/Los_Angeles against a UTC server).",
+            "Create some activity, then open your profile's Public Activity tab.",
+            "Hover a filled calendar square to read its count, click it, and compare the activity listed."
+          ],
+          "severity": 1
+        }
+      ]
+    },
+    {
+      "id": "gitea-avatar-limit-message-truncates-size",
+      "explanation": "Avatar size rejection can print equal actual and maximum sizes.",
+      "rootCause": {
+        "explanation": "The error formats both byte counts using integer division by 1024, dropping the excess fractional KiB.",
+        "sourceReferences": [
+          {
+            "repository": "go-gitea/gitea",
+            "revision": "99053ce4fa2b45f1bca5837418c0c57f793ca824",
+            "path": "routers/web/user/setting/profile.go",
+            "line": 147,
+            "url": "https://github.com/go-gitea/gitea/blob/99053ce4fa2b45f1bca5837418c0c57f793ca824/routers/web/user/setting/profile.go#L147"
+          }
+        ]
+      },
+      "reproductionPaths": [
+        {
+          "id": "gitea-avatar-limit-message-truncates-size-path-1",
+          "explanation": "Uploading an avatar that is slightly over the 1 MiB limit is correctly rejected, but the error reads 'The uploaded file size (1024 KiB) exceeds the maximum size (1024 KiB).' The file size is rounded down to whole KiB, so any file up to 1023 bytes over the limit shows the same number as the maximum.",
+          "sourceBugs": [
+            {
+              "index": 14,
+              "id": "gitea-avatar-size-error-same-numbers",
+              "name": "Avatar size error says the file's size equals the maximum it exceeds"
+            }
+          ],
+          "expected": "The error shows the file's size precisely enough to differ from the maximum, or simply says the file is larger than the 1024 KiB limit.",
+          "actual": "Uploading a 1,048,577-byte PNG (one byte over 1 MiB) as the avatar showed 'The uploaded file size (1024 KiB) exceeds the maximum size (1024 KiB).'",
+          "reproSteps": [
+            "Open Settings > Profile.",
+            "Choose a valid image file between 1,048,577 and 1,049,599 bytes as the new avatar.",
+            "Click Update Avatar and read the error message."
+          ],
+          "severity": 1
+        }
+      ]
+    },
+    {
+      "id": "gitea-owner-project-search-keyword-not-rendered",
+      "explanation": "Project list searches disappear from the field and subsequent links.",
+      "rootCause": {
+        "explanation": "Projects reads q and filters results but never assigns Keyword into template data. The field, status links and sort links therefore render an empty query.",
+        "sourceReferences": [
+          {
+            "repository": "go-gitea/gitea",
+            "revision": "99053ce4fa2b45f1bca5837418c0c57f793ca824",
+            "path": "routers/web/org/projects.go",
+            "line": 55,
+            "url": "https://github.com/go-gitea/gitea/blob/99053ce4fa2b45f1bca5837418c0c57f793ca824/routers/web/org/projects.go#L55"
+          }
+        ]
+      },
+      "reproductionPaths": [
+        {
+          "id": "gitea-owner-project-search-keyword-not-rendered-path-1",
+          "explanation": "On a user's or organization's Projects page, submitting a search filters the list but reloads with the search box empty, and the Open, Closed and sort links drop the search, so switching state or sort loses it.",
+          "sourceBugs": [
+            {
+              "index": 16,
+              "id": "gitea-projects-search-clears-query",
+              "name": "Projects search clears the entered query after submitting it"
+            }
+          ],
+          "expected": "After searching projects, the search box keeps the query and the Open, Closed and sort links keep the search applied.",
+          "actual": "After submitting a query, the page reloaded with the search box showing only the 'Search projects...' placeholder; clicking Closed or a sort option then showed results without the search.",
+          "reproSteps": [
+            "Open a user's or organization's Projects page with several projects.",
+            "Search for a word from one project's title and submit.",
+            "Check the search box, then click Closed (or change the sort) and check whether the search is still applied."
+          ],
+          "severity": 3
+        },
+        {
+          "id": "gitea-owner-project-search-keyword-not-rendered-path-2",
+          "explanation": "After a project search, the page fails to retain the query for its controls. Choosing a sort navigates with an empty q and restores unrelated projects.",
+          "sourceBugs": [
+            {
+              "index": 18,
+              "id": "gitea-project-sort-drops-search",
+              "name": "Sorting filtered projects removes the search filter"
+            }
+          ],
+          "expected": "Sorting an already-filtered project list preserves the active search and changes only its ordering.",
+          "actual": "Search returns matching projects, but the search field and sort links contain an empty query. Selecting Alphabetically navigates with q= and returns unfiltered projects.",
+          "reproSteps": [
+            "Have at least two projects sharing a fresh prefix and another project that does not match it.",
+            "On the user Projects list, search for the shared prefix and confirm only matching projects appear.",
+            "Choose Sort → Alphabetically.",
+            "Observe that q becomes empty and the unrelated project returns.",
+            "As a control, open a URL explicitly containing both the shared query and sort=alphabetically and confirm the unrelated project stays excluded."
+          ],
+          "severity": 3,
+          "matchingGuidance": [
+            {
+              "sourceBugIndex": 18,
+              "guidance": {
+                "relatedReference": {
+                  "id": "gitea-project-search-drops-sort",
+                  "distinction": "This entry is Sort dropping an existing project search because Keyword is omitted from template data. The related entry is submitting Search dropping the chosen sort because a hidden sort field is missing."
+                },
+                "scope": "Requires a completed project search followed by a sort action that clears q and restores unfiltered results. It is distinct from browser Back retaining an unapplied search draft, which has a rejected reference."
+              }
+            }
+          ]
+        },
+        {
+          "id": "gitea-owner-project-search-keyword-not-rendered-path-3",
+          "explanation": "On a user's Projects page, after searching within one status (for example Closed), clicking the other status filter (Open) shows every project in that status with an empty search box instead of keeping the search.",
+          "sourceBugs": [
+            {
+              "index": 21,
+              "id": "gitea-project-state-switch-drops-search",
+              "name": "Switching project status filters discards the search"
+            }
+          ],
+          "expected": "Switching between Open and Closed keeps the active search and filters the other status's projects by it.",
+          "actual": "After a search under Closed that matched nothing, clicking Open listed all open projects and cleared the search box. The Open and Closed links build q from Keyword, which the page never provides, so the search is dropped.",
+          "reproSteps": [
+            "Open your profile's Projects tab with at least one open and one closed project.",
+            "Select Closed and search for a term that matches no project title.",
+            "Confirm the closed results are empty, then click Open.",
+            "Check whether the search box and results still reflect the search."
+          ],
+          "severity": 3,
+          "matchingGuidance": [
+            {
+              "sourceBugIndex": 21,
+              "guidance": {
+                "relatedReference": {
+                  "id": "gitea-projects-search-clears-query",
+                  "distinction": "Same missing Keyword cause. That entry is a submitted search reloading with an empty box and Closed or sort losing it; this entry is switching between Open and Closed after a search, which the reviewer labels separately."
+                },
+                "scope": "Reports that clicking the Open or Closed status filter after a project search drops the search and shows unfiltered projects."
+              }
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "id": "gitea-owner-project-search-omits-sort",
+      "explanation": "Submitting project search resets sorting.",
+      "rootCause": {
+        "explanation": "The project search form carries state but no current sort input; its GET submission therefore drops sort.",
+        "sourceReferences": [
+          {
+            "repository": "go-gitea/gitea",
+            "revision": "99053ce4fa2b45f1bca5837418c0c57f793ca824",
+            "path": "templates/projects/list.tmpl",
+            "line": 21,
+            "url": "https://github.com/go-gitea/gitea/blob/99053ce4fa2b45f1bca5837418c0c57f793ca824/templates/projects/list.tmpl#L21"
+          }
+        ]
+      },
+      "reproductionPaths": [
+        {
+          "id": "gitea-owner-project-search-omits-sort-path-1",
+          "explanation": "Submitting a project-list search discards the selected sort and switches the matching results back to newest-first.",
+          "sourceBugs": [
+            {
+              "index": 17,
+              "id": "gitea-project-search-drops-sort",
+              "name": "Searching projects resets the selected sort order"
+            }
+          ],
+          "expected": "Searching narrows the project list while preserving the selected sort.",
+          "actual": "Alphabetically displays project 01 before project 02. Submitting their shared search prefix drops sort=alphabetically and displays the newer project 02 first. A direct URL containing q and sort preserves both.",
+          "reproSteps": [
+            "Create two disposable user projects with a shared unique prefix, creating suffix 01 before suffix 02.",
+            "Open the user Projects list and choose Sort → Alphabetically; confirm 01 appears before 02.",
+            "Search for the shared prefix and submit.",
+            "Observe that the sort query disappears and the matching list returns to newest-first, with 02 before 01.",
+            "As a control, open the same list URL with both q and sort=alphabetically and confirm the filtered alphabetical order."
+          ],
+          "severity": 3,
+          "matchingGuidance": [
+            {
+              "sourceBugIndex": 17,
+              "guidance": {
+                "relatedReference": {
+                  "id": "gitea-project-sort-drops-search",
+                  "distinction": "This entry is Search dropping sort because the search form omits its sort field. The related entry is Sort dropping the existing search because Keyword is not supplied to template links."
+                },
+                "otherRelatedReference": {
+                  "id": "gitea-milestone-search-sort-reset",
+                  "distinction": "Similar missing-sort field on milestone search, but a different project-list template and entry point."
+                },
+                "scope": "Requires submitting a project search after selecting a nondefault sort and observing the sort actually reset. Plain default-order search is not a failure."
+              }
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "id": "gitea-bulgarian-locale-not-bundled",
+      "explanation": "An advertised Bulgarian locale falls back to English.",
+      "rootCause": {
+        "explanation": "The language list advertises bg-BG, but the bundled options/locale tree contains no Bulgarian locale file, so lookup falls back.",
+        "sourceReferences": [
+          {
+            "repository": "go-gitea/gitea",
+            "revision": "99053ce4fa2b45f1bca5837418c0c57f793ca824",
+            "path": "modules/setting/i18n.go",
+            "line": 24,
+            "url": "https://github.com/go-gitea/gitea/blob/99053ce4fa2b45f1bca5837418c0c57f793ca824/modules/setting/i18n.go#L24"
+          }
+        ]
+      },
+      "reproductionPaths": [
+        {
+          "id": "gitea-bulgarian-locale-not-bundled-path-1",
+          "explanation": "Bulgarian (Български) is offered as an interface language, and saving it reports success, but the interface, including the settings page and navigation, stays in English.",
+          "sourceBugs": [
+            {
+              "index": 19,
+              "id": "gitea-bulgarian-language-renders-english",
+              "name": "Selecting Bulgarian leaves the interface in English"
+            }
+          ],
+          "expected": "After choosing Bulgarian and saving, the interface renders in Bulgarian.",
+          "actual": "The save succeeds and Български stays selected, but every label, the success message and the navigation render in English. Gitea's default language list includes bg-BG, but no Bulgarian translations ship at the pinned revision, so every string falls back to English.",
+          "reproSteps": [
+            "Open Settings > Appearance.",
+            "Choose Български in the language selector and update the language.",
+            "Check the language of the success message, the settings labels and the navigation."
+          ],
+          "severity": 1,
+          "matchingGuidance": [
+            {
+              "sourceBugIndex": 19,
+              "guidance": {
+                "scope": "Only reports that choosing Bulgarian leaves the interface, or most of it, in English. Other languages' missing or wrong translations are separate bugs."
+              }
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "id": "gitea-spanish-added-commits-typo",
+      "explanation": "The Spanish added-commits label is misspelled.",
+      "rootCause": {
+        "explanation": "The locale value contains añandidos rather than añadidos.",
+        "sourceReferences": [
+          {
+            "repository": "go-gitea/gitea",
+            "revision": "99053ce4fa2b45f1bca5837418c0c57f793ca824",
+            "path": "options/locale/locale_es-ES.ini",
+            "line": 653,
+            "url": "https://github.com/go-gitea/gitea/blob/99053ce4fa2b45f1bca5837418c0c57f793ca824/options/locale/locale_es-ES.ini#L653"
+          }
+        ]
+      },
+      "reproductionPaths": [
+        {
+          "id": "gitea-spanish-added-commits-typo-path-1",
+          "explanation": "With Español selected, the label for added-commits comments in the hidden-comment settings reads \"Commits añandidos\" instead of \"Commits añadidos\".",
+          "sourceBugs": [
+            {
+              "index": 20,
+              "id": "gitea-spanish-added-commits-label-misspelled",
+              "name": "Spanish added-commits label is misspelled"
+            }
+          ],
+          "expected": "The Spanish label reads \"Commits añadidos\".",
+          "actual": "The label reads \"Commits añandidos\", with an extra n. The Spanish translation file at the pinned revision has comment_type_group_pull_request_push=Commits añandidos.",
+          "reproSteps": [
+            "Open Settings > Appearance and choose Español as the interface language.",
+            "In the same settings page, find the options for which comment types to hide.",
+            "Read the label for added commits."
+          ],
+          "severity": 1,
+          "matchingGuidance": [
+            {
+              "sourceBugIndex": 20,
+              "guidance": {
+                "scope": "Only reports of the misspelled Spanish added-commits label (\"Commits añandidos\"). Other misspelled or missing Spanish strings are separate bugs."
+              }
+            }
+          ]
+        }
+      ]
+    }
+  ]
+}
