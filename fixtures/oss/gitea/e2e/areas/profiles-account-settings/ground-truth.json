@@ -122,8 +122,9 @@
       ],
       "severity": 3,
       "matchingGuidance": {
-        "scope": "Unsaved submitted draft input is lost after recoverable validation. Already saved profile values are not erased."
-      }
+        "scope": "Unsaved submitted draft input is lost after recoverable validation, including the rejected Website value itself reverting to the saved URL. A report of only the rejected Website field switching back to its saved value is this bug. Already saved profile values are not erased."
+      },
+      "sourceCause": "routers/web/user/setting/profile.go ProfilePost re-renders the settings template on a binding error, and templates/user/settings/profile.tmpl fills every input from .SignedUser (the saved user) rather than the submitted form, so all submitted values are replaced by the stored ones."
     },
     {
       "id": "gitea-profile-repo-filter-sort-menus-open-offscreen-mobile",
@@ -154,6 +155,30 @@
         "relatedReference": {
           "id": "gitea-profile-validation-discards-unsaved-edits",
           "distinction": "Same invalid Website submission. That entry is the other profile edits being cleared; this entry is the error banner's wording exposing an internal field key."
+        }
+      }
+    },
+    {
+      "id": "gitea-profile-website-browser-server-validation-mismatch",
+      "name": "Profile Website validation differs between the browser and the server",
+      "summary": "The Website field's browser check accepts any URL scheme, so values such as javascript:, mailto: or ftp: URLs pass it and are only rejected by the server after submitting, while text such as fooo is blocked in the browser with 'Please enter a URL.'",
+      "expected": "The Website field applies the same rule before and after submitting: a value the server rejects, such as a non-http(s) URL, is flagged in the browser like other invalid input.",
+      "actual": "Entering fooo shows the browser tooltip 'Please enter a URL.' and the form is not submitted. Entering javascript:alert('ProfileQA') (or ftp://example.org) passes the browser check, submits, and the server responds with `form.Website\"Url\" is not a valid URL.`",
+      "reproSteps": [
+        "Sign in and open Settings > Profile.",
+        "Enter fooo in Website and click Update Profile. Observe the browser's 'Please enter a URL.' tooltip and that the page is not submitted.",
+        "Enter javascript:alert('ProfileQA') in Website and click Update Profile. Observe that the browser accepts it and the server returns the Website validation error."
+      ],
+      "severity": 1,
+      "sourceCause": "templates/user/settings/profile.tmpl renders Website as type=\"url\", which the browser accepts for any scheme, while services/forms/user_form.go binds it with ValidSiteUrl, which modules/validation/helpers.go IsValidSiteURL limits to VALID_SITE_URL_SCHEMES (http,https by default).",
+      "matchingGuidance": {
+        "relatedReference": {
+          "id": "gitea-profile-validation-discards-unsaved-edits",
+          "distinction": "Same server-rejected Website submission. That entry is the submitted profile values being replaced by saved ones; this entry is the browser check accepting values the server rejects."
+        },
+        "otherRelatedReference": {
+          "id": "gitea-profile-website-validation-shows-internal-key",
+          "distinction": "That entry is the server error banner's wording; this entry is which values reach the server at all."
         }
       }
     },
