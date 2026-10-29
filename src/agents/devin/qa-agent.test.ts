@@ -5,7 +5,7 @@ import path from "node:path";
 import { it } from "node:test";
 import { z } from "zod";
 
-import { basicBugbashBrief } from "../../evals/basic-brief";
+import { bugbashBrief } from "../../evals/bugbash-brief";
 import { Fixture } from "../../evals/types";
 import { DevinQaAgent } from "./qa-agent";
 import { DevinApiError, DevinQaClient } from "./qa-client";
@@ -107,7 +107,7 @@ it("handles nullable launch metadata, retryable cleanup failures and asynchronou
   try {
     const signal = AbortSignal.timeout(15_000);
     const execution = await agent.start(
-      basicBugbashBrief(url, 1_800_000, fixture, "Devin native browser"),
+      bugbashBrief(url, 1_800_000, fixture, "Devin native browser"),
       signal,
       undefined,
       () => Date.now() + 1_800_000,
