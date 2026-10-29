@@ -4,7 +4,7 @@
   "logicalBugs": [
     {
       "id": "gitea-label-color-required-indicator",
-      "explanation": "Required label Color lacks a required indicator.",
+      "explanation": "The New Label form requires Color to save but only marks Name with a required indicator.",
       "rootCause": {
         "explanation": "The Color input has required but its containing field lacks the required CSS class used for Name, so the mandatory marker is omitted.",
         "sourceReferences": [
@@ -42,7 +42,7 @@
     },
     {
       "id": "gitea-dashboard-label-propagation",
-      "explanation": "Dashboard Open/Closed links discard selected labels.",
+      "explanation": "On the global Issues dashboard, a label filter reached through a label badge or organization label usage link is not preserved through subsequent sidebar/ownership navigation. The destination broadens the list instead of retaining the selected label.",
       "rootCause": {
         "explanation": "buildIssueOverview reads the active labels query into opts.LabelIDs for database/search filtering but never assigns selectedLabels to ctx.Data[\"SelectLabels\"]. The shared dashboard template builds its state and ownership links with .SelectLabels, so those links omit the active labels filter. This affects global and organization issue/PR dashboards.",
         "analysisStatus": "source-supported",
@@ -106,7 +106,7 @@
     },
     {
       "id": "gitea-label-usage-link-issue-only",
-      "explanation": "A combined issue/PR usage count links to an issue-only list.",
+      "explanation": "A repository or organization label used on an open pull request has a positive open-usage count, but clicking that count opens an Issues-only result list. When the label is used only on PRs, the destination is empty despite the displayed usage.",
       "rootCause": {
         "explanation": "label_list renders NumOpenIssues/NumOpenRepoIssues, which include PRs, while always linking to /issues?labels= rather than a combined result or separate PR list. Organization label links have the same mismatch.",
         "sourceReferences": [
@@ -190,7 +190,7 @@
     },
     {
       "id": "gitea-label-count-plural",
-      "explanation": "The label list heading always uses the plural noun.",
+      "explanation": "When a repository or organization has exactly one label, the Labels list heading displays \"1 labels\" instead of a singular count. Other label data can be correct.",
       "rootCause": {
         "explanation": "Both organization and repository label lists call the same English translation %d labels without a singular variant.",
         "sourceReferences": [
@@ -249,7 +249,7 @@
     },
     {
       "id": "gitea-label-exclusive-order-invalid-integer",
-      "explanation": "Decimal-looking exclusive sort input silently converts to zero.",
+      "explanation": "Saving Sort Order \"1.0\" on an exclusive label closes the Edit dialog with no error, and the previously saved order of 1000 is reset to 0. The 1000 badge also disappears from the label list.",
       "rootCause": {
         "explanation": "The modal accepts a number input string such as 1.0, while CreateLabelForm decodes ExclusiveOrder as int. The failed conversion leaves zero without a form validation error; UpdateLabel persists it.",
         "sourceReferences": [
@@ -295,7 +295,7 @@
     },
     {
       "id": "gitea-label-list-fixed-columns-overflow",
-      "explanation": "Fixed label-list columns do not contain long badges.",
+      "explanation": "At phone or tablet width, a long allowed label name in repository or organization Labels runs into adjacent count, Edit and Delete columns. The badge and row metadata overlap rather than wrapping or leaving those controls readable.",
       "rootCause": {
         "explanation": "The flex row assigns 33% widths to title, usage and operations without wrapping or clipping badge text. Labels use white-space:nowrap, so long names paint across neighboring columns at narrow widths.",
         "sourceReferences": [
@@ -482,7 +482,7 @@
     },
     {
       "id": "gitea-label-usage-plural",
-      "explanation": "The one-issue usage count uses plural wording.",
+      "explanation": "An organization label assigned to exactly one open issue displays \"1 open issues/pull requests\" in its usage count.",
       "rootCause": {
         "explanation": "The shared label_open_issues translation is %d open issues/pull requests regardless of count.",
         "sourceReferences": [
@@ -522,7 +522,7 @@
     },
     {
       "id": "gitea-archived-label-operation-shrink",
-      "explanation": "The Archived badge shrinks into label operation icons.",
+      "explanation": "At phone width in repository or organization Labels, an Archived badge is squeezed beneath the adjacent Edit pencil. Even a short label name can make its archived status unreadable, unlike the separate long-name row overflow.",
       "rootCause": {
         "explanation": "The operation column is fixed at 33% and its flex children include the archived label and edit/delete controls without a responsive layout or a nonshrinking badge. The label allows min-width:0 while its text stays nowrap, so text overpaints the controls.",
         "sourceReferences": [
@@ -637,7 +637,7 @@
     },
     {
       "id": "gitea-label-name-whitespace-unvalidated",
-      "explanation": "Label creation and editing accept invisible whitespace names.",
+      "explanation": "Repository and organization label forms accept a required name consisting only of spaces. Creating or renaming a label succeeds and leaves a nameless visible row, while a completely empty name is rejected.",
       "rootCause": {
         "explanation": "CreateLabelForm checks Required but does not trim or reject a whitespace-only Title; handlers copy form.Title directly and NewLabel/UpdateLabel only normalize color.",
         "sourceReferences": [
@@ -734,7 +734,7 @@
     },
     {
       "id": "gitea-label-picker-exclusive-order-ignored",
-      "explanation": "The new-issue label picker ignores saved exclusive ordering.",
+      "explanation": "When labels share a scope, the new-issue Labels selector lists them alphabetically even when their saved numeric Sort Order values require the reverse order.",
       "rootCause": {
         "explanation": "retrieveLabelsData requests GetLabelsByRepoID with an empty sort type, yielding default name ordering rather than ExclusiveOrder ordering. The sidebar/new-issue picker consumes that AllLabels sequence.",
         "sourceReferences": [
@@ -781,7 +781,7 @@
     },
     {
       "id": "gitea-label-rename-exclusive-assignments-unreconciled",
-      "explanation": "Renaming into an exclusive scope does not reconcile assigned labels.",
+      "explanation": "Saving a label edit never reconciles existing issue assignments, so renaming an assigned exclusive label into a scope the issue already uses leaves the issue with two labels from one exclusive scope, which the docs say scoped labels prevent.",
       "rootCause": {
         "explanation": "UpdateLabel changes name/exclusive metadata only. It does not revisit existing IssueLabel rows to enforce the scope against other labels already assigned to those issues; exclusive conflict removal occurs during assignment instead.",
         "sourceReferences": [
@@ -820,7 +820,7 @@
     },
     {
       "id": "gitea-label-filter-long-label-width",
-      "explanation": "The label filter menu can exceed and escape the viewport.",
+      "explanation": "At phone width, once a repository has a valid long label (up to the 50-character limit), the issue list Label filter dropdown opens leftward and mostly off screen, so its search box, label options and Show archived labels control cannot be reached or scrolled into view.",
       "rootCause": {
         "explanation": "Label filter options render nowrap badges in a dropdown with content-driven width and no viewport-width cap. Positioning the overwide menu cannot keep its search/options on screen when a valid long label determines the intrinsic width.",
         "sourceReferences": [
@@ -890,7 +890,7 @@
     },
     {
       "id": "gitea-sidebar-label-nowrap-overflow",
-      "explanation": "Assigned label badges can overflow the sidebar.",
+      "explanation": "On an issue page at desktop width, a valid 50-character label assigned to the issue renders as a single unwrapped badge wider than the sidebar, extending past the sidebar border and the right edge of the viewport.",
       "rootCause": {
         "explanation": "RenderLabel emits a ui label with nowrap text and no truncation/wrapping constraint. The assigned-label list places it in the narrow sidebar without constraining its painted text to that width.",
         "sourceReferences": [
@@ -959,7 +959,7 @@
     },
     {
       "id": "gitea-label-scope-edit-unchecks-exclusive",
-      "explanation": "Editing through a temporarily unscoped name loses Exclusive.",
+      "explanation": "While editing an exclusive scoped label, briefly removing its scope/item separator unchecks Exclusive. Finishing a valid scoped name does not restore that option, so saving an otherwise ordinary rename can silently turn off exclusivity in repository or organization labels.",
       "rootCause": {
         "explanation": "syncModalUi unconditionally clears elExclusiveInput.checked when nameHasScope is false. Restoring a valid scoped name only re-enables the field and does not restore its saved checkbox state.",
         "sourceReferences": [
@@ -1070,7 +1070,7 @@
     },
     {
       "id": "gitea-label-name-uniqueness-unenforced",
-      "explanation": "Duplicate label names are allowed within one owner.",
+      "explanation": "Creating or renaming a repository or organization label to the exact name of another label in the same scope succeeds without warning. The list and picker then contain distinct label records with identical visible names.",
       "rootCause": {
         "explanation": "Label.Name has no composite unique constraint with RepoID/OrgID. NewLabel inserts directly and UpdateLabel updates directly without a duplicate-name lookup, permitting indistinguishable labels in both scopes.",
         "sourceReferences": [
@@ -1195,7 +1195,7 @@
     },
     {
       "id": "gitea-issue-deletion-label-count-stale",
-      "explanation": "Deleting an issue does not recount label totals.",
+      "explanation": "Deleting an issue doesn't recount its labels, so the Labels page keeps showing the deleted issue in each label's open issues/pull requests count, even after reloads. Clicking the count opens a list without it. Closing the issue or removing the label recounts correctly.",
       "rootCause": {
         "explanation": "The issue deletion path removes IssueLabel rows as database cleanup but does not run the label counter updates used by detach/close operations. Persisted NumIssues/NumClosedIssues therefore retain the deleted issue.",
         "sourceReferences": [
@@ -1240,7 +1240,7 @@
     },
     {
       "id": "gitea-label-mutation-drops-sort",
-      "explanation": "Label mutations redirect without preserving the selected sort.",
+      "explanation": "After sorting a Labels list by an issue-count order, saving an edit or creating/deleting a label returns the list to alphabetical order. This can happen even when the mutation does not change the counts that determined the previous sort.",
       "rootCause": {
         "explanation": "NewLabel, UpdateLabel and DeleteLabel redirect to the bare labels path; organization handlers follow the same pattern. The submitted form/delete URL does not preserve the list sort, so returning renders default alphabetical ordering.",
         "sourceReferences": [
@@ -1368,7 +1368,7 @@
     },
     {
       "id": "gitea-label-exclusion-keyboard-event-order",
-      "explanation": "Alt+Enter label exclusion loses to the dropdown keyboard handler.",
+      "explanation": "Issues, Pull Requests and milestone issue lists advertise Alt+Enter to exclude a label, but using that keyboard shortcut includes the label instead. Alt+click on the same label correctly applies the exclusion.",
       "rootCause": {
         "explanation": "The exclusion listener is attached to the dropdown keydown, but the Fomantic keyboard path selects/activates the anchor on Enter. Its normal include navigation runs instead of the intended exclusion navigation, whereas the direct Alt+click handler sees the modifier.",
         "sourceReferences": [
@@ -1406,7 +1406,7 @@
     },
     {
       "id": "gitea-scoped-label-search-missing-slash",
-      "explanation": "Scoped-label search cannot match the saved full name.",
+      "explanation": "Searching a scoped label by its complete saved scope/item name returns No results in Issues/PR Label filters and sidebar pickers. Searching only the scope or item text can still find that label, so its full visible name is paradoxically the failing query.",
       "rootCause": {
         "explanation": "RenderLabel splits exclusive label names into separate scope and item spans without the literal slash separator. Dropdown search derives searchable text from that rendered DOM rather than the original Name, so scope/item is not a substring even though scope alone matches.",
         "sourceReferences": [
