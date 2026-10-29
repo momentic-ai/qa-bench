@@ -571,6 +571,38 @@
         "Click Update filter and rerun."
       ],
       "reason": "Works as intended: a reversed date range is accepted and simply matches no rows, as with reversed number ranges."
+    },
+    {
+      "id": "metabase-querying-b63",
+      "name": "Excluding days of the week drops the wrong days (and ignores some selected days)",
+      "summary": "Excluding days of the week drops the wrong days (and ignores some selected days).",
+      "expected": "Orders by Created At: Day of week gives 1=2678, 2=2719, 3=2590, 4=2776, 5=2646, 6=2690, 7=2661 (total 18760). Excluding day 1 should return 16082. Excluding days 1 and 7 should return 13421. Excluding days 3 and 5 should return 13524. Each matches native SQL `day_of_week(created_at) not in (...)`.",
+      "actual": "!= 1 returns 16041 (removes day 2 / Monday). != 1,7 also returns 16041: the SQL is only `extract(iso_day_of_week ...) <> 1 OR CREATED_AT IS NULL`, so the 7 is dropped entirely. != 3,5 returns 13323, with SQL `iso_day_of_week <> 3 AND iso_day_of_week <> 6`. By contrast, the SQL for = 1 is `(extract(iso_day_of_week ...) % 7) + 1 = 1`, which correctly returns 2678.",
+      "reproSteps": [
+        "Sign in, then New > Question > Sample Database > Orders",
+        "Summarize Count by Created At: Day of week and note the per-day counts above",
+        "Change the query: Filter > Created At > Exclude > Days of the week, select Sunday (and also Saturday), Summarize Count",
+        "MBQL equivalent: ['!=', ['field',13,{'temporal-unit':'day-of-week'}], 1, 7]",
+        "The result is 16041 rather than 13421. View SQL / POST /api/dataset/native shows only `iso_day_of_week <> 1`",
+        "Excluding 1 alone also gives 16041 rather than 16082, while the = 1 filter gives the correct 2678"
+      ],
+      "reason": "Out of scope: only reachable through the API with legacy numeric MBQL; the UI Exclude picker and 'Not on' drill exclude the right days."
+    },
+    {
+      "id": "metabase-querying-b59",
+      "name": "Switching a multiple-value SQL filter to search drops the second selection",
+      "summary": "Switching a multiple-value SQL filter to search drops the second selection.",
+      "expected": "Existing filter selections (Gizmo and Widget) are preserved when adding Gadget via the search box filter widget, and all three categories are returned in the results.",
+      "actual": "Although both Gizmo and Widget initially appear in the search box dropdown, Widget disappears upon typing into the search input; adding Gadget and running the query yields only Gadget 53 and Gizmo 51.",
+      "reproSteps": [
+        "Create a fresh native SQL question on Sample Database: SELECT CATEGORY, COUNT(*) AS PRODUCT_COUNT FROM PRODUCTS WHERE 1=1 [[AND CATEGORY IN ({{category}})]] GROUP BY CATEGORY ORDER BY CATEGORY.",
+        "Configure Category Text, Dropdown list, Multiple values, using Custom list Gizmo, Gizmo label; Widget, Widget label; Doohickey; Gadget on separate lines.",
+        "Set both Gizmo and Widget as defaults, save as a fresh parameters question, and reopen it. Verify Gizmo 51 and Widget 54 in results.",
+        "Open editor, Variables, and change How should users filter to Search box.",
+        "Open Category and type Gad into search; wait for Gadget suggestion, select it, Update filter, and run.",
+        "Observe only Gadget 53 and Gizmo 51; Widget was dropped without being removed by the user."
+      ],
+      "reason": "Cannot reproduce on human review: adding a value by search keeps existing selections; a selection is replaced only after clicking its chip to edit it."
     }
   ]
 }

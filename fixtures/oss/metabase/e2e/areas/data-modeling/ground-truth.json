@@ -1587,6 +1587,36 @@
         "Set Creation date to Fixed date range > On today's date as shown in the picker; the metric appears.",
         "Open Last edit date, select Current then Day. Observe no results instead of the metric edited minutes ago."
       ]
+    },
+    {
+      "id": "metabase-data-modeling-b64",
+      "name": "Saving model metadata adds hidden FK display columns, so the Info panel field count goes up",
+      "severity": 1,
+      "summary": "Saving model metadata adds hidden FK display columns, so the Info panel field count goes up.",
+      "expected": "Editing one column's display name should leave the model's columns unchanged. The Info panel should keep showing '9 fields' (ID, User ID, Product ID, Subtotal, Tax, Total, Discount, Created At, Quantity).",
+      "actual": "After saving, the Info panel shows '11 fields', which now include 'User → User ID' and 'Product → Product ID'. GET /api/card/:id result_metadata now has 11 entries, the extra ones being NAME (display 'User ID') and TITLE (display 'Product ID'). The table view still shows only 9 columns. The same thing happened to the example model 'Orders + People', which went from 12 to 14 fields.",
+      "reproSteps": [
+        "Sign in as eval@momentic.ai",
+        "Create a model on Sample Database > Orders (no joins or changes). Its Info > Overview shows '9 fields'",
+        "Open the model's ... menu > Edit metadata (Columns tab)",
+        "Click the Subtotal column and change Display name to 'Subtotal X', then click Save changes",
+        "Open the Info (i) panel > Overview",
+        "It now says '11 fields' and lists 'User → User ID' and 'Product → Product ID'"
+      ]
+    },
+    {
+      "id": "metabase-data-modeling-b68",
+      "name": "Model basic Update action silently sets untouched boolean fields to false",
+      "severity": 3,
+      "summary": "Model basic Update action silently sets untouched boolean fields to false.",
+      "expected": "Only the fields the user edits are updated; untouched optional fields (including booleans) keep their existing values.",
+      "actual": "Invoice ID 2 had EXPECTED_INVOICE = true. After running Update with only ID=2 and Plan='QAPlan2', the row became EXPECTED_INVOICE = false. Request body: {\"parameters\":{\"date_received\":null,\"plan\":\"QAPlan2\",\"expected_invoice\":false,\"payment\":null,\"account_id\":null,\"id\":2}}. Rows 1 and 2 now show false while every other invoice shows true.",
+      "reproSteps": [
+        "Make sure actions are enabled for Sample Database",
+        "Create a model on the Invoices table (e.g. 'QA Products Model'), open /model/<id>/detail/actions and click 'Create basic actions'",
+        "Check invoice ID 2: Expected Invoice = true",
+        "Open the model's data: invoice 2 now shows Expected Invoice = false"
+      ]
     }
   ]
 }
