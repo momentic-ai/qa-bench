@@ -4,7 +4,7 @@
   "logicalBugs": [
     {
       "id": "gitea-tags-count-plural",
-      "explanation": "Tag heading uses plural text for one tag.",
+      "explanation": "A repository with one tag displays the heading `1 Tags` while the nearby tab correctly displays `1 Tag`.",
       "rootCause": {
         "explanation": "The tags template renders a numeric count beside the fixed repo.release.tags label rather than a count-aware translation.",
         "sourceReferences": [
@@ -42,7 +42,7 @@
     },
     {
       "id": "gitea-release-feed-channel-route",
-      "explanation": "Release RSS points its channel at a nonexistent route.",
+      "explanation": "The repository Releases RSS feed advertises a singular `/release/` channel link that returns 404 instead of linking to `/releases`.",
       "rootCause": {
         "explanation": "ShowReleaseFeed constructs /release instead of the /releases route.",
         "sourceReferences": [
@@ -80,7 +80,7 @@
     },
     {
       "id": "gitea-activity-release-feed-ref-prefix",
-      "explanation": "Release activity URLs retain the full Git ref prefix.",
+      "explanation": "The repository activity RSS feed publishes a release-item URL containing refs/tags/ before the tag name. Opening that generated destination displays a full-page 404 instead of release details.",
       "rootCause": {
         "explanation": "toReleaseLink appends act.GetBranch(), which for tag creation contains refs/tags, rather than the normalized tag name.",
         "sourceReferences": [
@@ -137,7 +137,7 @@
     },
     {
       "id": "gitea-tag-create-git-errors-unclassified",
-      "explanation": "Tag creation surfaces filesystem/ref namespace failures as HTTP 500.",
+      "explanation": "New Release accepts tag names that later fail Git creation, including a 251–255-character filename component or a parent/child ref namespace conflict. Submit replaces the editor with HTTP 500 and a raw Git/filesystem error instead of keeping a recoverable tag-name error in the form.",
       "rootCause": {
         "explanation": "The release form accepts Git-ref names and length up to 255, while createTag reports only selected invalid-name errors; valid names exceeding filesystem component limits or conflicting with existing ref directories escape as server failures.",
         "sourceReferences": [
@@ -232,7 +232,7 @@
     },
     {
       "id": "gitea-release-mobile-input-rule-overbroad",
-      "explanation": "The release mobile input rule stretches checkboxes and toolbar controls.",
+      "explanation": "Below 439px, New/Edit Release controls stretch to the full field width even when they are checkboxes or toolbar buttons. Pre-Release and tag-message checkboxes overlap their labels, checked/unchecked task boxes in Preview become indistinguishable bars, and the legacy editor toolbar can become a tall single-button column.",
       "rootCause": {
         "explanation": "The max-width 438px CSS applies width:100% to every .field input/button, including native checkbox controls, preview task-list checkboxes and legacy toolbar buttons.",
         "sourceReferences": [
@@ -394,7 +394,7 @@
     },
     {
       "id": "gitea-tag-detail-release-wording",
-      "explanation": "Tag-only detail claims a release was published.",
+      "explanation": "A Git tag with no release has New Release on the Tags list, but its detail page says “eval released this.”",
       "rootCause": {
         "explanation": "The shared release list template renders repo.released_this without branching on IsTag.",
         "sourceReferences": [
@@ -432,7 +432,7 @@
     },
     {
       "id": "gitea-release-title-status-flex-shrink",
-      "explanation": "Release status badges shrink and clip alongside titles.",
+      "explanation": "Release status badges shrink and clip beside titles at constrained widths: Pre-Release loses its final characters on phones, and Draft can become \"Dra\" beside a wrapping title at tablet width. The saved release state itself is unchanged.",
       "rootCause": {
         "explanation": "release-list-title is a flex row whose badge has no nonshrinking sizing; constrained mobile/tablet title rows compress the badge text.",
         "sourceReferences": [
@@ -520,7 +520,7 @@
     },
     {
       "id": "gitea-commit-operation-tag-target-sha-not-branch",
-      "explanation": "Tags created through commit Operations cannot become releases.",
+      "explanation": "The Create tag action on a commit produces a valid browsable tag, but the Tags page's New Release action cannot publish a release for it.",
       "rootCause": {
         "explanation": "CreateNewTag stores the supplied commit SHA in Release.Target, while NewReleasePost requires Target to be an existing branch even when converting an existing tag.",
         "sourceReferences": [
@@ -560,7 +560,7 @@
     },
     {
       "id": "gitea-release-target-ambiguous-ref",
-      "explanation": "Release creation resolves an unqualified branch target as a tag.",
+      "explanation": "When branch main and tag main point to different existing commits, publishing a new release with branch main explicitly selected creates its tag at the existing main tag commit.",
       "rootCause": {
         "explanation": "createTag calls GetCommit(rel.Target) using the bare branch name instead of refs/heads, allowing a same-named tag to take precedence.",
         "sourceReferences": [
@@ -617,7 +617,7 @@
     },
     {
       "id": "gitea-release-behind-count-subtracts-history",
-      "explanation": "Release distance subtracts total history sizes rather than ancestry distance.",
+      "explanation": "Tagging a commit on a branch with more history than the default branch makes the tag details show a negative number of commits to main.",
       "rootCause": {
         "explanation": "calReleaseNumCommitsBehind subtracts release.NumCommits from the target history count; divergent or longer tag histories can yield negative numbers.",
         "sourceReferences": [
@@ -656,7 +656,7 @@
     },
     {
       "id": "gitea-create-tag-duplicate-branch-message",
-      "explanation": "Duplicate tag errors use branch wording.",
+      "explanation": "Repeating Operations > Create tag with an existing tag name correctly rejects the duplicate but describes the attempted operation as creating a branch.",
       "rootCause": {
         "explanation": "The shared NewBranchPost duplicate handling flashes repo.branch.branch_already_exists for CreateTag as well as branch creation.",
         "sourceReferences": [
@@ -695,7 +695,7 @@
     },
     {
       "id": "gitea-tag-row-mobile-min-width",
-      "explanation": "Tag list rows exceed the viewport and hide actions.",
+      "explanation": "At phone width, tag rows hide part of New Release and the Delete Tag action beyond the visible row without a usable horizontal-scroll route. The same widened tag layout can center Delete Release confirmation offscreen and clip its warning/Yes button.",
       "rootCause": {
         "explanation": "The tag list keeps its row metadata and actions on a constrained nonwrapping row; the row minimum geometry widens the document, also miscentering delete dialogs.",
         "sourceReferences": [
@@ -778,7 +778,7 @@
     },
     {
       "id": "gitea-new-release-validation-loses-upload",
-      "explanation": "New release validation drops staged attachment references.",
+      "explanation": "A validation error preserves other release fields but loses successfully uploaded files. Correcting the error and saving produces a release/draft without its attachment.",
       "rootCause": {
         "explanation": "NewReleasePost re-renders on validation error without reconstructing attachment rows from form.Files, so already uploaded UUIDs are omitted on resubmission.",
         "sourceReferences": [
@@ -835,7 +835,7 @@
     },
     {
       "id": "gitea-release-preview-list-style-context",
-      "explanation": "Preview and published notes receive different list marker styling.",
+      "explanation": "Nested list bullets use different styles in the New Release preview and the published notes for the same Markdown.",
       "rootCause": {
         "explanation": "The published release wraps notes in render-content markup, while the editor preview uses a different rendering/styling container, so nested lists inherit different marker rules.",
         "sourceReferences": [
@@ -874,7 +874,7 @@
     },
     {
       "id": "gitea-release-tag-field-min-width",
-      "explanation": "New release tag field forces a 500px mobile layout.",
+      "explanation": "At a mobile viewport the New Release Tag name field is 500 CSS pixels wide, extending beyond the page while the release title and notes fit.",
       "rootCause": {
         "explanation": "The .target rule sets min-width:500px without a phone override.",
         "sourceReferences": [
@@ -913,7 +913,7 @@
     },
     {
       "id": "gitea-release-tag-case-folding",
-      "explanation": "Case-sensitive Git tags collide in release records.",
+      "explanation": "After a lowercase release exists, Gitea rejects a Git-valid tag name that differs only by case as a duplicate in both Publish Release and Create Tag Only.",
       "rootCause": {
         "explanation": "IsReleaseExist and GetRelease look up LowerTagName using strings.ToLower, treating distinct case-only Git tag names as one record.",
         "sourceReferences": [
@@ -952,7 +952,7 @@
     },
     {
       "id": "gitea-release-edit-validation-loses-draft",
-      "explanation": "Release edit validation loses entered fields, draft state and attachments.",
+      "explanation": "Submitting an existing release edit with an empty required title redraws saved values over pending notes/pre-release changes. For a draft, the same error also loses attachment changes and draft controls; correcting the title can leave only Update Release and publish a draft the user intended to keep unpublished.",
       "rootCause": {
         "explanation": "EditReleasePost populates title/content/prerelease from the saved release before HasError and omits IsDraft, attachments and attachment-enabled metadata supplied by GET. Error re-render therefore resets edits, hides uploads, and changes draft buttons into Update Release.",
         "sourceReferences": [
@@ -1080,7 +1080,7 @@
     },
     {
       "id": "gitea-archive-unqualified-tag-resolution",
-      "explanation": "Archive links can resolve a tag name as another object or ref.",
+      "explanation": "Source archive downloads can contain a different commit from the branch/tag being viewed when its short name is ambiguous. A branch sharing a name with a tag can download the tag’s tree, and a tag named as another commit’s full SHA can download that spelled commit instead of its actual target.",
       "rootCause": {
         "explanation": "The release archive URL uses an unqualified tag name, and archive resolution accepts object IDs and other refs, so a SHA-shaped tag name resolves the spelled commit.",
         "sourceReferences": [
@@ -1128,7 +1128,7 @@
     },
     {
       "id": "gitea-draft-delete-keeps-tag-record",
-      "explanation": "Deleting a draft retains an orphaned tag-style release row.",
+      "explanation": "Delete Release on an unpublished draft reports success and removes it from Releases, but its title, notes, and Draft badge stay readable at /releases/tag/<name>. The leftover record has no Git tag, isn't listed on Tags, and blocks reusing the tag name.",
       "rootCause": {
         "explanation": "DeleteReleaseByID with delTag=false converts the row to IsTag rather than deleting it, even for drafts with no Git tag; draft/title/note fields and tag-name reservation survive.",
         "sourceReferences": [
@@ -1168,7 +1168,7 @@
     },
     {
       "id": "gitea-tag-only-message-not-copied-to-release",
-      "explanation": "Tag-only creation omits annotation text from its release metadata.",
+      "explanation": "With \"Use the title and content of release as tag message\" ticked, Create Tag Only writes an annotated tag with the entered title and notes, but Gitea's tag page and the New Release prefill show neither, unlike the same annotated tag pushed with git.",
       "rootCause": {
         "explanation": "CreateNewTag creates its IsTag Release with tag/target/publisher only, passing msg only to Git tag creation. Later detail and prefill read the empty database title/note.",
         "sourceReferences": [
@@ -1208,7 +1208,7 @@
     },
     {
       "id": "gitea-tag-feed-excludes-existing-tag-draft",
-      "explanation": "Saving a release draft hides an existing Git tag from feeds.",
+      "explanation": "Starting a release on an existing tag and saving it as a draft turns the tag's release row into a draft, and the Tags RSS/Atom feed excludes drafts, so a Git tag that still exists drops out of the feed until the release is published. The Tags page keeps such tags on purpose.",
       "rootCause": {
         "explanation": "The tag feed queries release records excluding drafts; saving the existing tag as a draft changes that sole row and removes it from the feed despite the Git tag still existing.",
         "sourceReferences": [
@@ -1248,7 +1248,7 @@
     },
     {
       "id": "gitea-release-tabs-feed-mobile-overlap",
-      "explanation": "Release tabs and RSS action overlap at narrow widths.",
+      "explanation": "At phone width on release/tag pages, the Releases/Tags tab menu can overflow onto RSS Feed, particularly with release-creation controls and multi-digit counts. The visible feed button is obscured or a tap follows Tags instead.",
       "rootCause": {
         "explanation": "The shared releases/tags header keeps counts and action controls on a row without enough responsive width when both tab labels and counts are present.",
         "sourceReferences": [
@@ -1355,7 +1355,7 @@
     },
     {
       "id": "gitea-release-long-tag-no-wrap",
-      "explanation": "Long tag names exceed the release metadata column.",
+      "explanation": "A successfully created long unbroken tag name does not wrap in release metadata. On the Releases list or tag detail page it widens the tag column, squeezing or pushing the release title, Edit control, metadata and downloads beyond the viewport.",
       "rootCause": {
         "explanation": "Release metadata links display the entire tag name without word breaking; the flex column fixed basis cannot contain the token, pushing detail/download content beyond its intended width.",
         "sourceReferences": [
@@ -1473,7 +1473,7 @@
     },
     {
       "id": "gitea-validation-untranslated-field-name",
-      "explanation": "Release validation displays internal form field keys.",
+      "explanation": "Validation errors show internal field keys instead of visible field names: examples include profile Website, release Tag name/Title, branch rename, protected-tag pattern and repository Default Branch. The input can be correctly rejected while the banner says form.Website, form.TagName or a similar untranslated key.",
       "rootCause": {
         "explanation": "Validate constructs form.<GoField> labels; Website has no matching translated field label and URL validation appends its internal Url message argument.",
         "sourceReferences": [
@@ -1599,7 +1599,7 @@
     },
     {
       "id": "gitea-release-tag-message-checkbox-not-restored",
-      "explanation": "New release errors clear the tag-message option.",
+      "explanation": "When the New Release form is rejected by a validation error (such as an invalid or duplicate tag name), it comes back with the tag, title, notes and Pre-Release choice kept, but 'Use the title and content of release as tag message' unchecked. Correcting the tag and resubmitting then creates the tag without that message.",
       "rootCause": {
         "explanation": "The add_tag_msg input has no checked binding to submitted form state, so every server-rendered error resets it.",
         "sourceReferences": [
@@ -1661,7 +1661,7 @@
     },
     {
       "id": "gitea-release-tag-only-button-server-only",
-      "explanation": "Changing the tag name does not restore Create Tag Only.",
+      "explanation": "When New Release is opened for an existing tag (for example from the Tags page) or re-shown after a release error, changing the tag name to an unused one updates the hint to 'New tag…' but the Create Tag Only button never appears, so a tag-only creation isn't possible from that form.",
       "rootCause": {
         "explanation": "ShowCreateTagOnlyButton is computed on the server; initTagNameEditor updates target/helper text but never toggles that button on name changes.",
         "sourceReferences": [
@@ -1699,7 +1699,7 @@
     },
     {
       "id": "gitea-release-heading-anchor-collision",
-      "explanation": "Identical headings in separate release notes share anchor IDs.",
+      "explanation": "On the Releases page, each release's notes are rendered separately, so two releases with the same heading text (for example '## Notes') both get the same anchor id. A link to the older release's heading lands on the newer release's heading, and the older one can't be linked from the list.",
       "rootCause": {
         "explanation": "Each release note is independently passed to markdown.RenderString without a per-release heading namespace, then all results are inserted in one document.",
         "sourceReferences": [
@@ -1737,7 +1737,7 @@
     },
     {
       "id": "gitea-release-title-silently-truncated",
-      "explanation": "Unicode release titles are silently shortened during save.",
+      "explanation": "A release title within the 255-character limit that contains CJK or emoji characters is saved shortened and ending in '…', with no error or warning. The form accepts it, but storage trims it by byte length and display width, so the user doesn't learn their title was changed.",
       "rootCause": {
         "explanation": "CreateRelease applies EllipsisDisplayString(title,255) after form character validation, enforcing display/byte-oriented shortening without reporting it.",
         "sourceReferences": [
@@ -1776,7 +1776,7 @@
     },
     {
       "id": "gitea-removed-attachment-required-input",
-      "explanation": "Removing an attachment leaves its empty required name active.",
+      "explanation": "On a release's edit page, clearing an attachment's file name and clicking Update Release keeps you on the edit page because the name is required. Clicking Remove on that attachment afterwards doesn't fix it: the row is hidden while its empty name field stays required, so every later Update Release does nothing (the page doesn't move on and nothing is saved) and no message explains why, until the page is reloaded.",
       "rootCause": {
         "explanation": "The remove handler hides the row and sets a deletion flag but never disables or clears required validation on its name input.",
         "sourceReferences": [
@@ -1815,7 +1815,7 @@
     },
     {
       "id": "gitea-release-whitespace-title",
-      "explanation": "Whitespace-only release titles pass validation.",
+      "explanation": "Creating a release with a title of only spaces passes the 'title cannot be empty' check, because the check compares against the exact empty string without trimming. The release is published with a blank, invisible heading on the Releases page. An empty title is correctly rejected.",
       "rootCause": {
         "explanation": "NewReleasePost tests form.Title against the exact empty string without trimming whitespace.",
         "sourceReferences": [
@@ -1854,7 +1854,7 @@
     },
     {
       "id": "gitea-release-whitespace-attachment-name",
-      "explanation": "Whitespace attachment names are accepted.",
+      "explanation": "When editing a release, an attachment's name can be replaced with only spaces. Update Release accepts it, and the release's Downloads list then shows a row with an icon and size but no file name.",
       "rootCause": {
         "explanation": "EditReleasePost copies attachment-edit fields directly into editAttachments; no trimming/nonblank validation is applied before updating attachments.",
         "sourceReferences": [
@@ -1893,9 +1893,9 @@
     },
     {
       "id": "gitea-markdown-heading-toolbar-prefix-insertion",
-      "explanation": "Heading toolbar inserts prefixes without normalizing the current line.",
+      "explanation": "In the standard Markdown toolbar used by wiki pages and release notes, a heading button inserts # markers at the caret instead of making the current line a heading. Selecting text and changing heading levels can stack prefixes such as \"# ## ### Heading\" rather than replace the existing level.",
       "rootCause": {
-        "explanation": "The shared Markdown editor toolbar delegates heading prefix insertion to its selection-based toolbar action, which operates at the caret/selection and does not replace the line existing heading prefix.",
+        "explanation": "The shared combomarkdowneditor template uses markdown-toolbar-element md-header directly. Its selection-prefix operation is not adapted to select the whole current line or normalize an existing heading prefix, so both caret insertion and repeated level changes retain incorrect Markdown.",
         "sourceReferences": [
           {
             "repository": "go-gitea/gitea",
@@ -1903,9 +1903,57 @@
             "path": "web_src/js/features/comp/ComboMarkdownEditor.ts",
             "line": 1,
             "url": "https://github.com/go-gitea/gitea/blob/99053ce4fa2b45f1bca5837418c0c57f793ca824/web_src/js/features/comp/ComboMarkdownEditor.ts#L1"
+          },
+          {
+            "repository": "go-gitea/gitea",
+            "revision": "99053ce4fa2b45f1bca5837418c0c57f793ca824",
+            "path": "templates/shared/combomarkdowneditor.tmpl",
+            "line": 40,
+            "url": "https://github.com/go-gitea/gitea/blob/99053ce4fa2b45f1bca5837418c0c57f793ca824/templates/shared/combomarkdowneditor.tmpl#L40"
+          },
+          {
+            "repository": "go-gitea/gitea",
+            "revision": "99053ce4fa2b45f1bca5837418c0c57f793ca824",
+            "path": "templates/shared/combomarkdowneditor.tmpl",
+            "line": 39,
+            "url": "https://github.com/go-gitea/gitea/blob/99053ce4fa2b45f1bca5837418c0c57f793ca824/templates/shared/combomarkdowneditor.tmpl#L39"
           }
         ],
-        "analysisStatus": "source-supported"
+        "analysisStatus": "source-supported",
+        "mergedAnalyses": [
+          {
+            "logicalBugId": "gitea-markdown-heading-toolbar-prefix-insertion",
+            "analysis": {
+              "explanation": "The shared Markdown editor toolbar delegates heading prefix insertion to its selection-based toolbar action, which operates at the caret/selection and does not replace the line existing heading prefix.",
+              "sourceReferences": [
+                {
+                  "repository": "go-gitea/gitea",
+                  "revision": "99053ce4fa2b45f1bca5837418c0c57f793ca824",
+                  "path": "web_src/js/features/comp/ComboMarkdownEditor.ts",
+                  "line": 1,
+                  "url": "https://github.com/go-gitea/gitea/blob/99053ce4fa2b45f1bca5837418c0c57f793ca824/web_src/js/features/comp/ComboMarkdownEditor.ts#L1"
+                }
+              ],
+              "analysisStatus": "source-supported"
+            }
+          },
+          {
+            "logicalBugId": "gitea-markdown-heading-inserts-at-caret",
+            "analysis": {
+              "explanation": "The shared toolbar uses markdown-toolbar-element md-header directly. Its prefix operation uses the current selection/caret, and the integration does not expand the selection to the whole line, allowing ## to be inserted after existing text.",
+              "sourceReferences": [
+                {
+                  "repository": "go-gitea/gitea",
+                  "revision": "99053ce4fa2b45f1bca5837418c0c57f793ca824",
+                  "path": "templates/shared/combomarkdowneditor.tmpl",
+                  "line": 40,
+                  "url": "https://github.com/go-gitea/gitea/blob/99053ce4fa2b45f1bca5837418c0c57f793ca824/templates/shared/combomarkdowneditor.tmpl#L40"
+                }
+              ],
+              "analysisStatus": "source-supported"
+            }
+          }
+        ]
       },
       "reproductionPaths": [
         {
@@ -1999,7 +2047,7 @@
     },
     {
       "id": "gitea-release-update-no-concurrency-check",
-      "explanation": "A stale release editor overwrites newer content.",
+      "explanation": "If a release's edit form was opened before someone else saved changes, saving it (even after changing only the title) restores the older notes and pre-release setting without any warning, discarding the newer edits.",
       "rootCause": {
         "explanation": "EditReleasePost assigns form Title/Content/Prerelease to the loaded release and updates it without an expected version, timestamp or original-content conflict check.",
         "sourceReferences": [
@@ -2039,7 +2087,7 @@
     },
     {
       "id": "gitea-existing-tag-draft-default-target",
-      "explanation": "Drafting an existing tag records the default branch target.",
+      "explanation": "If a tag was created on a non-default branch and a release draft is then created for that existing tag, the saved draft shows the target as main instead of the tag's branch. The draft's Compare also uses main, which can wrongly say the branches are equal.",
       "rootCause": {
         "explanation": "New release defaults tag_target to the repository default when the tag record has no branch target, then persists the posted target without deriving the tag ancestry/branch.",
         "sourceReferences": [
@@ -2076,10 +2124,10 @@
       ]
     },
     {
-      "id": "gitea-markdown-bold-shortcut-unbound",
-      "explanation": "The editor advertises Ctrl-B without handling that key.",
+      "id": "gitea-legacy-editor-shortcuts-replaced",
+      "explanation": "In the EasyMDE Markdown editor used for wiki pages and release notes, toolbar tooltips advertise formatting shortcuts such as \"Bold (Ctrl-B)\", but pressing the shortcut leaves selected text unchanged. Clicking the corresponding Bold or Italic toolbar button works.",
       "rootCause": {
-        "explanation": "The toolbar provides a Bold shortcut tooltip, while the enhanced editor custom key bindings do not install an equivalent bold handler for the textarea mode.",
+        "explanation": "switchToEasyMDE replaces CodeMirror extraKeys with a new map containing quick-submit and mention-navigation handlers. This discards EasyMDE formatting key bindings while its toolbar still advertises them. The Ctrl-B tooltip in the release report identifies this EasyMDE path even though that report calls it the enhanced editor; the standard textarea toolbar uses the different \"Add bold text\" tooltip.",
         "sourceReferences": [
           {
             "repository": "go-gitea/gitea",
@@ -2087,13 +2135,54 @@
             "path": "web_src/js/features/comp/ComboMarkdownEditor.ts",
             "line": 136,
             "url": "https://github.com/go-gitea/gitea/blob/99053ce4fa2b45f1bca5837418c0c57f793ca824/web_src/js/features/comp/ComboMarkdownEditor.ts#L136"
+          },
+          {
+            "repository": "go-gitea/gitea",
+            "revision": "99053ce4fa2b45f1bca5837418c0c57f793ca824",
+            "path": "web_src/js/features/comp/ComboMarkdownEditor.ts",
+            "line": 343,
+            "url": "https://github.com/go-gitea/gitea/blob/99053ce4fa2b45f1bca5837418c0c57f793ca824/web_src/js/features/comp/ComboMarkdownEditor.ts#L343"
           }
         ],
-        "analysisStatus": "source-supported"
+        "analysisStatus": "source-supported",
+        "mergedAnalyses": [
+          {
+            "logicalBugId": "gitea-markdown-bold-shortcut-unbound",
+            "analysis": {
+              "explanation": "The toolbar provides a Bold shortcut tooltip, while the enhanced editor custom key bindings do not install an equivalent bold handler for the textarea mode.",
+              "sourceReferences": [
+                {
+                  "repository": "go-gitea/gitea",
+                  "revision": "99053ce4fa2b45f1bca5837418c0c57f793ca824",
+                  "path": "web_src/js/features/comp/ComboMarkdownEditor.ts",
+                  "line": 136,
+                  "url": "https://github.com/go-gitea/gitea/blob/99053ce4fa2b45f1bca5837418c0c57f793ca824/web_src/js/features/comp/ComboMarkdownEditor.ts#L136"
+                }
+              ],
+              "analysisStatus": "source-supported"
+            }
+          },
+          {
+            "logicalBugId": "gitea-legacy-editor-shortcuts-replaced",
+            "analysis": {
+              "explanation": "After EasyMDE creates its default keymap, switchToEasyMDE sets extraKeys to a new map containing quick-submit and mention-navigation handlers. It replaces the formatting shortcut bindings while toolbar titles still advertise them.",
+              "sourceReferences": [
+                {
+                  "repository": "go-gitea/gitea",
+                  "revision": "99053ce4fa2b45f1bca5837418c0c57f793ca824",
+                  "path": "web_src/js/features/comp/ComboMarkdownEditor.ts",
+                  "line": 343,
+                  "url": "https://github.com/go-gitea/gitea/blob/99053ce4fa2b45f1bca5837418c0c57f793ca824/web_src/js/features/comp/ComboMarkdownEditor.ts#L343"
+                }
+              ],
+              "analysisStatus": "source-supported"
+            }
+          }
+        ]
       },
       "reproductionPaths": [
         {
-          "id": "gitea-markdown-bold-shortcut-unbound-releases-path-1",
+          "id": "gitea-legacy-editor-shortcuts-replaced-releases-path-1",
           "explanation": "In the release notes enhanced editor, the Bold button's tooltip says \"Bold (Ctrl-B)\", but pressing Ctrl+B on selected text does nothing; clicking the Bold button works.",
           "sourceBugs": [
             {
@@ -2115,7 +2204,7 @@
     },
     {
       "id": "gitea-tag-search-history-input-stale",
-      "explanation": "Back restores filtered tags with stale empty search text.",
+      "explanation": "On a repository's Tags page, after searching, clearing the search box and submitting, pressing the browser's Back button shows the earlier filtered results again but leaves the search box empty, so the page doesn't show what it's filtered by.",
       "rootCause": {
         "explanation": "The tag search input relies on browser form restoration and has no history-state synchronization from the query URL; cached results can be restored with a later input value.",
         "sourceReferences": [
@@ -2153,7 +2242,7 @@
     },
     {
       "id": "gitea-archive-immutable-link-format",
-      "explanation": "Archive immutable links always advertise tar.gz.",
+      "explanation": "Downloading a release's source code as ZIP (or as a bundle) from the web returns a correct ZIP, but the response's Link rel=\"immutable\" header, which tells download tools the permanent URL for the same file, points to the .tar.gz archive. Following it returns a gzip tarball instead of the ZIP.",
       "rootCause": {
         "explanation": "The response Link header hardcodes .tar.gz instead of using the requested archive format.",
         "sourceReferences": [
@@ -2191,7 +2280,7 @@
     },
     {
       "id": "gitea-draft-release-api-authorization",
-      "explanation": "Read-only API callers can retrieve drafts and their assets.",
+      "explanation": "Draft releases are hidden from users without write access on the web (the release page returns 404 and the draft isn't listed), but a read-only collaborator can fetch the draft's title, notes and assets through the release-by-tag and release-by-id API endpoints, and download its attachments.",
       "rootCause": {
         "explanation": "The single-release API retrieves the record by ID/tag and serializes it without the write-access visibility restriction used by the web draft route.",
         "sourceReferences": [
@@ -2230,7 +2319,7 @@
     },
     {
       "id": "gitea-release-pagination-unclamped",
-      "explanation": "Out-of-range release pages cannot navigate back.",
+      "explanation": "Opening a Releases (or Tags) list page number beyond the last page, for example going back to page 2 after its only release was deleted, shows the release count but no releases and no pagination controls, so there's no way from the list to reach the pages that do have releases. Gitea queries the requested page without moving it to the last page, and hides the pager when only one page exists.",
       "rootCause": {
         "explanation": "Release list queries use the requested offset without clamping to the final valid page, and the shared pager is hidden for one-page collections.",
         "sourceReferences": [
