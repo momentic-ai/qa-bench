@@ -4,7 +4,7 @@
   "logicalBugs": [
     {
       "id": "gitea-validation-untranslated-field-name",
-      "explanation": "Validation exposes internal form field names.",
+      "explanation": "Validation errors show internal field keys instead of visible field names: examples include profile Website, release Tag name/Title, branch rename, protected-tag pattern and repository Default Branch. The input can be correctly rejected while the banner says form.Website, form.TagName or a similar untranslated key.",
       "rootCause": {
         "explanation": "Validate constructs form.<GoField> labels; Website has no matching translated field label and URL validation appends its internal Url message argument.",
         "sourceReferences": [
@@ -108,7 +108,7 @@
     },
     {
       "id": "gitea-branch-pattern-unvalidated",
-      "explanation": "Invalid branch glob is persisted before a failing response.",
+      "explanation": "Saving an invalid branch-protection glob returns an Internal Server Error, but the rule is persisted despite the failed response.",
       "rootCause": {
         "explanation": "ProtectBranchForm gives RuleName only Required validation, and SettingsProtectedBranchPost persists it without compiling the branch pattern first; later rendering/matching encounters the malformed rule.",
         "sourceReferences": [
@@ -147,7 +147,7 @@
     },
     {
       "id": "gitea-public-access-missing-signin-override",
-      "explanation": "Anonymous access settings omit mandatory site sign-in policy.",
+      "explanation": "With site-wide mandatory sign-in enabled, Public Access still describes Anonymous Read as allowing logged-out access and saves it without explaining that the global login requirement overrides it.",
       "rootCause": {
         "explanation": "The public-access template describes anonymous-read without accounting for the site RequireSignInView override that still gates access.",
         "sourceReferences": [
@@ -186,7 +186,7 @@
     },
     {
       "id": "gitea-public-access-navigation-condition",
-      "explanation": "Public Access navigation is hidden for default public repositories.",
+      "explanation": "A public repository with default unit permissions has no Public Access settings link. The page works at its known URL, and saving a non-default grant makes the missing navigation entry appear.",
       "rootCause": {
         "explanation": "The navbar exposes the link only when the repository is private or HasAnyUnitPublicAccess, excluding public repositories before an explicit nondefault policy exists.",
         "sourceReferences": [
@@ -226,7 +226,7 @@
     },
     {
       "id": "gitea-template-metadata-default-branch-missing",
-      "explanation": "Metadata-only template generation leaves an empty default branch.",
+      "explanation": "Generating a template with only metadata selected creates an empty default branch. The setup commands omit the branch, and the visible New File and Upload File links lead to 404 pages.",
       "rootCause": {
         "explanation": "Generate repository setup initializes the default branch in the Git-content path rather than supplying one for metadata-only generation, so the empty repository links and quick guide interpolate an empty branch.",
         "sourceReferences": [
@@ -268,7 +268,7 @@
     },
     {
       "id": "gitea-branch-rule-create-upserts-duplicate",
-      "explanation": "Creating a duplicate branch rule overwrites the existing policy.",
+      "explanation": "Add New Rule with an existing protected-branch pattern updates the original rule using the new form defaults without warning or confirmation beforehand. This removes its saved approval requirement and administrator enforcement.",
       "rootCause": {
         "explanation": "The new-rule branch explicitly looks up the existing RuleName and updates it instead of rejecting a duplicate.",
         "sourceReferences": [
@@ -327,7 +327,7 @@
     },
     {
       "id": "gitea-editor-ignores-unprotected-file-exception",
-      "explanation": "Web editor disables commits that qualify for unprotected-file exceptions.",
+      "explanation": "With branch push disabled but an unprotected-file pattern allowing a specific path, the web editor still disables/refuses direct commits to that branch. Editing an existing allowed file and creating/uploading an allowed new file are affected even though the protection policy allows that exception.",
       "rootCause": {
         "explanation": "CanCommitToBranch uses only protectedBranch.CanUserPush and never evaluates GetUnprotectedFilePatterns for the file being edited/created, though the write service supports that exception.",
         "sourceReferences": [
@@ -411,7 +411,7 @@
     },
     {
       "id": "gitea-protected-file-rename-source-unchecked",
-      "explanation": "Renaming away a protected file bypasses its protection.",
+      "explanation": "With a branch rule whose protected file patterns include README.md, editing or deleting README.md directly is blocked, but renaming it in the web editor commits directly and removes README.md from the branch.",
       "rootCause": {
         "explanation": "verify branch checks the destination treePath against protected patterns but does not protect the original fromTreePath being removed by a rename.",
         "sourceReferences": [
@@ -451,7 +451,7 @@
     },
     {
       "id": "gitea-protected-file-delete-unclassified-error",
-      "explanation": "Deleting a protected file shows an internal error page.",
+      "explanation": "Deleting a file that matches a branch rule's protected file patterns replaces the page with a full-page 500 Internal Server Error instead of a form error.",
       "rootCause": {
         "explanation": "DeleteFilePost sends protected path rejection through its generic DeleteRepoFile ServerError path instead of translating ErrFilePathProtected into an in-form message.",
         "sourceReferences": [
@@ -490,7 +490,7 @@
     },
     {
       "id": "gitea-create-repository-validation-loses-options",
-      "explanation": "Rejected repository creation loses initialization/template choices.",
+      "explanation": "When New Repository is submitted with Initialize Repository and Make repository a template ticked but another field is invalid, the re-rendered form has both boxes unticked, so correcting the error silently creates an empty, non-template repository.",
       "rootCause": {
         "explanation": "CreatePost re-renders on HasError with setup defaults rather than reconstructing the submitted initialization and template checkboxes.",
         "sourceReferences": [
@@ -530,7 +530,7 @@
     },
     {
       "id": "gitea-branch-rule-validation-redirect-loses-policy",
-      "explanation": "Branch rule errors discard the submitted protection policy.",
+      "explanation": "When a branch protection rule is saved with a negative required-approvals value, Gitea shows the validation error but redirects to a form that has lost every other field the user entered.",
       "rootCause": {
         "explanation": "Validation failures flash an error and redirect to the GET editor, which reloads a saved/default rule instead of preserving the entered fields.",
         "sourceReferences": [
@@ -570,7 +570,7 @@
     },
     {
       "id": "gitea-protected-file-leading-slash-mismatch",
-      "explanation": "Leading-slash protected-file patterns never match repository-relative paths.",
+      "explanation": "The branch-protection form's help text recommends `/docs/**/*.txt` as a protected file pattern, but patterns are matched as typed against repository paths that never start with `/`, so that pattern protects nothing.",
       "rootCause": {
         "explanation": "IsProtectedFile matches lpath directly against compiled expressions without adding/removing a root slash, despite documentation showing root-prefixed patterns.",
         "sourceReferences": [
@@ -610,7 +610,7 @@
     },
     {
       "id": "gitea-team-search-general-access-label",
-      "explanation": "Team picker labels general-access teams with no access.",
+      "explanation": "In repository Settings → Collaborators, the Teams search prints each team's overall access mode as '<mode> access'. General Access teams store that mode as none and keep their real rights per unit, so a team with Code: Write is labelled 'none access'.",
       "rootCause": {
         "explanation": "The picker interpolates item.permission; General Access teams do not carry a concrete per-unit role in that response, so the fallback none label misrepresents them.",
         "sourceReferences": [
@@ -650,7 +650,7 @@
     },
     {
       "id": "gitea-repo-avatar-empty-upload-open",
-      "explanation": "Empty avatar uploads expose an internal filesystem error.",
+      "explanation": "In repository Settings, clicking Update Avatar without choosing a file shows the raw error 'Avatar.Open: open : no such file or directory' instead of asking for an image.",
       "rootCause": {
         "explanation": "UpdateAvatarSetting checks only whether form.Avatar is nil, then opens it without checking for an empty filename/size. A nonnil empty bound upload reaches Avatar.Open and its raw wrapped error is flashed.",
         "sourceReferences": [
@@ -688,7 +688,7 @@
     },
     {
       "id": "gitea-branch-switch-default-permission-ui",
-      "explanation": "Write users see an admin-only default branch settings link.",
+      "explanation": "On a repository's Branches page, a collaborator with Write (not Admin) access sees the 'Switch default branch' icon next to the default branch, but it links to repository settings, which return 404 Page Not Found for non-admins.",
       "rootCause": {
         "explanation": "The branch list renders the switch-default link under branch write visibility rather than the repository administration permission required by its destination.",
         "sourceReferences": [
@@ -726,7 +726,7 @@
     },
     {
       "id": "gitea-branch-allowlist-reader-options",
-      "explanation": "Push allowlist offers users whose access cannot permit push.",
+      "explanation": "In branch protection, the push allowlist offers collaborators who only have Read access. Selecting one and saving shows a success message, but the saved allowlist doesn't contain them.",
       "rootCause": {
         "explanation": "The settings editor fills Users from GetRepoReaders, while the persistence path filters push allowlist members by write capability. Thus Read choices appear selectable but are dropped.",
         "sourceReferences": [
@@ -764,7 +764,7 @@
     },
     {
       "id": "gitea-transfer-accept-conflict-unclassified",
-      "explanation": "Late repository-name conflicts surface as 500 on transfer acceptance.",
+      "explanation": "If the recipient creates a repository with the same name while a transfer is pending, clicking Accept Transfer shows a full-page 500 Internal Server Error instead of explaining the name conflict. The API accept endpoint also returns 500.",
       "rootCause": {
         "explanation": "Acceptance forwards transfer failures through generic server-error handling rather than translating ErrRepoAlreadyExist when a recipient creates the same name after initiation.",
         "sourceReferences": [
@@ -802,7 +802,7 @@
     },
     {
       "id": "gitea-project-board-issue-links-permissions",
-      "explanation": "Project boards expose links without Issues access.",
+      "explanation": "When a user can read a repository's Projects but not its Issues, the project board still shows New Issue, Labels and Milestones buttons, and each opens a 404 page. The repository header correctly hides Issues for that user.",
       "rootCause": {
         "explanation": "The board template emits issue labels/milestones/new-issue controls without requiring permission to the Issues unit, although the target routes enforce it.",
         "sourceReferences": [
@@ -864,7 +864,7 @@
     },
     {
       "id": "gitea-template-license-not-updated",
-      "explanation": "Generated repository content is not queued for license detection.",
+      "explanation": "A repository generated from a template with Git Content has the template's LICENSE file byte for byte, but its sidebar has no license link and the license API returns none, while the template, forks and normally created repositories show it.",
       "rootCause": {
         "explanation": "GenerateGitContent writes the copied tree but does not schedule the license updater used by ordinary pushes/creation; a later ordinary commit triggers detection.",
         "sourceReferences": [
@@ -902,7 +902,7 @@
     },
     {
       "id": "gitea-repo-settings-validation-loses-draft",
-      "explanation": "Rejected basic settings redraw saved values over pending edits.",
+      "explanation": "In repository Settings > Basic Settings, submitting an invalid repository name shows the right validation error but redraws the form from the saved values, so the other edits made in the same submission (description, website, template checkbox) are lost.",
       "rootCause": {
         "explanation": "handleSettingsPostUpdate renders tplSettingsOptions on name failure; template inputs still read Repository, so RenderWithErr form values do not retain other edits.",
         "sourceReferences": [
@@ -940,7 +940,7 @@
     },
     {
       "id": "gitea-tag-protection-whitespace-pattern",
-      "explanation": "Whitespace tag patterns pass validation then become empty.",
+      "explanation": "In Settings > Tags, an empty Tag Pattern is rejected, but a pattern of only spaces or tabs is accepted with a success message and saved as an empty pattern that protects no tag. Editing an existing working rule to whitespace likewise reports success and silently removes its protection.",
       "rootCause": {
         "explanation": "Required/GlobOrRegexPattern validation runs on the untrimmed NamePattern, then New/EditProtectedTagPost trims it before saving without checking again for empty.",
         "sourceReferences": [
@@ -1002,7 +1002,7 @@
     },
     {
       "id": "gitea-organization-admin-team-treated-owner",
-      "explanation": "Administrator team membership bypasses owner-only team-management policy.",
+      "explanation": "With the organization setting 'Repository admin can add and remove access for teams' turned off, a non-owner who gets repository admin through an Administrator-access team still sees the team controls under Settings > Collaborators and can add or remove teams, including their own.",
       "rootCause": {
         "explanation": "The AddTeam/DeleteTeam policy checks Repo.IsOwner/Permission.IsOwner, whose team-derived owner access can include administrator teams; it does not explicitly verify organization Owners membership.",
         "sourceReferences": [
@@ -1042,7 +1042,7 @@
     },
     {
       "id": "gitea-rejected-transfer-retains-collaborator",
-      "explanation": "Rejecting a private transfer leaves its temporary read access.",
+      "explanation": "Transferring a private repository to a user with no access to it quietly adds that user as a Read collaborator so they can review the transfer. When the recipient rejects the transfer, that access is never removed, so they can keep reading the private repository's code after the transfer is gone.",
       "rootCause": {
         "explanation": "StartRepositoryTransfer adds the recipient as a Read collaborator, while RejectRepositoryTransfer resets status and deletes only the transfer record without deleting that collaboration.",
         "sourceReferences": [
@@ -1081,7 +1081,7 @@
     },
     {
       "id": "gitea-tag-delete-checks-publisher",
-      "explanation": "Protected tag deletion authorizes the original publisher instead of the deleter.",
+      "explanation": "Protected-tag deletion follows the tag creator’s allowlist status instead of the person deleting it. A non-allowed Write collaborator can delete a tag created by an allowed user, while an allowed user can be refused deletion of a tag created outside the rule.",
       "rootCause": {
         "explanation": "DeleteReleaseByID passes rel.PublisherID to IsUserAllowedToControlTag rather than doer.ID; unauthorized users can delete allowed publishers tags and allowed users cannot delete other publishers tags.",
         "sourceReferences": [
@@ -1164,7 +1164,7 @@
     },
     {
       "id": "gitea-collaborator-role-ignores-http-failure",
-      "explanation": "Rejected collaborator role changes remain selected.",
+      "explanation": "On Settings > Collaborators, if a role change is rejected by the server (for example an administrator who lowered their own role to Read then picks Administrator again without refreshing), the role menu still switches to the chosen role and no error appears. The menu updates whatever the server responds; permissions themselves are enforced correctly.",
       "rootCause": {
         "explanation": "The dropdown awaits POST but never checks response.ok; fetch resolves on HTTP errors, so the chosen label and last-value are committed as though the request succeeded.",
         "sourceReferences": [
@@ -1203,7 +1203,7 @@
     },
     {
       "id": "gitea-draft-publish-protected-tag-server-error",
-      "explanation": "Publishing a forbidden protected-tag draft returns HTTP 500.",
+      "explanation": "When a draft release uses a tag name that a protected-tag rule doesn't allow the user to create, clicking Publish Release from the Edit Release page replaces the form with a full-page 500 Internal Server Error, and the unsaved title and notes are lost. Creating the same release from New Release shows a readable error instead.",
       "rootCause": {
         "explanation": "EditReleasePost handles every UpdateRelease failure with ServerError, unlike NewReleasePost which classifies ErrProtectedTagName and re-renders feedback.",
         "sourceReferences": [
@@ -1242,7 +1242,7 @@
     },
     {
       "id": "gitea-archived-wiki-get-editor-access",
-      "explanation": "Archived wikis still serve editable GET forms.",
+      "explanation": "In an archived repository, the wiki hides its create and edit buttons, but opening the wiki's New Page (or Edit) URL directly still shows an editable form with Save Page. Saving replaces the page with a full 404 instead of saying the repository is archived and read-only.",
       "rootCause": {
         "explanation": "Wiki GET rendering can dispatch to edit/new form before enforcing archival write state, while POST uses RepoMustNotBeArchived and responds 404.",
         "sourceReferences": [
@@ -1281,7 +1281,7 @@
     },
     {
       "id": "gitea-branch-protection-whitespace-pattern",
-      "explanation": "Whitespace branch patterns create blank-looking rules.",
+      "explanation": "In a repository's branch protection settings, a rule's Protected Branch Name Pattern made only of spaces is accepted with a success message and saved as a blank-looking rule. An empty pattern is rejected, but spaces aren't trimmed.",
       "rootCause": {
         "explanation": "SettingsProtectedBranchPost checks f.RuleName == empty without trimming and then persists f.RuleName verbatim.",
         "sourceReferences": [
@@ -1343,7 +1343,7 @@
     },
     {
       "id": "gitea-archived-issue-new-action",
-      "explanation": "Archived issue pages expose a New Issue action.",
+      "explanation": "After archiving a private repository, an existing issue still offers New Issue. Clicking it opens 404 Not Found rather than an available action or an archive explanation.",
       "rootCause": {
         "explanation": "The issue detail header includes the New Issue link without checking Repository.IsArchived, while the destination rejects archived writes.",
         "sourceReferences": [
@@ -1417,7 +1417,7 @@
     },
     {
       "id": "gitea-fetch-action-non-json-errors",
-      "explanation": "Archived stale form submission produces a JSON parsing error.",
+      "explanation": "Issue and pull request form actions can expose a raw JSON-parsing SyntaxError labelled Network error when the server rejects an unavailable or unauthorized action. Confirmed triggers include stale deleted/locked/archived comment or issue forms, deleted milestone/time-entry targets and rejected review actions; the UI does not explain the actual refusal.",
       "rootCause": {
         "explanation": "fetchActionDoRequest unconditionally calls resp.json() for HTTP 4xx and labels parsing exceptions Network error. Plain-text missing-issue/permission responses therefore expose SyntaxError rather than the rejection reason. Deleted comment inline edits use a separate parser and are kept separate.",
         "sourceReferences": [
@@ -1476,7 +1476,7 @@
     },
     {
       "id": "gitea-collaborator-owner-silent-return",
-      "explanation": "Adding the repository owner gives no feedback.",
+      "explanation": "On a repository's Collaborators settings, entering the repository's own owner (the user who owns a personal repository, or the organization that owns an organization repository) and clicking Add Collaborator just reloads the page with no error. Gitea already has the message \"Cannot add an owner as a collaborator.\" and shows it when an organization's owner is added, but not for the repository's own owner.",
       "rootCause": {
         "explanation": "CollaborationPost redirects immediately when the submitted lowercased name equals Repo.Owner.LowerName, without flashing the available owner-collaborator error.",
         "sourceReferences": [
@@ -1514,7 +1514,7 @@
     },
     {
       "id": "gitea-public-read-collaborator-upgrade-missing-access-row",
-      "explanation": "Public Read collaborator upgrades do not create effective write access.",
+      "explanation": "On a public user-owned repository, changing a collaborator from Read to Write or Administrator in Settings > Collaborators shows the new role, even after a reload, but the collaborator's actual permission stays read. The same change on a private repository, or from Write to Administrator, works.",
       "rootCause": {
         "explanation": "ChangeCollaborationAccessMode updates existing access rows directly with SQL. Public Read collaborators have no explicit access row, so UPDATE affects zero rows rather than inserting/recalculating access.",
         "sourceReferences": [
@@ -1552,7 +1552,7 @@
     },
     {
       "id": "gitea-protected-file-invalid-glob-skipped",
-      "explanation": "Invalid protected-file globs silently disable protection.",
+      "explanation": "A branch protection rule's Protected file patterns field accepts an invalid glob such as '[' and reports success. The pattern is stored as entered, but when it's used the invalid pattern is skipped, so the protected files are no longer protected, with no warning to the repository owner. Tag protection rejects the same invalid pattern when it's saved.",
       "rootCause": {
         "explanation": "The save path stores ProtectedFilePatterns without compiling them; getFilePatterns logs and skips invalid expressions, leaving no protection for the intended files.",
         "sourceReferences": [
