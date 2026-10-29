@@ -1,19 +1,7 @@
 import { z } from "zod";
 
-export const MIN_MO_SESSION_TIME_BUDGET_MINUTES = 10;
-
 export const MoStatusSchema = z.object({
-  status: z.enum([
-    "running",
-    "waiting_on_agents",
-    "checking",
-    "needs_you",
-    "blocked",
-    "ready",
-    "sleeping",
-    "cancelled",
-    "failed",
-  ]),
+  status: z.string(),
   latestTurn: z
     .object({
       messageId: z.string(),
@@ -35,5 +23,13 @@ export const MoReadSchema = z.object({
 });
 
 export function isMoSessionReportReady(status: MoStatus): boolean {
-  return ["ready", "blocked", "sleeping", "cancelled"].includes(status.status);
+  return [
+    "ready",
+    "findings",
+    "incomplete",
+    "blocked",
+    "replied",
+    "sleeping",
+    "cancelled",
+  ].includes(status.status);
 }

@@ -11,7 +11,6 @@ import {
 import { writeJson } from "../../evals/json-file";
 import { getMoCost, runMoCommand, validateMoCli } from "./cli";
 import {
-  MIN_MO_SESSION_TIME_BUDGET_MINUTES,
   MoReadSchema,
   MoStatusSchema,
   isMoSessionReportReady,
@@ -36,16 +35,8 @@ export class MoAgent implements EvalAgent {
     _deadlineMs?: number,
     onReady?: () => number,
   ) {
-    const { timeLimitMs } = this.context;
     onReady?.();
     const startArgs = ["start", message, "--no-test-cases"];
-    if (timeLimitMs) {
-      const minutes = Math.ceil(timeLimitMs / 60_000);
-      startArgs.push(
-        "--time-budget",
-        String(Math.max(MIN_MO_SESSION_TIME_BUDGET_MINUTES, minutes)),
-      );
-    }
     if (this.context.effort) startArgs.push("--effort", this.context.effort);
     if (this.context.maxConcurrentSubAgents !== undefined) {
       startArgs.push(
@@ -118,6 +109,7 @@ export class MoAgent implements EvalAgent {
         (status.counts?.verdicts ?? status.findings?.verdicts?.length ?? 0) > 0;
       if (
         status.status === "failed" ||
+        status.status === "failed_start" ||
         status.status === "cancelled" ||
         (ready && status.status === "blocked" && !hasFindings)
       ) {
