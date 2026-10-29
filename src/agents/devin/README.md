@@ -14,16 +14,6 @@ Use a dedicated org without connected repositories or knowledge notes. Set
 `DEVIN_ORGANIZATION_ID` and `DEVIN_TOKEN` in the eval environment.
 The token needs session and security-profile management permissions.
 
-From the repository root, check authentication and VM policy prerequisites:
-
-```bash
-pnpm devin-preflight
-```
-
-This creates or verifies an unbound mandatory deny-all profile, starts no
-session, and checks credentials and the clean-org requirements. It does not
-change organization defaults.
-
 The adapter prepares a mandatory profile allowing only the fixture's exact
 E2B hostname, denies external MCP servers, removes GitHub CLI credentials,
 and makes built-in Devin management tools read-only. It rejects Outposts.
