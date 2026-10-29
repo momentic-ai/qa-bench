@@ -53,12 +53,8 @@ export function bugbashBrief(
   fixture: Fixture,
   browserTool?: "Playwright MCP" | "agent-browser",
 ) {
-  let evaluationContext =
+  const evaluationContext =
     "This is a long-duration evaluation of your ability to find true bugs.";
-  if (timeLimitMs !== undefined && timeLimitMs > 30 * 60_000) {
-    evaluationContext +=
-      "\nExplore product areas end to end with the depth and breadth of a multi-hour test session.";
-  }
   return `Bug bash ${url.href}. Find as many distinct, reproducible product bugs as you can. Do not change account authentication details.
 
 ${evaluationContext}
