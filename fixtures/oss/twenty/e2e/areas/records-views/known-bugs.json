@@ -677,7 +677,7 @@
     },
     {
       "id": "twenty-aggregate-filter-object-spread-collision",
-      "explanation": "Filtering a Stage-grouped Opportunities table to one stage removes the other stages’ rows, but their empty groups still show Amount averages and other calculations from excluded records.",
+      "explanation": "Record-list header counts and grouped Table calculations can omit active search, explicit filters or group conditions. Totals and sums can include rows excluded from the displayed results, and filtered-out groups can retain calculations from their hidden records.",
       "rootCause": {
         "explanation": "Table footer and header aggregate hooks combine independently compiled filters using object spread. Group, explicit filters and any-field search can each contain top-level and/or keys; later objects replace earlier predicates rather than conjoining them, so summaries include records excluded by the row query.",
         "sourceReferences": [
@@ -1025,7 +1025,7 @@
     },
     {
       "id": "twenty-record-group-sort-not-persisted",
-      "explanation": "Alphabetical or Reverse Alphabetical Stage ordering applies in an Opportunities Kanban view but resets to Manual after full reload.",
+      "explanation": "Alphabetical and Reverse Alphabetical group ordering works immediately in grouped Table and Kanban views but resets to Manual after reload, including Opportunity Stage, Task Status and Workflow Runs views.",
       "rootCause": {
         "explanation": "The group-order menu updates an in-memory component state defaulting to Manual. Column ordering reads it, but view persistence and loading omit that setting. Neighboring visibility settings use stored view fields.",
         "sourceReferences": [
@@ -1573,7 +1573,7 @@
     },
     {
       "id": "twenty-records-views-editing-a-person-s-matching-job-title-leaves-a-stale-row-under-search-any-field",
-      "explanation": "An existing Person edited out of an ungrouped any-field search remains visible while the count correctly becomes zero.",
+      "explanation": "Ungrouped Search any field results do not reconcile record edits or creation: an edited Person can remain after it stops matching, and a newly created matching Person can be absent, although the aggregate count updates.",
       "rootCause": {
         "explanation": "The virtualized table checks explicit field filters, sorts and position when deciding whether an update requires resetting its row list. It omits the separate any-field search value. The count can update while the existing virtualized row remains; resetting would refetch with the search applied.",
         "sourceReferences": [
@@ -1732,7 +1732,7 @@
     },
     {
       "id": "twenty-records-views-hide-empty-groups-hides-populated-task-columns-after-cards-move-into-initially-emp",
-      "explanation": "A Task moved into an initially empty Status column disappears when Hide empty groups is enabled, despite its saved status and nonempty destination.",
+      "explanation": "With Hide empty groups enabled, moving or creating a Task in a previously empty Status group can leave that group hidden despite a nonzero saved membership. Refresh or changing visibility reveals the records.",
       "rootCause": {
         "explanation": "Initial board loading synchronizes both record IDs and a separate empty-group flag. Drop and reposition paths update group memberships without synchronizing that flag. Column body and header visibility still consult the stale empty flag, hiding a now-populated destination. This causal chain is inferred from source and observed controls rather than direct atom instrumentation.",
         "sourceReferences": [
@@ -1881,7 +1881,7 @@
     },
     {
       "id": "twenty-view-update-overwrites-pending-filters",
-      "explanation": "Changing the layout of the current saved view silently replaces its applied but unsaved filters and sorts with saved settings.",
+      "explanation": "Changing the layout or Group by field of a saved view silently replaces its currently applied, unsaved filters and sorts with the saved settings. The visible result set changes even though the user changed only presentation.",
       "rootCause": {
         "explanation": "Changing layout/grouping calls useUpdateCurrentView, which reloads all index states from the previously saved currentView when grouping changes. The saved filters overwrite the active unsaved filters even though this action only changes presentation.",
         "sourceReferences": [
@@ -2593,7 +2593,7 @@
     },
     {
       "id": "twenty-records-views-calendar-views-silently-hide-most-tasks-sharing-a-due-date",
-      "explanation": "Calendar Month and Day views silently cap displayed tasks at five and ten respectively, without an overflow control, even when 150 matching tasks share that date. Reported variant (codex-30m-twenty-12): A Due Date calendar omits tasks beyond a small display cap, without a way to load them. The seeded October 10 date has 150 matching tasks; Month displays five, and Week/Day display ten. Filtering for an omitted task makes it appear. Count this as the same reference rather than a separate bug.",
+      "explanation": "Task Calendar views silently cap cards shown on a busy date: Month shows five and Week/Day show ten, with no overflow or loading control. Filtering for an omitted Task makes it appear.",
       "rootCause": {
         "explanation": "The calendar groupBy query returns only the server-default first page of records in each due-date group. useRecordCalendarGroupByRecords flattens those connections without fetching their next pages or exposing a load-more mechanism; Month further limits visible cards per day.",
         "sourceReferences": [
@@ -4405,10 +4405,10 @@
       ]
     },
     {
-      "id": "twenty-records-views-annual-revenue-numeric-filter-activates-nonnumeric-text-without-validation",
-      "explanation": "The basic Annual Revenue filter accepts abc as an active numeric condition and empties the table without identifying the invalid value.",
+      "id": "twenty-numeric-filter-partial-parse-accepts-invalid-input",
+      "explanation": "Numeric record filters accept nonnumeric or formatted values as active conditions without validation. Letters can empty Annual Revenue results, while an Amount threshold containing thousands separators is interpreted as a much smaller prefix and includes records below the displayed threshold.",
       "rootCause": {
-        "explanation": "ObjectFilterDropdownNumberInput requests type=number, but DropdownMenuInput does not forward that prop to its input. The filter validity guard accepts nonempty strings, and raw input is used for the active value/display. The currency query converter parses letters to NaN, which serializes as a null operand.",
+        "explanation": "The numeric-filter input and isRecordFilterValueValid accept a nonempty string without validating a complete numeric literal. Query conversion uses parseFloat, which returns NaN for letters and stops at the first comma in a formatted threshold. Displayed filter text can therefore differ from the numeric predicate sent to the server.",
         "sourceReferences": [
           {
             "repository": "twentyhq/twenty",
@@ -4444,13 +4444,27 @@
             "path": "packages/twenty-shared/src/utils/filter/turnRecordFilterIntoGqlOperationFilter.ts",
             "line": 727,
             "url": "https://github.com/twentyhq/twenty/blob/35c645064f72bc4e3180a2c6c506cbbfee170007/packages/twenty-shared/src/utils/filter/turnRecordFilterIntoGqlOperationFilter.ts#L727-L755"
+          },
+          {
+            "repository": "twentyhq/twenty",
+            "revision": "35c645064f72bc4e3180a2c6c506cbbfee170007",
+            "path": "packages/twenty-shared/src/utils/filter/turnRecordFilterIntoGqlOperationFilter.ts",
+            "line": 731,
+            "url": "https://github.com/twentyhq/twenty/blob/35c645064f72bc4e3180a2c6c506cbbfee170007/packages/twenty-shared/src/utils/filter/turnRecordFilterIntoGqlOperationFilter.ts#L731"
+          },
+          {
+            "repository": "twentyhq/twenty",
+            "revision": "35c645064f72bc4e3180a2c6c506cbbfee170007",
+            "path": "packages/twenty-front/src/modules/object-record/object-filter-dropdown/components/ObjectFilterDropdownNumberInput.tsx",
+            "line": 58,
+            "url": "https://github.com/twentyhq/twenty/blob/35c645064f72bc4e3180a2c6c506cbbfee170007/packages/twenty-front/src/modules/object-record/object-filter-dropdown/components/ObjectFilterDropdownNumberInput.tsx#L58"
           }
         ],
         "analysisStatus": "source-supported"
       },
       "reproductionPaths": [
         {
-          "id": "twenty-records-views-annual-revenue-numeric-filter-activates-nonnumeric-text-without-validation-records-views-path-1",
+          "id": "twenty-numeric-filter-partial-parse-accepts-invalid-input-records-views-path-1",
           "explanation": "The basic Annual Revenue filter accepts abc as an active numeric condition and empties the table without identifying the invalid value.",
           "sourceBugs": [
             {
@@ -4489,6 +4503,48 @@
               "constraints": {
                 "matchingGuidance": {
                   "distinction": "Match the basic Companies Annual Revenue filter activating literal nonnumeric text. Distinguish refused invalid values with generic feedback, deliberate legacy read coercion, record-field currency parsing and relative-date input remounts."
+                }
+              }
+            }
+          ]
+        },
+        {
+          "id": "twenty-numeric-filter-partial-parse-accepts-invalid-input-records-views-path-2",
+          "explanation": "An Opportunities Amount threshold containing thousands separators is accepted and displayed but returns records below the threshold.",
+          "sourceBugs": [
+            {
+              "index": 82,
+              "id": "agent-browser-reviewed-comma-amount-filter",
+              "name": "Amount filter accepts comma-formatted numbers but returns incorrect records"
+            }
+          ],
+          "expected": "Normalize comma-formatted numeric thresholds to their equivalent numeric value, or reject unsupported formatting with a clear validation error.",
+          "actual": "Amount greater than or equal to 1000000 returns 33 matching records; entering 1,000,000 displays the threshold without an error but returns all 150 records, including amounts of 450k and 320k. Switching back restores the correct result; the comma failure was observed twice.",
+          "reproSteps": [
+            "Open Opportunities and select All Opportunities.",
+            "Apply an Amount greater-than-or-equal filter with 1000000 and observe the matching records.",
+            "Edit the threshold to 1,000,000, press Enter and close the filter menu.",
+            "Observe records below the displayed threshold and an expanded result count without a validation error.",
+            "Restore 1000000 and compare the results, then repeat the comma-formatted input."
+          ],
+          "severity": 3,
+          "matchingGuidance": {
+            "distinction": "Covers comma-formatted Opportunities Amount thresholds returning records below the displayed threshold. Distinct from literal nonnumeric Companies Annual Revenue input producing empty results."
+          },
+          "evidenceLimitations": [
+            {
+              "sourceBugIndex": 82,
+              "limitations": [
+                "Record counts reflect the seeded fixture; the claim is incorrect filtering after accepted comma-formatted numeric input."
+              ]
+            }
+          ],
+          "sourceConstraints": [
+            {
+              "sourceBugIndex": 82,
+              "constraints": {
+                "matchingGuidance": {
+                  "distinction": "Covers comma-formatted Opportunities Amount thresholds returning records below the displayed threshold. Distinct from literal nonnumeric Companies Annual Revenue input producing empty results."
                 }
               }
             }
@@ -4788,7 +4844,7 @@
       "id": "twenty-records-views-second-ctrl-a-leaves-offscreen-table-rows-selected",
       "explanation": "Pressing Ctrl+A to select an unfiltered large Tasks Table, then pressing it again, clears the initially loaded checkboxes but leaves offscreen rows selected. Scrolling reveals checked rows, while mouse clearing and a small filtered control clear correctly.",
       "rootCause": {
-        "explanation": "useResetTableRowSelection clears row atoms only for IDs currently returned by recordIndexAllRecordIdsComponentSelector. Virtualization can evict earlier pages from that list, so a second Ctrl+A leaves the selected atoms for offscreen/evicted rows set.",
+        "explanation": "useSelectAllRows resets selection when currentAllRowsSelectedStatus is all and clears loaded row flags, then unconditionally sets hasUserSelectedAllRows to true. useLoadRecordsToVirtualRows uses that flag to select subsequently loaded records. The second Ctrl+A therefore clears current checkboxes but re-enables selection for offscreen rows.",
         "sourceReferences": [
           {
             "repository": "twentyhq/twenty",
@@ -4838,6 +4894,13 @@
             "path": "packages/twenty-front/src/modules/object-record/record-table/hooks/internal/useSelectAllRows.ts",
             "line": 43,
             "url": "https://github.com/twentyhq/twenty/blob/35c645064f72bc4e3180a2c6c506cbbfee170007/packages/twenty-front/src/modules/object-record/record-table/hooks/internal/useSelectAllRows.ts#L43"
+          },
+          {
+            "repository": "twentyhq/twenty",
+            "revision": "35c645064f72bc4e3180a2c6c506cbbfee170007",
+            "path": "packages/twenty-front/src/modules/object-record/record-table/hooks/internal/useSelectAllRows.ts",
+            "line": 54,
+            "url": "https://github.com/twentyhq/twenty/blob/35c645064f72bc4e3180a2c6c506cbbfee170007/packages/twenty-front/src/modules/object-record/record-table/hooks/internal/useSelectAllRows.ts#L54"
           }
         ],
         "analysisStatus": "source-supported"
@@ -5356,10 +5419,10 @@
       ]
     },
     {
-      "id": "twenty-records-views-adding-a-company-kanban-group-resets-grouping-to-stage-and-empties-the-board",
-      "explanation": "In Opportunities → By Stage, changing Group by to Company works until a company group is added. Selecting Google in New group resets the grouping field to Stage while retaining incompatible group configuration, leaving the board blank. Reproduced twice.",
+      "id": "twenty-view-metadata-events-drop-saved-overrides",
+      "explanation": "Changing grouping or layout on a built-in saved view can revert its effective grouping and leave a blank Table, Kanban or Calendar despite a nonzero record count. In By Stage, adding a Company group can switch the field back to Stage while retaining incompatible groups; newly created custom views work.",
       "rootCause": {
-        "explanation": "View mainGroupByFieldMetadataId is overridable, but metadata event override resolution does not include view in OVERRIDABLE_ENTITY_METADATA_NAMES. A standard-view update pushes the base Stage grouping rather than its saved Company override and replaces live index metadata, leaving mismatched group definitions.",
+        "explanation": "MetadataEventPublisher routes view events through the generic overridable-entity sanitizer, but resolveOverridableEntityEventBatchOverrides does not include view in its supported entities. The event therefore pushes base built-in view properties instead of effective saved overrides. Frontend metadata then replaces the effective layout/grouping with base values while associated group configuration remains changed.",
         "sourceReferences": [
           {
             "repository": "twentyhq/twenty",
@@ -5374,13 +5437,20 @@
             "path": "packages/twenty-server/src/engine/subscriptions/metadata-event/utils/sanitize-overridable-entity-event-batch.util.ts",
             "line": 7,
             "url": "https://github.com/twentyhq/twenty/blob/35c645064f72bc4e3180a2c6c506cbbfee170007/packages/twenty-server/src/engine/subscriptions/metadata-event/utils/sanitize-overridable-entity-event-batch.util.ts#L7"
+          },
+          {
+            "repository": "twentyhq/twenty",
+            "revision": "35c645064f72bc4e3180a2c6c506cbbfee170007",
+            "path": "packages/twenty-server/src/engine/metadata-modules/flat-view/utils/from-update-view-input-to-flat-view-to-update-or-throw.util.ts",
+            "line": 184,
+            "url": "https://github.com/twentyhq/twenty/blob/35c645064f72bc4e3180a2c6c506cbbfee170007/packages/twenty-server/src/engine/metadata-modules/flat-view/utils/from-update-view-input-to-flat-view-to-update-or-throw.util.ts#L184"
           }
         ],
         "analysisStatus": "source-supported"
       },
       "reproductionPaths": [
         {
-          "id": "twenty-records-views-adding-a-company-kanban-group-resets-grouping-to-stage-and-empties-the-board-records-views-path-1",
+          "id": "twenty-view-metadata-events-drop-saved-overrides-records-views-path-1",
           "explanation": "In Opportunities → By Stage, changing Group by to Company works until a company group is added. Selecting Google in New group resets the grouping field to Stage while retaining incompatible group configuration, leaving the board blank. Reproduced twice.",
           "sourceBugs": [
             {
@@ -5408,6 +5478,52 @@
                 "No independent Claude agreement or newer-runtime verification is claimed.",
                 "Targeted UI tool captures, screenshots and source were audited. The Codex batch was stopped after useful checks; this does not represent a completed formal judge verdict."
               ]
+            }
+          ]
+        },
+        {
+          "id": "twenty-view-metadata-events-drop-saved-overrides-records-views-path-2",
+          "explanation": "Existing Tasks By Status and Opportunities By Stage views become blank after changing their layout/grouping. The views retain record counts and settings but lose all visible records and groups after reload. Newly created custom views render successfully.",
+          "sourceBugs": [
+            {
+              "index": 80,
+              "id": "native-twenty-u15",
+              "name": "Existing saved views lose their record area after layout or grouping changes"
+            }
+          ],
+          "expected": "Changing layout or grouping should preserve a usable saved view. Calendar should render its grid; a Stage Kanban should regenerate and persist stage columns.",
+          "actual": "Tasks By Status shows 1,800 records but a completely blank record area, including after reload. Opportunities By Stage shows 150 records but no columns/cards after the grouping round trip and reload; its Group settings show Stage but no visible groups. Newly created custom views can render these layouts. By Stage's saved groups are empty, as are the affected By Status groups. Screenshot of Tasks failure: tasks-calendar-blank.png.",
+          "reproSteps": [
+            "Open the built-in Tasks By Status view and change Layout to Calendar.",
+            "Close Options, wait, reload, and choose a populated date field such as Due Date. Observe the record area lacks the Calendar grid.",
+            "Switch the affected view back to Kanban and reload; inspect the absent groups/cards.",
+            "Compare a newly created custom Calendar view and its reload."
+          ],
+          "severity": 3,
+          "matchingGuidance": {
+            "relatedReference": "native-twenty-u11",
+            "distinction": "This entry covers native Tasks layout changes leaving the entire Calendar/grid or restored Kanban area absent through reload. The related entry covers Opportunity Stage-group restoration. N33 recovers on reload and retains Calendar structure."
+          },
+          "evidenceLimitations": [
+            {
+              "sourceBugIndex": 80,
+              "limitations": [
+                "Only the Tasks native-layout failure is added here. The compound report’s Opportunities Stage-group portion is covered by native-twenty-u11.",
+                "Evidence basis: fresh UI + source.",
+                "No independent Claude agreement or newer-runtime verification is claimed.",
+                "Targeted UI tool captures, screenshots and source were audited. The Codex batch was stopped after useful checks; this does not represent a completed formal judge verdict."
+              ]
+            }
+          ],
+          "sourceConstraints": [
+            {
+              "sourceBugIndex": 80,
+              "constraints": {
+                "matchingGuidance": {
+                  "relatedReference": "native-twenty-u11",
+                  "distinction": "This entry covers native Tasks layout changes leaving the entire Calendar/grid or restored Kanban area absent through reload. The related entry covers Opportunity Stage-group restoration. N33 recovers on reload and retains Calendar structure."
+                }
+              }
             }
           ]
         }
@@ -5594,78 +5710,6 @@
       ]
     },
     {
-      "id": "twenty-records-views-existing-saved-views-lose-their-record-area-after-layout-or-grouping-changes",
-      "explanation": "Existing Tasks By Status and Opportunities By Stage views become blank after changing their layout/grouping. The views retain record counts and settings but lose all visible records and groups after reload. Newly created custom views render successfully.",
-      "rootCause": {
-        "explanation": "Standard saved view updates store user-specific layout/date/group values as overrides, but the pushed-event sanitizer resolves overrides only for viewField, viewFieldGroup and page-layout children. The view update can replace effective frontend Calendar/board metadata with base values, leaving no matching date field/groups until corrected metadata is loaded.",
-        "sourceReferences": [
-          {
-            "repository": "twentyhq/twenty",
-            "revision": "35c645064f72bc4e3180a2c6c506cbbfee170007",
-            "path": "packages/twenty-server/src/engine/subscriptions/metadata-event/utils/sanitize-overridable-entity-event-batch.util.ts",
-            "line": 7,
-            "url": "https://github.com/twentyhq/twenty/blob/35c645064f72bc4e3180a2c6c506cbbfee170007/packages/twenty-server/src/engine/subscriptions/metadata-event/utils/sanitize-overridable-entity-event-batch.util.ts#L7"
-          },
-          {
-            "repository": "twentyhq/twenty",
-            "revision": "35c645064f72bc4e3180a2c6c506cbbfee170007",
-            "path": "packages/twenty-server/src/engine/metadata-modules/flat-view/utils/from-update-view-input-to-flat-view-to-update-or-throw.util.ts",
-            "line": 184,
-            "url": "https://github.com/twentyhq/twenty/blob/35c645064f72bc4e3180a2c6c506cbbfee170007/packages/twenty-server/src/engine/metadata-modules/flat-view/utils/from-update-view-input-to-flat-view-to-update-or-throw.util.ts#L184"
-          }
-        ],
-        "analysisStatus": "source-supported"
-      },
-      "reproductionPaths": [
-        {
-          "id": "twenty-records-views-existing-saved-views-lose-their-record-area-after-layout-or-grouping-changes-records-views-path-1",
-          "explanation": "Existing Tasks By Status and Opportunities By Stage views become blank after changing their layout/grouping. The views retain record counts and settings but lose all visible records and groups after reload. Newly created custom views render successfully.",
-          "sourceBugs": [
-            {
-              "index": 80,
-              "id": "native-twenty-u15",
-              "name": "Existing saved views lose their record area after layout or grouping changes"
-            }
-          ],
-          "expected": "Changing layout or grouping should preserve a usable saved view. Calendar should render its grid; a Stage Kanban should regenerate and persist stage columns.",
-          "actual": "Tasks By Status shows 1,800 records but a completely blank record area, including after reload. Opportunities By Stage shows 150 records but no columns/cards after the grouping round trip and reload; its Group settings show Stage but no visible groups. Newly created custom views can render these layouts. By Stage's saved groups are empty, as are the affected By Status groups. Screenshot of Tasks failure: tasks-calendar-blank.png.",
-          "reproSteps": [
-            "Open the built-in Tasks By Status view and change Layout to Calendar.",
-            "Close Options, wait, reload, and choose a populated date field such as Due Date. Observe the record area lacks the Calendar grid.",
-            "Switch the affected view back to Kanban and reload; inspect the absent groups/cards.",
-            "Compare a newly created custom Calendar view and its reload."
-          ],
-          "severity": 3,
-          "matchingGuidance": {
-            "relatedReference": "native-twenty-u11",
-            "distinction": "This entry covers native Tasks layout changes leaving the entire Calendar/grid or restored Kanban area absent through reload. The related entry covers Opportunity Stage-group restoration. N33 recovers on reload and retains Calendar structure."
-          },
-          "evidenceLimitations": [
-            {
-              "sourceBugIndex": 80,
-              "limitations": [
-                "Only the Tasks native-layout failure is added here. The compound report’s Opportunities Stage-group portion is covered by native-twenty-u11.",
-                "Evidence basis: fresh UI + source.",
-                "No independent Claude agreement or newer-runtime verification is claimed.",
-                "Targeted UI tool captures, screenshots and source were audited. The Codex batch was stopped after useful checks; this does not represent a completed formal judge verdict."
-              ]
-            }
-          ],
-          "sourceConstraints": [
-            {
-              "sourceBugIndex": 80,
-              "constraints": {
-                "matchingGuidance": {
-                  "relatedReference": "native-twenty-u11",
-                  "distinction": "This entry covers native Tasks layout changes leaving the entire Calendar/grid or restored Kanban area absent through reload. The related entry covers Opportunity Stage-group restoration. N33 recovers on reload and retains Calendar structure."
-                }
-              }
-            }
-          ]
-        }
-      ]
-    },
-    {
       "id": "twenty-records-views-save-as-new-view-fails-when-changing-a-table-to-kanban",
       "explanation": "Saving a filtered Opportunities table as a new Kanban view fails with a missing main-group field error although Stage is shown as selected. Creating a Kanban through Add view works.",
       "rootCause": {
@@ -5730,74 +5774,6 @@
                 "No independent Claude agreement or newer-runtime verification is claimed.",
                 "Targeted UI tool captures, screenshots and source were audited. The Codex batch was stopped after useful checks; this does not represent a completed formal judge verdict."
               ]
-            }
-          ]
-        }
-      ]
-    },
-    {
-      "id": "twenty-records-views-amount-filter-accepts-comma-formatted-numbers-but-returns-incorrect-records",
-      "explanation": "An Opportunities Amount threshold containing thousands separators is accepted and displayed but returns records below the threshold.",
-      "rootCause": {
-        "explanation": "Currency numeric filters accept the raw nonempty input and compile it with parseFloat(value) times one million. parseFloat stops at a comma, so 1,000,000 becomes a threshold of 1 rather than one million; the input does not validate or normalize separators first.",
-        "sourceReferences": [
-          {
-            "repository": "twentyhq/twenty",
-            "revision": "35c645064f72bc4e3180a2c6c506cbbfee170007",
-            "path": "packages/twenty-shared/src/utils/filter/turnRecordFilterIntoGqlOperationFilter.ts",
-            "line": 731,
-            "url": "https://github.com/twentyhq/twenty/blob/35c645064f72bc4e3180a2c6c506cbbfee170007/packages/twenty-shared/src/utils/filter/turnRecordFilterIntoGqlOperationFilter.ts#L731"
-          },
-          {
-            "repository": "twentyhq/twenty",
-            "revision": "35c645064f72bc4e3180a2c6c506cbbfee170007",
-            "path": "packages/twenty-front/src/modules/object-record/object-filter-dropdown/components/ObjectFilterDropdownNumberInput.tsx",
-            "line": 58,
-            "url": "https://github.com/twentyhq/twenty/blob/35c645064f72bc4e3180a2c6c506cbbfee170007/packages/twenty-front/src/modules/object-record/object-filter-dropdown/components/ObjectFilterDropdownNumberInput.tsx#L58"
-          }
-        ],
-        "analysisStatus": "source-supported"
-      },
-      "reproductionPaths": [
-        {
-          "id": "twenty-records-views-amount-filter-accepts-comma-formatted-numbers-but-returns-incorrect-records-records-views-path-1",
-          "explanation": "An Opportunities Amount threshold containing thousands separators is accepted and displayed but returns records below the threshold.",
-          "sourceBugs": [
-            {
-              "index": 82,
-              "id": "agent-browser-reviewed-comma-amount-filter",
-              "name": "Amount filter accepts comma-formatted numbers but returns incorrect records"
-            }
-          ],
-          "expected": "Normalize comma-formatted numeric thresholds to their equivalent numeric value, or reject unsupported formatting with a clear validation error.",
-          "actual": "Amount greater than or equal to 1000000 returns 33 matching records; entering 1,000,000 displays the threshold without an error but returns all 150 records, including amounts of 450k and 320k. Switching back restores the correct result; the comma failure was observed twice.",
-          "reproSteps": [
-            "Open Opportunities and select All Opportunities.",
-            "Apply an Amount greater-than-or-equal filter with 1000000 and observe the matching records.",
-            "Edit the threshold to 1,000,000, press Enter and close the filter menu.",
-            "Observe records below the displayed threshold and an expanded result count without a validation error.",
-            "Restore 1000000 and compare the results, then repeat the comma-formatted input."
-          ],
-          "severity": 3,
-          "matchingGuidance": {
-            "distinction": "Covers comma-formatted Opportunities Amount thresholds returning records below the displayed threshold. Distinct from literal nonnumeric Companies Annual Revenue input producing empty results."
-          },
-          "evidenceLimitations": [
-            {
-              "sourceBugIndex": 82,
-              "limitations": [
-                "Record counts reflect the seeded fixture; the claim is incorrect filtering after accepted comma-formatted numeric input."
-              ]
-            }
-          ],
-          "sourceConstraints": [
-            {
-              "sourceBugIndex": 82,
-              "constraints": {
-                "matchingGuidance": {
-                  "distinction": "Covers comma-formatted Opportunities Amount thresholds returning records below the displayed threshold. Distinct from literal nonnumeric Companies Annual Revenue input producing empty results."
-                }
-              }
             }
           ]
         }
