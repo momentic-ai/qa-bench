@@ -24,7 +24,7 @@ export const SessionSchema = z.object({
   status_detail: z.string().nullable().optional(),
   devin_mode: z.string().nullable().optional(),
   structured_output: z.unknown().optional(),
-  security_profile: z.object({ profile_id: z.string() }).optional(),
+  security_profile: z.object({ profile_id: z.string() }).nullish(),
 });
 
 /** No mode/model/effort override: resolve the new organization's Devin default. */

@@ -1,7 +1,7 @@
 import assert from "node:assert/strict";
 import { it } from "node:test";
 
-import { sessionRequest } from "./qa-agent";
+import { SessionSchema, sessionRequest } from "./qa-agent";
 import { fixtureHostnames, profileRequest, verifyProfile } from "./qa-security";
 
 it("limits network access to one fixture hostname, rejecting shared domains and credential tricks", () => {
@@ -55,4 +55,16 @@ it("starts disposable sessions with the required profile and no inherited reposi
   assert.equal(request.resumable, false);
   assert.equal("devin_mode" in request, false);
   assert.equal("bypass_approval" in request, false);
+});
+
+it("accepts null profile metadata on session status refreshes", () => {
+  const session = SessionSchema.parse({
+    session_id: "test-session",
+    url: "https://app.devin.ai/sessions/test-session",
+    status: "running",
+    status_detail: null,
+    security_profile: null,
+    structured_output: null,
+  });
+  assert.equal(session.security_profile, null);
 });
