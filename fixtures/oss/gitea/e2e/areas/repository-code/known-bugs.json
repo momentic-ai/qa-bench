@@ -4,7 +4,7 @@
   "logicalBugs": [
     {
       "id": "gitea-code-search-regexp-server-error",
-      "explanation": "Malformed regex searches become internal errors.",
+      "explanation": "Submitting an invalid regular expression in repository code search opens a 500 error page instead of showing a validation message.",
       "rootCause": {
         "explanation": "Search forwards gitgrep.PerformSearch errors, including invalid regex compilation from git grep, directly to ServerError.",
         "sourceReferences": [
@@ -43,7 +43,7 @@
     },
     {
       "id": "gitea-diff-summary-plural",
-      "explanation": "Single-file diffs use plural grammar.",
+      "explanation": "Commit detail and branch comparison diff summaries use plural “files” when exactly one file changed.",
       "rootCause": {
         "explanation": "The stats_desc locale literal uses files unconditionally rather than a singular/plural count-aware variant.",
         "sourceReferences": [
@@ -83,7 +83,7 @@
     },
     {
       "id": "gitea-literal-percent-search-like-escaping",
-      "explanation": "Trailing literal percent loses branch substring matches.",
+      "explanation": "Branch search and Explore repository-description search can lose a valid substring match when the search text ends in a literal percent sign. Searching the ordinary prefix or another matching substring finds the same saved branch/repository.",
       "rootCause": {
         "explanation": "Repository name/description searches pass user substrings to builder.Like. Its terminal-percent wildcard handling does not preserve a trailing literal percent as a substring match.",
         "sourceReferences": [
@@ -147,7 +147,7 @@
     },
     {
       "id": "gitea-empty-upload-writes-probe-buffer",
-      "explanation": "Empty uploads become 1024 NUL bytes.",
+      "explanation": "A genuine zero-byte text upload is stored and committed as a 1024-byte binary file; the downloaded bytes change, as well as its displayed size and editability.",
       "rootCause": {
         "explanation": "UploadFileToServer allocates a 1024-byte probe and slices it only when n>0; NewUpload writes the entire unsliced zero buffer for an empty file.",
         "sourceReferences": [
@@ -204,7 +204,7 @@
     },
     {
       "id": "gitea-fork-disabled-wrapper-disables-count",
-      "explanation": "Disabled fork creation disables the forks inventory link.",
+      "explanation": "When the current user cannot create a fork and has no existing personal or organization fork, the header disables the entire Fork group, including its separate read-only forks-list link.",
       "rootCause": {
         "explanation": "The disabled class is applied to the enclosing Fork action group containing both creation and its separate count link, blocking the otherwise readable inventory.",
         "sourceReferences": [
@@ -261,7 +261,7 @@
     },
     {
       "id": "gitea-file-tree-history-initial-state",
-      "explanation": "Back to the initial code page does not restore its content.",
+      "explanation": "Browser Back returns the URL to the docs directory but leaves the README breadcrumb and content rendered; refreshing that URL restores the directory listing.",
       "rootCause": {
         "explanation": "navigateTreeView pushes state only for new navigations; initial history state has no url. popstate loads content only if e.state.url exists, leaving the last file rendered.",
         "sourceReferences": [
@@ -301,7 +301,7 @@
     },
     {
       "id": "gitea-new-file-placeholder-token",
-      "explanation": "The commit placeholder leaves a literal filename token.",
+      "explanation": "After entering a filename in the New File editor, the commit-message placeholder still displays the literal template token {filename}.",
       "rootCause": {
         "explanation": "The filename editor updates tree_path but does not substitute the {filename} placeholder in the new-file commit message input.",
         "sourceReferences": [
@@ -341,7 +341,7 @@
     },
     {
       "id": "gitea-fork-commit-reference-local-context",
-      "explanation": "Upstream merge references link to nonexistent fork issues.",
+      "explanation": "After syncing a fork with its upstream repository, the fork's commit history renders the upstream merge commit's #3 pull request reference as a link under the fork, where that issue does not exist. The link opens a 404 instead of the actual upstream pull request.",
       "rootCause": {
         "explanation": "Commit message issue-reference rendering uses the current repository context, with no upstream origin resolution for a synced upstream merge commit.",
         "sourceReferences": [
@@ -382,7 +382,7 @@
     },
     {
       "id": "gitea-empty-upload-queue-redirect",
-      "explanation": "An empty upload submission redirects to a nonexistent directory.",
+      "explanation": "The Upload File form accepts an empty upload queue with a new directory name and sends the user to a directory that does not exist.",
       "rootCause": {
         "explanation": "UploadFilePost accepts an empty form.Files collection and still builds the redirect to the submitted directory despite no Git tree being created there.",
         "sourceReferences": [
@@ -422,7 +422,7 @@
     },
     {
       "id": "gitea-file-history-count-plural",
-      "explanation": "One-commit file history uses plural grammar.",
+      "explanation": "File history shows the grammatically incorrect count label “1 Commits” when there is exactly one commit.",
       "rootCause": {
         "explanation": "The history count renders the fixed commits label rather than count-aware singular wording.",
         "sourceReferences": [
@@ -461,24 +461,72 @@
       ]
     },
     {
-      "id": "gitea-compare-ancestor-direction-equality",
-      "explanation": "Reverse comparison calls an ancestor branch equal to its descendant.",
+      "id": "gitea-ancestor-comparison-empty-range",
+      "explanation": "Compare commits can call different branches equal when the selected head is an ancestor of the base. Reversing the comparison shows commits and a file diff, but the ancestor-to-descendant direction shows the equal-branches/empty-comparison message despite different trees.",
       "rootCause": {
-        "explanation": "PrepareCompareDiff marks IsNothingToCompare when head equals MergeBase, using merge-base comparison semantics to display an equality claim even when the base has additional commits.",
+        "explanation": "PrepareCompareDiff sets IsNothingToCompare when headCommitID equals the comparison MergeBase. This uses the empty base-to-head commit range from merge-base semantics as an equality test, although the selected branch trees can differ. Repository comparison and pull-request comparison share this decision.",
         "sourceReferences": [
+          {
+            "repository": "go-gitea/gitea",
+            "revision": "99053ce4fa2b45f1bca5837418c0c57f793ca824",
+            "path": "routers/web/repo/compare.go",
+            "line": 732,
+            "url": "https://github.com/go-gitea/gitea/blob/99053ce4fa2b45f1bca5837418c0c57f793ca824/routers/web/repo/compare.go#L732"
+          },
           {
             "repository": "go-gitea/gitea",
             "revision": "99053ce4fa2b45f1bca5837418c0c57f793ca824",
             "path": "routers/web/repo/compare.go",
             "line": 586,
             "url": "https://github.com/go-gitea/gitea/blob/99053ce4fa2b45f1bca5837418c0c57f793ca824/routers/web/repo/compare.go#L586"
+          },
+          {
+            "repository": "go-gitea/gitea",
+            "revision": "99053ce4fa2b45f1bca5837418c0c57f793ca824",
+            "path": "routers/web/repo/compare.go",
+            "line": 588,
+            "url": "https://github.com/go-gitea/gitea/blob/99053ce4fa2b45f1bca5837418c0c57f793ca824/routers/web/repo/compare.go#L588"
           }
         ],
-        "analysisStatus": "source-supported"
+        "analysisStatus": "source-supported",
+        "mergedAnalyses": [
+          {
+            "logicalBugId": "gitea-ancestor-comparison-empty-range",
+            "analysis": {
+              "explanation": "Compare logic uses the base-to-head commit range and merge-base-oriented diff when the head is an ancestor of the base. That range contains no new head commits even though the trees differ, leading to the equal-branches empty display.",
+              "sourceReferences": [
+                {
+                  "repository": "go-gitea/gitea",
+                  "revision": "99053ce4fa2b45f1bca5837418c0c57f793ca824",
+                  "path": "routers/web/repo/compare.go",
+                  "line": 732,
+                  "url": "https://github.com/go-gitea/gitea/blob/99053ce4fa2b45f1bca5837418c0c57f793ca824/routers/web/repo/compare.go#L732"
+                }
+              ],
+              "analysisStatus": "source-supported"
+            }
+          },
+          {
+            "logicalBugId": "gitea-compare-ancestor-direction-equality",
+            "analysis": {
+              "explanation": "PrepareCompareDiff marks IsNothingToCompare when head equals MergeBase, using merge-base comparison semantics to display an equality claim even when the base has additional commits.",
+              "sourceReferences": [
+                {
+                  "repository": "go-gitea/gitea",
+                  "revision": "99053ce4fa2b45f1bca5837418c0c57f793ca824",
+                  "path": "routers/web/repo/compare.go",
+                  "line": 586,
+                  "url": "https://github.com/go-gitea/gitea/blob/99053ce4fa2b45f1bca5837418c0c57f793ca824/routers/web/repo/compare.go#L586"
+                }
+              ],
+              "analysisStatus": "source-supported"
+            }
+          }
+        ]
       },
       "reproductionPaths": [
         {
-          "id": "gitea-compare-ancestor-direction-equality-repository-code-path-1",
+          "id": "gitea-ancestor-comparison-empty-range-repository-code-path-1",
           "explanation": "Reversing the two repository branches makes the read-only Compare commits view claim they are equal, despite the opposite direction showing one commit and a file diff; this persisted after refresh and a repeat reversal.",
           "sourceBugs": [
             {
@@ -502,7 +550,7 @@
     },
     {
       "id": "gitea-exact-search-strips-hyphens",
-      "explanation": "Exact code search drops leading hyphens.",
+      "explanation": "Exact searches for '-Harbor' or '--Harbor' return lines containing 'Harbor' without the required hyphens.",
       "rootCause": {
         "explanation": "Grep builds the -e pattern using strings.TrimLeft(search,\"-\") even though -e already safely separates the pattern from options.",
         "sourceReferences": [
@@ -560,7 +608,7 @@
     },
     {
       "id": "gitea-file-feed-channel-missing-source-route",
-      "explanation": "Branch/file RSS channel URLs omit /src.",
+      "explanation": "RSS feeds opened from a repository branch or file toolbar advertise a channel link without the required /src route segment. Following the channel link opens 404 although the corresponding branch or file page works.",
       "rootCause": {
         "explanation": "ShowFileFeed constructs repo.HTMLURL + RefTypeNameSubURL + TreePath directly instead of the source route prefix.",
         "sourceReferences": [
@@ -663,7 +711,7 @@
     },
     {
       "id": "gitea-branch-table-fixed-mobile-columns",
-      "explanation": "Branch controls overflow tablet table columns.",
+      "explanation": "At a 768px width, branch-row delete controls extend past the outer table border.",
       "rootCause": {
         "explanation": "The branches table uses fixed widths and single-line rows containing controls whose intrinsic width exceeds the available tablet columns.",
         "sourceReferences": [
@@ -702,7 +750,7 @@
     },
     {
       "id": "gitea-file-tree-partial-content-no-reinitialize",
-      "explanation": "File-tree partial navigation omits page metadata and Markdown initialization.",
+      "explanation": "Navigating to a file through the repository file tree updates its content, URL and breadcrumb but leaves the browser tab title on the previous file. Newly loaded Markdown also lacks the heading permalink links present after a full page load.",
       "rootCause": {
         "explanation": "loadViewContent replaces only repo-view-content.innerHTML. It neither updates document.title nor runs markup anchor initialization on the inserted content.",
         "sourceReferences": [
@@ -784,7 +832,7 @@
     },
     {
       "id": "gitea-commit-count-cache-short-ref-key",
-      "explanation": "Branch/tag names and ref lifetime changes reuse stale commit counts.",
+      "explanation": "Repository Code/History can display a commit total from an older or different ref despite showing the current commit/files. Triggers include syncing or uploading commits, renaming/recreating a branch, or viewing a tag after a longer same-named branch; incorrect totals can expose empty history pages until the cached count changes.",
       "rootCause": {
         "explanation": "GetCommitsCount keys ref caches by RefFullName.ShortName plus a shared ref marker, omitting ref type and tip SHA. Same-named tag/branch collide and ref updates/recreation/rename retain cached history counts.",
         "sourceReferences": [
@@ -1002,7 +1050,7 @@
     },
     {
       "id": "gitea-tea-clone-editor-target",
-      "explanation": "Tea CLI text is substituted as an IDE repository URL.",
+      "explanation": "Selecting Tea CLI changes the visible VS Code, VSCodium, and IntelliJ checkout link targets to use the shell command `tea clone eval/harbor-handbook` as the repository URL instead of a Git URL.",
       "rootCause": {
         "explanation": "updateClonePanelUi passes the selected tab data-link to every editor URI template; the tea tab data-link is a shell command instead of a clone URL.",
         "sourceReferences": [
@@ -1042,7 +1090,7 @@
     },
     {
       "id": "gitea-archive-unqualified-tag-resolution",
-      "explanation": "Branch source archives can resolve a same-named tag.",
+      "explanation": "Source archive downloads can contain a different commit from the branch/tag being viewed when its short name is ambiguous. A branch sharing a name with a tag can download the tag’s tree, and a tag named as another commit’s full SHA can download that spelled commit instead of its actual target.",
       "rootCause": {
         "explanation": "The release archive URL uses an unqualified tag name, and archive resolution accepts object IDs and other refs, so a SHA-shaped tag name resolves the spelled commit.",
         "sourceReferences": [
@@ -1090,7 +1138,7 @@
     },
     {
       "id": "gitea-file-history-unqualified-ref",
-      "explanation": "Branch file history can resolve a same-named tag.",
+      "explanation": "When a branch and an older tag share a name, History for a branch file resolves the bare name to the tag. If the tag lacks the file, /commits/branch/<name>/<file> returns a full-page 404; if the tag has it, the page silently lists only the tag's older commits.",
       "rootCause": {
         "explanation": "FileHistory passes RefFullName.ShortName to FileCommitsCount and history lookup instead of the fully qualified branch ref, so a tag can supply the history or not-found.",
         "sourceReferences": [
@@ -1130,7 +1178,7 @@
     },
     {
       "id": "gitea-compare-selector-unqualified-tags",
-      "explanation": "Compare tag selection can choose a same-named branch.",
+      "explanation": "When a branch and a tag share a name, choosing the tag from the Tags tab of the Compare commits selector links to the bare name, and Gitea compares the same-named branch instead of the tag.",
       "rootCause": {
         "explanation": "The comparison selector encodes the selected tag as its bare name; ParseCompareInfo interprets branch names before tags and loses the selected ref kind.",
         "sourceReferences": [
@@ -1170,7 +1218,7 @@
     },
     {
       "id": "gitea-file-diff-preview-original-path",
-      "explanation": "Editor preview ignores the attempted destination filename.",
+      "explanation": "In the web file editor, Preview Changes ignores a pending rename and can report no changes for a rename-only edit. After a rejected rename to an existing file, correcting the name can instead preview against the attempted existing file rather than the original source.",
       "rootCause": {
         "explanation": "The diff tab hx-post URL is fixed to original TreePath and hx-params includes only context/content; renames are omitted and rejected-rename state can change which file path the form previews.",
         "sourceReferences": [
@@ -1252,7 +1300,7 @@
     },
     {
       "id": "gitea-validation-untranslated-field-name",
-      "explanation": "Invalid branch rename validation exposes a field key.",
+      "explanation": "Validation errors show internal field keys instead of visible field names: examples include profile Website, release Tag name/Title, branch rename, protected-tag pattern and repository Default Branch. The input can be correctly rejected while the banner says form.Website, form.TagName or a similar untranslated key.",
       "rootCause": {
         "explanation": "Validate constructs form.<GoField> labels; Website has no matching translated field label and URL validation appends its internal Url message argument.",
         "sourceReferences": [
@@ -1311,7 +1359,7 @@
     },
     {
       "id": "gitea-branch-modal-empty-name-closes",
-      "explanation": "Empty branch name confirmation closes the dialog silently.",
+      "explanation": "On the Branches page, Confirm in Create new branch or Rename Branch closes the dialog when its required name is empty. Nothing is created/renamed and no validation message explains why the command was ignored.",
       "rootCause": {
         "explanation": "The create/rename modals use approve-style submission without required validation retaining the modal on empty name; the shared branch UI opens them without installing a failed-validation close guard.",
         "sourceReferences": [
@@ -1393,7 +1441,7 @@
     },
     {
       "id": "gitea-diff-layout-drops-file-filter",
-      "explanation": "Changing diff layout drops file filters.",
+      "explanation": "A commit opened from a file's History via 'View changes to this file in this commit' shows only that file's diff, but clicking Split/Unified view or a whitespace option drops the file filter and shows every file in the commit again.",
       "rootCause": {
         "explanation": "Diff layout links reconstruct query parameters from style/whitespace options rather than preserving the current file filter query.",
         "sourceReferences": [
@@ -1431,7 +1479,7 @@
     },
     {
       "id": "gitea-patch-actions-signoff-not-forwarded",
-      "explanation": "Patch, cherry-pick and revert ignore Sign-off selections.",
+      "explanation": "Revert, Cherry-pick and Apply Patch offer Add a Signed-off-by trailer, but commits created with it checked omit that trailer. Other commit content can save successfully, leaving the offered sign-off choice silently ineffective.",
       "rootCause": {
         "explanation": "These handlers construct ApplyDiffPatchOptions without forwarding form.Signoff, although the shared commit form displays the Sign-off checkbox.",
         "sourceReferences": [
@@ -1512,7 +1560,7 @@
     },
     {
       "id": "gitea-upload-invalid-directory-sanitized-root",
-      "explanation": "A .git upload destination silently falls back to repository root.",
+      "explanation": "In Add File > Upload File, a destination folder containing a .git path segment (such as '.git', 'docs/.git' or '.GIT') is silently ignored: the upload is committed to the repository root instead, with no warning, and can replace a root file with the same name.",
       "rootCause": {
         "explanation": "CleanUploadFileName returns empty for paths containing .git; UploadFilePost uses the sanitized empty path as a valid root destination instead of rejecting the original invalid path.",
         "sourceReferences": [
@@ -1550,7 +1598,7 @@
     },
     {
       "id": "gitea-upload-file-directory-collision",
-      "explanation": "Uploading a file over a directory removes its tracked descendants.",
+      "explanation": "Uploading a file whose name matches an existing directory at the same location (for example a file named 'docs' at the repository root) commits successfully and replaces the directory with the file, deleting every file in it. New File and rename refuse the same name.",
       "rootCause": {
         "explanation": "The upload service stages the target path without rejecting an existing directory; adding a blob at the directory entry replaces the subtree.",
         "sourceReferences": [
@@ -1612,7 +1660,7 @@
     },
     {
       "id": "gitea-repository-upload-copy-link-wrong-route",
-      "explanation": "Upload Copy link points at an attachment route that cannot serve the staged upload.",
+      "explanation": "In Add File > Upload File, each uploaded file gets a Copy link button, but the Markdown it copies points to /attachments/<uuid>, which returns 404 Not Found both before and after the files are committed. Repository uploads aren't attachments, so the link can never work.",
       "rootCause": {
         "explanation": "The shared upload widget builds an attachment URL for a repository-upload UUID, but repository uploads are served through their separate staging path and are not release/issue attachments.",
         "sourceReferences": [
@@ -1674,7 +1722,7 @@
     },
     {
       "id": "gitea-deleted-branch-rss-visible",
-      "explanation": "Deleted branches retain invalid RSS actions.",
+      "explanation": "On the Branches page, a deleted branch (shown with Restore) still has its RSS Feed icon, and clicking it opens a 404 Not Found page. The row's other actions are hidden for deleted branches.",
       "rootCause": {
         "explanation": "The branches row continues to render its RSS link outside the IsDeleted branch, even though the feed route requires a live Git ref.",
         "sourceReferences": [
@@ -1736,7 +1784,7 @@
     },
     {
       "id": "gitea-markdown-relative-url-base-unescaped",
-      "explanation": "Reserved characters in Markdown source paths corrupt relative links.",
+      "explanation": "When a Markdown file is viewed from a folder (or with a file name) containing '#', '%' or '?', its relative images show as broken and its relative links open 404 pages, even though the referenced files exist and open fine directly. The current path is used unescaped when resolving relative links, so the URL is cut or mangled at the special character.",
       "rootCause": {
         "explanation": "Markdown rendering constructs source/raw context URLs from path text without consistently escaping special URL characters before resolving relative links, so #/?/% alter the resulting URL meaning.",
         "sourceReferences": [
@@ -1775,7 +1823,7 @@
     },
     {
       "id": "gitea-delete-file-conflict-message-key",
-      "explanation": "Delete conflict exposes a raw translation key.",
+      "explanation": "When a file is changed by someone else after its Delete File page was opened, submitting the deletion is correctly refused, but the error shown is the untranslated key 'repo.editor.file_changed_while_deleting' followed by Go formatting diagnostics ('%!(EXTRA string=…)') and a raw compare path, instead of a readable message. Editing a stale file shows a proper message.",
       "rootCause": {
         "explanation": "The delete handler requests repo.editor.file_changed_while_deleting, which has no matching English locale entry, instead of an existing readable conflict translation.",
         "sourceReferences": [
@@ -1814,7 +1862,7 @@
     },
     {
       "id": "gitea-new-branch-current-name-no-rejection",
-      "explanation": "Choosing a new branch equal to the current branch commits in place.",
+      "explanation": "In the web editor's Commit Changes form, choosing Create a new branch and entering the name of the branch being edited isn't rejected as an existing branch. The change is committed straight onto that branch and the user lands on a comparison of the branch with itself saying the branches are equal. Any other existing branch name is correctly refused. The same happens from New File, Upload File, Apply Patch, Delete File, cherry-pick and revert.",
       "rootCause": {
         "explanation": "The editor passes OldBranch and NewBranch as equal strings; the write service treats equality as direct commit and cannot distinguish the user-selected new-branch intention.",
         "sourceReferences": [
@@ -1853,7 +1901,7 @@
     },
     {
       "id": "gitea-upload-validation-loses-staged-files",
-      "explanation": "Upload validation errors drop staged upload UUIDs.",
+      "explanation": "On a repository's Upload File page, when committing fails validation (for example the target directory path runs through an existing file, or the new branch name already exists), the page comes back with the error, commit summary and path kept, but the files that were uploaded and staged are gone and must be added again.",
       "rootCause": {
         "explanation": "The validation re-render does not repopulate the queue with form.Files, so correcting a branch/path error submits without the prior uploads.",
         "sourceReferences": [
@@ -1915,7 +1963,7 @@
     },
     {
       "id": "gitea-markdown-blame-permalink-render-mode",
-      "explanation": "Blame permalinks omit the source display mode needed for line anchors.",
+      "explanation": "In Blame view of a Markdown (or other renderable) file, a line's Copy Permalink link opens the file's rendered view, which has no line numbers, so the selected line isn't shown or highlighted. The link is meant to add ?display=source for renderable files, but the blame page never sets the flag that adds it; permalinks copied from the normal source view work.",
       "rootCause": {
         "explanation": "The copy URL adds display=source only when HasSourceRenderedToggle is set; blame does not supply the same toggle state as source view, so Markdown permalink navigation renders prose without source line IDs.",
         "sourceReferences": [
@@ -1953,7 +2001,7 @@
     },
     {
       "id": "gitea-diff-preview-missing-file-server-error",
-      "explanation": "Previewing a stale editor becomes HTTP 500 when its file disappears.",
+      "explanation": "With a file open in the editor, if the file is renamed or deleted in another tab, clicking Preview Changes shows an 'Error 500' banner and an empty preview. The preview request still uses the original path and treats the missing file as a server error, while committing from the same editor shows a readable message that the file no longer exists.",
       "rootCause": {
         "explanation": "DiffPreviewPost sends GetTreeEntryByPath not-found errors to HTTPError(500) instead of a stale-file validation response.",
         "sourceReferences": [
@@ -1992,7 +2040,7 @@
     },
     {
       "id": "gitea-code-search-limit-not-disclosed",
-      "explanation": "Code search silently truncates at 50 matching files.",
+      "explanation": "Without a code indexer, repository code search uses git grep and only returns the first 50 matching files, but the results page doesn't say the list was truncated: the pager ends at the 50th file as if those were all the matches.",
       "rootCause": {
         "explanation": "Grep defaults MaxResultLimit to 50 and cancels once reached, but result presentation does not expose a truncation indicator.",
         "sourceReferences": [
@@ -2031,7 +2079,7 @@
     },
     {
       "id": "gitea-filename-backspace-selection",
-      "explanation": "Backspace merges a parent directory while a filename selection exists.",
+      "explanation": "In the file editor's path field, Backspace at the very start of the name intentionally pulls the last folder back into the name (the inverse of typing '/'). But the check only looks at where the selection starts, so selecting the whole name and pressing Backspace also triggers it: the selected text isn't deleted, the parent folder is prefixed onto it, and the folder disappears from the path. The same happens in the Upload File directory field.",
       "rootCause": {
         "explanation": "The keydown branch tests selectionStart==0 but never checks selectionEnd; a selection starting at zero incorrectly triggers moving the last folder into the filename.",
         "sourceReferences": [
@@ -2069,7 +2117,7 @@
     },
     {
       "id": "gitea-edit-error-cancel-wrong-path",
-      "explanation": "Cancel after a failed rename opens the attempted destination.",
+      "explanation": "In the file editor, if renaming or moving a file is rejected (for example because part of the new path is an existing file), the editor's Cancel link then points at the rejected new path instead of the original file, so clicking Cancel opens a 404. The error page renders with the attempted path as the current file path.",
       "rootCause": {
         "explanation": "The error form renders cancellation from the submitted tree_path instead of retaining the original existing source path, producing a 404 destination.",
         "sourceReferences": [
@@ -2108,7 +2156,7 @@
     },
     {
       "id": "gitea-patch-existing-branch-error-wrong-template",
-      "explanation": "Apply Patch existing-branch errors render the file editor and crash.",
+      "explanation": "On a repository's Apply Patch page, choosing 'Create a new branch' with the name of a branch that already exists correctly shows 'Branch \"<name>\" already exists in this repository.', but the rest of the page is a 500 Internal Server Error (a template render failure) instead of the Apply Patch form, so the patch and commit message are lost. The handler renders the file editor's template for this error instead of the patch template.",
       "rootCause": {
         "explanation": "The branch-exists error path renders tplEditFile rather than tplPatchFile, without the file-editor template data required by that unrelated page.",
         "sourceReferences": [
@@ -2146,7 +2194,7 @@
     },
     {
       "id": "gitea-commit-choice-inactive-branch-validation",
-      "explanation": "An invalid new-branch name blocks a direct commit choice.",
+      "explanation": "In the file editor (also Delete and Upload), after typing an invalid name under 'Create a new branch for this commit' and then switching to 'Commit directly to the branch', the hidden new-branch name is still validated, so Commit Changes is refused with 'New branch name must be a well-formed Git reference name.' even though no new branch will be created.",
       "rootCause": {
         "explanation": "The shared form still binds/validates NewBranchName from the inactive branch field; switching CommitChoice back does not clear or disable that field, so its GitRefName validation still rejects the form.",
         "sourceReferences": [
@@ -2185,7 +2233,7 @@
     },
     {
       "id": "gitea-upload-duplicate-filenames-overwrite",
-      "explanation": "Same-named upload entries silently replace one another.",
+      "explanation": "On Upload File, two files with the same name can be added to the same upload. Both are listed as uploaded and Commit Changes succeeds without any warning, but only one of them is committed; the other's content is silently discarded.",
       "rootCause": {
         "explanation": "UploadRepoFiles stages each upload using its original name as the index path without rejecting duplicate target paths, so the final blob wins.",
         "sourceReferences": [
@@ -2224,7 +2272,7 @@
     },
     {
       "id": "gitea-fork-sync-ahead-only-error",
-      "explanation": "Syncing an ahead-only fork reports a server failure.",
+      "explanation": "On a fork branch that has its own commits but nothing new upstream (the upstream branch was created later at the common base), the banner wrongly says upstream has new changes, and confirming Sync fork shows \"server error: 500\".",
       "rootCause": {
         "explanation": "GetBranchDivergingInfo uses branch UpdatedUnix timestamps when its fast path cannot calculate divergence, so a newly created upstream branch at an older common commit is incorrectly marked as having new commits. MergeUpstream then attempts a merge instead of returning up-to-date.",
         "sourceReferences": [
@@ -2263,7 +2311,7 @@
     },
     {
       "id": "gitea-code-line-range-zero-unchecked",
-      "explanation": "A zero-based line range raises a JavaScript error.",
+      "explanation": "Opening a source file with a zero-based line fragment such as #L0-L3 displays a JavaScript error banner.",
       "rootCause": {
         "explanation": "Line selection uses one-based line indexes from the hash without rejecting zero before indexing line DOM elements.",
         "sourceReferences": [
@@ -2329,7 +2377,7 @@
     },
     {
       "id": "gitea-patch-validation-submit-disabled",
-      "explanation": "Apply Patch validation leaves its submit control disabled.",
+      "explanation": "When Apply Patch rejects an invalid new-branch name (for example one with consecutive dots), the page reloads with the patch and the error, but the Propose file change / Commit Changes button stays disabled after the name is corrected. Only editing the patch text itself re-enables it.",
       "rootCause": {
         "explanation": "After the validation response, editor dirty tracking treats the restored patch as its clean baseline and watches only fields outside .commit-form-wrapper. Branch and message corrections are excluded, so only changing patch text enables commit.",
         "sourceReferences": [
@@ -2392,7 +2440,7 @@
     },
     {
       "id": "gitea-filtered-diff-tree-full-file-list",
-      "explanation": "Filtered commit diffs keep the unfiltered file tree.",
+      "explanation": "Open a commit diff limited with ?files=<path>. Only that file’s diff is shown, but the changed-files tree still lists all files without a filter indicator; clicking an excluded file does nothing because its diff anchor is absent.",
       "rootCause": {
         "explanation": "The diff file tree uses the commit full changed-file summary while only the body is filtered; it renders links to absent body anchors without a filter indicator or navigation behavior.",
         "sourceReferences": [
@@ -2409,12 +2457,17 @@
       "reproductionPaths": [
         {
           "id": "gitea-filtered-diff-tree-full-file-list-repository-code-path-1",
-          "explanation": "Opening a commit's diff filtered to one file (for example History > View changes to this file in this commit, which adds ?files=<path>) shows only that file's diff, but the changed-file tree and the \"N changed files\" header still list every file in the commit, with nothing indicating the view is filtered or how to see the rest.",
+          "explanation": "Open a commit diff limited with ?files=<path>. Only that file’s diff is shown, but the changed-files tree still lists all files without a filter indicator; clicking an excluded file does nothing because its diff anchor is absent.",
           "sourceBugs": [
             {
               "index": 53,
               "id": "gitea-filtered-commit-diff-shows-all-files",
               "name": "Filtered commit diff lists every changed file without showing that it's filtered"
+            },
+            {
+              "index": 54,
+              "id": "gitea-filtered-commit-diff-tree-click-does-nothing",
+              "name": "Clicking a file that isn't in a filtered commit diff does nothing"
             }
           ],
           "expected": "A filtered commit diff makes clear that it's filtered, for example by listing only the shown files or marking the others and offering a way to show all changes.",
@@ -2433,6 +2486,15 @@
                   "distinction": "Same filtered commit view, but that entry is clicking a missing file doing nothing; this entry is the tree and header presenting all files without indicating the filter."
                 }
               }
+            },
+            {
+              "sourceBugIndex": 54,
+              "guidance": {
+                "relatedReference": {
+                  "name": "Filtered commit diff lists every changed file without showing that it's filtered",
+                  "distinction": "Same filtered commit view, but that entry is the tree and header not showing the filter; this entry is clicking a missing file doing nothing."
+                }
+              }
             }
           ],
           "sourceConstraints": [
@@ -2446,39 +2508,7 @@
                   }
                 }
               }
-            }
-          ]
-        },
-        {
-          "id": "gitea-filtered-diff-tree-full-file-list-repository-code-path-2",
-          "explanation": "In a commit diff filtered to one file (?files=<path>), clicking another file in the changed-file tree does nothing: the link points to a diff that isn't on the page, so the view stays on the filtered file with no navigation or message.",
-          "sourceBugs": [
-            {
-              "index": 54,
-              "id": "gitea-filtered-commit-diff-tree-click-does-nothing",
-              "name": "Clicking a file that isn't in a filtered commit diff does nothing"
-            }
-          ],
-          "expected": "Clicking a file in the tree opens or loads that file's diff (for example by leaving the filtered view), or the file isn't offered as a link.",
-          "actual": "Clicking a file that wasn't in the filtered diff only changed the URL fragment; nothing scrolled, loaded or explained why, and the page stayed on the filtered file.",
-          "reproSteps": [
-            "Open a commit's diff filtered to one file, for example via History > View changes to this file in this commit.",
-            "In the changed-file tree, click a different file from that commit.",
-            "Check whether its diff opens."
-          ],
-          "severity": 3,
-          "matchingGuidance": [
-            {
-              "sourceBugIndex": 54,
-              "guidance": {
-                "relatedReference": {
-                  "name": "Filtered commit diff lists every changed file without showing that it's filtered",
-                  "distinction": "Same filtered commit view, but that entry is the tree and header not showing the filter; this entry is clicking a missing file doing nothing."
-                }
-              }
-            }
-          ],
-          "sourceConstraints": [
+            },
             {
               "sourceBugIndex": 54,
               "constraints": {
@@ -2489,6 +2519,85 @@
                   }
                 }
               }
+            }
+          ],
+          "sourceReproductions": [
+            {
+              "id": "gitea-filtered-diff-tree-full-file-list-repository-code-path-1",
+              "explanation": "Opening a commit's diff filtered to one file (for example History > View changes to this file in this commit, which adds ?files=<path>) shows only that file's diff, but the changed-file tree and the \"N changed files\" header still list every file in the commit, with nothing indicating the view is filtered or how to see the rest.",
+              "expected": "A filtered commit diff makes clear that it's filtered, for example by listing only the shown files or marking the others and offering a way to show all changes.",
+              "actual": "With the diff filtered to one file, the tree still listed all three changed files and the header said 3 changed files, but only one diff was shown, with no filter indicator.",
+              "reproSteps": [
+                "Open a file's History and choose View changes to this file in this commit for a commit that changed several files.",
+                "Compare the file tree and the changed-files count with the diffs shown on the page."
+              ],
+              "severity": 3,
+              "matchingGuidance": [
+                {
+                  "sourceBugIndex": 53,
+                  "guidance": {
+                    "relatedReference": {
+                      "name": "Clicking a file that isn't in a filtered commit diff does nothing",
+                      "distinction": "Same filtered commit view, but that entry is clicking a missing file doing nothing; this entry is the tree and header presenting all files without indicating the filter."
+                    }
+                  }
+                }
+              ],
+              "sourceConstraints": [
+                {
+                  "sourceBugIndex": 53,
+                  "constraints": {
+                    "matchingGuidance": {
+                      "relatedReference": {
+                        "name": "Clicking a file that isn't in a filtered commit diff does nothing",
+                        "distinction": "Same filtered commit view, but that entry is clicking a missing file doing nothing; this entry is the tree and header presenting all files without indicating the filter."
+                      }
+                    }
+                  }
+                }
+              ],
+              "sourceBugIndices": [
+                53
+              ]
+            },
+            {
+              "id": "gitea-filtered-diff-tree-full-file-list-repository-code-path-2",
+              "explanation": "In a commit diff filtered to one file (?files=<path>), clicking another file in the changed-file tree does nothing: the link points to a diff that isn't on the page, so the view stays on the filtered file with no navigation or message.",
+              "expected": "Clicking a file in the tree opens or loads that file's diff (for example by leaving the filtered view), or the file isn't offered as a link.",
+              "actual": "Clicking a file that wasn't in the filtered diff only changed the URL fragment; nothing scrolled, loaded or explained why, and the page stayed on the filtered file.",
+              "reproSteps": [
+                "Open a commit's diff filtered to one file, for example via History > View changes to this file in this commit.",
+                "In the changed-file tree, click a different file from that commit.",
+                "Check whether its diff opens."
+              ],
+              "severity": 3,
+              "matchingGuidance": [
+                {
+                  "sourceBugIndex": 54,
+                  "guidance": {
+                    "relatedReference": {
+                      "name": "Filtered commit diff lists every changed file without showing that it's filtered",
+                      "distinction": "Same filtered commit view, but that entry is the tree and header not showing the filter; this entry is clicking a missing file doing nothing."
+                    }
+                  }
+                }
+              ],
+              "sourceConstraints": [
+                {
+                  "sourceBugIndex": 54,
+                  "constraints": {
+                    "matchingGuidance": {
+                      "relatedReference": {
+                        "name": "Filtered commit diff lists every changed file without showing that it's filtered",
+                        "distinction": "Same filtered commit view, but that entry is the tree and header not showing the filter; this entry is clicking a missing file doing nothing."
+                      }
+                    }
+                  }
+                }
+              ],
+              "sourceBugIndices": [
+                54
+              ]
             }
           ]
         }
