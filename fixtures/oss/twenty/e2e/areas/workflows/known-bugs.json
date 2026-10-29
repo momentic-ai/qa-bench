@@ -200,16 +200,23 @@
     },
     {
       "id": "twenty-workflow-version-switch-retains-local-draft",
-      "explanation": "Discarding a workflow draft leaves its open settings panel showing discarded values. Editing another field can save those stale values into a new draft and execute them.",
+      "explanation": "Discarding a workflow draft leaves an already-open Create Record editor showing discarded values. Editing another field spreads those stale values into a new draft, which can execute the discarded title or other mapping.",
       "rootCause": {
-        "explanation": "Draft discard/override changes the version content, but mounted settings editors initialize local form state from action/defaultValue only once. Subsequent edits spread stale local values back over the replacement draft.",
+        "explanation": "WorkflowEditActionCreateRecord initializes formData from action.settings.input once and does not synchronize that local object when discard replaces the displayed version. Its next field update spreads the stale formData into the replacement draft. This confirmed local-state cause is separate from the Delay override report, whose editor has an explicit input synchronization effect.",
         "sourceReferences": [
           {
             "repository": "twentyhq/twenty",
             "revision": "35c645064f72bc4e3180a2c6c506cbbfee170007",
-            "path": "packages/twenty-front/src/modules/workflow/workflow-steps/workflow-actions/iterator-action/components/WorkflowEditActionIterator.tsx",
-            "line": 57,
-            "url": "https://github.com/twentyhq/twenty/blob/35c645064f72bc4e3180a2c6c506cbbfee170007/packages/twenty-front/src/modules/workflow/workflow-steps/workflow-actions/iterator-action/components/WorkflowEditActionIterator.tsx#L57"
+            "path": "packages/twenty-front/src/modules/workflow/workflow-steps/workflow-actions/components/WorkflowEditActionCreateRecord.tsx",
+            "line": 87,
+            "url": "https://github.com/twentyhq/twenty/blob/35c645064f72bc4e3180a2c6c506cbbfee170007/packages/twenty-front/src/modules/workflow/workflow-steps/workflow-actions/components/WorkflowEditActionCreateRecord.tsx#L87"
+          },
+          {
+            "repository": "twentyhq/twenty",
+            "revision": "35c645064f72bc4e3180a2c6c506cbbfee170007",
+            "path": "packages/twenty-front/src/modules/workflow/workflow-steps/workflow-actions/components/WorkflowEditActionCreateRecord.tsx",
+            "line": 159,
+            "url": "https://github.com/twentyhq/twenty/blob/35c645064f72bc4e3180a2c6c506cbbfee170007/packages/twenty-front/src/modules/workflow/workflow-steps/workflow-actions/components/WorkflowEditActionCreateRecord.tsx#L159"
           }
         ],
         "analysisStatus": "source-supported"
@@ -238,9 +245,35 @@
             "Test the new draft and inspect the created Note: its Title is Original, although the only post-discard edit was to Body."
           ],
           "severity": 3
-        },
+        }
+      ]
+    },
+    {
+      "id": "twenty-override-draft-delay-step-snapshot-stale",
+      "explanation": "Overriding an existing workflow draft from another version can leave the reopened Delay editor showing the discarded draft duration. Editing only a different duration field writes the old duration back into the replacement draft and persists it after reload.",
+      "rootCause": {
+        "explanation": "Override Draft replaces persisted version content, but the returned editor can still supply the previous draft action snapshot to Delay. WorkflowEditActionDelay initializes from action.settings.input and explicitly resynchronizes localDuration whenever those duration props change, so an absence of local synchronization is ruled out. The stale snapshot must precede that input boundary; the precise override/navigation/cache ordering is not established by the available evidence.",
+        "sourceReferences": [
+          {
+            "repository": "twentyhq/twenty",
+            "revision": "35c645064f72bc4e3180a2c6c506cbbfee170007",
+            "path": "packages/twenty-front/src/modules/workflow/workflow-steps/workflow-actions/delay-actions/components/WorkflowEditActionDelay.tsx",
+            "line": 31,
+            "url": "https://github.com/twentyhq/twenty/blob/35c645064f72bc4e3180a2c6c506cbbfee170007/packages/twenty-front/src/modules/workflow/workflow-steps/workflow-actions/delay-actions/components/WorkflowEditActionDelay.tsx#L31"
+          },
+          {
+            "repository": "twentyhq/twenty",
+            "revision": "35c645064f72bc4e3180a2c6c506cbbfee170007",
+            "path": "packages/twenty-front/src/modules/workflow/workflow-steps/workflow-actions/delay-actions/components/WorkflowEditActionDelay.tsx",
+            "line": 45,
+            "url": "https://github.com/twentyhq/twenty/blob/35c645064f72bc4e3180a2c6c506cbbfee170007/packages/twenty-front/src/modules/workflow/workflow-steps/workflow-actions/delay-actions/components/WorkflowEditActionDelay.tsx#L45"
+          }
+        ],
+        "analysisStatus": "inferred"
+      },
+      "reproductionPaths": [
         {
-          "id": "twenty-workflow-version-switch-retains-local-draft-workflows-path-2",
+          "id": "twenty-override-draft-delay-step-snapshot-stale-workflows-path-1",
           "explanation": "Use as Draft followed by Override Draft correctly replaces an existing draft on the server, but the editor retains the old draft settings and later writes them back when another field is edited.",
           "sourceBugs": [
             {
@@ -433,10 +466,10 @@
       ]
     },
     {
-      "id": "twenty-calendar-timezone-first-option-fallback",
-      "explanation": "A new Create Calendar Event action displays American Samoa as its selected time zone although its configured time zone is empty.",
+      "id": "twenty-select-unmatched-value-displays-first-option",
+      "explanation": "An unconfigured or no-longer-eligible Select value is displayed as the first available option without saving that choice. Workflow Form sources, Form answers, action mappings and time zones can therefore look configured but submit no value; role selectors can display a different role from the saved assignment. A sole unsaved option can also be disabled, preventing explicit selection.",
       "rootCause": {
-        "explanation": "The calendar action timezone select has no saved value initially but the generic Select displays its first option as a fallback, making American Samoa appear selected without writing that choice.",
+        "explanation": "Select derives selectedOption by matching value, then falls back to options[0] when no emptyOption is supplied. This fallback neither changes the stored value nor calls onChange. Its single-option disabled condition additionally treats the visually selected fallback as a real selection. Workflow and role callers pass unset or filtered-out values into this shared behavior.",
         "sourceReferences": [
           {
             "repository": "twentyhq/twenty",
@@ -444,13 +477,111 @@
             "path": "packages/twenty-front/src/modules/ui/input/components/Select.tsx",
             "line": 77,
             "url": "https://github.com/twentyhq/twenty/blob/35c645064f72bc4e3180a2c6c506cbbfee170007/packages/twenty-front/src/modules/ui/input/components/Select.tsx#L77"
+          },
+          {
+            "repository": "twentyhq/twenty",
+            "revision": "35c645064f72bc4e3180a2c6c506cbbfee170007",
+            "path": "packages/twenty-front/src/modules/object-record/record-field/ui/form-types/components/FormSelectFieldInput.tsx",
+            "line": 34,
+            "url": "https://github.com/twentyhq/twenty/blob/35c645064f72bc4e3180a2c6c506cbbfee170007/packages/twenty-front/src/modules/object-record/record-field/ui/form-types/components/FormSelectFieldInput.tsx#L34"
+          },
+          {
+            "repository": "twentyhq/twenty",
+            "revision": "35c645064f72bc4e3180a2c6c506cbbfee170007",
+            "path": "packages/twenty-front/src/modules/workflow/workflow-steps/workflow-actions/components/WorkflowEditActionUpdateRecord.tsx",
+            "line": 60,
+            "url": "https://github.com/twentyhq/twenty/blob/35c645064f72bc4e3180a2c6c506cbbfee170007/packages/twenty-front/src/modules/workflow/workflow-steps/workflow-actions/components/WorkflowEditActionUpdateRecord.tsx#L60-L80"
+          },
+          {
+            "repository": "twentyhq/twenty",
+            "revision": "35c645064f72bc4e3180a2c6c506cbbfee170007",
+            "path": "packages/twenty-front/src/modules/workflow/workflow-steps/workflow-actions/components/WorkflowEditActionUpdateRecord.tsx",
+            "line": 198,
+            "url": "https://github.com/twentyhq/twenty/blob/35c645064f72bc4e3180a2c6c506cbbfee170007/packages/twenty-front/src/modules/workflow/workflow-steps/workflow-actions/components/WorkflowEditActionUpdateRecord.tsx#L198-L208"
+          },
+          {
+            "repository": "twentyhq/twenty",
+            "revision": "35c645064f72bc4e3180a2c6c506cbbfee170007",
+            "path": "packages/twenty-front/src/modules/workflow/workflow-steps/workflow-actions/components/WorkflowEditActionUpdateRecord.tsx",
+            "line": 231,
+            "url": "https://github.com/twentyhq/twenty/blob/35c645064f72bc4e3180a2c6c506cbbfee170007/packages/twenty-front/src/modules/workflow/workflow-steps/workflow-actions/components/WorkflowEditActionUpdateRecord.tsx#L231-L245"
+          },
+          {
+            "repository": "twentyhq/twenty",
+            "revision": "35c645064f72bc4e3180a2c6c506cbbfee170007",
+            "path": "packages/twenty-front/src/modules/object-record/record-field/ui/form-types/components/FormSelectFieldInput.tsx",
+            "line": 61,
+            "url": "https://github.com/twentyhq/twenty/blob/35c645064f72bc4e3180a2c6c506cbbfee170007/packages/twenty-front/src/modules/object-record/record-field/ui/form-types/components/FormSelectFieldInput.tsx#L61-L83"
+          },
+          {
+            "repository": "twentyhq/twenty",
+            "revision": "35c645064f72bc4e3180a2c6c506cbbfee170007",
+            "path": "packages/twenty-front/src/modules/object-record/record-field/ui/form-types/components/FormSelectFieldInput.tsx",
+            "line": 143,
+            "url": "https://github.com/twentyhq/twenty/blob/35c645064f72bc4e3180a2c6c506cbbfee170007/packages/twenty-front/src/modules/object-record/record-field/ui/form-types/components/FormSelectFieldInput.tsx#L143-L148"
+          },
+          {
+            "repository": "twentyhq/twenty",
+            "revision": "35c645064f72bc4e3180a2c6c506cbbfee170007",
+            "path": "packages/twenty-front/src/modules/ui/input/components/Select.tsx",
+            "line": 104,
+            "url": "https://github.com/twentyhq/twenty/blob/35c645064f72bc4e3180a2c6c506cbbfee170007/packages/twenty-front/src/modules/ui/input/components/Select.tsx#L104-L126"
+          },
+          {
+            "repository": "twentyhq/twenty",
+            "revision": "35c645064f72bc4e3180a2c6c506cbbfee170007",
+            "path": "packages/twenty-front/src/modules/workflow/workflow-steps/workflow-actions/form-action/components/WorkflowFormFieldSettingsSelect.tsx",
+            "line": 31,
+            "url": "https://github.com/twentyhq/twenty/blob/35c645064f72bc4e3180a2c6c506cbbfee170007/packages/twenty-front/src/modules/workflow/workflow-steps/workflow-actions/form-action/components/WorkflowFormFieldSettingsSelect.tsx#L31"
+          },
+          {
+            "repository": "twentyhq/twenty",
+            "revision": "35c645064f72bc4e3180a2c6c506cbbfee170007",
+            "path": "packages/twenty-front/src/modules/settings/members/components/MemberPermissionsTab.tsx",
+            "line": 69,
+            "url": "https://github.com/twentyhq/twenty/blob/35c645064f72bc4e3180a2c6c506cbbfee170007/packages/twenty-front/src/modules/settings/members/components/MemberPermissionsTab.tsx#L69"
+          },
+          {
+            "repository": "twentyhq/twenty",
+            "revision": "35c645064f72bc4e3180a2c6c506cbbfee170007",
+            "path": "packages/twenty-front/src/modules/ui/input/components/Select.tsx",
+            "line": 49,
+            "url": "https://github.com/twentyhq/twenty/blob/35c645064f72bc4e3180a2c6c506cbbfee170007/packages/twenty-front/src/modules/ui/input/components/Select.tsx#L49"
+          },
+          {
+            "repository": "twentyhq/twenty",
+            "revision": "35c645064f72bc4e3180a2c6c506cbbfee170007",
+            "path": "packages/twenty-front/src/modules/settings/developers/components/SettingsDevelopersRoleSelector.tsx",
+            "line": 35,
+            "url": "https://github.com/twentyhq/twenty/blob/35c645064f72bc4e3180a2c6c506cbbfee170007/packages/twenty-front/src/modules/settings/developers/components/SettingsDevelopersRoleSelector.tsx#L35"
+          },
+          {
+            "repository": "twentyhq/twenty",
+            "revision": "35c645064f72bc4e3180a2c6c506cbbfee170007",
+            "path": "packages/twenty-front/src/modules/settings/developers/components/SettingsDevelopersRoleSelector.tsx",
+            "line": 46,
+            "url": "https://github.com/twentyhq/twenty/blob/35c645064f72bc4e3180a2c6c506cbbfee170007/packages/twenty-front/src/modules/settings/developers/components/SettingsDevelopersRoleSelector.tsx#L46"
+          },
+          {
+            "repository": "twentyhq/twenty",
+            "revision": "35c645064f72bc4e3180a2c6c506cbbfee170007",
+            "path": "packages/twenty-front/src/modules/ui/input/components/Select.tsx",
+            "line": 109,
+            "url": "https://github.com/twentyhq/twenty/blob/35c645064f72bc4e3180a2c6c506cbbfee170007/packages/twenty-front/src/modules/ui/input/components/Select.tsx#L109"
+          },
+          {
+            "repository": "twentyhq/twenty",
+            "revision": "35c645064f72bc4e3180a2c6c506cbbfee170007",
+            "path": "packages/twenty-front/src/modules/ui/input/components/Select.tsx",
+            "line": 143,
+            "url": "https://github.com/twentyhq/twenty/blob/35c645064f72bc4e3180a2c6c506cbbfee170007/packages/twenty-front/src/modules/ui/input/components/Select.tsx#L143"
           }
         ],
         "analysisStatus": "source-supported"
       },
       "reproductionPaths": [
         {
-          "id": "twenty-calendar-timezone-first-option-fallback-workflows-path-1",
+          "id": "twenty-select-unmatched-value-displays-first-option-workflows-path-1",
           "explanation": "A new Create Calendar Event action displays American Samoa as its selected time zone although its configured time zone is empty.",
           "sourceBugs": [
             {
@@ -469,6 +600,101 @@
             "Do not execute the calendar action; the demonstrated defect is the false empty-value display."
           ],
           "severity": 1
+        },
+        {
+          "id": "twenty-select-unmatched-value-displays-first-option-workflows-path-2",
+          "explanation": "A workflow Form Select based on Opportunity Stage displays New as selected even when no value is set. Submitting it untouched completes without a Stage answer, while explicitly selecting the same New option submits NEW.",
+          "sourceBugs": [
+            {
+              "index": 24,
+              "id": "workflows-N46",
+              "name": "Workflow Form Select shows New as selected but omits it from submitted answers"
+            }
+          ],
+          "expected": "A submitted Form should include the answer displayed as selected. If the field has no answer, it should present a clear empty state instead of displaying and checkmarking New as selected.",
+          "actual": "The runtime Form shows New in Stage and marks New selected in the open dropdown. Submitting without choosing an option completes with an empty result. Explicitly clicking the already checkmarked New and submitting returns the corresponding NEW value. The omission reproduces in Test and when launching an activated workflow through the Command Menu; saved and submitted values are not lost through refresh or save interruption.",
+          "reproSteps": [
+            "Sign in as a workspace administrator and create an owned workflow with a Launch manually trigger and a Form action.",
+            "Add a Select input, give it a unique label such as Sales status, and explicitly choose Existing field > Opportunity > Stage as its source field. Do not set a default answer. Allow configuration saving to complete.",
+            "Run Test. Observe that the Stage dropdown already displays New. Open the dropdown and observe New is checkmarked; dismiss it without selecting an option.",
+            "Click Submit. After the run completes, open the Form step Output and observe an empty result with no Sales status answer.",
+            "Run the same form again, explicitly click New in the dropdown, then Submit. Observe the completed output contains salesStatus: NEW.",
+            "Activate the valid workflow and launch it through the Command Menu. Leave the displayed New untouched and Submit; the completed Form result is again empty."
+          ],
+          "severity": 3
+        },
+        {
+          "id": "twenty-select-unmatched-value-displays-first-option-workflows-path-3",
+          "explanation": "Selecting Stage under Fields to update displays New without storing a stage value in objectRecord. The saved action contains the edited Name only. Explicitly selecting New stores stage NEW correctly.",
+          "sourceBugs": [
+            {
+              "index": 133,
+              "id": "native-twenty-u27",
+              "name": "Update Record editor misleadingly displays an unsaved Stage=New value"
+            }
+          ],
+          "expected": "The Update Record editor should distinguish an unset Stage from an explicitly configured New value.",
+          "actual": "Selecting Stage under Fields to update displays New without storing a stage value in objectRecord. The saved action contains the edited Name only. Explicitly selecting New stores stage NEW correctly.",
+          "reproSteps": [
+            "Create a workflow with an Opportunity Update Record action and select Stage and Name under Fields to update.",
+            "Leave the displayed Stage New untouched and enter a valid Name. Allow saving to complete.",
+            "Inspect the displayed Stage and saved action configuration. Stage appears New, but objectRecord contains the Name without a stage value.",
+            "Explicitly select New and compare the saved configuration, which now contains stage NEW."
+          ],
+          "severity": 1,
+          "matchingGuidance": [
+            {
+              "sourceBugIndex": 133,
+              "guidance": {
+                "relatedReference": "workflows-N53",
+                "distinction": "This entry displays an unsaved Opportunity Stage default in Update Record; N53 covers Create Record Task Status defaults and explicit No Status."
+              }
+            }
+          ],
+          "sourceConstraints": [
+            {
+              "sourceBugIndex": 133,
+              "constraints": {
+                "matchingGuidance": {
+                  "relatedReference": "workflows-N53",
+                  "distinction": "This entry displays an unsaved Opportunity Stage default in Update Record; N53 covers Create Record Task Status defaults and explicit No Status."
+                }
+              }
+            }
+          ],
+          "evidenceLimitations": [
+            {
+              "sourceBugIndex": 133,
+              "limitations": [
+                "Approval is limited to misleading editor presentation. Explicitly selected New saves correctly; no backend refusal of a saved NEW value or fresh downstream execution damage is claimed.",
+                "Evidence basis: fresh UI + source.",
+                "No independent Claude agreement or newer-runtime verification is claimed.",
+                "Targeted UI tool captures, screenshots and source were audited. The Codex batch was stopped after useful checks; this does not represent a completed formal judge verdict."
+              ]
+            }
+          ]
+        },
+        {
+          "id": "twenty-select-unmatched-value-displays-first-option-workflows-path-4",
+          "explanation": "New Form Select and Multi-Select fields display an existing source as selected without saving its source ID. With only one Multi-Select source available, the picker disables itself, preventing configuration and causing the entire input to be omitted at runtime.",
+          "sourceBugs": [
+            {
+              "index": 28,
+              "id": "workflows-N01",
+              "name": "Workflow Form source picker shows an unsaved selection and blocks the sole Multi-Select source"
+            }
+          ],
+          "expected": "A source shown as selected should be stored, or the source picker should clearly require and permit an explicit selection, including when only one source is available. A Form input should become usable after choosing a supported existing field.",
+          "actual": "The builder displays Opportunity > Stage for Select and Workflow > Statuses for Multi-Select, but saved settings have no selectedFieldId. Runtime forms omit these inputs while ordinary Number and Date fields render. Explicitly selecting a source repairs Select. The sole Multi-Select source picker is disabled and cannot make that selection, so Multi-Select remains absent after saving, reload, Test, and an activated workflow launch. The existing source already defines its answer options; no separate Form options-entry step is missing.",
+          "reproSteps": [
+            "Sign in as a workspace administrator in the fixture workspace, where Workflow > Statuses is the only available Multi-Select source. Create an owned manual workflow with a Form action.",
+            "Add a Number field, a uniquely named Select field, and a uniquely named Multi-Select field. Open each choice field settings and observe that its Field source displays Opportunity > Stage or Workflow > Statuses without explicitly selecting it.",
+            "For Multi-Select, attempt to open the Field source picker. Observe it is disabled despite the source selection not being saved. The source already has Draft, Active, and Deactivated answer options.",
+            "Allow the configuration to save, reload, and run Test. Observe that the form contains Number but omits the entire Select and Multi-Select inputs.",
+            "As a control, return to the Select settings and explicitly choose Opportunity > Stage or Task > Status. Save, reload, and Test; that Select now renders. Multi-Select remains absent because its sole source cannot be selected.",
+            "The omission can also be observed when the workflow is activated and launched through the Command Menu."
+          ],
+          "severity": 3
         }
       ]
     },
@@ -558,7 +784,7 @@
     },
     {
       "id": "twenty-workflow-variable-path-unescaped-keys",
-      "explanation": "The webhook variable picker separately offers a literal customer.name key, but selecting it maps the nested customer > name field and creates a Note with the wrong title.",
+      "explanation": "Workflow variable expressions cannot reliably reference literal object keys containing dots or slashes. Picker-selected values can resolve a different nested property or no value, producing incorrect action inputs.",
       "rootCause": {
         "explanation": "Workflow variable expressions encode object property names as dot/slash-delimited paths without an escaping scheme. Literal dotted or slash-containing keys are parsed as path structure and resolve to nested data or no value.",
         "sourceReferences": [
@@ -623,7 +849,7 @@
     },
     {
       "id": "twenty-database-trigger-object-change-keeps-incompatible-settings",
-      "explanation": "Changing a record trigger from Workflows to Companies leaves existing Conditions field pickers offering Workflow fields and prevents selecting Company fields until the panel is reopened.",
+      "explanation": "Changing a database trigger to another object preserves incompatible old conditions and monitored fields. Pickers can show the former object schema, and activation or execution can retain conditions that do not belong to the new object.",
       "rootCause": {
         "explanation": "Changing the database trigger object updates eventName while preserving old filter and monitored-field settings. Pickers/cache can retain the former schema or hide unresolved names, and activation does not reject references incompatible with the new object.",
         "sourceReferences": [
@@ -675,13 +901,6 @@
             "path": "packages/twenty-front/src/modules/workflow/workflow-steps/workflow-actions/find-records-action/components/WorkflowEditActionFindRecords.tsx",
             "line": 174,
             "url": "https://github.com/twentyhq/twenty/blob/35c645064f72bc4e3180a2c6c506cbbfee170007/packages/twenty-front/src/modules/workflow/workflow-steps/workflow-actions/find-records-action/components/WorkflowEditActionFindRecords.tsx#L174-L188"
-          },
-          {
-            "repository": "twentyhq/twenty",
-            "revision": "35c645064f72bc4e3180a2c6c506cbbfee170007",
-            "path": "packages/twenty-front/src/modules/workflow/workflow-trigger/components/WorkflowEditTriggerDatabaseEventForm.tsx",
-            "line": 155,
-            "url": "https://github.com/twentyhq/twenty/blob/35c645064f72bc4e3180a2c6c506cbbfee170007/packages/twenty-front/src/modules/workflow/workflow-trigger/components/WorkflowEditTriggerDatabaseEventForm.tsx#L155-L166"
           },
           {
             "repository": "twentyhq/twenty",
@@ -878,7 +1097,7 @@
     },
     {
       "id": "twenty-record-group-sort-not-persisted",
-      "explanation": "Reverse Alphabetical group ordering in a custom Workflow Runs view resets to Manual after refresh, even after an explicit Update view save completes.",
+      "explanation": "Alphabetical and Reverse Alphabetical group ordering works immediately in grouped Table and Kanban views but resets to Manual after reload, including Opportunity Stage, Task Status and Workflow Runs views.",
       "rootCause": {
         "explanation": "The group-order menu updates an in-memory component state defaulting to Manual. Column ordering reads it, but view persistence and loading omit that setting. Neighboring visibility settings use stored view fields.",
         "sourceReferences": [
@@ -1052,7 +1271,7 @@
     },
     {
       "id": "twenty-aggregate-filter-object-spread-collision",
-      "explanation": "Record list aggregates lose active filter predicates when filter objects are spread together.",
+      "explanation": "Record-list header counts and grouped Table calculations can omit active search, explicit filters or group conditions. Totals and sums can include rows excluded from the displayed results, and filtered-out groups can retain calculations from their hidden records.",
       "rootCause": {
         "explanation": "Table footer and header aggregate hooks combine independently compiled filters using object spread. Group, explicit filters and any-field search can each contain top-level and/or keys; later objects replace earlier predicates rather than conjoining them, so summaries include records excluded by the row query.",
         "sourceReferences": [
@@ -1274,7 +1493,7 @@
     },
     {
       "id": "twenty-cron-interval-calendar-reset",
-      "explanation": "Hours between triggers accepts and retains 25, but the generated cron schedule previews daily occurrences while the summary promises every 25 hours.",
+      "explanation": "Schedule intervals expressed as every N hours or days reset at calendar boundaries instead of preserving the requested elapsed interval. The retained interval and human-readable summary can disagree with upcoming trigger times.",
       "rootCause": {
         "explanation": "Schedule interval conversion encodes hours/days as cron */N fields. Cron restarts those fields each day/month instead of representing elapsed N-hour/N-day intervals, so advertised durations such as 25 hours or calendar-boundary days are not preserved.",
         "sourceReferences": [
@@ -1475,7 +1694,7 @@
     },
     {
       "id": "twenty-workflow-mobile-date-picker-stacking",
-      "explanation": "At viewport widths up to 768 pixels, a workflow Form Date calendar opens beneath the fixed form panel, preventing calendar day selection.",
+      "explanation": "At mobile and tablet widths, workflow Date and DateTime calendars can open beneath the fixed Form or Delay side panel, hiding the calendar and preventing day selection.",
       "rootCause": {
         "explanation": "The date/datetime floating picker portal does not establish a stacking level above the fixed mobile workflow/command panel. Its mounted calendar is painted beneath the panel despite being interactive in desktop context.",
         "sourceReferences": [
@@ -1595,9 +1814,9 @@
     },
     {
       "id": "twenty-complex-action-type-replacement-graph-invariants",
-      "explanation": "Changing an existing action to If/else saves its branch placeholders but omits them from the live canvas. Adding a route errors, and adding another node can crash the editor.",
+      "explanation": "Changing an existing or placeholder workflow action to If/Else or Iterator saves companion nodes but omits them from the live diagram until reload. Adding routes or another node can then error or crash the editor.",
       "rootCause": {
-        "explanation": "Action type replacement constructs a complex If/Else or Iterator node, then merges/replaces the existing controller without consistently updating all companion branch/loop nodes and the live diagram references. Further insertion traverses inconsistent topology and can crash; exact crash mechanism across all reported insertion routes is not established.",
+        "explanation": "The action type-change service persists additionalCreatedSteps for complex If/Else and Iterator replacements but returns only updatedStep. useUpdateWorkflowVersionStep replaces that controller in client flow/cache without adding the saved companion nodes. The live diagram is therefore incomplete until reload; subsequent insertion traverses this incomplete graph. This is distinct from the persistent transient-ID Iterator return defect.",
         "sourceReferences": [
           {
             "repository": "twentyhq/twenty",
@@ -1640,6 +1859,13 @@
             "path": "packages/twenty-server/src/modules/workflow/workflow-builder/workflow-version-step/workflow-version-step-update.workspace-service.ts",
             "line": 60,
             "url": "https://github.com/twentyhq/twenty/blob/35c645064f72bc4e3180a2c6c506cbbfee170007/packages/twenty-server/src/modules/workflow/workflow-builder/workflow-version-step/workflow-version-step-update.workspace-service.ts#L60-L96"
+          },
+          {
+            "repository": "twentyhq/twenty",
+            "revision": "35c645064f72bc4e3180a2c6c506cbbfee170007",
+            "path": "packages/twenty-front/src/modules/workflow/workflow-steps/hooks/useUpdateWorkflowVersionStep.ts",
+            "line": 55,
+            "url": "https://github.com/twentyhq/twenty/blob/35c645064f72bc4e3180a2c6c506cbbfee170007/packages/twenty-front/src/modules/workflow/workflow-steps/hooks/useUpdateWorkflowVersionStep.ts#L55"
           }
         ],
         "analysisStatus": "source-supported"
@@ -1715,140 +1941,6 @@
                 "Iterator conversion is the new related trigger; ordinary If/Else conversion crashes remain existing N45 coverage and add no separate yield.",
                 "Two fresh workflows share one fixture. No execution failure, lost mappings or direct sparse-memory observation is claimed.",
                 "Codex-only approval; no independent Claude agreement is represented. Latest runtime was not tested."
-              ]
-            }
-          ]
-        }
-      ]
-    },
-    {
-      "id": "twenty-form-select-visual-default-not-answer",
-      "explanation": "A workflow Form Select based on Opportunity Stage displays New as selected even when no value is set. Submitting it untouched completes without a Stage answer, while explicitly selecting the same New option submits NEW.",
-      "rootCause": {
-        "explanation": "FormSelectFieldInput displays its first available option when the stored/default value is missing, without calling onChange to place that option into form answers or the action mapping. The UI therefore claims New while submitted data omits it.",
-        "sourceReferences": [
-          {
-            "repository": "twentyhq/twenty",
-            "revision": "35c645064f72bc4e3180a2c6c506cbbfee170007",
-            "path": "packages/twenty-front/src/modules/object-record/record-field/ui/form-types/components/FormSelectFieldInput.tsx",
-            "line": 34,
-            "url": "https://github.com/twentyhq/twenty/blob/35c645064f72bc4e3180a2c6c506cbbfee170007/packages/twenty-front/src/modules/object-record/record-field/ui/form-types/components/FormSelectFieldInput.tsx#L34"
-          },
-          {
-            "repository": "twentyhq/twenty",
-            "revision": "35c645064f72bc4e3180a2c6c506cbbfee170007",
-            "path": "packages/twenty-front/src/modules/workflow/workflow-steps/workflow-actions/components/WorkflowEditActionUpdateRecord.tsx",
-            "line": 60,
-            "url": "https://github.com/twentyhq/twenty/blob/35c645064f72bc4e3180a2c6c506cbbfee170007/packages/twenty-front/src/modules/workflow/workflow-steps/workflow-actions/components/WorkflowEditActionUpdateRecord.tsx#L60-L80"
-          },
-          {
-            "repository": "twentyhq/twenty",
-            "revision": "35c645064f72bc4e3180a2c6c506cbbfee170007",
-            "path": "packages/twenty-front/src/modules/workflow/workflow-steps/workflow-actions/components/WorkflowEditActionUpdateRecord.tsx",
-            "line": 198,
-            "url": "https://github.com/twentyhq/twenty/blob/35c645064f72bc4e3180a2c6c506cbbfee170007/packages/twenty-front/src/modules/workflow/workflow-steps/workflow-actions/components/WorkflowEditActionUpdateRecord.tsx#L198-L208"
-          },
-          {
-            "repository": "twentyhq/twenty",
-            "revision": "35c645064f72bc4e3180a2c6c506cbbfee170007",
-            "path": "packages/twenty-front/src/modules/workflow/workflow-steps/workflow-actions/components/WorkflowEditActionUpdateRecord.tsx",
-            "line": 231,
-            "url": "https://github.com/twentyhq/twenty/blob/35c645064f72bc4e3180a2c6c506cbbfee170007/packages/twenty-front/src/modules/workflow/workflow-steps/workflow-actions/components/WorkflowEditActionUpdateRecord.tsx#L231-L245"
-          },
-          {
-            "repository": "twentyhq/twenty",
-            "revision": "35c645064f72bc4e3180a2c6c506cbbfee170007",
-            "path": "packages/twenty-front/src/modules/object-record/record-field/ui/form-types/components/FormSelectFieldInput.tsx",
-            "line": 61,
-            "url": "https://github.com/twentyhq/twenty/blob/35c645064f72bc4e3180a2c6c506cbbfee170007/packages/twenty-front/src/modules/object-record/record-field/ui/form-types/components/FormSelectFieldInput.tsx#L61-L83"
-          },
-          {
-            "repository": "twentyhq/twenty",
-            "revision": "35c645064f72bc4e3180a2c6c506cbbfee170007",
-            "path": "packages/twenty-front/src/modules/object-record/record-field/ui/form-types/components/FormSelectFieldInput.tsx",
-            "line": 143,
-            "url": "https://github.com/twentyhq/twenty/blob/35c645064f72bc4e3180a2c6c506cbbfee170007/packages/twenty-front/src/modules/object-record/record-field/ui/form-types/components/FormSelectFieldInput.tsx#L143-L148"
-          },
-          {
-            "repository": "twentyhq/twenty",
-            "revision": "35c645064f72bc4e3180a2c6c506cbbfee170007",
-            "path": "packages/twenty-front/src/modules/ui/input/components/Select.tsx",
-            "line": 104,
-            "url": "https://github.com/twentyhq/twenty/blob/35c645064f72bc4e3180a2c6c506cbbfee170007/packages/twenty-front/src/modules/ui/input/components/Select.tsx#L104-L126"
-          }
-        ],
-        "analysisStatus": "source-supported"
-      },
-      "reproductionPaths": [
-        {
-          "id": "twenty-form-select-visual-default-not-answer-workflows-path-1",
-          "explanation": "A workflow Form Select based on Opportunity Stage displays New as selected even when no value is set. Submitting it untouched completes without a Stage answer, while explicitly selecting the same New option submits NEW.",
-          "sourceBugs": [
-            {
-              "index": 24,
-              "id": "workflows-N46",
-              "name": "Workflow Form Select shows New as selected but omits it from submitted answers"
-            }
-          ],
-          "expected": "A submitted Form should include the answer displayed as selected. If the field has no answer, it should present a clear empty state instead of displaying and checkmarking New as selected.",
-          "actual": "The runtime Form shows New in Stage and marks New selected in the open dropdown. Submitting without choosing an option completes with an empty result. Explicitly clicking the already checkmarked New and submitting returns the corresponding NEW value. The omission reproduces in Test and when launching an activated workflow through the Command Menu; saved and submitted values are not lost through refresh or save interruption.",
-          "reproSteps": [
-            "Sign in as a workspace administrator and create an owned workflow with a Launch manually trigger and a Form action.",
-            "Add a Select input, give it a unique label such as Sales status, and explicitly choose Existing field > Opportunity > Stage as its source field. Do not set a default answer. Allow configuration saving to complete.",
-            "Run Test. Observe that the Stage dropdown already displays New. Open the dropdown and observe New is checkmarked; dismiss it without selecting an option.",
-            "Click Submit. After the run completes, open the Form step Output and observe an empty result with no Sales status answer.",
-            "Run the same form again, explicitly click New in the dropdown, then Submit. Observe the completed output contains salesStatus: NEW.",
-            "Activate the valid workflow and launch it through the Command Menu. Leave the displayed New untouched and Submit; the completed Form result is again empty."
-          ],
-          "severity": 3
-        },
-        {
-          "id": "twenty-form-select-visual-default-not-answer-workflows-path-2",
-          "explanation": "Selecting Stage under Fields to update displays New without storing a stage value in objectRecord. The saved action contains the edited Name only. Explicitly selecting New stores stage NEW correctly.",
-          "sourceBugs": [
-            {
-              "index": 133,
-              "id": "native-twenty-u27",
-              "name": "Update Record editor misleadingly displays an unsaved Stage=New value"
-            }
-          ],
-          "expected": "The Update Record editor should distinguish an unset Stage from an explicitly configured New value.",
-          "actual": "Selecting Stage under Fields to update displays New without storing a stage value in objectRecord. The saved action contains the edited Name only. Explicitly selecting New stores stage NEW correctly.",
-          "reproSteps": [
-            "Create a workflow with an Opportunity Update Record action and select Stage and Name under Fields to update.",
-            "Leave the displayed Stage New untouched and enter a valid Name. Allow saving to complete.",
-            "Inspect the displayed Stage and saved action configuration. Stage appears New, but objectRecord contains the Name without a stage value.",
-            "Explicitly select New and compare the saved configuration, which now contains stage NEW."
-          ],
-          "severity": 1,
-          "matchingGuidance": [
-            {
-              "sourceBugIndex": 133,
-              "guidance": {
-                "relatedReference": "workflows-N53",
-                "distinction": "This entry displays an unsaved Opportunity Stage default in Update Record; N53 covers Create Record Task Status defaults and explicit No Status."
-              }
-            }
-          ],
-          "sourceConstraints": [
-            {
-              "sourceBugIndex": 133,
-              "constraints": {
-                "matchingGuidance": {
-                  "relatedReference": "workflows-N53",
-                  "distinction": "This entry displays an unsaved Opportunity Stage default in Update Record; N53 covers Create Record Task Status defaults and explicit No Status."
-                }
-              }
-            }
-          ],
-          "evidenceLimitations": [
-            {
-              "sourceBugIndex": 133,
-              "limitations": [
-                "Approval is limited to misleading editor presentation. Explicitly selected New saves correctly; no backend refusal of a saved NEW value or fresh downstream execution damage is claimed.",
-                "Evidence basis: fresh UI + source.",
-                "No independent Claude agreement or newer-runtime verification is claimed.",
-                "Targeted UI tool captures, screenshots and source were audited. The Codex batch was stopped after useful checks; this does not represent a completed formal judge verdict."
               ]
             }
           ]
@@ -2163,13 +2255,6 @@
             "path": "packages/twenty-server/src/modules/workflow/workflow-builder/workflow-version-step/workflow-version-step-operations.workspace-service.ts",
             "line": 194,
             "url": "https://github.com/twentyhq/twenty/blob/35c645064f72bc4e3180a2c6c506cbbfee170007/packages/twenty-server/src/modules/workflow/workflow-builder/workflow-version-step/workflow-version-step-operations.workspace-service.ts#L194-L199"
-          },
-          {
-            "repository": "twentyhq/twenty",
-            "revision": "35c645064f72bc4e3180a2c6c506cbbfee170007",
-            "path": "packages/twenty-server/src/modules/workflow/workflow-builder/workflow-version-step/workflow-version-step-operations.workspace-service.ts",
-            "line": 596,
-            "url": "https://github.com/twentyhq/twenty/blob/35c645064f72bc4e3180a2c6c506cbbfee170007/packages/twenty-server/src/modules/workflow/workflow-builder/workflow-version-step/workflow-version-step-operations.workspace-service.ts#L596-L619"
           }
         ],
         "analysisStatus": "source-supported"
@@ -2250,47 +2335,6 @@
               ]
             }
           ]
-        }
-      ]
-    },
-    {
-      "id": "twenty-form-source-picker-local-unsaved-selection",
-      "explanation": "New Form Select and Multi-Select fields display an existing source as selected without saving its source ID. With only one Multi-Select source available, the picker disables itself, preventing configuration and causing the entire input to be omitted at runtime.",
-      "rootCause": {
-        "explanation": "The source picker displays local selected-source state independently of the persisted form input configuration and filters its supported source choices inconsistently, excluding the sole Multi-Select field while still showing pending selections.",
-        "sourceReferences": [
-          {
-            "repository": "twentyhq/twenty",
-            "revision": "35c645064f72bc4e3180a2c6c506cbbfee170007",
-            "path": "packages/twenty-front/src/modules/workflow/workflow-steps/workflow-actions/form-action/components/WorkflowFormFieldSettingsSelect.tsx",
-            "line": 31,
-            "url": "https://github.com/twentyhq/twenty/blob/35c645064f72bc4e3180a2c6c506cbbfee170007/packages/twenty-front/src/modules/workflow/workflow-steps/workflow-actions/form-action/components/WorkflowFormFieldSettingsSelect.tsx#L31"
-          }
-        ],
-        "analysisStatus": "source-supported"
-      },
-      "reproductionPaths": [
-        {
-          "id": "twenty-form-source-picker-local-unsaved-selection-workflows-path-1",
-          "explanation": "New Form Select and Multi-Select fields display an existing source as selected without saving its source ID. With only one Multi-Select source available, the picker disables itself, preventing configuration and causing the entire input to be omitted at runtime.",
-          "sourceBugs": [
-            {
-              "index": 28,
-              "id": "workflows-N01",
-              "name": "Workflow Form source picker shows an unsaved selection and blocks the sole Multi-Select source"
-            }
-          ],
-          "expected": "A source shown as selected should be stored, or the source picker should clearly require and permit an explicit selection, including when only one source is available. A Form input should become usable after choosing a supported existing field.",
-          "actual": "The builder displays Opportunity > Stage for Select and Workflow > Statuses for Multi-Select, but saved settings have no selectedFieldId. Runtime forms omit these inputs while ordinary Number and Date fields render. Explicitly selecting a source repairs Select. The sole Multi-Select source picker is disabled and cannot make that selection, so Multi-Select remains absent after saving, reload, Test, and an activated workflow launch. The existing source already defines its answer options; no separate Form options-entry step is missing.",
-          "reproSteps": [
-            "Sign in as a workspace administrator in the fixture workspace, where Workflow > Statuses is the only available Multi-Select source. Create an owned manual workflow with a Form action.",
-            "Add a Number field, a uniquely named Select field, and a uniquely named Multi-Select field. Open each choice field settings and observe that its Field source displays Opportunity > Stage or Workflow > Statuses without explicitly selecting it.",
-            "For Multi-Select, attempt to open the Field source picker. Observe it is disabled despite the source selection not being saved. The source already has Draft, Active, and Deactivated answer options.",
-            "Allow the configuration to save, reload, and run Test. Observe that the form contains Number but omits the entire Select and Multi-Select inputs.",
-            "As a control, return to the Select settings and explicitly choose Opportunity > Stage or Task > Status. Save, reload, and Test; that Select now renders. Multi-Select remains absent because its sole source cannot be selected.",
-            "The omission can also be observed when the workflow is activated and launched through the Command Menu."
-          ],
-          "severity": 3
         }
       ]
     },
@@ -2592,7 +2636,7 @@
     },
     {
       "id": "twenty-group-none-empty-groups-early-return",
-      "explanation": "In a fresh Workflow Versions Table view, selecting None in Group by leaves the table divided into Version status groups and the selector still marks Version status as selected; the reproducer view was deleted afterward.",
+      "explanation": "Choosing None in Group by does not remove grouping in Workflow Versions or Workflow Runs views when their saved group list is empty; the previous grouping and selector choice remain active.",
       "rootCause": {
         "explanation": "The group reset handler returns early when saved viewGroups is empty even if mainGroupByFieldMetadataId is set. None cannot clear grouping for relation/status views with no generated groups.",
         "sourceReferences": [
@@ -2716,7 +2760,7 @@
     },
     {
       "id": "twenty-workflow-record-write-drops-explicit-null",
-      "explanation": "The workflow Create Record action displays No Status when Status is unset, yet creates To do tasks. Explicitly choosing No Status also creates To do tasks instead of a task with no status.",
+      "explanation": "Workflow Create Record and Update Record actions fail to persist explicit clears. No Status can create a default-status record, and No record or cleared date, amount and other nullable inputs can leave the existing value unchanged.",
       "rootCause": {
         "explanation": "The record CRUD cleanup helper removeUndefinedFromRecord uses isDefined and recursively removes null as well as undefined. Explicit No Status, No record, date/currency/amount clears are omitted from create/update payloads, activating defaults or retaining old values.",
         "sourceReferences": [
@@ -2789,13 +2833,6 @@
             "path": "packages/twenty-front/src/modules/workflow/workflow-steps/workflow-actions/components/WorkflowEditActionUpdateRecord.tsx",
             "line": 120,
             "url": "https://github.com/twentyhq/twenty/blob/35c645064f72bc4e3180a2c6c506cbbfee170007/packages/twenty-front/src/modules/workflow/workflow-steps/workflow-actions/components/WorkflowEditActionUpdateRecord.tsx#L120-L146"
-          },
-          {
-            "repository": "twentyhq/twenty",
-            "revision": "35c645064f72bc4e3180a2c6c506cbbfee170007",
-            "path": "packages/twenty-server/src/modules/workflow/workflow-executor/workflow-actions/record-crud/update-record.workflow-action.ts",
-            "line": 60,
-            "url": "https://github.com/twentyhq/twenty/blob/35c645064f72bc4e3180a2c6c506cbbfee170007/packages/twenty-server/src/modules/workflow/workflow-executor/workflow-actions/record-crud/update-record.workflow-action.ts#L60-L135"
           },
           {
             "repository": "twentyhq/twenty",
@@ -2877,37 +2914,9 @@
           {
             "repository": "twentyhq/twenty",
             "revision": "35c645064f72bc4e3180a2c6c506cbbfee170007",
-            "path": "packages/twenty-front/src/modules/workflow/workflow-steps/workflow-actions/components/WorkflowEditActionUpdateRecord.tsx",
-            "line": 69,
-            "url": "https://github.com/twentyhq/twenty/blob/35c645064f72bc4e3180a2c6c506cbbfee170007/packages/twenty-front/src/modules/workflow/workflow-steps/workflow-actions/components/WorkflowEditActionUpdateRecord.tsx#L69-L80"
-          },
-          {
-            "repository": "twentyhq/twenty",
-            "revision": "35c645064f72bc4e3180a2c6c506cbbfee170007",
-            "path": "packages/twenty-front/src/modules/object-record/record-field/ui/form-types/components/FormSingleRecordPicker.tsx",
-            "line": 141,
-            "url": "https://github.com/twentyhq/twenty/blob/35c645064f72bc4e3180a2c6c506cbbfee170007/packages/twenty-front/src/modules/object-record/record-field/ui/form-types/components/FormSingleRecordPicker.tsx#L141-L160"
-          },
-          {
-            "repository": "twentyhq/twenty",
-            "revision": "35c645064f72bc4e3180a2c6c506cbbfee170007",
             "path": "packages/twenty-front/src/modules/object-record/record-field/ui/form-types/components/FormRelationToOneFieldInput.tsx",
             "line": 38,
             "url": "https://github.com/twentyhq/twenty/blob/35c645064f72bc4e3180a2c6c506cbbfee170007/packages/twenty-front/src/modules/object-record/record-field/ui/form-types/components/FormRelationToOneFieldInput.tsx#L38-L49"
-          },
-          {
-            "repository": "twentyhq/twenty",
-            "revision": "35c645064f72bc4e3180a2c6c506cbbfee170007",
-            "path": "packages/twenty-front/src/modules/workflow/workflow-steps/workflow-actions/components/WorkflowEditActionUpdateRecord.tsx",
-            "line": 69,
-            "url": "https://github.com/twentyhq/twenty/blob/35c645064f72bc4e3180a2c6c506cbbfee170007/packages/twenty-front/src/modules/workflow/workflow-steps/workflow-actions/components/WorkflowEditActionUpdateRecord.tsx#L69-L89"
-          },
-          {
-            "repository": "twentyhq/twenty",
-            "revision": "35c645064f72bc4e3180a2c6c506cbbfee170007",
-            "path": "packages/twenty-server/src/engine/core-modules/record-crud/utils/remove-undefined-from-record.util.ts",
-            "line": 3,
-            "url": "https://github.com/twentyhq/twenty/blob/35c645064f72bc4e3180a2c6c506cbbfee170007/packages/twenty-server/src/engine/core-modules/record-crud/utils/remove-undefined-from-record.util.ts#L3-L29"
           }
         ],
         "analysisStatus": "source-supported"
@@ -3335,7 +3344,7 @@
     },
     {
       "id": "twenty-destroyed-workflow-record-cache-restore-affordance",
-      "explanation": "Permanent destruction leaves deleted workflow detail offering a nonworking Restore button",
+      "explanation": "Permanently destroying a Workflow leaves its deleted detail page visible with Restore controls that cannot recover the destroyed record.",
       "rootCause": {
         "explanation": "Destroying the record from another view does not invalidate the already-open deleted detail record. The detail page keeps its cached deleted entity and Restore affordance even though permanent destruction removed the backend record.",
         "sourceReferences": [
@@ -3415,7 +3424,7 @@
     },
     {
       "id": "twenty-pinned-action-widths-stale-after-mobile-layout",
-      "explanation": "After resizing a desktop workflow editor to tablet width, its default command menu omits Test, Deactivate and See Runs; reloading at the same width restores the commands.",
+      "explanation": "After a desktop record or workflow surface is resized to tablet or mobile layout, eligible actions disappear from both the pinned toolbar and the default command menu. Searching or reloading restores actions such as Test, Deactivate, See Runs and Company commands.",
       "rootCause": {
         "explanation": "Mobile unmounts the pinned toolbar measurement producer, but shared inline-layout state retains desktop widths. The default menu incorrectly excludes actions it believes remain inline.",
         "sourceReferences": [
@@ -3531,7 +3540,7 @@
     },
     {
       "id": "twenty-numeric-input-negative-zero-normalization",
-      "explanation": "Typing -0.005 into a workflow Form Number field rewrites the intermediate -0 to 0, so the completed answer becomes positive 0.005; entering the complete negative decimal at once works.",
+      "explanation": "Typing a negative fraction digit by digit into workflow numeric inputs loses the minus sign at the intermediate -0, saving a positive value. This affects Form answers, Code inputs and filter operands; entering the complete negative value at once works.",
       "rootCause": {
         "explanation": "FormNumberFieldInput parses each intermediate text update to a number. Typing -0 during a negative fraction becomes negative zero; synchronization reconstructs it with String(defaultValue), losing the sign before later fractional digits are entered.",
         "sourceReferences": [
@@ -3720,7 +3729,7 @@
     },
     {
       "id": "twenty-date-mask-incomplete-input-not-propagated",
-      "explanation": "Deleting all text in a saved Calendar or Delay date field leaves an empty mask but never saves the removal; ordinary reopening restores the old date, while the picker's Clear command works.",
+      "explanation": "Clearing or partially replacing a workflow date by typing changes its visible mask without updating the stored value or required-field state. Reopening can restore the old date, submission can use that old value, and resetting an already-empty field can leave stale visible text; the explicit Clear command works.",
       "rootCause": {
         "explanation": "The masked date input keeps incomplete/cleared text locally and calls its parent only for completed dates. The parent retains its previous/null value, so clearing or partially replacing visible text neither clears persisted values nor blocks submission, and resetting an already-null parent does not clear the local mask.",
         "sourceReferences": [
@@ -3926,10 +3935,10 @@
       ]
     },
     {
-      "id": "twenty-test-home-run-subscription-stale",
-      "explanation": "Opening a workflow test run's Home tab while a Delay runs leaves the panel showing Running and a blank end time after completion; the same run's full page shows Completed.",
+      "id": "twenty-test-run-panels-lose-live-subscription",
+      "explanation": "A workflow test side panel stops updating when a pending run is left on Home or a step Output inspector. Home can remain Running with no end time and Delay Output can remain Empty Object after successful completion; returning through Flow or reopening reveals the saved result, while the full run page updates live.",
       "rootCause": {
-        "explanation": "The Home panel displays the test run snapshot captured when opened and does not maintain a live owner that refreshes that status through terminal run updates. The same execution can complete elsewhere while Home remains Running; this source path is distinct from the Flow query/listener races.",
+        "explanation": "WorkflowRunCard mounts WorkflowRunSSESubscribeEffect with the Flow widget. Home and SidePanelWorkflowRunViewStep replace that mounted owner but read the cached run without mounting a replacement subscriber. The opened snapshot therefore has no continuing run-event owner until Flow is revisited; the full run page retains its Flow subscription.",
         "sourceReferences": [
           {
             "repository": "twentyhq/twenty",
@@ -3937,13 +3946,55 @@
             "path": "packages/twenty-front/src/modules/workflow/hooks/useRunWorkflowRunOpeningInSidePanelEffects.ts",
             "line": 40,
             "url": "https://github.com/twentyhq/twenty/blob/35c645064f72bc4e3180a2c6c506cbbfee170007/packages/twenty-front/src/modules/workflow/hooks/useRunWorkflowRunOpeningInSidePanelEffects.ts#L40"
+          },
+          {
+            "repository": "twentyhq/twenty",
+            "revision": "35c645064f72bc4e3180a2c6c506cbbfee170007",
+            "path": "packages/twenty-docs/user-guide/workflows/capabilities/workflow-runs.mdx",
+            "line": 33,
+            "url": "https://github.com/twentyhq/twenty/blob/35c645064f72bc4e3180a2c6c506cbbfee170007/packages/twenty-docs/user-guide/workflows/capabilities/workflow-runs.mdx#L33-L47"
+          },
+          {
+            "repository": "twentyhq/twenty",
+            "revision": "35c645064f72bc4e3180a2c6c506cbbfee170007",
+            "path": "packages/twenty-front/src/modules/side-panel/components/SidePanelRouter.tsx",
+            "line": 51,
+            "url": "https://github.com/twentyhq/twenty/blob/35c645064f72bc4e3180a2c6c506cbbfee170007/packages/twenty-front/src/modules/side-panel/components/SidePanelRouter.tsx#L51-L61"
+          },
+          {
+            "repository": "twentyhq/twenty",
+            "revision": "35c645064f72bc4e3180a2c6c506cbbfee170007",
+            "path": "packages/twenty-front/src/modules/side-panel/pages/workflow/hooks/useSidePanelWorkflowNavigation.ts",
+            "line": 187,
+            "url": "https://github.com/twentyhq/twenty/blob/35c645064f72bc4e3180a2c6c506cbbfee170007/packages/twenty-front/src/modules/side-panel/pages/workflow/hooks/useSidePanelWorkflowNavigation.ts#L187-L241"
+          },
+          {
+            "repository": "twentyhq/twenty",
+            "revision": "35c645064f72bc4e3180a2c6c506cbbfee170007",
+            "path": "packages/twenty-front/src/modules/side-panel/pages/workflow/step/view-run/components/SidePanelWorkflowRunViewStep.tsx",
+            "line": 6,
+            "url": "https://github.com/twentyhq/twenty/blob/35c645064f72bc4e3180a2c6c506cbbfee170007/packages/twenty-front/src/modules/side-panel/pages/workflow/step/view-run/components/SidePanelWorkflowRunViewStep.tsx#L6-L18"
+          },
+          {
+            "repository": "twentyhq/twenty",
+            "revision": "35c645064f72bc4e3180a2c6c506cbbfee170007",
+            "path": "packages/twenty-front/src/modules/workflow/workflow-diagram/components/WorkflowRunCard.tsx",
+            "line": 57,
+            "url": "https://github.com/twentyhq/twenty/blob/35c645064f72bc4e3180a2c6c506cbbfee170007/packages/twenty-front/src/modules/workflow/workflow-diagram/components/WorkflowRunCard.tsx#L57"
+          },
+          {
+            "repository": "twentyhq/twenty",
+            "revision": "35c645064f72bc4e3180a2c6c506cbbfee170007",
+            "path": "packages/twenty-front/src/modules/side-panel/pages/workflow/step/view-run/components/SidePanelWorkflowRunViewStep.tsx",
+            "line": 7,
+            "url": "https://github.com/twentyhq/twenty/blob/35c645064f72bc4e3180a2c6c506cbbfee170007/packages/twenty-front/src/modules/side-panel/pages/workflow/step/view-run/components/SidePanelWorkflowRunViewStep.tsx#L7"
           }
         ],
-        "analysisStatus": "source-supported"
+        "analysisStatus": "inferred"
       },
       "reproductionPaths": [
         {
-          "id": "twenty-test-home-run-subscription-stale-workflows-path-1",
+          "id": "twenty-test-run-panels-lose-live-subscription-workflows-path-1",
           "explanation": "Opening a workflow test run's Home tab while a Delay runs leaves the panel showing Running and a blank end time after completion; the same run's full page shows Completed.",
           "sourceBugs": [
             {
@@ -3963,6 +4014,57 @@
             "As controls, keep a fresh test on Flow or open its full record page while Running; observe those surfaces update on completion. Repeat the Home flow on a fresh workflow."
           ],
           "severity": 1
+        },
+        {
+          "id": "twenty-test-run-panels-lose-live-subscription-workflows-path-2",
+          "explanation": "A Delay Output inspector opened while a test run is pending stays at Empty Object after successful completion; reopening reveals the saved result.",
+          "sourceBugs": [
+            {
+              "index": 111,
+              "id": "workflows-loop-ff4e3502",
+              "name": "Open Delay Output stays empty after its run completes"
+            }
+          ],
+          "expected": "An already-open run-step Output should reflect the completed step’s result, as the full run-page inspector does.",
+          "actual": "On two fresh workflows, holding the test side-panel Delay Output open leaves Empty Object after the run has completed. Returning to Flow shows Completed; reopening the same Delay shows result.success true. Opening the pending Output from the full run page updates live without reopening.",
+          "reproSteps": [
+            "Create a disposable owned manual workflow with a duration Delay, save it, and click Test.",
+            "While the Delay is pending, open its Output in the test side panel and leave it open beyond completion.",
+            "Observe Empty Object remains; return to Flow to see Completed, then reopen the same step to see result.success true.",
+            "Repeat with a separate workflow. As controls, first open Output after completion and hold pending Output open from the full run page; both show the successful result."
+          ],
+          "severity": 1,
+          "matchingGuidance": [
+            {
+              "sourceBugIndex": 111,
+              "guidance": {
+                "relatedReferenceId": "workflows-N73",
+                "distinction": "This entry concerns an already-open Delay Output inspector. Home/Flow status remaining Running and execution failure are different claims."
+              }
+            }
+          ],
+          "sourceConstraints": [
+            {
+              "sourceBugIndex": 111,
+              "constraints": {
+                "matchingGuidance": {
+                  "relatedReferenceId": "workflows-N73",
+                  "distinction": "This entry concerns an already-open Delay Output inspector. Home/Flow status remaining Running and execution failure are different claims."
+                }
+              }
+            }
+          ],
+          "evidenceLimitations": [
+            {
+              "sourceBugIndex": 111,
+              "limitations": [
+                "Codex-only approval under the user’s updated policy; no independent Claude agreement is claimed.",
+                "Two fresh workflows share one fixture; tested duration Delays of 15 and 30 seconds. Other action types, scheduled-date input and member execution are excluded.",
+                "Execution succeeds and stored results remain available. Full run-page Output updates live; this entry concerns the test side-panel inspector kept open across completion.",
+                "No continuous recording review or newer-runtime result is claimed. The missing inspector subscription is source-supported; exact lifecycle causality is inferred."
+              ]
+            }
+          ]
         }
       ]
     },
@@ -4143,7 +4245,7 @@
     },
     {
       "id": "twenty-workflow-form-shortcut-ignores-disabled",
-      "explanation": "A workflow Form displays Invalid number and disables Submit, but clicking blank space in the Form panel and pressing Ctrl+Enter completes the run with an empty result. Two fresh runs reproduce on one saved workflow. A valid button submission returns its entered numbers.",
+      "explanation": "A workflow Form shortcut bypasses the disabled Submit button: after an invalid Number answer, clicking blank panel space and pressing Ctrl+Enter completes the run with missing or previously valid answers despite the visible validation error.",
       "rootCause": {
         "explanation": "The shortcut callback invokes onClick unconditionally; disabled is applied only to the rendered Button and is absent from the hotkey registration/dependencies. After focus leaves an invalid Number input, Ctrl+Enter can bypass the disabled Submit gate.",
         "sourceReferences": [
@@ -4247,7 +4349,7 @@
     },
     {
       "id": "twenty-fullscreen-mobile-breadcrumb-no-close",
-      "explanation": "The expanded Send Email Body editor remains open after its Back to Send Email link is clicked at mobile width.",
+      "explanation": "Mobile Back breadcrumbs in fullscreen Send Email and Code editors fail to close fullscreen mode, leaving the expanded editor over its parent settings.",
       "rootCause": {
         "explanation": "Expanded Send Email/Code passes placeholder breadcrumb hrefs while only the desktop X has the fullscreen close callback. MobileBreadcrumb renders a normal Link, so Back navigation does not reset fullscreen state.",
         "sourceReferences": [
@@ -4341,10 +4443,10 @@
       ]
     },
     {
-      "id": "twenty-nested-iterator-input-context-crash",
-      "explanation": "Switching a completed nested Iterator run from its last Output item to Input replaces the workflow page with an error screen.",
+      "id": "twenty-run-input-context-history-index-does-not-follow-ancestry",
+      "explanation": "The workflow run Input inspector can show the first loop result instead of the final result for a completed downstream step, or crash when inspecting later nested-loop iterations. The run itself can complete successfully; the failure concerns historical input reconstruction.",
       "rootCause": {
-        "explanation": "The run Input inspector resolves nested Iterator history/context using the selected-loop index assumptions for a flat history. Missing nested context entries are dereferenced without a defensive resolution path, crashing the inspector.",
+        "explanation": "getWorkflowRunStepContext selects every prior step history using one flat currentLoopIterationIndex until it encounters an Iterator, then uses index 0. It dereferences the chosen history entry without checking availability. This cannot map nested per-ancestor iteration histories and chooses the oldest history when a downstream step has no selected-loop index, producing either wrong inputs or an absent-entry exception.",
         "sourceReferences": [
           {
             "repository": "twentyhq/twenty",
@@ -4352,13 +4454,62 @@
             "path": "packages/twenty-front/src/modules/workflow/workflow-steps/components/WorkflowRunStepInputDetail.tsx",
             "line": 22,
             "url": "https://github.com/twentyhq/twenty/blob/35c645064f72bc4e3180a2c6c506cbbfee170007/packages/twenty-front/src/modules/workflow/workflow-steps/components/WorkflowRunStepInputDetail.tsx#L22"
+          },
+          {
+            "repository": "twentyhq/twenty",
+            "revision": "35c645064f72bc4e3180a2c6c506cbbfee170007",
+            "path": "packages/twenty-front/src/modules/workflow/workflow-steps/components/WorkflowRunStepInputDetail.tsx",
+            "line": 62,
+            "url": "https://github.com/twentyhq/twenty/blob/35c645064f72bc4e3180a2c6c506cbbfee170007/packages/twenty-front/src/modules/workflow/workflow-steps/components/WorkflowRunStepInputDetail.tsx#L62-L72"
+          },
+          {
+            "repository": "twentyhq/twenty",
+            "revision": "35c645064f72bc4e3180a2c6c506cbbfee170007",
+            "path": "packages/twenty-front/src/modules/workflow/workflow-steps/utils/getWorkflowRunStepContext.ts",
+            "line": 43,
+            "url": "https://github.com/twentyhq/twenty/blob/35c645064f72bc4e3180a2c6c506cbbfee170007/packages/twenty-front/src/modules/workflow/workflow-steps/utils/getWorkflowRunStepContext.ts#L43-L60"
+          },
+          {
+            "repository": "twentyhq/twenty",
+            "revision": "35c645064f72bc4e3180a2c6c506cbbfee170007",
+            "path": "packages/twenty-front/src/modules/workflow/workflow-steps/utils/getWorkflowRunAllStepInfoHistory.ts",
+            "line": 9,
+            "url": "https://github.com/twentyhq/twenty/blob/35c645064f72bc4e3180a2c6c506cbbfee170007/packages/twenty-front/src/modules/workflow/workflow-steps/utils/getWorkflowRunAllStepInfoHistory.ts#L9-L14"
+          },
+          {
+            "repository": "twentyhq/twenty",
+            "revision": "35c645064f72bc4e3180a2c6c506cbbfee170007",
+            "path": "packages/twenty-shared/src/workflow/utils/getWorkflowRunContext.ts",
+            "line": 4,
+            "url": "https://github.com/twentyhq/twenty/blob/35c645064f72bc4e3180a2c6c506cbbfee170007/packages/twenty-shared/src/workflow/utils/getWorkflowRunContext.ts#L4-L11"
+          },
+          {
+            "repository": "twentyhq/twenty",
+            "revision": "35c645064f72bc4e3180a2c6c506cbbfee170007",
+            "path": "packages/twenty-server/src/modules/workflow/workflow-executor/workspace-services/workflow-executor.workspace-service.ts",
+            "line": 463,
+            "url": "https://github.com/twentyhq/twenty/blob/35c645064f72bc4e3180a2c6c506cbbfee170007/packages/twenty-server/src/modules/workflow/workflow-executor/workspace-services/workflow-executor.workspace-service.ts#L463-L472"
+          },
+          {
+            "repository": "twentyhq/twenty",
+            "revision": "35c645064f72bc4e3180a2c6c506cbbfee170007",
+            "path": "packages/twenty-docs/user-guide/workflows/capabilities/workflow-runs.mdx",
+            "line": 41,
+            "url": "https://github.com/twentyhq/twenty/blob/35c645064f72bc4e3180a2c6c506cbbfee170007/packages/twenty-docs/user-guide/workflows/capabilities/workflow-runs.mdx#L41-L47"
+          },
+          {
+            "repository": "twentyhq/twenty",
+            "revision": "35c645064f72bc4e3180a2c6c506cbbfee170007",
+            "path": "packages/twenty-front/src/modules/workflow/workflow-steps/utils/getWorkflowRunStepContext.ts",
+            "line": 48,
+            "url": "https://github.com/twentyhq/twenty/blob/35c645064f72bc4e3180a2c6c506cbbfee170007/packages/twenty-front/src/modules/workflow/workflow-steps/utils/getWorkflowRunStepContext.ts#L48"
           }
         ],
         "analysisStatus": "source-supported"
       },
       "reproductionPaths": [
         {
-          "id": "twenty-nested-iterator-input-context-crash-workflows-path-1",
+          "id": "twenty-run-input-context-history-index-does-not-follow-ancestry-workflows-path-1",
           "explanation": "Switching a completed nested Iterator run from its last Output item to Input replaces the workflow page with an error screen.",
           "sourceBugs": [
             {
@@ -4377,14 +4528,66 @@
             "Select Input and observe the workflow page error; resize to desktop to inspect the same error."
           ],
           "severity": 5
+        },
+        {
+          "id": "twenty-run-input-context-history-index-does-not-follow-ancestry-workflows-path-2",
+          "explanation": "After a two-item Iterator finishes, its completed-branch Delay Input tab shows the first iteration values even though execution used the final completed Iterator result.",
+          "sourceBugs": [
+            {
+              "index": 90,
+              "id": "workflows-pass3-5be54c15",
+              "name": "Completed-branch Delay Input shows the Iterator first iteration instead of its completed context"
+            }
+          ],
+          "expected": "A completed step’s Input inspector should represent the execution context passed to that step, consistently with the documented run-debugging behavior.",
+          "actual": "A correctly committed Current Item Index Delay executes with final index 2 and the run completes, but its Input tab shows currentItem alpha, currentItemIndex 0 and hasProcessedAllItems false. The final stored Iterator result is index 2/true.",
+          "reproSteps": [
+            "Create a manual workflow with an Iterator over two known items, alpha and beta, and a valid one-second Delay on its loop path.",
+            "On the Iterator completed branch, add a Delay whose Seconds uses Current Item Index. Explicitly commit the variable selection and verify the saved configuration.",
+            "Test the workflow and confirm successful completion with final Iterator result currentItemIndex 2 and hasProcessedAllItems true.",
+            "Inspect the completed-branch Delay’s Input tab and expand Iterator. Observe alpha, index 0 and false, including the consumed index highlighted as 0.",
+            "Compare the successful execution and stored final Iterator result; do not count an uncommitted variable or zero-duration execution failure as this display defect."
+          ],
+          "severity": 1,
+          "matchingGuidance": [
+            {
+              "sourceBugIndex": 90,
+              "guidance": {
+                "distinction": "Covers stale completed-branch Input context only. Delay variable selection not saving (workflows-pass2-7b30d0b9) and zero-duration execution failure (workflows-fresh-a4320e8f) remain existing coverage. Node-tab configuration interpretation, nested Input crashes and skipped-iteration Output gating are different claims."
+              }
+            }
+          ],
+          "sourceConstraints": [
+            {
+              "sourceBugIndex": 90,
+              "constraints": {
+                "matchingGuidance": {
+                  "distinction": "Covers stale completed-branch Input context only. Delay variable selection not saving (workflows-pass2-7b30d0b9) and zero-duration execution failure (workflows-fresh-a4320e8f) remain existing coverage. Node-tab configuration interpretation, nested Input crashes and skipped-iteration Output gating are different claims."
+                }
+              }
+            }
+          ],
+          "evidenceLimitations": [
+            {
+              "sourceBugIndex": 90,
+              "limitations": [
+                "Observed impact is misleading inspection information; execution and stored final Iterator results are correct when the Delay variable is committed.",
+                "Original execution failures are already covered by the Delay variable-save and zero-duration references and contribute no severity to this entry.",
+                "The claim concerns the Input tab, not the Node tab showing stored configuration or an inside-loop selected historical iteration.",
+                "Other completed-branch action types and nested Iterator scope were not browser-established.",
+                "The unintended history-index fallback is inferred from documentation, source and passing execution controls; no maintainer acknowledgement of this exact display bug was found.",
+                "Newer source retains the relevant history selection; newer runtime was not tested."
+              ]
+            }
+          ]
         }
       ]
     },
     {
-      "id": "twenty-form-record-link-navigation-loses-answers",
-      "explanation": "Opening a selected company from a workflow Form and returning with panel Back clears every pending Form answer without warning.",
+      "id": "twenty-form-remount-reloads-stale-flow-answers",
+      "explanation": "A running workflow Form loses previously saved answers after its panel remounts, including when opening a selected record link or switching between desktop and mobile layouts. Returning to the Form shows empty or older answers and can submit them despite earlier successful saves.",
       "rootCause": {
-        "explanation": "Record-picker links navigate away from the current Form side panel while answers are owned by its local state. There is no draft retention/leave guard for that link navigation, so returning remounts empty answers.",
+        "explanation": "WorkflowEditActionFormFiller initializes formData from action.settings.input. useUpdateWorkflowRunStep saves answers and updates the workflowRun cache, but does not update the separate flowComponentState used to render the test panel. The opening effect seeds that flow snapshot once; remounting the Form then reads stale action input. The filler flushes its debounce on cleanup, so a generic unflushed callback alone does not explain this loss.",
         "sourceReferences": [
           {
             "repository": "twentyhq/twenty",
@@ -4392,13 +4595,69 @@
             "path": "packages/twenty-front/src/modules/workflow/workflow-steps/workflow-actions/form-action/components/WorkflowEditActionFormFiller.tsx",
             "line": 30,
             "url": "https://github.com/twentyhq/twenty/blob/35c645064f72bc4e3180a2c6c506cbbfee170007/packages/twenty-front/src/modules/workflow/workflow-steps/workflow-actions/form-action/components/WorkflowEditActionFormFiller.tsx#L30"
+          },
+          {
+            "repository": "twentyhq/twenty",
+            "revision": "35c645064f72bc4e3180a2c6c506cbbfee170007",
+            "path": "packages/twenty-front/src/modules/ui/layout/page/components/MainAppLayoutWithSidePanel.tsx",
+            "line": 129,
+            "url": "https://github.com/twentyhq/twenty/blob/35c645064f72bc4e3180a2c6c506cbbfee170007/packages/twenty-front/src/modules/ui/layout/page/components/MainAppLayoutWithSidePanel.tsx#L129-L141"
+          },
+          {
+            "repository": "twentyhq/twenty",
+            "revision": "35c645064f72bc4e3180a2c6c506cbbfee170007",
+            "path": "packages/twenty-front/src/modules/workflow/workflow-steps/workflow-actions/form-action/components/WorkflowEditActionFormFiller.tsx",
+            "line": 34,
+            "url": "https://github.com/twentyhq/twenty/blob/35c645064f72bc4e3180a2c6c506cbbfee170007/packages/twenty-front/src/modules/workflow/workflow-steps/workflow-actions/form-action/components/WorkflowEditActionFormFiller.tsx#L34-L100"
+          },
+          {
+            "repository": "twentyhq/twenty",
+            "revision": "35c645064f72bc4e3180a2c6c506cbbfee170007",
+            "path": "packages/twenty-front/src/modules/workflow/hooks/useRunWorkflowRunOpeningInSidePanelEffects.ts",
+            "line": 40,
+            "url": "https://github.com/twentyhq/twenty/blob/35c645064f72bc4e3180a2c6c506cbbfee170007/packages/twenty-front/src/modules/workflow/hooks/useRunWorkflowRunOpeningInSidePanelEffects.ts#L40-L88"
+          },
+          {
+            "repository": "twentyhq/twenty",
+            "revision": "35c645064f72bc4e3180a2c6c506cbbfee170007",
+            "path": "packages/twenty-front/src/modules/workflow/workflow-steps/hooks/useUpdateWorkflowRunStep.ts",
+            "line": 38,
+            "url": "https://github.com/twentyhq/twenty/blob/35c645064f72bc4e3180a2c6c506cbbfee170007/packages/twenty-front/src/modules/workflow/workflow-steps/hooks/useUpdateWorkflowRunStep.ts#L38-L87"
+          },
+          {
+            "repository": "twentyhq/twenty",
+            "revision": "35c645064f72bc4e3180a2c6c506cbbfee170007",
+            "path": "packages/twenty-front/src/modules/workflow/workflow-diagram/components/WorkflowRunVisualizerEffect.tsx",
+            "line": 235,
+            "url": "https://github.com/twentyhq/twenty/blob/35c645064f72bc4e3180a2c6c506cbbfee170007/packages/twenty-front/src/modules/workflow/workflow-diagram/components/WorkflowRunVisualizerEffect.tsx#L235-L246"
+          },
+          {
+            "repository": "twentyhq/twenty",
+            "revision": "35c645064f72bc4e3180a2c6c506cbbfee170007",
+            "path": "packages/twenty-server/src/modules/workflow/workflow-runner/workspace-services/workflow-runner.workspace-service.ts",
+            "line": 138,
+            "url": "https://github.com/twentyhq/twenty/blob/35c645064f72bc4e3180a2c6c506cbbfee170007/packages/twenty-server/src/modules/workflow/workflow-runner/workspace-services/workflow-runner.workspace-service.ts#L138-L199"
+          },
+          {
+            "repository": "twentyhq/twenty",
+            "revision": "35c645064f72bc4e3180a2c6c506cbbfee170007",
+            "path": "packages/twenty-front/src/modules/workflow/workflow-steps/hooks/useUpdateWorkflowRunStep.ts",
+            "line": 47,
+            "url": "https://github.com/twentyhq/twenty/blob/35c645064f72bc4e3180a2c6c506cbbfee170007/packages/twenty-front/src/modules/workflow/workflow-steps/hooks/useUpdateWorkflowRunStep.ts#L47"
+          },
+          {
+            "repository": "twentyhq/twenty",
+            "revision": "35c645064f72bc4e3180a2c6c506cbbfee170007",
+            "path": "packages/twenty-front/src/modules/workflow/workflow-steps/workflow-actions/form-action/components/WorkflowEditActionFormFiller.tsx",
+            "line": 17,
+            "url": "https://github.com/twentyhq/twenty/blob/35c645064f72bc4e3180a2c6c506cbbfee170007/packages/twenty-front/src/modules/workflow/workflow-steps/workflow-actions/form-action/components/WorkflowEditActionFormFiller.tsx#L17"
           }
         ],
-        "analysisStatus": "source-supported"
+        "analysisStatus": "inferred"
       },
       "reproductionPaths": [
         {
-          "id": "twenty-form-record-link-navigation-loses-answers-workflows-path-1",
+          "id": "twenty-form-remount-reloads-stale-flow-answers-workflows-path-1",
           "explanation": "Opening a selected company from a workflow Form and returning with panel Back clears every pending Form answer without warning.",
           "sourceBugs": [
             {
@@ -4425,12 +4684,60 @@
               ]
             }
           ]
+        },
+        {
+          "id": "twenty-form-remount-reloads-stale-flow-answers-workflows-path-2",
+          "explanation": "Crossing the mobile breakpoint with a pending workflow-editor Test form clears saved Text, Number, Company Record or Task Status Select answers; Submit can complete with empty output.",
+          "sourceBugs": [
+            {
+              "index": 61,
+              "id": "workflows-fresh-e7933534",
+              "name": "Resizing the workflow Test form clears saved answers and submits empty output"
+            }
+          ],
+          "expected": "Changing the viewport layout of the same pending Form should retain its saved answers and submit those answers.",
+          "actual": "After valid answers had autosaved, crossing 769 to 768 pixels cleared all three fields without warning. Returning to desktop left them blank, and Submit completed with {}. No-resize controls submitted populated results; the full Workflow Run page retained saved valid answers across resizing. The same breakpoint reset reproduces with a saved Task Status Select answer: In progress becomes No Status, and submission can complete empty although a fresh run readback still retains the earlier draft answer.",
+          "reproSteps": [
+            "Create a fresh manual workflow with a Form containing Text, Number and a Company Record field.",
+            "At desktop width, run Test from the workflow editor so the pending form opens in the side panel.",
+            "Enter a unique Text answer, a valid Number and a selected Company. Wait several seconds for autosave.",
+            "Narrow the window from above 768 CSS pixels to 768 or less without navigation. Observe every answer reset without a warning; returning to desktop does not restore them.",
+            "Click Submit and inspect Form output. Observe successful completion with an empty object instead of the earlier answers.",
+            "As controls, submit populated answers without crossing the breakpoint, resize within the same layout, or open the full Workflow Run record page and resize after saving valid answers.",
+            "Additional verified variation: Use a saved Task Status Select answer in the same pending Test side panel and cross the 768px breakpoint. Create a manual workflow containing a Form with a Select sourced from Task Status. Open Test at desktop width. Select In progress, wait at least four seconds, and confirm saving completes. Resize from 769px to 768px and observe No Status. Return to desktop and observe the answer remains cleared. Submit and inspect completed Form output: it can be empty. Compare submitting without resizing and opening the full Workflow Run page, which retain the selected answer."
+          ],
+          "severity": 3,
+          "matchingGuidance": [
+            {
+              "sourceBugIndex": 61,
+              "guidance": "Count answer loss from the pending Test side panel crossing the mobile breakpoint once, regardless of which verified field type demonstrates it. Text, Number, Company Record and Task Status Select are covered; do not require every field type. Exclude ordinary unsaved hard-refresh interruptions and unsupported source selection."
+            }
+          ],
+          "sourceConstraints": [
+            {
+              "sourceBugIndex": 61,
+              "constraints": {
+                "matchingGuidance": "Count answer loss from the pending Test side panel crossing the mobile breakpoint once, regardless of which verified field type demonstrates it. Text, Number, Company Record and Task Status Select are covered; do not require every field type. Exclude ordinary unsaved hard-refresh interruptions and unsupported source selection."
+              }
+            }
+          ],
+          "evidenceLimitations": [
+            {
+              "sourceBugIndex": 61,
+              "limitations": [
+                "No downstream record creation from empty output was tested.",
+                "Scope is the workflow-editor Test side panel after valid answers have saved. Fast edits before autosave on the full run page and untested field types are excluded.",
+                "A shared root cause with recovered-13 is inferred, not established for that older report.",
+                "Latest was source-inspected only."
+              ]
+            }
+          ]
         }
       ]
     },
     {
       "id": "twenty-workflow-diagram-responsive-size-not-recentered",
-      "explanation": "A visible workflow graph becomes blank after the editor is narrowed from desktop to mobile; reloading at the same mobile size restores it.",
+      "explanation": "Workflow diagrams retain an obsolete canvas position after viewport or navigation changes, or opening a run on its full page. Nodes and labels can be clipped or entirely hidden despite remaining present; panning or reloading at the final layout reveals them.",
       "rootCause": {
         "explanation": "WorkflowDiagramCanvasBase centers/translates the graph from container offsetWidth during initialization and selected panel transitions, without a resize-driven re-fit when responsive navigation/panels change container geometry. The canvas can remain clipped or offscreen until remount.",
         "sourceReferences": [
@@ -4608,9 +4915,9 @@
     },
     {
       "id": "twenty-monthly-cron-preview-token-interpretation",
-      "explanation": "After typing the monthly cron expression, its initial schedule preview shows a different yearly schedule; reload restores the correct preview.",
+      "explanation": "Typing the custom monthly cron expression 0 12 1 * * initially shows a yearly January 12 preview instead of noon on the first day of each month. Reload retains the expression and restores the correct monthly description and upcoming times.",
       "rootCause": {
-        "explanation": "The cron preview/humanization path parses freshly edited monthly fields with a different token/index interpretation than the normalized saved cron, showing January 12 instead of day one until a reload rebuilds the description.",
+        "explanation": "CronExpressionHelper computes the description and upcoming occurrences from the currently edited cron expression and timezone. The reported first-edit preview disagrees with the persisted expression but rebuilds correctly after reload, locating the failure in preview parsing or its synchronization with edited text. The specific token-normalization or update-order mechanism is not established by the retained source evidence.",
         "sourceReferences": [
           {
             "repository": "twentyhq/twenty",
@@ -4620,7 +4927,7 @@
             "url": "https://github.com/twentyhq/twenty/blob/35c645064f72bc4e3180a2c6c506cbbfee170007/packages/twenty-front/src/modules/workflow/workflow-trigger/components/CronExpressionHelper.tsx#L90"
           }
         ],
-        "analysisStatus": "source-supported"
+        "analysisStatus": "inferred"
       },
       "reproductionPaths": [
         {
@@ -4743,7 +5050,7 @@
     },
     {
       "id": "twenty-text-variable-editor-default-not-synchronized",
-      "explanation": "Changing a string comparison operator clears the saved value while the If/Else or Filter input continues to display the previous value, concealing the configuration used by execution.",
+      "explanation": "Workflow variable-text inputs can reset edited text or show an older mapping after editor remount, fullscreen changes or picker interaction, because their local document is not consistently synchronized with the saved default.",
       "rootCause": {
         "explanation": "useTextVariableEditor initializes editor content once from defaultValue and does not synchronize later prop changes. Operator/field resets and fullscreen edits change saved state while the mounted editor still displays the previous string.",
         "sourceReferences": [
@@ -4841,13 +5148,6 @@
           {
             "repository": "twentyhq/twenty",
             "revision": "35c645064f72bc4e3180a2c6c506cbbfee170007",
-            "path": "packages/twenty-front/src/modules/object-record/record-field/ui/form-types/hooks/useTextVariableEditor.ts",
-            "line": 43,
-            "url": "https://github.com/twentyhq/twenty/blob/35c645064f72bc4e3180a2c6c506cbbfee170007/packages/twenty-front/src/modules/object-record/record-field/ui/form-types/hooks/useTextVariableEditor.ts#L43-L139"
-          },
-          {
-            "repository": "twentyhq/twenty",
-            "revision": "35c645064f72bc4e3180a2c6c506cbbfee170007",
             "path": "packages/twenty-front/src/modules/object-record/record-field/ui/form-types/components/FormNumberFieldInput.tsx",
             "line": 59,
             "url": "https://github.com/twentyhq/twenty/blob/35c645064f72bc4e3180a2c6c506cbbfee170007/packages/twenty-front/src/modules/object-record/record-field/ui/form-types/components/FormNumberFieldInput.tsx#L59-L118"
@@ -4907,20 +5207,6 @@
             "path": "packages/twenty-front/src/modules/workflow/workflow-steps/components/WorkflowDropdownStepOutputItems.tsx",
             "line": 104,
             "url": "https://github.com/twentyhq/twenty/blob/35c645064f72bc4e3180a2c6c506cbbfee170007/packages/twenty-front/src/modules/workflow/workflow-steps/components/WorkflowDropdownStepOutputItems.tsx#L104-L126"
-          },
-          {
-            "repository": "twentyhq/twenty",
-            "revision": "35c645064f72bc4e3180a2c6c506cbbfee170007",
-            "path": "packages/twenty-front/src/modules/workflow/workflow-steps/filters/components/WorkflowStepFilterValueInput.tsx",
-            "line": 175,
-            "url": "https://github.com/twentyhq/twenty/blob/35c645064f72bc4e3180a2c6c506cbbfee170007/packages/twenty-front/src/modules/workflow/workflow-steps/filters/components/WorkflowStepFilterValueInput.tsx#L175-L184"
-          },
-          {
-            "repository": "twentyhq/twenty",
-            "revision": "35c645064f72bc4e3180a2c6c506cbbfee170007",
-            "path": "packages/twenty-front/src/modules/object-record/record-field/ui/form-types/hooks/useTextVariableEditor.ts",
-            "line": 43,
-            "url": "https://github.com/twentyhq/twenty/blob/35c645064f72bc4e3180a2c6c506cbbfee170007/packages/twenty-front/src/modules/object-record/record-field/ui/form-types/hooks/useTextVariableEditor.ts#L43-L63"
           },
           {
             "repository": "twentyhq/twenty",
@@ -5190,7 +5476,7 @@
     },
     {
       "id": "twenty-new-record-title-reopen-empty-draft",
-      "explanation": "Reloading a freshly created workflow’s landing page opens an empty title draft; an ordinary canvas click or Tab then overwrites its saved name.",
+      "explanation": "Reloading a newly created Note or Task can reopen its title editor with an empty draft. Committing that draft erases the saved title; the Note variant also occurs when reopening the activity from its company Timeline after the creation-page reload.",
       "rootCause": {
         "explanation": "The creation flag retained in router history reopens the new-record title editor after reload. useOpenNewRecordTitleCell initializes its draft from the record store before the fetched title is available; commit handlers persist this empty draft.",
         "sourceReferences": [
@@ -5385,108 +5671,6 @@
               "limitations": [
                 "Concurrent worker ordering is inferred; no worker-level trace was collected.",
                 "Other roles, automated triggers, scheduled-date mode, fractional durations and Iterator placement were not browser-tested.",
-                "Latest was source-inspected only."
-              ]
-            }
-          ]
-        }
-      ]
-    },
-    {
-      "id": "twenty-form-responsive-remount-stale-snapshot",
-      "explanation": "Crossing the mobile breakpoint with a pending workflow-editor Test form clears saved Text, Number, Company Record or Task Status Select answers; Submit can complete with empty output.",
-      "rootCause": {
-        "explanation": "The layout switches between different desktop and mobile panel trees. Remounting initializes local answers from a stale separate flow snapshot; autosave updates the run and cache but not that snapshot. The full-run-page visualizer synchronizes flow and preserves saved values.",
-        "sourceReferences": [
-          {
-            "repository": "twentyhq/twenty",
-            "revision": "35c645064f72bc4e3180a2c6c506cbbfee170007",
-            "path": "packages/twenty-front/src/modules/ui/layout/page/components/MainAppLayoutWithSidePanel.tsx",
-            "line": 129,
-            "url": "https://github.com/twentyhq/twenty/blob/35c645064f72bc4e3180a2c6c506cbbfee170007/packages/twenty-front/src/modules/ui/layout/page/components/MainAppLayoutWithSidePanel.tsx#L129-L141"
-          },
-          {
-            "repository": "twentyhq/twenty",
-            "revision": "35c645064f72bc4e3180a2c6c506cbbfee170007",
-            "path": "packages/twenty-front/src/modules/workflow/workflow-steps/workflow-actions/form-action/components/WorkflowEditActionFormFiller.tsx",
-            "line": 34,
-            "url": "https://github.com/twentyhq/twenty/blob/35c645064f72bc4e3180a2c6c506cbbfee170007/packages/twenty-front/src/modules/workflow/workflow-steps/workflow-actions/form-action/components/WorkflowEditActionFormFiller.tsx#L34-L100"
-          },
-          {
-            "repository": "twentyhq/twenty",
-            "revision": "35c645064f72bc4e3180a2c6c506cbbfee170007",
-            "path": "packages/twenty-front/src/modules/workflow/hooks/useRunWorkflowRunOpeningInSidePanelEffects.ts",
-            "line": 40,
-            "url": "https://github.com/twentyhq/twenty/blob/35c645064f72bc4e3180a2c6c506cbbfee170007/packages/twenty-front/src/modules/workflow/hooks/useRunWorkflowRunOpeningInSidePanelEffects.ts#L40-L88"
-          },
-          {
-            "repository": "twentyhq/twenty",
-            "revision": "35c645064f72bc4e3180a2c6c506cbbfee170007",
-            "path": "packages/twenty-front/src/modules/workflow/workflow-steps/hooks/useUpdateWorkflowRunStep.ts",
-            "line": 38,
-            "url": "https://github.com/twentyhq/twenty/blob/35c645064f72bc4e3180a2c6c506cbbfee170007/packages/twenty-front/src/modules/workflow/workflow-steps/hooks/useUpdateWorkflowRunStep.ts#L38-L87"
-          },
-          {
-            "repository": "twentyhq/twenty",
-            "revision": "35c645064f72bc4e3180a2c6c506cbbfee170007",
-            "path": "packages/twenty-front/src/modules/workflow/workflow-diagram/components/WorkflowRunVisualizerEffect.tsx",
-            "line": 235,
-            "url": "https://github.com/twentyhq/twenty/blob/35c645064f72bc4e3180a2c6c506cbbfee170007/packages/twenty-front/src/modules/workflow/workflow-diagram/components/WorkflowRunVisualizerEffect.tsx#L235-L246"
-          },
-          {
-            "repository": "twentyhq/twenty",
-            "revision": "35c645064f72bc4e3180a2c6c506cbbfee170007",
-            "path": "packages/twenty-server/src/modules/workflow/workflow-runner/workspace-services/workflow-runner.workspace-service.ts",
-            "line": 138,
-            "url": "https://github.com/twentyhq/twenty/blob/35c645064f72bc4e3180a2c6c506cbbfee170007/packages/twenty-server/src/modules/workflow/workflow-runner/workspace-services/workflow-runner.workspace-service.ts#L138-L199"
-          }
-        ],
-        "analysisStatus": "source-supported"
-      },
-      "reproductionPaths": [
-        {
-          "id": "twenty-form-responsive-remount-stale-snapshot-workflows-path-1",
-          "explanation": "Crossing the mobile breakpoint with a pending workflow-editor Test form clears saved Text, Number, Company Record or Task Status Select answers; Submit can complete with empty output.",
-          "sourceBugs": [
-            {
-              "index": 61,
-              "id": "workflows-fresh-e7933534",
-              "name": "Resizing the workflow Test form clears saved answers and submits empty output"
-            }
-          ],
-          "expected": "Changing the viewport layout of the same pending Form should retain its saved answers and submit those answers.",
-          "actual": "After valid answers had autosaved, crossing 769 to 768 pixels cleared all three fields without warning. Returning to desktop left them blank, and Submit completed with {}. No-resize controls submitted populated results; the full Workflow Run page retained saved valid answers across resizing. The same breakpoint reset reproduces with a saved Task Status Select answer: In progress becomes No Status, and submission can complete empty although a fresh run readback still retains the earlier draft answer.",
-          "reproSteps": [
-            "Create a fresh manual workflow with a Form containing Text, Number and a Company Record field.",
-            "At desktop width, run Test from the workflow editor so the pending form opens in the side panel.",
-            "Enter a unique Text answer, a valid Number and a selected Company. Wait several seconds for autosave.",
-            "Narrow the window from above 768 CSS pixels to 768 or less without navigation. Observe every answer reset without a warning; returning to desktop does not restore them.",
-            "Click Submit and inspect Form output. Observe successful completion with an empty object instead of the earlier answers.",
-            "As controls, submit populated answers without crossing the breakpoint, resize within the same layout, or open the full Workflow Run record page and resize after saving valid answers.",
-            "Additional verified variation: Use a saved Task Status Select answer in the same pending Test side panel and cross the 768px breakpoint. Create a manual workflow containing a Form with a Select sourced from Task Status. Open Test at desktop width. Select In progress, wait at least four seconds, and confirm saving completes. Resize from 769px to 768px and observe No Status. Return to desktop and observe the answer remains cleared. Submit and inspect completed Form output: it can be empty. Compare submitting without resizing and opening the full Workflow Run page, which retain the selected answer."
-          ],
-          "severity": 3,
-          "matchingGuidance": [
-            {
-              "sourceBugIndex": 61,
-              "guidance": "Count answer loss from the pending Test side panel crossing the mobile breakpoint once, regardless of which verified field type demonstrates it. Text, Number, Company Record and Task Status Select are covered; do not require every field type. Exclude ordinary unsaved hard-refresh interruptions and unsupported source selection."
-            }
-          ],
-          "sourceConstraints": [
-            {
-              "sourceBugIndex": 61,
-              "constraints": {
-                "matchingGuidance": "Count answer loss from the pending Test side panel crossing the mobile breakpoint once, regardless of which verified field type demonstrates it. Text, Number, Company Record and Task Status Select are covered; do not require every field type. Exclude ordinary unsaved hard-refresh interruptions and unsupported source selection."
-              }
-            }
-          ],
-          "evidenceLimitations": [
-            {
-              "sourceBugIndex": 61,
-              "limitations": [
-                "No downstream record creation from empty output was tested.",
-                "Scope is the workflow-editor Test side panel after valid answers have saved. Fast edits before autosave on the full run page and untested field types are excluded.",
-                "A shared root cause with recovered-13 is inferred, not established for that older report.",
                 "Latest was source-inspected only."
               ]
             }
@@ -6073,13 +6257,6 @@
             "path": "packages/twenty-front/src/modules/workflow/workflow-trigger/utils/cron-to-human/utils/convertScheduleToCronExpression.ts",
             "line": 6,
             "url": "https://github.com/twentyhq/twenty/blob/35c645064f72bc4e3180a2c6c506cbbfee170007/packages/twenty-front/src/modules/workflow/workflow-trigger/utils/cron-to-human/utils/convertScheduleToCronExpression.ts#L6-L14"
-          },
-          {
-            "repository": "twentyhq/twenty",
-            "revision": "35c645064f72bc4e3180a2c6c506cbbfee170007",
-            "path": "packages/twenty-front/src/modules/workflow/workflow-trigger/components/CronExpressionHelper.tsx",
-            "line": 103,
-            "url": "https://github.com/twentyhq/twenty/blob/35c645064f72bc4e3180a2c6c506cbbfee170007/packages/twenty-front/src/modules/workflow/workflow-trigger/components/CronExpressionHelper.tsx#L103-L131"
           }
         ],
         "analysisStatus": "source-supported"
@@ -6302,7 +6479,7 @@
     },
     {
       "id": "twenty-iteration-output-tab-latest-status",
-      "explanation": "Run inspection gates Output on the latest step status, blocking stored results from successful earlier iterations when the final iteration was skipped.",
+      "explanation": "Workflow step Output can be disabled for a successful earlier loop iteration when the same step’s latest execution was Skipped. Selecting history changes the available content but not the tab gate.",
       "rootCause": {
         "explanation": "Output-tab gating reads the step’s latest status while output content reads the selected iteration history. A latest Skipped status disables Output for successful earlier histories.",
         "sourceReferences": [
@@ -6724,7 +6901,7 @@
     },
     {
       "id": "twenty-code-array-drops-numeric-item-schema",
-      "explanation": "The Code input editor stores ordinary numeric array members as strings despite retaining a number-array input schema.",
+      "explanation": "Code action inputs declared as numeric arrays are edited and submitted as unrestricted strings. Numeric members lose their JSON number type, and nonnumeric members are accepted without the declared item-type validation.",
       "rootCause": {
         "explanation": "Generic Code array rendering drops the inferred item schema and renders/commits members as unrestricted strings. Numeric literal members change JSON type, and nonnumeric members lack the validation required by the declared number[] schema.",
         "sourceReferences": [
@@ -6832,12 +7009,17 @@
       "reproductionPaths": [
         {
           "id": "twenty-code-array-drops-numeric-item-schema-workflows-path-1",
-          "explanation": "The Code input editor stores ordinary numeric array members as strings despite retaining a number-array input schema.",
+          "explanation": "Configure a Code action with a declared numeric array and edit its literal items; the editor accepts unrestricted strings and submits strings instead of enforcing the numeric item schema.",
           "sourceBugs": [
             {
               "index": 72,
               "id": "workflows-pass2-2d6af11b",
               "name": "Typed Code number-array inputs save ordinary numeric members as strings"
+            },
+            {
+              "index": 128,
+              "id": "workflows-pass2-2d6af11b-nonnumeric-array",
+              "name": "Typed number-array configuration saves nonnumeric text without validation"
             }
           ],
           "expected": "Values entered for a number-array input should retain numeric JSON types in saved configuration, consistent with its declared item schema.",
@@ -6858,35 +7040,89 @@
                 "Other Logic Function and boolean-array surfaces are source-inferred, not browser-established.",
                 "Newer runtime was not tested."
               ]
-            }
-          ]
-        },
-        {
-          "id": "twenty-code-array-drops-numeric-item-schema-workflows-path-2",
-          "explanation": "A workflow Code input declared as a number array accepts and retains literal nonnumeric text as an array member without array-field validation.",
-          "sourceBugs": [
-            {
-              "index": 128,
-              "id": "workflows-pass2-2d6af11b-nonnumeric-array",
-              "name": "Typed number-array configuration saves nonnumeric text without validation"
-            }
-          ],
-          "expected": "An input declared as an array of numbers should reject or identify nonnumeric literal members before treating the configuration as accepted.",
-          "actual": "Entering abc through the typed number-array editor saves and reopens the literal string member without array-field validation, while invalid scalar numeric input reports Invalid number.",
-          "reproSteps": [
-            "Create a workflow Code action with an input schema containing a number-array parameter and a scalar-number control.",
-            "Enter abc into the number-array editor using Enter or Add item. Allow the configuration to save.",
-            "Reopen or reload the configuration and observe the retained abc member without an array validation message.",
-            "As a control, enter abc into the scalar-number field and observe Invalid number."
-          ],
-          "severity": 1,
-          "matchingGuidance": [
+            },
             {
               "sourceBugIndex": 128,
-              "guidance": {
-                "distinction": "User-approved missing validation for nonnumeric literal array members. Related existing entry covers supported numeric literals changing JSON type; neither establishes completed execution damage.",
-                "relatedReferenceId": "workflows-pass2-2d6af11b"
-              }
+              "limitations": [
+                "The user explicitly accepted the original nonnumeric-validation claim. Reviewers considered abc acceptance alone insufficient for their bug bar, then independently accepted the separate supported numeric-values-as-strings defect.",
+                "The existing related entry covers valid numeric literals saved as strings; this entry adds only the user-approved validation expectation for nonnumeric literal input.",
+                "Persisted configuration does not prove a valid or runnable Code step. Execution was blocked by disabled transpilation; no arithmetic error, function execution or downstream damage is claimed.",
+                "Accepted by explicit user adjudication; reviewer disagreement or nonreproduction is not represented as positive verification. Latest runtime was not tested."
+              ]
+            }
+          ],
+          "sourceReproductions": [
+            {
+              "sourceBugIndices": [
+                72
+              ],
+              "explanation": "The Code input editor stores ordinary numeric array members as strings despite retaining a number-array input schema.",
+              "expected": "Values entered for a number-array input should retain numeric JSON types in saved configuration, consistent with its declared item schema.",
+              "actual": "Entering 5 and 1.5 through the array editor saves string members such as [\"5\", \"1.5\"]. Reload retains those strings while the schema still declares items.type:number. Scalar numeric controls remain JSON numbers.",
+              "reproSteps": [
+                "Create a fresh workflow with a Code action whose input schema includes a number-array field, a scalar number and a text-array control.",
+                "Enter ordinary numeric literals such as 5 and 1.5 using Enter or Add item in the number-array editor.",
+                "Let the configuration save, reopen or reload it and inspect the stored values and schema. Observe string array members despite the numeric item declaration.",
+                "Controls: enter 7 in the scalar numeric field and confirm it saves as a JSON number; text-array values remain strings and invalid scalar numeric text displays validation feedback."
+              ],
+              "severity": 3,
+              "evidenceLimitations": [
+                {
+                  "sourceBugIndex": 72,
+                  "limitations": [
+                    "No arithmetic error, string concatenation, completed code execution or downstream damage was observed.",
+                    "Persistence does not establish a fully valid or runnable Code step.",
+                    "Other Logic Function and boolean-array surfaces are source-inferred, not browser-established.",
+                    "Newer runtime was not tested."
+                  ]
+                }
+              ]
+            },
+            {
+              "sourceBugIndices": [
+                128
+              ],
+              "explanation": "A workflow Code input declared as a number array accepts and retains literal nonnumeric text as an array member without array-field validation.",
+              "expected": "An input declared as an array of numbers should reject or identify nonnumeric literal members before treating the configuration as accepted.",
+              "actual": "Entering abc through the typed number-array editor saves and reopens the literal string member without array-field validation, while invalid scalar numeric input reports Invalid number.",
+              "reproSteps": [
+                "Create a workflow Code action with an input schema containing a number-array parameter and a scalar-number control.",
+                "Enter abc into the number-array editor using Enter or Add item. Allow the configuration to save.",
+                "Reopen or reload the configuration and observe the retained abc member without an array validation message.",
+                "As a control, enter abc into the scalar-number field and observe Invalid number."
+              ],
+              "severity": 1,
+              "matchingGuidance": [
+                {
+                  "sourceBugIndex": 128,
+                  "guidance": {
+                    "distinction": "User-approved missing validation for nonnumeric literal array members. Related existing entry covers supported numeric literals changing JSON type; neither establishes completed execution damage.",
+                    "relatedReferenceId": "workflows-pass2-2d6af11b"
+                  }
+                }
+              ],
+              "sourceConstraints": [
+                {
+                  "sourceBugIndex": 128,
+                  "constraints": {
+                    "matchingGuidance": {
+                      "distinction": "User-approved missing validation for nonnumeric literal array members. Related existing entry covers supported numeric literals changing JSON type; neither establishes completed execution damage.",
+                      "relatedReferenceId": "workflows-pass2-2d6af11b"
+                    }
+                  }
+                }
+              ],
+              "evidenceLimitations": [
+                {
+                  "sourceBugIndex": 128,
+                  "limitations": [
+                    "The user explicitly accepted the original nonnumeric-validation claim. Reviewers considered abc acceptance alone insufficient for their bug bar, then independently accepted the separate supported numeric-values-as-strings defect.",
+                    "The existing related entry covers valid numeric literals saved as strings; this entry adds only the user-approved validation expectation for nonnumeric literal input.",
+                    "Persisted configuration does not prove a valid or runnable Code step. Execution was blocked by disabled transpilation; no arithmetic error, function execution or downstream damage is claimed.",
+                    "Accepted by explicit user adjudication; reviewer disagreement or nonreproduction is not represented as positive verification. Latest runtime was not tested."
+                  ]
+                }
+              ]
             }
           ],
           "sourceConstraints": [
@@ -6899,24 +7135,13 @@
                 }
               }
             }
-          ],
-          "evidenceLimitations": [
-            {
-              "sourceBugIndex": 128,
-              "limitations": [
-                "The user explicitly accepted the original nonnumeric-validation claim. Reviewers considered abc acceptance alone insufficient for their bug bar, then independently accepted the separate supported numeric-values-as-strings defect.",
-                "The existing related entry covers valid numeric literals saved as strings; this entry adds only the user-approved validation expectation for nonnumeric literal input.",
-                "Persisted configuration does not prove a valid or runnable Code step. Execution was blocked by disabled transpilation; no arithmetic error, function execution or downstream damage is claimed.",
-                "Accepted by explicit user adjudication; reviewer disagreement or nonreproduction is not represented as positive verification. Latest runtime was not tested."
-              ]
-            }
           ]
         }
       ]
     },
     {
       "id": "twenty-diagram-merge-restores-old-branch-positions",
-      "explanation": "Additional routes leave existing branch heads at their old live positions while new heads use recomputed positions, causing overlap.",
+      "explanation": "Adding Else-if routes to a workflow If/Else action recomputes branch positions but leaves existing branch heads at their old live positions. New and existing branch heads can overlap until the graph is rebuilt.",
       "rootCause": {
         "explanation": "Route insertion computes and saves updated branch positions, but same-version mergeWorkflowDiagrams restores old positions for existing nodes. Only new nodes retain the newly computed placement.",
         "sourceReferences": [
@@ -7056,7 +7281,7 @@
     },
     {
       "id": "twenty-schedule-icu-placeholder-quoted",
-      "explanation": "Schedule minute/hour/day validation displays literal {newMinute}, {newHour} or {newDay} in the error text instead of the entered value..",
+      "explanation": "Workflow schedule summaries and step names can show literal interpolation placeholders instead of their configured numeric interval values.",
       "rootCause": {
         "explanation": "Single quotes around interpolation variables escape ICU placeholders into literal text in compiled translation catalogs.",
         "sourceReferences": [
@@ -7196,7 +7421,7 @@
     },
     {
       "id": "twenty-workflow-runs-cache-first-no-reentry-snapshot",
-      "explanation": "After leaving a filtered See Runs table and creating another completed run in a second tab, returning shows count two but only the first row, without loading through bounded checks up to 15 seconds.",
+      "explanation": "Returning to a previously opened Workflow Runs table can omit runs created while the table was away, even though its header count includes them. Waiting does not reconcile the cached rows; a new query is needed.",
       "rootCause": {
         "explanation": "The header count refreshes with cache-and-network while the settled table uses cache-first. Re-registering the unmounted subscription supplies no snapshot of newly added records.",
         "sourceReferences": [
@@ -7759,7 +7984,7 @@
     },
     {
       "id": "twenty-view-update-overwrites-pending-filters",
-      "explanation": "Choosing Group by in a saved Workflow Runs view replaces its active unsaved filters with saved filters, silently changing which runs are shown.",
+      "explanation": "Changing the layout or Group by field of a saved view silently replaces its currently applied, unsaved filters and sorts with the saved settings. The visible result set changes even though the user changed only presentation.",
       "rootCause": {
         "explanation": "Changing layout/grouping calls useUpdateCurrentView, which reloads all index states from the previously saved currentView when grouping changes. The saved filters overwrite the active unsaved filters even though this action only changes presentation.",
         "sourceReferences": [
@@ -8062,112 +8287,6 @@
                 "Observations establish a persistent finite-execution stall over the sampled interval, not indefinite duration or an unkillable run. Stop finalization is excluded.",
                 "Claude configured some fresh copies through the app’s own mutations after its first UI-built workflow; stale duplicated references were repaired before counted tests.",
                 "Other roles, trigger types, If/Else siblings and newer runtime were not tested."
-              ]
-            }
-          ]
-        }
-      ]
-    },
-    {
-      "id": "twenty-completed-loop-context-defaults-first-history",
-      "explanation": "After a two-item Iterator finishes, its completed-branch Delay Input tab shows the first iteration values even though execution used the final completed Iterator result.",
-      "rootCause": {
-        "explanation": "The Input inspector passes no selected loop index for a step outside the loop. Its context helper defaults to history index 0 of an array containing historical results before the latest result. Backend execution instead uses each step’s current result.",
-        "sourceReferences": [
-          {
-            "repository": "twentyhq/twenty",
-            "revision": "35c645064f72bc4e3180a2c6c506cbbfee170007",
-            "path": "packages/twenty-front/src/modules/workflow/workflow-steps/components/WorkflowRunStepInputDetail.tsx",
-            "line": 62,
-            "url": "https://github.com/twentyhq/twenty/blob/35c645064f72bc4e3180a2c6c506cbbfee170007/packages/twenty-front/src/modules/workflow/workflow-steps/components/WorkflowRunStepInputDetail.tsx#L62-L72"
-          },
-          {
-            "repository": "twentyhq/twenty",
-            "revision": "35c645064f72bc4e3180a2c6c506cbbfee170007",
-            "path": "packages/twenty-front/src/modules/workflow/workflow-steps/utils/getWorkflowRunStepContext.ts",
-            "line": 43,
-            "url": "https://github.com/twentyhq/twenty/blob/35c645064f72bc4e3180a2c6c506cbbfee170007/packages/twenty-front/src/modules/workflow/workflow-steps/utils/getWorkflowRunStepContext.ts#L43-L60"
-          },
-          {
-            "repository": "twentyhq/twenty",
-            "revision": "35c645064f72bc4e3180a2c6c506cbbfee170007",
-            "path": "packages/twenty-front/src/modules/workflow/workflow-steps/utils/getWorkflowRunAllStepInfoHistory.ts",
-            "line": 9,
-            "url": "https://github.com/twentyhq/twenty/blob/35c645064f72bc4e3180a2c6c506cbbfee170007/packages/twenty-front/src/modules/workflow/workflow-steps/utils/getWorkflowRunAllStepInfoHistory.ts#L9-L14"
-          },
-          {
-            "repository": "twentyhq/twenty",
-            "revision": "35c645064f72bc4e3180a2c6c506cbbfee170007",
-            "path": "packages/twenty-shared/src/workflow/utils/getWorkflowRunContext.ts",
-            "line": 4,
-            "url": "https://github.com/twentyhq/twenty/blob/35c645064f72bc4e3180a2c6c506cbbfee170007/packages/twenty-shared/src/workflow/utils/getWorkflowRunContext.ts#L4-L11"
-          },
-          {
-            "repository": "twentyhq/twenty",
-            "revision": "35c645064f72bc4e3180a2c6c506cbbfee170007",
-            "path": "packages/twenty-server/src/modules/workflow/workflow-executor/workspace-services/workflow-executor.workspace-service.ts",
-            "line": 463,
-            "url": "https://github.com/twentyhq/twenty/blob/35c645064f72bc4e3180a2c6c506cbbfee170007/packages/twenty-server/src/modules/workflow/workflow-executor/workspace-services/workflow-executor.workspace-service.ts#L463-L472"
-          },
-          {
-            "repository": "twentyhq/twenty",
-            "revision": "35c645064f72bc4e3180a2c6c506cbbfee170007",
-            "path": "packages/twenty-docs/user-guide/workflows/capabilities/workflow-runs.mdx",
-            "line": 41,
-            "url": "https://github.com/twentyhq/twenty/blob/35c645064f72bc4e3180a2c6c506cbbfee170007/packages/twenty-docs/user-guide/workflows/capabilities/workflow-runs.mdx#L41-L47"
-          }
-        ],
-        "analysisStatus": "source-supported"
-      },
-      "reproductionPaths": [
-        {
-          "id": "twenty-completed-loop-context-defaults-first-history-workflows-path-1",
-          "explanation": "After a two-item Iterator finishes, its completed-branch Delay Input tab shows the first iteration values even though execution used the final completed Iterator result.",
-          "sourceBugs": [
-            {
-              "index": 90,
-              "id": "workflows-pass3-5be54c15",
-              "name": "Completed-branch Delay Input shows the Iterator first iteration instead of its completed context"
-            }
-          ],
-          "expected": "A completed step’s Input inspector should represent the execution context passed to that step, consistently with the documented run-debugging behavior.",
-          "actual": "A correctly committed Current Item Index Delay executes with final index 2 and the run completes, but its Input tab shows currentItem alpha, currentItemIndex 0 and hasProcessedAllItems false. The final stored Iterator result is index 2/true.",
-          "reproSteps": [
-            "Create a manual workflow with an Iterator over two known items, alpha and beta, and a valid one-second Delay on its loop path.",
-            "On the Iterator completed branch, add a Delay whose Seconds uses Current Item Index. Explicitly commit the variable selection and verify the saved configuration.",
-            "Test the workflow and confirm successful completion with final Iterator result currentItemIndex 2 and hasProcessedAllItems true.",
-            "Inspect the completed-branch Delay’s Input tab and expand Iterator. Observe alpha, index 0 and false, including the consumed index highlighted as 0.",
-            "Compare the successful execution and stored final Iterator result; do not count an uncommitted variable or zero-duration execution failure as this display defect."
-          ],
-          "severity": 1,
-          "matchingGuidance": [
-            {
-              "sourceBugIndex": 90,
-              "guidance": {
-                "distinction": "Covers stale completed-branch Input context only. Delay variable selection not saving (workflows-pass2-7b30d0b9) and zero-duration execution failure (workflows-fresh-a4320e8f) remain existing coverage. Node-tab configuration interpretation, nested Input crashes and skipped-iteration Output gating are different claims."
-              }
-            }
-          ],
-          "sourceConstraints": [
-            {
-              "sourceBugIndex": 90,
-              "constraints": {
-                "matchingGuidance": {
-                  "distinction": "Covers stale completed-branch Input context only. Delay variable selection not saving (workflows-pass2-7b30d0b9) and zero-duration execution failure (workflows-fresh-a4320e8f) remain existing coverage. Node-tab configuration interpretation, nested Input crashes and skipped-iteration Output gating are different claims."
-                }
-              }
-            }
-          ],
-          "evidenceLimitations": [
-            {
-              "sourceBugIndex": 90,
-              "limitations": [
-                "Observed impact is misleading inspection information; execution and stored final Iterator results are correct when the Delay variable is committed.",
-                "Original execution failures are already covered by the Delay variable-save and zero-duration references and contribute no severity to this entry.",
-                "The claim concerns the Input tab, not the Node tab showing stored configuration or an inside-loop selected historical iteration.",
-                "Other completed-branch action types and nested Iterator scope were not browser-established.",
-                "The unintended history-index fallback is inferred from documentation, source and passing execution controls; no maintainer acknowledgement of this exact display bug was found.",
-                "Newer source retains the relevant history selection; newer runtime was not tested."
               ]
             }
           ]
@@ -8926,97 +9045,6 @@
       ]
     },
     {
-      "id": "twenty-run-inspector-no-live-subscriber",
-      "explanation": "A Delay Output inspector opened while a test run is pending stays at Empty Object after successful completion; reopening reveals the saved result.",
-      "rootCause": {
-        "explanation": "The Flow card owns the run-update subscriber. Opening the step inspector replaces that card, while the inspector reads the run without mounting a replacement subscriber. Reopening fetches the saved result.",
-        "sourceReferences": [
-          {
-            "repository": "twentyhq/twenty",
-            "revision": "35c645064f72bc4e3180a2c6c506cbbfee170007",
-            "path": "packages/twenty-docs/user-guide/workflows/capabilities/workflow-runs.mdx",
-            "line": 33,
-            "url": "https://github.com/twentyhq/twenty/blob/35c645064f72bc4e3180a2c6c506cbbfee170007/packages/twenty-docs/user-guide/workflows/capabilities/workflow-runs.mdx#L33-L47"
-          },
-          {
-            "repository": "twentyhq/twenty",
-            "revision": "35c645064f72bc4e3180a2c6c506cbbfee170007",
-            "path": "packages/twenty-front/src/modules/side-panel/components/SidePanelRouter.tsx",
-            "line": 51,
-            "url": "https://github.com/twentyhq/twenty/blob/35c645064f72bc4e3180a2c6c506cbbfee170007/packages/twenty-front/src/modules/side-panel/components/SidePanelRouter.tsx#L51-L61"
-          },
-          {
-            "repository": "twentyhq/twenty",
-            "revision": "35c645064f72bc4e3180a2c6c506cbbfee170007",
-            "path": "packages/twenty-front/src/modules/side-panel/pages/workflow/hooks/useSidePanelWorkflowNavigation.ts",
-            "line": 187,
-            "url": "https://github.com/twentyhq/twenty/blob/35c645064f72bc4e3180a2c6c506cbbfee170007/packages/twenty-front/src/modules/side-panel/pages/workflow/hooks/useSidePanelWorkflowNavigation.ts#L187-L241"
-          },
-          {
-            "repository": "twentyhq/twenty",
-            "revision": "35c645064f72bc4e3180a2c6c506cbbfee170007",
-            "path": "packages/twenty-front/src/modules/side-panel/pages/workflow/step/view-run/components/SidePanelWorkflowRunViewStep.tsx",
-            "line": 6,
-            "url": "https://github.com/twentyhq/twenty/blob/35c645064f72bc4e3180a2c6c506cbbfee170007/packages/twenty-front/src/modules/side-panel/pages/workflow/step/view-run/components/SidePanelWorkflowRunViewStep.tsx#L6-L18"
-          }
-        ],
-        "analysisStatus": "source-supported"
-      },
-      "reproductionPaths": [
-        {
-          "id": "twenty-run-inspector-no-live-subscriber-workflows-path-1",
-          "explanation": "A Delay Output inspector opened while a test run is pending stays at Empty Object after successful completion; reopening reveals the saved result.",
-          "sourceBugs": [
-            {
-              "index": 111,
-              "id": "workflows-loop-ff4e3502",
-              "name": "Open Delay Output stays empty after its run completes"
-            }
-          ],
-          "expected": "An already-open run-step Output should reflect the completed step’s result, as the full run-page inspector does.",
-          "actual": "On two fresh workflows, holding the test side-panel Delay Output open leaves Empty Object after the run has completed. Returning to Flow shows Completed; reopening the same Delay shows result.success true. Opening the pending Output from the full run page updates live without reopening.",
-          "reproSteps": [
-            "Create a disposable owned manual workflow with a duration Delay, save it, and click Test.",
-            "While the Delay is pending, open its Output in the test side panel and leave it open beyond completion.",
-            "Observe Empty Object remains; return to Flow to see Completed, then reopen the same step to see result.success true.",
-            "Repeat with a separate workflow. As controls, first open Output after completion and hold pending Output open from the full run page; both show the successful result."
-          ],
-          "severity": 1,
-          "matchingGuidance": [
-            {
-              "sourceBugIndex": 111,
-              "guidance": {
-                "relatedReferenceId": "workflows-N73",
-                "distinction": "This entry concerns an already-open Delay Output inspector. Home/Flow status remaining Running and execution failure are different claims."
-              }
-            }
-          ],
-          "sourceConstraints": [
-            {
-              "sourceBugIndex": 111,
-              "constraints": {
-                "matchingGuidance": {
-                  "relatedReferenceId": "workflows-N73",
-                  "distinction": "This entry concerns an already-open Delay Output inspector. Home/Flow status remaining Running and execution failure are different claims."
-                }
-              }
-            }
-          ],
-          "evidenceLimitations": [
-            {
-              "sourceBugIndex": 111,
-              "limitations": [
-                "Codex-only approval under the user’s updated policy; no independent Claude agreement is claimed.",
-                "Two fresh workflows share one fixture; tested duration Delays of 15 and 30 seconds. Other action types, scheduled-date input and member execution are excluded.",
-                "Execution succeeds and stored results remain available. Full run-page Output updates live; this entry concerns the test side-panel inspector kept open across completion.",
-                "No continuous recording review or newer-runtime result is claimed. The missing inspector subscription is source-supported; exact lifecycle causality is inferred."
-              ]
-            }
-          ]
-        }
-      ]
-    },
-    {
       "id": "twenty-canvas-add-first-selection-lifecycle",
       "explanation": "Right-clicking the canvas, choosing Add node, then selecting Delay leaves Select Action instead of creating the node. A second selection works; plus/header insertion controls work.",
       "rootCause": {
@@ -9291,7 +9319,7 @@
     },
     {
       "id": "twenty-phone-input-numeric-normalization-leading-zero",
-      "explanation": "In a People Create Record action, selecting Italy +39 and entering 0669812345 changes the phone input to 669812345. The altered digits persist after saving and reload on two fresh workflows. A completed test creates a Person containing +39 669812345.",
+      "explanation": "Phone fields in workflow Create Record convert national-number text to a number and strip significant leading zeroes. The altered digits persist after reopening and are used in the created Person, including Italian +39 numbers.",
       "rootCause": {
         "explanation": "FormPhoneFieldInput routes the phone national-number text through FormNumberFieldInput/castAsNumberOrNull. Numeric coercion removes significant leading zero characters before constructing the saved phone value.",
         "sourceReferences": [
@@ -9389,7 +9417,7 @@
     },
     {
       "id": "twenty-duplicate-if-else-shared-branch-ownership",
-      "explanation": "Duplicating an individual If/Else creates a disconnected copy whose branches still point to the original child Filters. The original If/Else succeeds, but its matching Filter remains Not started while the run reports Completed. Two fresh workflows reproduce; deleting the duplicate restores branch execution. An activated configuration also reproduces.",
+      "explanation": "Duplicating an individual If/Else workflow action leaves its copy sharing the original branch Filter nodes. Even the original matching route can remain Not started while the run reports Completed; removing the duplicate restores execution.",
       "rootCause": {
         "explanation": "Individual action duplication clones the If/Else controller and its branch/filter references without allocating independent companion branch IDs. The original and copy therefore share branch execution dependencies, preventing the original matching route from running independently.",
         "sourceReferences": [
@@ -9508,7 +9536,7 @@
     },
     {
       "id": "twenty-malformed-delay-date-error-classification",
-      "explanation": "A scheduled Delay mapped from a Text Form answer fails on not-a-date with ERR user_script:281: Cannot serialise number instead of an invalid-input validation diagnostic. The failure repeats and remains in the run output after reopening. A valid future date completes; missing and past dates produce input-specific validation errors.",
+      "explanation": "A workflow Delay whose scheduled date is mapped from malformed text fails with an internal serialization error instead of an invalid-date diagnostic. Valid future dates complete, while missing and past dates receive input-specific errors.",
       "rootCause": {
         "explanation": "The Delay scheduled-date edit forwards a malformed date into its workflow update/GraphQL serialization path; validation does not classify it as an input error before the DateTime serialization failure is surfaced.",
         "sourceReferences": [
@@ -9613,7 +9641,7 @@
     },
     {
       "id": "twenty-form-settings-long-label-layout-overflow",
-      "explanation": "At 390px, a Text Form field labelled Mobile explanation for responsive testing expands its input settings beyond the right edge. The section close button disappears and Placeholder is partially clipped, while the top-level panel close remains visible. Two fresh workflows reproduce, including reopening after reload.",
+      "explanation": "Long Form-field labels overflow the workflow input-settings row at narrow widths, clipping the settings close button and adjacent controls such as Placeholder. The top-level panel close remains usable.",
       "rootCause": {
         "explanation": "Form field settings use a horizontal layout with unbounded label content and fixed adjacent controls; long labels grow their intrinsic width rather than ellipsizing/shrinking, clipping type/delete/settings controls in narrow panels.",
         "sourceReferences": [
@@ -9718,7 +9746,7 @@
     },
     {
       "id": "twenty-discarded-version-generic-restore-unsupported",
-      "explanation": "After a saved v2 draft is discarded successfully, reopening its retained version page shows a deleted banner with Restore. Clicking Restore reports You do not have permission to perform this workflow action, and the version remains deleted after reload. Both fresh workflows reproduce; the header Restore command also fails after confirmation.",
+      "explanation": "A discarded Workflow Version retains generic Restore controls on its deleted detail page, but both the banner and header Restore are rejected as unauthorized and leave the version deleted.",
       "rootCause": {
         "explanation": "Discarded versions use generic deleted-record detail chrome, which offers Restore, but workflow-version restore pre-query hooks unconditionally reject the generic restore operation. The specialized discard lifecycle does not expose a corresponding supported Restore action.",
         "sourceReferences": [
@@ -9823,7 +9851,7 @@
     },
     {
       "id": "twenty-iterator-empty-loop-new-node-layout",
-      "explanation": "After deleting the sole loop action and inserting Create Record through the empty loop edge, the replacement overlaps the Iterator card. Both fresh workflows reproduce; the overlap remains after reopening and in a completed run diagram. The replacement remains configurable and the Notes test completes.",
+      "explanation": "After the sole action inside an Iterator loop is deleted, inserting its replacement through the empty loop edge places it over the Iterator controller. The overlap persists in reopened and completed-run diagrams although the replacement remains configurable and executes.",
       "rootCause": {
         "explanation": "After the sole Iterator loop-body action is deleted, edge insertion into the empty loop uses generic edge/node placement without reserving the controller loop geometry, so the replacement action position overlaps the Iterator controller.",
         "sourceReferences": [
@@ -10228,7 +10256,7 @@
     },
     {
       "id": "twenty-duplicate-workflow-missing-created-by-actor",
-      "explanation": "A user-invoked duplicate displays Created by System while normal user-created workflows display the initiating member. Readback of the duplicate contains source MANUAL, name System and a null workspaceMemberId.",
+      "explanation": "Duplicating a workflow through the user interface attributes the new workflow to System instead of the initiating member. Normal workflow creation records the member correctly.",
       "rootCause": {
         "explanation": "The workflow duplication service constructs new workflow/version records without passing the initiating actor through the createdBy field; the standard actor-field fallback is System, unlike ordinary user-authored workflow creation.",
         "sourceReferences": [
@@ -10376,7 +10404,7 @@
     },
     {
       "id": "twenty-restored-delay-run-resume-job-not-recreated",
-      "explanation": "After deletion during a pending Delay and restoration beyond its deadline, bounded observations show the original run still Running/Pending with its downstream action unstarted. A new run of the restored same-version configuration completes normally.",
+      "explanation": "Deleting a workflow during a pending Delay and restoring it after the deadline can strand the original run at Running/Pending with downstream actions unstarted. A new run of the restored same-version workflow completes normally.",
       "rootCause": {
         "explanation": "Workflow restore undeletes run/version records but does not recreate the expired/consumed delayed resume job. resume-delayed-workflow can ignore or terminate work while its run is deleted, leaving the later restored run RUNNING/PENDING after the scheduled resume time.",
         "sourceReferences": [
