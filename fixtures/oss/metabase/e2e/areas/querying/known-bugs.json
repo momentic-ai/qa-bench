@@ -4,7 +4,7 @@
   "logicalBugs": [
     {
       "id": "metabase-new-question-flow-navigation-bypasses-dirty-guard",
-      "explanation": "Starting a new question flow can discard an unsaved graphical question.",
+      "explanation": "Starting another question flow abandons a visibly unsaved question without warning the user that their edits will be lost.",
       "rootCause": {
         "explanation": "isNavigationAllowed returns true for every destination when isNewQuestion is true and the current question is structured. The new-question exemption therefore bypasses the dirty-question guard when starting another question flow. Source applicability caveat: inspected public revision f42632893810325d9f74375a4cd29bd31d8daefa is approximate context; the fixture image revision 03d994f is unavailable.",
         "sourceReferences": [
@@ -42,7 +42,7 @@
     },
     {
       "id": "metabase-discard-sql-conversion-restores-invalid-builder-state",
-      "explanation": "Discarding an unsaved SQL conversion can leave a blank structured editor.",
+      "explanation": "After converting a notebook question to SQL, navigating Back and confirming discard leaves a blank notebook editor without its prior steps or a starting-data picker.",
       "rootCause": {
         "explanation": "Conversion changes both query representation and route/builder UI state. The discard/back transition must restore the original query and its editor mode together; the reported blank notebook locates the failure at that restoration boundary. The available public navigation lifecycle does not establish the exact missing restore operation in the unavailable fixture revision. Source applicability caveat: inspected public revision f42632893810325d9f74375a4cd29bd31d8daefa is approximate context; the fixture image revision 03d994f is unavailable.",
         "sourceReferences": [
@@ -81,7 +81,7 @@
     },
     {
       "id": "metabase-summarize-preview-loses-upstream-filter",
-      "explanation": "A summarize-step preview can omit an already configured upstream filter.",
+      "explanation": "After filtering Orders + People to State=MN, a downstream Count by User ID preview includes users outside the filtered rows.",
       "rootCause": {
         "explanation": "Notebook steps pass a stage index and clause type to Lib.previewQuery. The inspected preview-query truncates later stages and later clause types while retaining earlier filter clauses, so an unconditional filter-dropping implementation is not present here. A fixture-specific stage/index or preview construction mismatch is unresolved. Source applicability caveat: inspected public revision f42632893810325d9f74375a4cd29bd31d8daefa is approximate context; the fixture image revision 03d994f is unavailable.",
         "sourceReferences": [
@@ -126,7 +126,7 @@
     },
     {
       "id": "metabase-switch-to-data-disabled-on-bar-result",
-      "explanation": "An executed monthly Bar result can expose a disabled Switch to data control.",
+      "explanation": "A summarized monthly Orders bar chart has completed results, but “Switch to data” remains disabled, preventing inspection of its result rows.",
       "rootCause": {
         "explanation": "The available source does not establish the reported Bar-specific disabled predicate. LeftViewFooterButtonGroup disables only list visualization settings, which is not evidence that Bar data switching should be disabled. Preserve this as a version-unresolved result-mode control defect rather than attributing it to that unrelated list guard. Source applicability caveat: inspected public revision f42632893810325d9f74375a4cd29bd31d8daefa is approximate context; the fixture image revision 03d994f is unavailable.",
         "sourceReferences": [
@@ -164,7 +164,7 @@
     },
     {
       "id": "metabase-required-native-parameter-clear-affordance",
-      "explanation": "A required SQL parameter can be cleared and then fail query execution.",
+      "explanation": "The clear X emptied a selected Date Range chip while Always require a value remained enabled; rerunning was blocked until the required value was supplied.",
       "rootCause": {
         "explanation": "ParameterValueWidget.getRequiredActionIcon explicitly renders a clear action for a required parameter with no default, and calls setValue(null). Required-value enforcement occurs when executing the query, leaving the UI able to create an invalid required-parameter state. Source applicability caveat: inspected public revision f42632893810325d9f74375a4cd29bd31d8daefa is approximate context; the fixture image revision 03d994f is unavailable.",
         "sourceReferences": [
@@ -208,7 +208,7 @@
     },
     {
       "id": "metabase-inline-question-rename-enter-propagates",
-      "explanation": "Committing a question title with Enter can also execute its query.",
+      "explanation": "Pressing Enter to commit an inline saved-question rename also runs a previously unrun graphical query, instead of ending only the title edit.",
       "rootCause": {
         "explanation": "Inline title onHeaderChange calls the generic onSave handler without rerunQuery:false. useSaveQuestion forwards an unspecified rerun flag into apiUpdateQuestion, which defaults structured questions to rerunQuery=isResultDirty and dispatches runQuestionQuery after saving. A saved-but-unrun graphical question has dirty results, so committing only a title starts its query. Source applicability caveat: inspected public revision f42632893810325d9f74375a4cd29bd31d8daefa is approximate context; the fixture image revision 03d994f is unavailable.",
         "sourceReferences": [
@@ -262,7 +262,7 @@
     },
     {
       "id": "metabase-relative-preview-query-timezone",
-      "explanation": "Relative date previews can disagree with the date evaluated by the query.",
+      "explanation": "Relative date/time filters can return rows outside the absolute interval advertised by their preview, including a different calendar day near a browser/report-timezone boundary.",
       "rootCause": {
         "explanation": "The frontend range formatter calls the browser-side time implementation with now() and no report/database timezone argument. Server relative-date evaluation uses the query/report/database timezone. Near a day boundary these different clocks produce different calendar dates for yesterday/previous-day previews and results. Source applicability caveat: inspected public revision f42632893810325d9f74375a4cd29bd31d8daefa is approximate context; the fixture image revision 03d994f is unavailable.",
         "sourceReferences": [
@@ -352,7 +352,7 @@
     },
     {
       "id": "metabase-public-required-parameter-reset-state",
-      "explanation": "Reset to default can fail to restore a public question parameter.",
+      "explanation": "Resetting a public question’s required Boolean filter leaves the changed value and results in place instead of restoring its configured default.",
       "rootCause": {
         "explanation": "The failure boundary is public parameter state/default propagation. The inspected public callback already finds the parameter and calls setParameterValue(parameterId, parameter.default), including a false default; it does not support a claim that this callback ignores false. The precise fixture-specific reset defect remains unresolved. Source applicability caveat: inspected public revision f42632893810325d9f74375a4cd29bd31d8daefa is approximate context; the fixture image revision 03d994f is unavailable.",
         "sourceReferences": [
@@ -400,7 +400,7 @@
     },
     {
       "id": "metabase-sql-like-wildcard-escaping",
-      "explanation": "Literal Contains/Does not contain text can be interpreted as SQL LIKE pattern syntax.",
+      "explanation": "Text Contains, Does not contain, Starts with or Ends with filters interpret literal %, _ or backslash as SQL LIKE pattern syntax, returning rows that disagree with the entered text match.",
       "rootCause": {
         "explanation": "SQL starts-with/contains/ends-with generate LIKE patterns by concatenating user values with wildcards without escaping literal %/_ or backslashes. This shared compiler serves notebook text filters and SQL field-filter operators, so literal-percent matching becomes wildcard matching.",
         "sourceReferences": [
@@ -534,7 +534,7 @@
     },
     {
       "id": "metabase-compound-filter-summary-loses-parentheses",
-      "explanation": "Filter summaries can hide meaningful Boolean grouping.",
+      "explanation": "Custom query-filter pills omit parentheses around mixed AND/OR conditions, so logically different filters display the same summary even though the expression editor and query results preserve their different grouping.",
       "rootCause": {
         "explanation": "The compound-filter display-name implementation recursively renders child clauses and joins their strings with the current conjunction. It adds no parentheses when nested AND and OR groups change precedence, so distinct expression trees can have the same visible summary. Source applicability caveat: inspected public revision f42632893810325d9f74375a4cd29bd31d8daefa is approximate context; the fixture image revision 03d994f is unavailable.",
         "sourceReferences": [
@@ -574,7 +574,7 @@
     },
     {
       "id": "metabase-post-summary-picker-retains-pre-summary-columns",
-      "explanation": "Post-summary steps can offer columns that are absent from their SQL source.",
+      "explanation": "When columns are picked before a summary, the next step's filter, group-by and sort pickers, and the join step's suggested condition, still use those pre-summary columns. Choosing or accepting one produces invalid SQL and the question fails.",
       "rootCause": {
         "explanation": "Downstream pickers must use the preceding aggregation stage returned-columns rather than the original source projection. The observed source.<name> errors indicate stale source-column metadata surviving the stage transition; available metadata-calculation code identifies the boundary but does not prove the exact stale cache or picker selection path in the fixture. Source applicability caveat: inspected public revision f42632893810325d9f74375a4cd29bd31d8daefa is approximate context; the fixture image revision 03d994f is unavailable.",
         "sourceReferences": [
@@ -622,7 +622,7 @@
     },
     {
       "id": "metabase-self-join-expression-source-alias",
-      "explanation": "A self-join source expression can be compiled using the joined alias.",
+      "explanation": "A custom expression on the source side of a self-join compiles against the joined table’s alias, so its displayed source choice and actual calculation disagree.",
       "rootCause": {
         "explanation": "Join field/expression reference normalization must distinguish the base table from an aliased join to the same table. The generated SQL in this report shows that alias provenance was lost inside the source arithmetic expression. Join metadata transforms source/expression aliases, but the unavailable version prevents proving the exact transform that attached the joined alias to both sides. Source applicability caveat: inspected public revision f42632893810325d9f74375a4cd29bd31d8daefa is approximate context; the fixture image revision 03d994f is unavailable.",
         "sourceReferences": [
@@ -671,7 +671,7 @@
     },
     {
       "id": "metabase-self-join-fk-remap-source-provenance",
-      "explanation": "Self-join rows can display joined-record FK labels for the source record.",
+      "explanation": "An Orders self-join can show the joined record’s user/product display labels on the original source record’s foreign-key columns.",
       "rootCause": {
         "explanation": "FK remapping adds human-readable target columns to query results. In a self-join, matching remaps by field identity without preserving the originating join alias can associate source IDs with joined labels; the report retains source IDs while displaying the wrong names. The add-remaps path explicitly carries current join aliases, so the exact fixture failure in that provenance chain is not established. Source applicability caveat: inspected public revision f42632893810325d9f74375a4cd29bd31d8daefa is approximate context; the fixture image revision 03d994f is unavailable.",
         "sourceReferences": [
@@ -712,7 +712,7 @@
     },
     {
       "id": "metabase-join-source-replacement-stale-column-alias-metadata",
-      "explanation": "Replacing a loaded join source can retain incompatible join-field metadata.",
+      "explanation": "Replacing a reloaded join’s physical table with a saved question leaves its join condition using incompatible column metadata, so the otherwise configured join fails.",
       "rootCause": {
         "explanation": "Join source replacement rewrites aliases and conditions, but an existing selected column can retain desired/source alias metadata from the previous table source. SQL compilation then cannot find the desired alias until the field is explicitly reselected. The replacement and alias-normalization functions identify this boundary; the exact stale metadata object in the fixture remains inferred. Source applicability caveat: inspected public revision f42632893810325d9f74375a4cd29bd31d8daefa is approximate context; the fixture image revision 03d994f is unavailable.",
         "sourceReferences": [
@@ -761,7 +761,7 @@
     },
     {
       "id": "metabase-chained-self-join-selected-alias-lost",
-      "explanation": "A later self-join can compare the base column instead of the selected earlier join column.",
+      "explanation": "Second self-join of a saved question compares the original source column instead of the selected first-join column.",
       "rootCause": {
         "explanation": "The selected left operand must retain its earlier join alias when another join to the same saved question is added. Losing or normalizing that alias to the base source makes the second condition compare the original source value. This is distinct from aliasing arithmetic inside a source expression; the exact fixture-specific alias rewrite remains inferred. Source applicability caveat: inspected public revision f42632893810325d9f74375a4cd29bd31d8daefa is approximate context; the fixture image revision 03d994f is unavailable.",
         "sourceReferences": [
@@ -808,7 +808,7 @@
     },
     {
       "id": "metabase-custom-expression-name-collides-with-source-field-ref",
-      "explanation": "Selecting a same-named custom column can reference the original source field.",
+      "explanation": "Selecting a custom column with a source field's name silently references the source field.",
       "rootCause": {
         "explanation": "Expression compilation resolves the inserted bracketed display name through nameMatcher, which calls dimensions.find and returns the first available column with that name. The clicked suggestion identity is not encoded in the expression text. When a source Price precedes a custom expression also displayed as Price, selecting the latter still compiles [Price] to the first source column. Source applicability caveat: inspected public revision f42632893810325d9f74375a4cd29bd31d8daefa is approximate context; the fixture image revision 03d994f is unavailable.",
         "sourceReferences": [
@@ -856,7 +856,7 @@
     },
     {
       "id": "metabase-special-template-tag-rename-retains-old-type",
-      "explanation": "Replacing a snippet or saved-card SQL reference with an ordinary variable can retain the special tag type.",
+      "explanation": "Replacing special SQL references with normal variables leaves invalid parameter metadata.",
       "rootCause": {
         "explanation": "rename-template-tag carries forward the entire old tag, removes snippet/card identifying keys, and changes its name/display name without resetting :type. A special tag renamed into an ordinary variable therefore still validates as snippet/card while its required identifier metadata has been removed. Source applicability caveat: inspected public revision f42632893810325d9f74375a4cd29bd31d8daefa is approximate context; the fixture image revision 03d994f is unavailable.",
         "sourceReferences": [
@@ -903,7 +903,7 @@
     },
     {
       "id": "metabase-parameter-values-from-parameterized-card-unbound",
-      "explanation": "A saved SQL question requiring parameters can fail as a parameter-values source.",
+      "explanation": "Selectable values sourced from a parameterized saved SQL question show \"An error occurred in your query\".",
       "rootCause": {
         "explanation": "values-from-card-query wraps the saved card as a new source query and values-from-card sends it directly to process-query. No source-card parameter bindings/default propagation are supplied along that path. Required native parameters can therefore remain unresolved while retrieving selectable values. Source applicability caveat: inspected public revision f42632893810325d9f74375a4cd29bd31d8daefa is approximate context; the fixture image revision 03d994f is unavailable.",
         "sourceReferences": [
@@ -950,7 +950,7 @@
     },
     {
       "id": "metabase-iso-date-input-timezone",
-      "explanation": "Typing an ISO date can shift the selected calendar day.",
+      "explanation": "Typing an ISO calendar date and leaving the date input can select the previous day in browser time zones behind UTC. This affects SQL Date parameter defaults and notebook fixed-date filters; both the displayed calendar selection and applied filter use the shifted date.",
       "rootCause": {
         "explanation": "The date picker uses Mantine DateInput directly and passes its resulting JavaScript Date through local calendar handling without a date-only parser at this integration point. Parsing ISO midnight as an instant and displaying it in a negative timezone can show the previous day; the dependency parsing branch and fixture version are not verified, so this is an integration-level source inference. Source applicability caveat: inspected public revision f42632893810325d9f74375a4cd29bd31d8daefa is approximate context; the fixture image revision 03d994f is unavailable.",
         "sourceReferences": [
@@ -974,7 +974,6 @@
       "reproductionPaths": [
         {
           "id": "metabase-iso-date-input-timezone-querying-path-1",
-          "explanation": "Date parameter picker changes ISO date 2024-02-29 to February 28, 2024.",
           "sourceBugs": [
             {
               "index": 20,
@@ -982,6 +981,7 @@
               "name": "Date parameter picker changes ISO date 2024-02-29 to February 28, 2024"
             }
           ],
+          "explanation": "Date parameter picker changes ISO date 2024-02-29 to February 28, 2024.",
           "expected": "Entering 2024-02-29 in the date picker input should select and retain February 29, 2024.",
           "actual": "Typing 2024-02-29 into the date picker input changes the value to February 28, 2024 and selects day 28 on the calendar.",
           "reproSteps": [
@@ -995,7 +995,6 @@
         },
         {
           "id": "metabase-iso-date-input-timezone-querying-path-2",
-          "explanation": "Builder fixed-date input shifts ISO 2026-01-02 to January 1, 2026 on blur.",
           "sourceBugs": [
             {
               "index": 78,
@@ -1003,6 +1002,7 @@
               "name": "Builder fixed-date input shifts ISO 2026-01-02 to January 1, 2026 on blur"
             }
           ],
+          "explanation": "Builder fixed-date input shifts ISO 2026-01-02 to January 1, 2026 on blur.",
           "expected": "The ISO date 2026-01-02 remains January 2, 2026.",
           "actual": "After blur the Date field displays January 1, 2026 and the calendar selects day 1.",
           "reproSteps": [
@@ -1018,7 +1018,7 @@
     },
     {
       "id": "metabase-custom-list-multivalue-summary-only-first-label",
-      "explanation": "A custom-list parameter summary can display only the first selected label.",
+      "explanation": "A native SQL parameter with a custom value list displays only the first selected label in its summary even though multiple values are selected and applied.",
       "rootCause": {
         "explanation": "FormattedParameterValue.getValue returns value[0] for an array. The custom values label lookup uses that first item and renders its mapped label, losing the labels of additional selected custom-list values even though the query retains them. Source applicability caveat: inspected public revision f42632893810325d9f74375a4cd29bd31d8daefa is approximate context; the fixture image revision 03d994f is unavailable.",
         "sourceReferences": [
@@ -1065,7 +1065,7 @@
     },
     {
       "id": "metabase-saved-question-export-ignores-selected-sql-override",
-      "explanation": "CSV export can rerun saved SQL rather than the selected statement shown in results.",
+      "explanation": "Saved native question CSV export ignores selected-statement run and exports the saved full query result.",
       "rootCause": {
         "explanation": "Selected-statement execution creates a temporary overrideWithQuestion and does not update the saved card. Export chooses the saved-card endpoint from question.id() and sends only parameter/export options rather than result.json_query SQL, so it reruns the full stored query. Source applicability caveat: inspected public revision f42632893810325d9f74375a4cd29bd31d8daefa is approximate context; the fixture image revision 03d994f is unavailable.",
         "sourceReferences": [
@@ -1112,7 +1112,7 @@
     },
     {
       "id": "metabase-json-export-duplicate-column-name-overwrite",
-      "explanation": "JSON export silently drops values for repeated column aliases.",
+      "explanation": "JSON result download silently discards earlier columns with duplicate SQL aliases.",
       "rootCause": {
         "explanation": "The JSON row writer interleaves column names and values into array-map. Duplicate aliases are duplicate map keys, so later columns replace earlier values before encoding JSON; preserving key order does not preserve duplicate keys. Source applicability caveat: inspected public revision f42632893810325d9f74375a4cd29bd31d8daefa is approximate context; the fixture image revision 03d994f is unavailable.",
         "sourceReferences": [
@@ -1152,7 +1152,7 @@
     },
     {
       "id": "metabase-restored-question-retains-trash-breadcrumb-state",
-      "explanation": "A restored question can retain Trash in its collection breadcrumb.",
+      "explanation": "Restoring a saved question leaves its collection breadcrumb labeled Trash.",
       "rootCause": {
         "explanation": "Restoring a question clears its archived state while breadcrumb rendering also depends on collection metadata. Those paths must refresh together; the observed active controls with a Trash breadcrumb indicate collection/breadcrumb state was not updated with restore. The available header source identifies the dependency but not the exact stale-state writer in the fixture. Source applicability caveat: inspected public revision f42632893810325d9f74375a4cd29bd31d8daefa is approximate context; the fixture image revision 03d994f is unavailable.",
         "sourceReferences": [
@@ -1191,31 +1191,31 @@
       ]
     },
     {
-      "id": "metabase-inline-question-title-missing-trim-validation",
-      "explanation": "Whitespace-only inline titles can leave a blank header despite an unsuccessful save.",
+      "id": "metabase-inline-card-blank-name",
+      "explanation": "Renaming a saved question, model or metric inline to spaces leaves a blank header without validation feedback; the save is rejected and reopening restores the old name.",
       "rootCause": {
-        "explanation": "SavedQuestionLeftSide accepts any truthy name, including whitespace, and submits it. EditableText maintains its local submitted/input value separately from server persistence, so backend rejection/normalization is not represented as inline validation and the blank local title can survive until reload. Source applicability caveat: inspected public revision f42632893810325d9f74375a4cd29bd31d8daefa is approximate context; the fixture image revision 03d994f is unavailable.",
+        "explanation": "EditableText treats a nonempty whitespace string as a submitted value, and SavedQuestionLeftSide only checks name truthiness before saving. The locally committed text remains visible when the server rejects a blank trimmed name; an exactly empty value takes the separate revert branch.",
         "sourceReferences": [
           {
             "repository": "metabase/metabase",
             "revision": "f42632893810325d9f74375a4cd29bd31d8daefa",
-            "path": "frontend/src/metabase/query_builder/components/view/ViewHeader/components/SavedQuestionLeftSide/SavedQuestionLeftSide.tsx",
-            "line": 42,
-            "url": "https://github.com/metabase/metabase/blob/f42632893810325d9f74375a4cd29bd31d8daefa/frontend/src/metabase/query_builder/components/view/ViewHeader/components/SavedQuestionLeftSide/SavedQuestionLeftSide.tsx#L42"
+            "path": "frontend/src/metabase/common/components/EditableText/EditableText.tsx",
+            "line": 88,
+            "url": "https://github.com/metabase/metabase/blob/f42632893810325d9f74375a4cd29bd31d8daefa/frontend/src/metabase/common/components/EditableText/EditableText.tsx#L88"
           },
           {
             "repository": "metabase/metabase",
             "revision": "f42632893810325d9f74375a4cd29bd31d8daefa",
-            "path": "frontend/src/metabase/common/components/EditableText/EditableText.tsx",
-            "line": 59,
-            "url": "https://github.com/metabase/metabase/blob/f42632893810325d9f74375a4cd29bd31d8daefa/frontend/src/metabase/common/components/EditableText/EditableText.tsx#L59"
+            "path": "frontend/src/metabase/query_builder/components/view/ViewHeader/components/SavedQuestionLeftSide/SavedQuestionLeftSide.tsx",
+            "line": 41,
+            "url": "https://github.com/metabase/metabase/blob/f42632893810325d9f74375a4cd29bd31d8daefa/frontend/src/metabase/query_builder/components/view/ViewHeader/components/SavedQuestionLeftSide/SavedQuestionLeftSide.tsx#L41"
           }
         ],
         "analysisStatus": "source-supported"
       },
       "reproductionPaths": [
         {
-          "id": "metabase-inline-question-title-missing-trim-validation-querying-path-1",
+          "id": "metabase-inline-card-blank-name-querying-path-1",
           "explanation": "Whitespace-only inline rename leaves saved question header blank until reload, without validation feedback.",
           "sourceBugs": [
             {
@@ -1239,7 +1239,7 @@
     },
     {
       "id": "metabase-numeric-filter-parsefloat-prefix-acceptance",
-      "explanation": "Numeric filter entry accepts a numeric prefix and silently ignores its suffix.",
+      "explanation": "Numeric filter entry accepts a numeric prefix of comma-formatted or partially numeric text, silently dropping the rest and applying a different number.",
       "rootCause": {
         "explanation": "parseNumber and parseNumberValue use parseFloat without validating the complete input string. A comma or trailing text terminates parsing, so 1,000 becomes 1 and 5.94xyz becomes 5.94. A source TODO explicitly documents accepting invalid numeric suffixes. Source applicability caveat: inspected public revision f42632893810325d9f74375a4cd29bd31d8daefa is approximate context; the fixture image revision 03d994f is unavailable.",
         "sourceReferences": [
@@ -1287,7 +1287,7 @@
     },
     {
       "id": "metabase-binned-quick-filter-uses-scalar-lower-bound",
-      "explanation": "Quick-filter equality on a numeric bin compares its lower bound rather than the bin interval.",
+      "explanation": "Choosing an equality quick filter on a displayed numeric bin filters only on the bin’s lower-bound value instead of selecting all rows within that interval.",
       "rootCause": {
         "explanation": "The quick-filter drill builds the selected comparison as operator(field-ref, value) using the raw clicked value. A binned cell value is the bin lower boundary, and this path does not expand it into the half-open lower/upper range used by Zoom in, so equality and inequality filter the scalar boundary. Source applicability caveat: inspected public revision f42632893810325d9f74375a4cd29bd31d8daefa is approximate context; the fixture image revision 03d994f is unavailable.",
         "sourceReferences": [
@@ -1328,7 +1328,7 @@
     },
     {
       "id": "metabase-year-bucket-filter-numeric-type-mismatch",
-      "explanation": "Filtering an aggregated year column can compare a timestamp to integers.",
+      "explanation": "Filtering a date column grouped by Year in a later summary stage compares the timestamp to numeric year values and fails with an invalid date/type comparison.",
       "rootCause": {
         "explanation": "Temporal bucket metadata determines which picker/operator family receives the year column. The report shows the frontend classifies a DATE_TRUNC year result as numeric and emits integer boundaries rather than timestamp/date boundaries. The metadata type calculation is the relevant boundary, but the exact fixture path producing the numeric effective type remains inferred. Source applicability caveat: inspected public revision f42632893810325d9f74375a4cd29bd31d8daefa is approximate context; the fixture image revision 03d994f is unavailable.",
         "sourceReferences": [
@@ -1376,7 +1376,7 @@
     },
     {
       "id": "metabase-local-date-time-input-dst-normalization",
-      "explanation": "Date/time filters can shift entered or reopened times at a DST boundary.",
+      "explanation": "At a daylight-saving boundary, typing or reopening a date/time filter can shift the entered hour and save a different boundary, so filtering disagrees with the timestamps shown in the source results.",
       "rootCause": {
         "explanation": "SpecificDatePicker.setTimePart applies Date.setHours using the browser local timezone, which normalizes nonexistent spring-forward wall times. TimeInput also parses a clock-only value against the current date before transferring its local hours. These instant/local wall-time conversions can shift the selected filter time when the target date has a different DST offset. Source applicability caveat: inspected public revision f42632893810325d9f74375a4cd29bd31d8daefa is approximate context; the fixture image revision 03d994f is unavailable.",
         "sourceReferences": [
@@ -1444,7 +1444,7 @@
     },
     {
       "id": "metabase-notebook-source-search-click-closes-picker",
-      "explanation": "Pointer interaction with source search can close the notebook data picker.",
+      "explanation": "Clicking the notebook source-search input closes the picker instead of positioning the cursor.",
       "rootCause": {
         "explanation": "The relevant boundary is NotebookDataPicker popover click capture and source-picker toggle state. The available source already contains capture/propagation guards, so attributing the report to an unconditional bubbling toggle would be unsupported. Exact fixture-version event handling remains unresolved. Source applicability caveat: inspected public revision f42632893810325d9f74375a4cd29bd31d8daefa is approximate context; the fixture image revision 03d994f is unavailable.",
         "sourceReferences": [
@@ -1483,7 +1483,7 @@
     },
     {
       "id": "metabase-discard-after-circular-source-rejection-stuck",
-      "explanation": "Discard can remain open after a rejected circular saved-question source change.",
+      "explanation": "Discard changes remains stuck after rejecting a circular saved-question source.",
       "rootCause": {
         "explanation": "Circular source validation rejects persistence after the local question/source has changed. Discard must restore the prior valid question and let the navigation blocker proceed; the reported persistent dialog indicates that rejected-save/local-question and discard restoration state remain inconsistent. The exact fixture reducer/blocked-navigation transition is not established. Source applicability caveat: inspected public revision f42632893810325d9f74375a4cd29bd31d8daefa is approximate context; the fixture image revision 03d994f is unavailable.",
         "sourceReferences": [
@@ -1530,16 +1530,16 @@
     },
     {
       "id": "metabase-remove-join-retargets-dependent-join-operand",
-      "explanation": "Deleting one join can silently retarget a later join operand to a base source column.",
+      "explanation": "Deleting a join silently changes a later join's left operand to the base source's same-named field.",
       "rootCause": {
-        "explanation": "remove-join and downstream reference replacement update conditions and dependent columns. A reference to the removed join must be removed or invalidated rather than rebound solely by a same-named base column; the observed successful but changed comparison identifies an alias-provenance loss on that dependency rewrite boundary. Exact matching logic in the fixture remains inferred. Source applicability caveat: inspected public revision f42632893810325d9f74375a4cd29bd31d8daefa is approximate context; the fixture image revision 03d994f is unavailable.",
+        "explanation": "dependent-join? passes a whole join map to field-clause-with-join-alias?, which only succeeds for a field clause. It therefore fails to inspect references inside later join conditions when removing the earlier join. The surviving condition can subsequently resolve its removed source against a same-named base field. This missing descendant traversal is distinct from native field-name invalidation of filters/groupings.",
         "sourceReferences": [
           {
             "repository": "metabase/metabase",
             "revision": "f42632893810325d9f74375a4cd29bd31d8daefa",
             "path": "src/metabase/lib/remove_replace.cljc",
-            "line": 672,
-            "url": "https://github.com/metabase/metabase/blob/f42632893810325d9f74375a4cd29bd31d8daefa/src/metabase/lib/remove_replace.cljc#L672"
+            "line": 553,
+            "url": "https://github.com/metabase/metabase/blob/f42632893810325d9f74375a4cd29bd31d8daefa/src/metabase/lib/remove_replace.cljc#L553"
           },
           {
             "repository": "metabase/metabase",
@@ -1578,7 +1578,7 @@
     },
     {
       "id": "metabase-expression-rename-collision-removes-dependent-expression",
-      "explanation": "Renaming a custom column to a dependent expression name can delete that dependent calculation.",
+      "explanation": "Renaming a custom column to its dependent column's name silently deletes the dependent calculation.",
       "rootCause": {
         "explanation": "Expression replacement repeatedly validates the modified query and removes erroneous dependent clauses, with a fallback that removes all dependent parts. A name collision during a dependency rename can therefore be resolved by deleting the invalid dependent expression without a user confirmation, rather than preserving both calculations with a unique name. Source applicability caveat: inspected public revision f42632893810325d9f74375a4cd29bd31d8daefa is approximate context; the fixture image revision 03d994f is unavailable.",
         "sourceReferences": [
@@ -1625,7 +1625,7 @@
     },
     {
       "id": "metabase-snippet-search-refocus-on-every-update",
-      "explanation": "Snippet search steals keyboard focus from the SQL editor.",
+      "explanation": "Searching or editing a snippet while working in the native SQL editor moves keyboard focus unexpectedly, interrupting SQL/snippet entry.",
       "rootCause": {
         "explanation": "SnippetSidebarInner.componentDidUpdate calls searchBox.focus whenever showSearch is true, without checking that search has just opened. Any rerender while SQL typing is in progress can move focus back to snippet search and redirect subsequent keystrokes. Source applicability caveat: inspected public revision f42632893810325d9f74375a4cd29bd31d8daefa is approximate context; the fixture image revision 03d994f is unavailable.",
         "sourceReferences": [
@@ -1666,7 +1666,7 @@
     },
     {
       "id": "metabase-aggregation-picker-and-expression-validator-feature-mismatch",
-      "explanation": "An offered Median aggregation can be rejected by the expression editor.",
+      "explanation": "Aggregation picker offers Median, but its valid expression is rejected as Unsupported function Median.",
       "rootCause": {
         "explanation": "The aggregation suggestion configuration includes Median, while expression diagnostics must independently decide whether a function is supported by the current database/mode. The report indicates those feature gates disagree. Public source contains Median parsing/configuration support, so the exact unsupported-feature decision in the unavailable fixture version is unresolved. Source applicability caveat: inspected public revision f42632893810325d9f74375a4cd29bd31d8daefa is approximate context; the fixture image revision 03d994f is unavailable.",
         "sourceReferences": [
@@ -1706,7 +1706,7 @@
     },
     {
       "id": "metabase-notebook-hides-post-scalar-stages",
-      "explanation": "Replacing a join table can hide a still-executing downstream filter from the notebook.",
+      "explanation": "The notebook can hide later filters or aggregate stages after an earlier ungrouped summary, although execution still applies the hidden stages and their results or empty-state effect remain visible.",
       "rootCause": {
         "explanation": "Notebook step validity returns false for Filter and Summarize steps whenever the prior stage has an aggregation with no breakout. Removing the final upstream grouping activates this guard, hiding still-present downstream stages instead of removing them from the executed query or rendering them for repair.",
         "sourceReferences": [
@@ -1775,7 +1775,7 @@
     },
     {
       "id": "metabase-nested-case-coalesce-h2-untyped-parameter",
-      "explanation": "A valid nested case/coalesce expression can fail H2 SQL type inference.",
+      "explanation": "Accepted nested case/coalesce expression fails to run with Unknown data type \"?\".",
       "rootCause": {
         "explanation": "The SQL query processor compiles case/coalesce arguments as ordinary expressions and can emit bound literal parameters without a type cast. In nested H2 CASE/COALESCE contexts the database can lack a concrete type for a parameter and reject it as unknown data type ?. The precise generated statement and applicable H2 version were not independently executed here. Source applicability caveat: inspected public revision f42632893810325d9f74375a4cd29bd31d8daefa is approximate context; the fixture image revision 03d994f is unavailable.",
         "sourceReferences": [
@@ -1821,7 +1821,7 @@
     },
     {
       "id": "metabase-snippet-rename-loses-repeated-reference-metadata",
-      "explanation": "Renaming a snippet used multiple times can leave unresolved snippet metadata.",
+      "explanation": "Renaming a SQL snippet referenced twice in one native question updates references inconsistently and makes the question fail to run.",
       "rootCause": {
         "explanation": "NativeQuery.updateSnippetNames rewrites the SQL then reconciles template tags; native.rename-template-tag can remove snippet-id when treating a tag change as a rename. The available tagRegex is global, so first-occurrence-only string replacement is not supported as an explanation. The exact repeated-reference reconciliation that loses the identifier in the fixture remains unresolved. Source applicability caveat: inspected public revision f42632893810325d9f74375a4cd29bd31d8daefa is approximate context; the fixture image revision 03d994f is unavailable.",
         "sourceReferences": [
@@ -1956,7 +1956,7 @@
     },
     {
       "id": "metabase-saved-question-automatic-update-detaches-identity",
-      "explanation": "When a saved SQL question's result columns change on the next run, for example a new numeric parameter value changes a column's type or edited SQL was saved before running, the run drops the saved title and opens an unsaved New question with a 'Started from' breadcrumb.",
+      "explanation": "Automatic SQL changes, such as changing a required parameter or editing a used snippet, turn a saved question into “New question” with a Save button and “Started from” breadcrumb despite no explicit copy operation.",
       "rootCause": {
         "explanation": "updateQuestion defaults shouldStartAdHocQuestion to true; getAdHocQuestionWithVizSettings calls withoutNameAndId for a saved editable question. Snippet updates explicitly dispatch updateQuestion(newQuestion), and query metadata/viz updates can enter the same ordinary-edit path, converting the saved question into an ad-hoc Started from question. Exact fixture source behavior remains unresolved.",
         "sourceReferences": [
@@ -2019,10 +2019,10 @@
       ]
     },
     {
-      "id": "metabase-copy-question-dashboard-name-placeholder",
-      "explanation": "Duplicate question dialog asks for a dashboard name in the Name placeholder.",
+      "id": "metabase-copy-card-dashboard-name-placeholder",
+      "explanation": "Duplicating a saved question or metric asks “What is the name of your dashboard?” in the Name field, despite creating a copy of the selected card.",
       "rootCause": {
-        "explanation": "CopyCardForm unconditionally renders the dashboard-specific Name placeholder even when model is question. The public source literal directly explains the reproduced copy; availability in the unavailable fixture commit cannot be independently checked.",
+        "explanation": "CopyCardForm uses an unconditional dashboard-specific Name placeholder for card copies, regardless of whether the card is a question or metric.",
         "sourceReferences": [
           {
             "repository": "metabase/metabase",
@@ -2032,11 +2032,11 @@
             "url": "https://github.com/metabase/metabase/blob/f42632893810325d9f74375a4cd29bd31d8daefa/frontend/src/metabase/questions/components/CopyCardForm/CopyCardForm.tsx#L117"
           }
         ],
-        "analysisStatus": "source-version-unresolved"
+        "analysisStatus": "source-supported"
       },
       "reproductionPaths": [
         {
-          "id": "metabase-copy-question-dashboard-name-placeholder-querying-path-1",
+          "id": "metabase-copy-card-dashboard-name-placeholder-querying-path-1",
           "explanation": "Duplicate question dialog asks for a dashboard name in the Name placeholder.",
           "sourceBugs": [
             {
@@ -2058,24 +2058,24 @@
       ]
     },
     {
-      "id": "metabase-history-restores-stale-question-name",
-      "explanation": "Clicking 'Back to previous results' and discarding changes restores an outdated question title.",
+      "id": "metabase-card-history-navigation-name",
+      "explanation": "After renaming a saved question or model inline, returning through browser history or “Back to previous results” can restore its old title until the card is reloaded.",
       "rootCause": {
-        "explanation": "Back to previous results invokes browser history navigation, restoring the serialized question/card snapshot held by the earlier history entry. Renaming the saved question does not rewrite that older snapshot, so discarded edits can restore an outdated title along with the old query.",
+        "explanation": "popState restores location.state.card through setCardAndRun when the snapshot differs from the current card. Inline renames do not update older history snapshots, so navigation reinstates the old display name instead of reconciling it with the saved entity.",
         "sourceReferences": [
           {
             "repository": "metabase/metabase",
             "revision": "f42632893810325d9f74375a4cd29bd31d8daefa",
-            "path": "frontend/src/metabase/query_builder/components/VisualizationResult.jsx",
-            "line": 106,
-            "url": "https://github.com/metabase/metabase/blob/f42632893810325d9f74375a4cd29bd31d8daefa/frontend/src/metabase/query_builder/components/VisualizationResult.jsx#L106"
+            "path": "frontend/src/metabase/query_builder/actions/navigation.ts",
+            "line": 47,
+            "url": "https://github.com/metabase/metabase/blob/f42632893810325d9f74375a4cd29bd31d8daefa/frontend/src/metabase/query_builder/actions/navigation.ts#L47"
           }
         ],
-        "analysisStatus": "source-version-unresolved"
+        "analysisStatus": "inferred"
       },
       "reproductionPaths": [
         {
-          "id": "metabase-history-restores-stale-question-name-querying-path-1",
+          "id": "metabase-card-history-navigation-name-querying-path-1",
           "explanation": "Clicking 'Back to previous results' and discarding changes restores an outdated question title.",
           "sourceBugs": [
             {
@@ -2100,7 +2100,7 @@
     },
     {
       "id": "metabase-duplicate-native-alias-derived-table",
-      "explanation": "Explore results fails for a saved SQL question with duplicate column aliases.",
+      "explanation": "“Explore results” on a saved SQL question with duplicate column aliases fails rather than opening a usable downstream query.",
       "rootCause": {
         "explanation": "Explore results wraps native SQL as a derived source and projects result columns by alias. A native result with duplicate aliases is valid to display directly but cannot form the generated derived-table column namespace without disambiguation; H2 rejects the duplicate names.",
         "sourceReferences": [
@@ -2219,7 +2219,7 @@
     },
     {
       "id": "metabase-field-filter-remap-retains-incompatible-value",
-      "explanation": "Remapping a numeric SQL field filter to a date retains the old value and breaks execution.",
+      "explanation": "Remapping a native SQL field-filter parameter from a numeric field to a date field retains the old numeric value and makes the query fail.",
       "rootCause": {
         "explanation": "Field mapping/type changes replace template-tag metadata without clearing or coercing the existing parameter value. A numeric value survives into a date widget and later native date-parameter expansion receives the wrong representation.",
         "sourceReferences": [
@@ -2340,7 +2340,7 @@
     },
     {
       "id": "metabase-native-reference-sidebar-partial-id",
-      "explanation": "Typing saved-question reference #70 opens reference details for unrelated question #7.",
+      "explanation": "While typing a multi-digit saved-question reference in native SQL, the reference sidebar can open details for the shorter prefix ID instead of the full question ID.",
       "rootCause": {
         "explanation": "CodeMirror calls matchCardIdAtCursor on every cursor movement while a card reference is being typed and immediately opens that ID. The first digit can open #7, but later typing #70 is not guaranteed to retrigger/replace the sidebar because detection is tied to selection movement rather than completed token identity.",
         "sourceReferences": [
@@ -2576,7 +2576,7 @@
     },
     {
       "id": "metabase-native-reference-card-access-not-enforced",
-      "explanation": "Maya can run shared SQL referencing Jordan's inaccessible personal question and see its 1,283-row count.",
+      "explanation": "A member can run a shared SQL question referencing another user’s inaccessible personal question and obtain its data despite being unable to open that source directly.",
       "rootCause": {
         "explanation": "Native saved-question expansion loads a referenced card from the query metadata provider and compiles its dataset query; source expansion is not itself a user-facing card read check. This can allow a readable outer native question to execute an inaccessible referenced card when the caller has underlying SQL/data permission. Exact permission middleware for the fixture revision is unresolved.",
         "sourceReferences": [
@@ -2655,7 +2655,7 @@
     },
     {
       "id": "metabase-row-limit-number-precision-format",
-      "explanation": "Entering a 21-digit row limit silently changes to scientific notation 1e+21 when returning from visualization.",
+      "explanation": "Entering a 21-digit row limit is accepted, but returning from visualization changes it to scientific notation instead of preserving or validating the entered limit.",
       "rootCause": {
         "explanation": "The limit control parses user text as a JavaScript Number and later displays that numeric query value. Large integer text cannot preserve its original decimal spelling/precision and stringifies as scientific notation at 1e21; there is no safe-integer/range validation before saving the limit.",
         "sourceReferences": [
@@ -2693,7 +2693,7 @@
     },
     {
       "id": "metabase-downstream-column-alias-rebinding",
-      "explanation": "Renaming Count to another aggregate's custom name silently redirects the later-stage sum: 715,301.06 becomes 9,444.",
+      "explanation": "Renaming or rearranging earlier aggregates so their aliases collide silently retargets later calculations to the wrong aggregate; the upstream totals stay distinct while a downstream sum or ratio becomes wrong.",
       "rootCause": {
         "explanation": "Updating an upstream aggregate alias rewrites later-stage field references through visible-column matching and source aliases. Duplicate custom display/name aliases make that match ambiguous, redirecting a downstream sum to Count while retaining a plausible label. update-stale-references-in-stage is the available source mechanism; exact fixture version remains unresolved.",
         "sourceReferences": [
@@ -2799,24 +2799,24 @@
       ]
     },
     {
-      "id": "metabase-unbinned-date-restores-default-day",
-      "explanation": "Don't bin date grouping still returns daily groups: Unbinned selector conflicts with Created At: Day results.",
+      "id": "metabase-date-unbinned-default",
+      "explanation": "Choosing “Don’t bin” for a date grouping displays “Unbinned” but still groups distinct timestamps by day, so the executed results disagree with the selected granularity.",
       "rootCause": {
-        "explanation": "A missing/removed temporal bucket is treated as an unspecified default by date grouping/query normalization, which supplies :day. The UI displays the explicit Unbinned choice, but the executed breakout/metadata defaults it back to Day. Candidate default-vs-explicit-unbinned representation mismatch.",
+        "explanation": "wrap-unbucketed-clauses adds a :day temporal bucket to temporal breakout fields with no explicit temporal-unit or other opt-out. Removing the bucket for Don’t bin leaves a ref indistinguishable from an unspecified date bucket, so query middleware reinstates daily grouping.",
         "sourceReferences": [
           {
             "repository": "metabase/metabase",
             "revision": "f42632893810325d9f74375a4cd29bd31d8daefa",
-            "path": "src/metabase/lib/temporal_bucket.cljc",
-            "line": 430,
-            "url": "https://github.com/metabase/metabase/blob/f42632893810325d9f74375a4cd29bd31d8daefa/src/metabase/lib/temporal_bucket.cljc#L430"
+            "path": "src/metabase/query_processor/middleware/auto_bucket_datetimes.clj",
+            "line": 149,
+            "url": "https://github.com/metabase/metabase/blob/f42632893810325d9f74375a4cd29bd31d8daefa/src/metabase/query_processor/middleware/auto_bucket_datetimes.clj#L149"
           }
         ],
-        "analysisStatus": "source-version-unresolved"
+        "analysisStatus": "source-supported"
       },
       "reproductionPaths": [
         {
-          "id": "metabase-unbinned-date-restores-default-day-querying-path-1",
+          "id": "metabase-date-unbinned-default-querying-path-1",
           "explanation": "Don't bin date grouping still returns daily groups: Unbinned selector conflicts with Created At: Day results.",
           "sourceBugs": [
             {
@@ -2915,7 +2915,7 @@
     },
     {
       "id": "metabase-expression-rename-drops-temporal-bucket",
-      "explanation": "Renaming a computed date column resets its existing Month grouping to Day.",
+      "explanation": "Renaming a computed date column changes its existing Month grouping to Day, so a label-only edit also changes the aggregation granularity.",
       "rootCause": {
         "explanation": "Renaming an expression rebuilds its reference and subsequent breakout metadata. Temporal bucketing options on the old expression reference are not carried into the replacement, leaving a default/unbinned reference that executes at Day granularity instead of the prior Month. Candidate reference-replacement cause.",
         "sourceReferences": [
@@ -2955,7 +2955,7 @@
     },
     {
       "id": "metabase-sum-empty-input-null-not-zero",
-      "explanation": "Metric 'QA-SUM Missing Discount' returns blank instead of 0 when input has no rows.",
+      "explanation": "A metric based on Sum returns a blank scalar when the filtered input has no rows, rather than the expected zero.",
       "rootCause": {
         "explanation": "COALESCE inside a row expression affects existing input rows only. With zero rows, SQL SUM has no values and returns NULL; Count returns zero. The metric therefore needs an aggregate-level zero fallback if its expected contract is zero. This source-informed SQL semantics explanation does not assert that all NULL sums are bugs.",
         "sourceReferences": [
@@ -2994,7 +2994,7 @@
     },
     {
       "id": "metabase-model-column-labels-not-preserved-on-reload",
-      "explanation": "Saved question over Orders + People model changes inherited column labels after refresh.",
+      "explanation": "A saved question based on a model displays different inherited column labels after refresh, losing the model-specific names shown before reload.",
       "rootCause": {
         "explanation": "Inherited model column display names are held in result/query metadata during the unsaved/save flow but are not preserved/resolved identically in persisted downstream source metadata. Reload rebuilds joined-field labels from the physical People join, replacing Customer Email/State with generated names. Candidate metadata precedence issue.",
         "sourceReferences": [
@@ -3033,7 +3033,7 @@
     },
     {
       "id": "metabase-saved-snippet-parameter-metadata-stale",
-      "explanation": "New parameter added to a snippet is missing from saved dependent question, leaving query unrunnable.",
+      "explanation": "After editing a snippet’s parameters, reopening a saved dependent SQL question retains obsolete parameter widgets or omits newly required ones, even though the live editor recognized the snippet change.",
       "rootCause": {
         "explanation": "Live snippet edits reparse the current native query with updated snippet metadata, but saved dependent questions retain their own persisted template-tags/parameter list. Reopening does not reconcile that list with the latest snippet contents, leaving added required widgets absent or deleted widgets present.",
         "sourceReferences": [
@@ -3217,7 +3217,7 @@
     },
     {
       "id": "metabase-relative-minute-filter-timezone-boundary",
-      "explanation": "Next 120 minutes shows No results while its advertised absolute interval returns an order.",
+      "explanation": "A relative “Next 120 minutes” filter returns no rows even though applying the absolute interval advertised by its preview returns a matching row.",
       "rootCause": {
         "explanation": "The relative-date widget preview computes the advertised interval in the browser/report timezone while execution resolves the relative minute boundary through query-processor timezone rules. The candidate mismatch shifts the effective range; the exact fixture clock/timezone conversion cannot be reproduced from the available source.",
         "sourceReferences": [
@@ -3256,24 +3256,38 @@
       ]
     },
     {
-      "id": "metabase-remove-self-join-rebinds-filter-to-base",
-      "explanation": "Removing a self-join silently transfers its joined LABEL filter to the original source LABEL.",
+      "id": "metabase-removed-native-join-refs-survive",
+      "explanation": "Removing a join to saved native-SQL results can leave its grouping or filter behind: execution may fail or Visualize disappear, and a same-named base column can silently receive the removed join’s filter.",
       "rootCause": {
-        "explanation": "Join removal updates surviving clauses using column identity/fuzzy matching. For a self-join, removing join qualification leaves an otherwise identical base field, so the joined LABEL filter is rebound to the source LABEL rather than removed as a dangling join reference.",
+        "explanation": "remove-invalidated-refs constructs removed same-stage references using (:id column). Native saved-card result columns can have no physical field ID; column-metadata->field-ref instead refers to them by source alias/name. The generated nil-ID invalidation pattern cannot match the actual named joined reference, leaving filters or groupings to fail or resolve against a same-named remaining source. Matching the full named reference is the common cleanup fix. Attribution of every downstream normalization symptom remains inferred at the unavailable fixture revision.",
         "sourceReferences": [
           {
             "repository": "metabase/metabase",
             "revision": "f42632893810325d9f74375a4cd29bd31d8daefa",
             "path": "src/metabase/lib/remove_replace.cljc",
-            "line": 672,
-            "url": "https://github.com/metabase/metabase/blob/f42632893810325d9f74375a4cd29bd31d8daefa/src/metabase/lib/remove_replace.cljc#L672"
+            "line": 618,
+            "url": "https://github.com/metabase/metabase/blob/f42632893810325d9f74375a4cd29bd31d8daefa/src/metabase/lib/remove_replace.cljc#L618"
+          },
+          {
+            "repository": "metabase/metabase",
+            "revision": "f42632893810325d9f74375a4cd29bd31d8daefa",
+            "path": "src/metabase/lib/field.cljc",
+            "line": 445,
+            "url": "https://github.com/metabase/metabase/blob/f42632893810325d9f74375a4cd29bd31d8daefa/src/metabase/lib/field.cljc#L445"
+          },
+          {
+            "repository": "metabase/metabase",
+            "revision": "f42632893810325d9f74375a4cd29bd31d8daefa",
+            "path": "test/metabase/lib/card_test.cljc",
+            "line": 346,
+            "url": "https://github.com/metabase/metabase/blob/f42632893810325d9f74375a4cd29bd31d8daefa/test/metabase/lib/card_test.cljc#L346"
           }
         ],
-        "analysisStatus": "source-version-unresolved"
+        "analysisStatus": "inferred"
       },
       "reproductionPaths": [
         {
-          "id": "metabase-remove-self-join-rebinds-filter-to-base-querying-path-1",
+          "id": "metabase-removed-native-join-refs-survive-querying-path-1",
           "explanation": "Removing a self-join silently transfers its joined LABEL filter to the original source LABEL.",
           "sourceBugs": [
             {
@@ -3289,6 +3303,51 @@
             "Explore its results and open Editor. Join the same saved SQL question using LEFT_KEY equality. Visualize: six rows.",
             "In Editor add a filter on the joined question's LABEL, Contains two. Visualize: two rows with original LABEL duplicate and two, both joined LABEL two.",
             "Open Editor and remove the join with its x control. Observe filter now says LABEL contains two. Visualize: one original row, LEFT_KEY2 RIGHT_KEY2 LABELtwo."
+          ],
+          "severity": 3
+        },
+        {
+          "id": "metabase-removed-native-join-refs-survive-querying-path-2",
+          "explanation": "Removing a parent join leaves orphaned Joined Category grouping in Summarize and causes the Visualize button to disappear.",
+          "sourceBugs": [
+            {
+              "index": 83,
+              "id": "metabase-querying-464",
+              "name": "Removing a parent join leaves orphaned Joined Category grouping in Summarize and causes the Visualize button to disappear"
+            }
+          ],
+          "expected": "Removing the Products join should clean up dependent joins and their groupings (or prompt), leaving valid remaining joins and Summarize definitions with an available Visualize action.",
+          "actual": "The Products join and dependent SQL join are removed, but the 'Joined Category' grouping remains orphaned in Summarize and the bottom 'Visualize' button disappears.",
+          "reproSteps": [
+            "As Harbor Admin, create a fresh native SQL question named QA-JOIN-SQL-copy using Sample Database: SELECT p.CATEGORY AS \"Joined category\", COUNT(*) AS \"Order count\", SUM(o.TOTAL) AS \"Joined total\" FROM ORDERS o INNER JOIN PEOPLE u ON o.USER_ID = u.ID LEFT JOIN PRODUCTS p ON o.PRODUCT_ID = p.ID GROUP BY p.CATEGORY ORDER BY p.CATEGORY; run and save.",
+            "New > Question > Sample Database > Orders. LEFT join Products on Orders Product ID = Products ID.",
+            "Add LEFT join to the fresh saved SQL question on Products Category = Joined category. Add independent LEFT People join on Orders User ID = People ID before filtering/summarizing.",
+            "Filter Orders ID is 1. Summarize Count grouped by saved SQL Joined category. Execute (Widget Count 1).",
+            "Edit saved-SQL join comparison to != and execute (Doohickey, Gadget, Gizmo Count 1 each). Edit comparison to < and execute (empty category Count 1).",
+            "Switch saved-SQL join to INNER and execute (No results). Click Back to previous results, which restores prior LEFT notebook. Visualize and inspect table (empty category Count 1).",
+            "Open Editor. Remove the first Products join using its X. Observe Products and its dependent saved-SQL join removed but Joined Category grouping remains and Visualize action is absent."
+          ],
+          "severity": 3
+        },
+        {
+          "id": "metabase-removed-native-join-refs-survive-querying-path-3",
+          "explanation": "Removing a join leaves its dependent filter and makes the remaining summary fail.",
+          "sourceBugs": [
+            {
+              "index": 94,
+              "id": "metabase-querying-520",
+              "name": "Removing a join leaves its dependent filter and makes the remaining summary fail"
+            }
+          ],
+          "expected": "Removing the join should remove or explicitly invalidate dependent filters and preserve an executable source-only summary; without the removed filter Sum of Count would be 4.",
+          "actual": "The removed join's filter remains as 'Label is not empty'. Visualize shows 'There was a problem with your question' rather than a result.",
+          "reproSteps": [
+            "Create Left native source via Home > New > SQL query: SELECT 1 AS K, 'L1' AS LABEL UNION ALL SELECT 1, 'L2' UNION ALL SELECT 2, 'L3' UNION ALL SELECT CAST(NULL AS INTEGER), 'LN'. Save with own unique name.",
+            "Create Right native source: SELECT 1 AS K, 'R1' AS LABEL UNION ALL SELECT 1, 'R2' UNION ALL SELECT 3, 'R3' UNION ALL SELECT CAST(NULL AS INTEGER), 'RN'. Save with own unique name.",
+            "Build a question from Left; summarize Count of rows by K, Don't bin; save grouped source. Three rows are null:1, 1:2, 2:1.",
+            "Build a new question from grouped source; left join Right with source K > Right K. Filter joined Right LABEL Not empty. Summarize Sum of source Count. Visualize returns 2.",
+            "Open Editor, hover Join data and click its remove X. The join disappears but 'Label is not empty' remains.",
+            "Click Visualize."
           ],
           "severity": 3
         }
@@ -3415,19 +3474,26 @@
     },
     {
       "id": "metabase-search-date-ranges-server-timezone",
-      "explanation": "Search's Creation date and Last edit filters (Today, Yesterday, On, Before, After) resolve dates on the server's GMT clock, so questions created or edited in the evening in a timezone behind UTC are filtered as the next day.",
+      "explanation": "Search Creation date and Last edit filters can include or exclude recently created items on the wrong calendar day near midnight: browser-local fixed-date choices or relative-date previews disagree with the server-clock search boundary.",
       "rootCause": {
-        "explanation": "Search date-range-filter-clause calls date-string->range without the user/report timezone and casts database timestamps to date for LocalDate bounds. Relative day resolution therefore follows the server GMT day instead of the viewer local day.",
+        "explanation": "Search date-range-filter-clause calls date-string->range without a viewer timezone. Relative decoding obtains t/local-date-time on the server, while the search comparison casts stored timestamps to date; browser-local date picks and previews therefore need not describe the same day near a timezone boundary. Exact fixture timezone configuration remains a prerequisite of each report.",
         "sourceReferences": [
           {
             "repository": "metabase/metabase",
             "revision": "f42632893810325d9f74375a4cd29bd31d8daefa",
             "path": "src/metabase/search/filter.clj",
-            "line": 72,
-            "url": "https://github.com/metabase/metabase/blob/f42632893810325d9f74375a4cd29bd31d8daefa/src/metabase/search/filter.clj#L72"
+            "line": 69,
+            "url": "https://github.com/metabase/metabase/blob/f42632893810325d9f74375a4cd29bd31d8daefa/src/metabase/search/filter.clj#L69"
+          },
+          {
+            "repository": "metabase/metabase",
+            "revision": "f42632893810325d9f74375a4cd29bd31d8daefa",
+            "path": "src/metabase/query_processor/parameters/dates.clj",
+            "line": 454,
+            "url": "https://github.com/metabase/metabase/blob/f42632893810325d9f74375a4cd29bd31d8daefa/src/metabase/query_processor/parameters/dates.clj#L454"
           }
         ],
-        "analysisStatus": "source-version-unresolved"
+        "analysisStatus": "inferred"
       },
       "reproductionPaths": [
         {
@@ -3455,7 +3521,7 @@
     },
     {
       "id": "metabase-nested-snippet-rename-parameter-discovery",
-      "explanation": "Renaming a nested inner snippet removes its parameter widgets, so the query cannot run.",
+      "explanation": "Renaming an inner snippet nested inside another SQL snippet removes its parameter widgets from a dependent question, leaving required parameters unavailable and the question unable to run.",
       "rootCause": {
         "explanation": "Native snippet parameter discovery recursively loads snippets by their current names and merges their template-tags. Renaming an inner snippet updates its direct references but leaves nested/parent snippet tag metadata pointing at the old name, so the recursion no longer discovers the inner required parameters.",
         "sourceReferences": [
@@ -3495,7 +3561,7 @@
     },
     {
       "id": "metabase-nested-join-expression-field-reference-ambiguous",
-      "explanation": "Nested saved-join expression uses original Quantity despite displaying qualified joined Quantity.",
+      "explanation": "A custom expression referencing a qualified field from a nested saved-question join can calculate with the original source field instead. The expression editor continues to display the selected joined field, concealing that the result uses a different column.",
       "rootCause": {
         "explanation": "Nested saved-join expression resolution matches the intended joined Quantity against visible/source column names without retaining enough join provenance. The display metadata still says joined Quantity, while execution resolves the source Quantity, making the reported ratio one. Candidate column equality/qualification boundary; exact fixture query processor unavailable.",
         "sourceReferences": [
@@ -3534,88 +3600,17 @@
       ]
     },
     {
-      "id": "metabase-removed-join-dangling-downstream-refs",
-      "explanation": "Removing a parent join leaves orphaned Joined Category grouping in Summarize and causes the Visualize button to disappear",
-      "rootCause": {
-        "explanation": "Join removal runs through update-joins/remove-join and stale-reference cleanup. The observed retained grouping/filter refers to a removed join or a dependent join, indicating incomplete recursive dependency cleanup. Public source contains cleanup code, so the exact branch missing these references is not established; keep these paths as a provisional cluster rather than claim there is no cleanup at all.",
-        "sourceReferences": [
-          {
-            "repository": "metabase/metabase",
-            "revision": "f42632893810325d9f74375a4cd29bd31d8daefa",
-            "path": "src/metabase/lib/remove_replace.cljc",
-            "line": 672,
-            "url": "https://github.com/metabase/metabase/blob/f42632893810325d9f74375a4cd29bd31d8daefa/src/metabase/lib/remove_replace.cljc#L672"
-          }
-        ],
-        "analysisStatus": "inferred"
-      },
-      "reproductionPaths": [
-        {
-          "id": "metabase-removed-join-dangling-downstream-refs-querying-path-1",
-          "explanation": "Removing a parent join leaves orphaned Joined Category grouping in Summarize and causes the Visualize button to disappear.",
-          "sourceBugs": [
-            {
-              "index": 83,
-              "id": "metabase-querying-464",
-              "name": "Removing a parent join leaves orphaned Joined Category grouping in Summarize and causes the Visualize button to disappear"
-            }
-          ],
-          "expected": "Removing the Products join should clean up dependent joins and their groupings (or prompt), leaving valid remaining joins and Summarize definitions with an available Visualize action.",
-          "actual": "The Products join and dependent SQL join are removed, but the 'Joined Category' grouping remains orphaned in Summarize and the bottom 'Visualize' button disappears.",
-          "reproSteps": [
-            "As Harbor Admin, create a fresh native SQL question named QA-JOIN-SQL-copy using Sample Database: SELECT p.CATEGORY AS \"Joined category\", COUNT(*) AS \"Order count\", SUM(o.TOTAL) AS \"Joined total\" FROM ORDERS o INNER JOIN PEOPLE u ON o.USER_ID = u.ID LEFT JOIN PRODUCTS p ON o.PRODUCT_ID = p.ID GROUP BY p.CATEGORY ORDER BY p.CATEGORY; run and save.",
-            "New > Question > Sample Database > Orders. LEFT join Products on Orders Product ID = Products ID.",
-            "Add LEFT join to the fresh saved SQL question on Products Category = Joined category. Add independent LEFT People join on Orders User ID = People ID before filtering/summarizing.",
-            "Filter Orders ID is 1. Summarize Count grouped by saved SQL Joined category. Execute (Widget Count 1).",
-            "Edit saved-SQL join comparison to != and execute (Doohickey, Gadget, Gizmo Count 1 each). Edit comparison to < and execute (empty category Count 1).",
-            "Switch saved-SQL join to INNER and execute (No results). Click Back to previous results, which restores prior LEFT notebook. Visualize and inspect table (empty category Count 1).",
-            "Open Editor. Remove the first Products join using its X. Observe Products and its dependent saved-SQL join removed but Joined Category grouping remains and Visualize action is absent."
-          ],
-          "severity": 3
-        },
-        {
-          "id": "metabase-removed-join-dangling-downstream-refs-querying-path-2",
-          "explanation": "Removing a join leaves its dependent filter and makes the remaining summary fail.",
-          "sourceBugs": [
-            {
-              "index": 94,
-              "id": "metabase-querying-520",
-              "name": "Removing a join leaves its dependent filter and makes the remaining summary fail"
-            }
-          ],
-          "expected": "Removing the join should remove or explicitly invalidate dependent filters and preserve an executable source-only summary; without the removed filter Sum of Count would be 4.",
-          "actual": "The removed join's filter remains as 'Label is not empty'. Visualize shows 'There was a problem with your question' rather than a result.",
-          "reproSteps": [
-            "Create Left native source via Home > New > SQL query: SELECT 1 AS K, 'L1' AS LABEL UNION ALL SELECT 1, 'L2' UNION ALL SELECT 2, 'L3' UNION ALL SELECT CAST(NULL AS INTEGER), 'LN'. Save with own unique name.",
-            "Create Right native source: SELECT 1 AS K, 'R1' AS LABEL UNION ALL SELECT 1, 'R2' UNION ALL SELECT 3, 'R3' UNION ALL SELECT CAST(NULL AS INTEGER), 'RN'. Save with own unique name.",
-            "Build a question from Left; summarize Count of rows by K, Don't bin; save grouped source. Three rows are null:1, 1:2, 2:1.",
-            "Build a new question from grouped source; left join Right with source K > Right K. Filter joined Right LABEL Not empty. Summarize Sum of source Count. Visualize returns 2.",
-            "Open Editor, hover Join data and click its remove X. The join disappears but 'Label is not empty' remains.",
-            "Click Visualize."
-          ],
-          "severity": 3
-        }
-      ]
-    },
-    {
       "id": "metabase-relative-interval-display-state-diverges",
-      "explanation": "Relative hours input shows 1 after typing 0.5, but preview and applied filter use 5 hours",
+      "explanation": "Typing a fractional relative-date interval such as 0.5 and blurring can leave the numeric input showing 1 while the preview and applied filter use 5 units.",
       "rootCause": {
-        "explanation": "DateIntervalPicker uses NumberInputWithFallbackValue with allowDecimal=false and a separate displayValue state. A fractional keystroke sequence can be normalized to integer digits and propagated to the parent while blur restores the stale value prop; displayed fallback and applied interval then disagree. The exact keystroke ordering is inferred from the report and this split state.",
+        "explanation": "DateIntervalPicker uses NumberInputWithFallbackValue with decimal entry disabled. The component keeps a display string separately from the parent interval; transient fractional text followed by fallback-on-blur can leave displayed and applied numbers inconsistent. The precise fixture transaction ordering is inferred, rather than runtime-verified.",
         "sourceReferences": [
           {
             "repository": "metabase/metabase",
             "revision": "f42632893810325d9f74375a4cd29bd31d8daefa",
             "path": "frontend/src/metabase/querying/filters/components/DatePicker/RelativeDatePicker/DateIntervalPicker/DateIntervalPicker.tsx",
-            "line": 77,
-            "url": "https://github.com/metabase/metabase/blob/f42632893810325d9f74375a4cd29bd31d8daefa/frontend/src/metabase/querying/filters/components/DatePicker/RelativeDatePicker/DateIntervalPicker/DateIntervalPicker.tsx#L77"
-          },
-          {
-            "repository": "metabase/metabase",
-            "revision": "f42632893810325d9f74375a4cd29bd31d8daefa",
-            "path": "frontend/src/metabase/querying/filters/components/DatePicker/NumberInputWithFallbackValue/NumberInputWithFallbackValue.tsx",
-            "line": 21,
-            "url": "https://github.com/metabase/metabase/blob/f42632893810325d9f74375a4cd29bd31d8daefa/frontend/src/metabase/querying/filters/components/DatePicker/NumberInputWithFallbackValue/NumberInputWithFallbackValue.tsx#L21"
+            "line": 75,
+            "url": "https://github.com/metabase/metabase/blob/f42632893810325d9f74375a4cd29bd31d8daefa/frontend/src/metabase/querying/filters/components/DatePicker/RelativeDatePicker/DateIntervalPicker/DateIntervalPicker.tsx#L75"
           }
         ],
         "analysisStatus": "inferred"
@@ -3645,7 +3640,7 @@
     },
     {
       "id": "metabase-previous-results-navigation-restores-notebook-mode",
-      "explanation": "“Back to previous results” opens the notebook editor instead of returning to results",
+      "explanation": "“Back to previous results” opens the notebook editor instead of returning to results.",
       "rootCause": {
         "explanation": "Back-to-results depends on saved navigation state and query-builder mode restoration. popState explicitly derives mode from the target URL; a previous notebook URL therefore restores notebook instead of results. The public source boundary is clear, but the exact prior-history entry used by the reported action is not established.",
         "sourceReferences": [
@@ -3690,7 +3685,7 @@
     },
     {
       "id": "metabase-join-condition-change-renames-and-prunes-dependencies",
-      "explanation": "Editing a join condition silently drops later steps that use the join",
+      "explanation": "Changing a join's condition (a condition field, an added condition, or an equivalent expression) replaces the join under a new name and silently deletes later filters, custom columns or groupings that reference the joined columns.",
       "rootCause": {
         "explanation": "replace-expression-removing-erroneous-parts recomputes a default join alias when conditions change, and replace-join tags changed conditions for alias replacement. The dependency cleanup path can remove downstream clauses instead of preserving their references through an equivalent condition edit; this deletion is silent at the notebook mutation boundary.",
         "sourceReferences": [
@@ -3743,7 +3738,7 @@
     },
     {
       "id": "metabase-timezone-week-drill-boundary-mismatch",
-      "explanation": "Drilling into a nonempty timezone-aware week returns No results",
+      "explanation": "Drilling into a nonempty week of timezone-aware timestamps returns no rows, even though the selected weekly aggregate contains data.",
       "rootCause": {
         "explanation": "The underlying-record drill reconstructs filters from temporal breakout values and expands them through expand-temporal-expression, which coerces timestamps and formats date-only bounds for week units. This can discard an offset-sensitive bucket boundary; the reported timezone-aware week mismatch is a candidate consequence, but exact server/runtime coercion has not been traced.",
         "sourceReferences": [
@@ -3789,7 +3784,7 @@
     },
     {
       "id": "metabase-h2-offset-preserving-month-truncation",
-      "explanation": "Grouping timezone-aware timestamps by Month produces duplicate March and November groups",
+      "explanation": "Grouping timezone-aware timestamps by Month produces duplicate March and November groups instead of one group for each calendar month.",
       "rootCause": {
         "explanation": "The H2 date-trunc implementation calls DATE_TRUNC directly on the original expression and preserves its database type. For TIMESTAMP WITH TIME ZONE this retains per-row offsets across DST. Equal displayed month names can therefore have distinct truncated instants and form separate groups rather than one normalized month.",
         "sourceReferences": [
@@ -3827,7 +3822,7 @@
     },
     {
       "id": "metabase-post-aggregation-join-replacement-rebinds-source",
-      "explanation": "Replacing a post-aggregation join with Reviews corrupts the join configuration and returns all 1,112 reviews for a single product group",
+      "explanation": "Replacing a post-aggregation join with Reviews corrupts the join configuration and returns all 1,112 reviews for a single product group.",
       "rootCause": {
         "explanation": "Replacing a join updates the join source and conditions through replace-join and the JoinStep source-picker conversion. The observed Reviews-to-Reviews condition indicates that the post-aggregation left operand is rebound to the new join source. The precise metadata/reference branch responsible is not established in the approximate source; it is kept separate from ordinary join removal.",
         "sourceReferences": [
@@ -3876,7 +3871,7 @@
     },
     {
       "id": "metabase-native-preview-cache-not-invalidated-by-snippet",
-      "explanation": "Query preview continues using old SQL after editing an inserted snippet",
+      "explanation": "After editing a snippet already inserted into a native question, query preview continues executing the previous snippet SQL rather than the saved edit.",
       "rootCause": {
         "explanation": "NativeQueryPreview requests useGetNativeDatasetQuery using the query object and parameters. getNativeDataset defines no cache tags tying this response to snippet mutations, and a snippet-body edit leaves the query text/reference unchanged. The cached expanded SQL can therefore remain valid to the client after the snippet changes.",
         "sourceReferences": [
@@ -3924,7 +3919,7 @@
     },
     {
       "id": "metabase-boolean-distinct-values-rendered-as-react-children",
-      "explanation": "Data Reference shows blank distinct-value rows for INVOICES.EXPECTED_INVOICE",
+      "explanation": "Data Reference shows blank distinct-value rows for INVOICES.EXPECTED_INVOICE.",
       "rootCause": {
         "explanation": "ExtendedFieldValuesList inserts the raw distinct value as a React child. React does not render boolean children, so true/false produce blank list entries although the distinct-value count is correct. The abbreviated list joins values into strings and does not have this rendering behavior.",
         "sourceReferences": [
@@ -3963,7 +3958,7 @@
     },
     {
       "id": "metabase-decimal-cell-filter-loses-precision",
-      "explanation": "Equality cell filter on high-precision decimal returns no results for the clicked value",
+      "explanation": "Applying an equality cell filter to a high-precision decimal returns no rows, including the very row whose displayed value was selected.",
       "rootCause": {
         "explanation": "The quick-filter drill builds its equality clause from the clicked serialized value. High-precision DECIMAL values represented by JavaScript numbers can already be rounded before the literal is sent back to compare with the exact database value. That boundary explains the reported no-match equality; exact wire representations were not supplied and remain to be verified.",
         "sourceReferences": [
@@ -4008,7 +4003,7 @@
     },
     {
       "id": "metabase-empty-optional-parameter-dirty-comparison",
-      "explanation": "Saved SQL question with empty optional filters remains covered by pending-run overlay after running the query",
+      "explanation": "Saved SQL question with empty optional filters remains covered by pending-run overlay after running the query.",
       "rootCause": {
         "explanation": "Pending-run state compares last-run and next-run normalized parameter values. Empty optional widgets and query-result parameters can use different empty representations, leaving the result flagged dirty after execution even when both omit the optional predicate. The exact empty representations in this report are not established by the supplied evidence.",
         "sourceReferences": [
@@ -4055,7 +4050,7 @@
     },
     {
       "id": "metabase-expression-update-prunes-direct-alias-dependents",
-      "explanation": "Editing a custom column silently deletes dependent alias columns",
+      "explanation": "Editing a custom column silently removes dependent columns that are direct aliases of it, while other dependent calculations can remain.",
       "rootCause": {
         "explanation": "replace-expression-removing-erroneous-parts modifies an expression, validates the resulting query, and removes clauses associated with errors; its fallback removes dependent parts. A direct alias expression can be classified as invalid during the replacement and removed even when arithmetic dependents survive. This identifies the cleanup boundary; the exact failing validation path for the alias report remains inferred.",
         "sourceReferences": [
@@ -4103,7 +4098,7 @@
     },
     {
       "id": "metabase-relative-offset-label-extra-article",
-      "explanation": "Relative one-day offset filter label reads “is in the yesterday”",
+      "explanation": "Relative one-day offset filter label reads “is in the yesterday”.",
       "rootCause": {
         "explanation": "The relative-time-interval display-name method wraps the already humanized temporal description in the fixed translation \"is in the {1}\". A one-day past interval humanizes to yesterday, yielding the ungrammatical \"in the yesterday\" when an offset is present.",
         "sourceReferences": [
@@ -4141,7 +4136,7 @@
     },
     {
       "id": "metabase-join-inequality-applies-filter-null-semantics",
-      "explanation": "Notebook != join matches a null left key to a null right key",
+      "explanation": "A notebook join using “not equal” matches a null left key to a null right key, contrary to the expected SQL null-comparison behavior.",
       "rootCause": {
         "explanation": "The generic SQL != compiler calls correct-null-behaviour, which adds OR <field> IS NULL. That is intended to include null rows for a filter but also applies when both operands are joined fields. Null left keys therefore match right rows, including a null right key, instead of obeying SQL join inequality semantics.",
         "sourceReferences": [
@@ -4188,7 +4183,7 @@
     },
     {
       "id": "metabase-h2-timezone-filter-conversion-unsupported",
-      "explanation": "Fixed On date filter on a saved timezone-aware timestamp question fails with a TIMESTAMP WITH TIME ZONE parse error",
+      "explanation": "Fixed On date filter on a saved timezone-aware timestamp question fails with a TIMESTAMP WITH TIME ZONE parse error.",
       "rootCause": {
         "explanation": "A fixed temporal filter against a TIMESTAMP WITH TIME ZONE result carries a timezone-aware value/conversion through the generic SQL temporal compiler. The H2 driver has no working named-zone conversion for this reported path and the server attempts to parse America/Los_Angeles as a timestamp constant. The exact generated SQL responsible cannot be established from the report alone.",
         "sourceReferences": [
@@ -4234,7 +4229,7 @@
     },
     {
       "id": "metabase-record-detail-url-drops-adhoc-query-context",
-      "explanation": "Record details URL loses its query after adding and removing a saved-question filter",
+      "explanation": "After adding then removing a saved-question filter while in record details, the record URL loses the query state needed to reopen the same result.",
       "rootCause": {
         "explanation": "Object zoom updates the URL through updateUrl and question URL serialization. After an add/remove filter round trip the in-memory card can be detached from its saved ID; serializing an object-only URL without the unsaved query hash loses the base query on reload. The exact dirty/equality decision that suppresses the hash is not established.",
         "sourceReferences": [
@@ -4282,7 +4277,7 @@
     },
     {
       "id": "metabase-revert-retains-incompatible-live-parameter-values",
-      "explanation": "Reverting a shared SQL question from an ID field filter to its original category mapping immediately produces a data-conversion query error",
+      "explanation": "Reverting a shared SQL question from an ID field filter to its original category mapping immediately produces a data-conversion query error.",
       "rootCause": {
         "explanation": "Revert/reload refreshes the question definition but can retain current parameter values keyed by stable parameter IDs. A reverted field binding from numeric ID to category can therefore reuse the current numeric selection against the restored text field. Public core revert code already reloads/runs the card, so the gap is parameter reconciliation, not an absent reload.",
         "sourceReferences": [
@@ -4329,7 +4324,7 @@
     },
     {
       "id": "metabase-date-expression-casts-datetime-string-directly",
-      "explanation": "date() accepts an ISO 8601 datetime string but query fails with Cannot parse DATE constant",
+      "explanation": "date() accepts an ISO 8601 datetime string but query fails with Cannot parse DATE constant.",
       "rootCause": {
         "explanation": "The generic :date expression compiles to ->date on its operand without parsing a datetime-formatted string into a timestamp first. H2 CAST(... AS DATE) rejects the accepted ISO datetime literal containing a time suffix, despite the frontend accepting it as a date expression.",
         "sourceReferences": [
@@ -4368,7 +4363,7 @@
     },
     {
       "id": "metabase-temporal-bucket-replace-prunes-downstream-filter",
-      "explanation": "Changing date grouping from Month to Day silently removes the downstream date filter",
+      "explanation": "Changing an upstream date grouping from Month to Day silently removes a later-stage filter on that grouped date instead of preserving or explicitly invalidating it.",
       "rootCause": {
         "explanation": "Changing temporal granularity replaces a breakout clause through the remove/replace machinery. Downstream references tied to the old bucket/type are removed during validation/dependency cleanup rather than adapted or surfaced for repair, dropping an active date filter without a warning.",
         "sourceReferences": [
@@ -4415,7 +4410,7 @@
     },
     {
       "id": "metabase-join-expression-native-compilation-unresolved",
-      "explanation": "View SQL is blank after replacing a saved-question join field with a custom expression",
+      "explanation": "View SQL is blank after replacing a saved-question join field with a custom expression.",
       "rootCause": {
         "explanation": "View SQL uses the same native-preview API request built from the current query. The reported blank SQL after replacing a joined field with an expression suggests invalid or unsupported reference compilation, but neither the API response nor a specific failing compiler branch is supplied. The public source supports the boundary, not an exact root cause.",
         "sourceReferences": [
@@ -4462,7 +4457,7 @@
     },
     {
       "id": "metabase-joined-record-detail-primary-key-context",
-      "explanation": "Joined Reviews row's View details shows a different review: selecting review 1 displays review 8",
+      "explanation": "Opening “View details” from a joined record’s result row can display a different joined record because the selected row’s primary-key context is lost.",
       "rootCause": {
         "explanation": "The record-details action derives a primary-key/foreign-key context and zoom query from a result row. For a one-to-many joined result, selecting the wrong source/row key can load a different joined record and move the highlighted row. Exact column lineage selection for this report remains unestablished; keep distinct from generic URL loss.",
         "sourceReferences": [
@@ -4509,7 +4504,7 @@
     },
     {
       "id": "metabase-reference-slug-refresh-marks-query-dirty",
-      "explanation": "Opening a saved SQL question after renaming its referenced source produces unsaved changes and a discard warning without editing",
+      "explanation": "Opening a saved SQL question after renaming its referenced source produces unsaved changes and a discard warning without editing.",
       "rootCause": {
         "explanation": "Saved native-query references include a readable source slug as well as a stable ID. Loading current source metadata rewrites a renamed reference’s text; dirty comparison then treats the automatic text change as a user query edit. The public NativeQuery reference update and question dirty-comparison boundaries support this attribution.",
         "sourceReferences": [
@@ -4556,7 +4551,7 @@
     },
     {
       "id": "metabase-expression-string-formatter-unescaped-single-backslash",
-      "explanation": "Combine columns generates an invalid expression when a separator ends with a backslash",
+      "explanation": "“Combine columns” generates an invalid custom expression when the separator ends in a backslash, so an accepted separator cannot be used.",
       "rootCause": {
         "explanation": "quoteString escapes delimiters and pairs of backslashes, but its single-backslash branch leaves an unmatched trailing backslash literal. When Combine columns formats a separator ending in that character, it escapes the generated closing quote and corrupts the following concat arguments.",
         "sourceReferences": [
@@ -4603,7 +4598,7 @@
     },
     {
       "id": "metabase-back-discard-state-restoration-unresolved",
-      "explanation": "Browser Back discard leaves edited SQL and results on screen",
+      "explanation": "Using browser Back and confirming discard can leave the edited native SQL and its results on screen instead of restoring the previous question state.",
       "rootCause": {
         "explanation": "Browser Back restoration depends on location.state.card and its query-builder mode. The public popState handler already restores card contents and runs them when state differs, so a simple missing-restore attribution is not supported. The report needs the actual history state/blocked transition sequence to identify why confirmed discard retained edited SQL/results.",
         "sourceReferences": [
@@ -4650,7 +4645,7 @@
     },
     {
       "id": "metabase-row-count-popover-overlaps-download",
-      "explanation": "Row-count popover covers Download on saved question results",
+      "explanation": "Row-count popover covers Download on saved question results.",
       "rootCause": {
         "explanation": "QuestionRowCount opens LimitPopover from a footer trigger next to Download. Its floating overlay can occupy and intercept the adjacent download target while open; the source establishes this independent popover placement but not why the reported saved-question case remains open after dismissal attempts.",
         "sourceReferences": [
@@ -4698,7 +4693,7 @@
     },
     {
       "id": "metabase-started-from-navigation-exempts-discard-warning",
-      "explanation": "Started from link discards unsaved SQL without confirmation",
+      "explanation": "Started from link discards unsaved SQL without confirmation.",
       "rootCause": {
         "explanation": "The query builder’s warning gate has an isNavigationAllowed callback that exempts in-question routes. A Started-from breadcrumb returning to an original saved query can be admitted as such a route even while an ad hoc native derivative has changes. The precise source lineage/location exemption for this report remains to be confirmed.",
         "sourceReferences": [
@@ -4745,7 +4740,7 @@
     },
     {
       "id": "metabase-minute-drill-loses-time-granularity",
-      "explanation": "Minute-level date drill returns no orders for a nonempty group",
+      "explanation": "Drilling into a nonempty minute-level Created At group with See this Order applies a date-only filter that drops the selected time, so the detail query returns No results instead of the matching orders.",
       "rootCause": {
         "explanation": "Underlying-record drill filters reconstruct temporal equality from breakout metadata; the resulting filter in the report contains only a date despite a minute bucket. Public source includes time-capable expansion logic, so the exact point losing the minute unit/value is not yet proved. Keep separate from timezone week-boundary conversion.",
         "sourceReferences": [
@@ -4789,7 +4784,7 @@
     },
     {
       "id": "metabase-native-previous-results-parameter-state-unresolved",
-      "explanation": "Back to previous results leaves native query on No results",
+      "explanation": "“Back to previous results” on a native question with an empty result does not restore the earlier result set and remains on “No results.”",
       "rootCause": {
         "explanation": "Returning to previous results must restore both a native question and its parameter selections. The source navigation/result restoration path is present, but the reported unchanged no-results state does not identify which earlier parameter/result snapshot was selected or omitted. The exact root remains unresolved rather than equating all Back actions.",
         "sourceReferences": [
@@ -4837,7 +4832,7 @@
     },
     {
       "id": "metabase-relative-month-offset-inclusive-end-mismatch",
-      "explanation": "Month-offset relative date range omits its previewed final day",
+      "explanation": "Month-offset relative date range omits its previewed final day.",
       "rootCause": {
         "explanation": "Relative date preview computes a human-readable range from interval and offset units, while the backend executes a relative-time-interval with independently expanded bounds. The observed final-day omission points to inconsistent inclusive-end/bucket normalization when offset months differ from interval days; exact endpoint conversion remains inferred.",
         "sourceReferences": [
@@ -4884,7 +4879,7 @@
     },
     {
       "id": "metabase-single-value-variable-retains-multiple-values",
-      "explanation": "Switching SQL variable to single value still runs hidden selections",
+      "explanation": "Changing a native SQL variable from multiple values to a single value hides extra selections in the UI but still sends them when running the query.",
       "rootCause": {
         "explanation": "Changing native parameter widget cardinality does not necessarily normalize its already-selected array. applyTemplateTagParameters/getParameter conversion retains old parameter state; the single-value label can show one entry while execution still serializes all selections. The exact mutation branch for the report is inferred from the parameter conversion boundary.",
         "sourceReferences": [
@@ -4930,31 +4925,31 @@
       ]
     },
     {
-      "id": "metabase-trash-action-local-collection-state-stale",
-      "explanation": "Trash banner omits Restore right after moving an open question to trash",
+      "id": "metabase-archive-banner-permissions-cache",
+      "explanation": "Moving an open saved question, model or metric to Trash shows the archive banner without Restore or Delete permanently actions; reloading the card restores the missing actions.",
       "rootCause": {
-        "explanation": "The immediate trash mutation updates archive state before the owning collection/breadcrumb and permission context are reloaded. The banner then renders actions from stale collection/permission data, while a reload resolves the Trash collection and restores Restore/Delete. Exact mutation response/state values are not supplied, so this remains a source-informed cache/state hypothesis.",
+        "explanation": "setArchivedQuestion updates the live Question by calling updateQuestion(question.setArchived(...)) rather than reloading its newly archived permission fields. ViewHeaderContainer passes card.can_restore and card.can_delete directly to the banner, so the pre-trash permissions can hide Restore/Delete until a full reload supplies the archived card. The exact mutation response in the unavailable fixture revision remains unverified.",
         "sourceReferences": [
           {
             "repository": "metabase/metabase",
             "revision": "f42632893810325d9f74375a4cd29bd31d8daefa",
-            "path": "frontend/src/metabase/query_builder/actions/core/core.ts",
-            "line": 103,
-            "url": "https://github.com/metabase/metabase/blob/f42632893810325d9f74375a4cd29bd31d8daefa/frontend/src/metabase/query_builder/actions/core/core.ts#L103"
+            "path": "frontend/src/metabase/query_builder/actions/core/updateQuestion.ts",
+            "line": 179,
+            "url": "https://github.com/metabase/metabase/blob/f42632893810325d9f74375a4cd29bd31d8daefa/frontend/src/metabase/query_builder/actions/core/updateQuestion.ts#L179"
           },
           {
             "repository": "metabase/metabase",
             "revision": "f42632893810325d9f74375a4cd29bd31d8daefa",
-            "path": "frontend/src/metabase/query_builder/components/view/ViewHeader/components/HeaderBreadcrumbs/HeaderBreadcrumbs.tsx",
-            "line": 1,
-            "url": "https://github.com/metabase/metabase/blob/f42632893810325d9f74375a4cd29bd31d8daefa/frontend/src/metabase/query_builder/components/view/ViewHeader/components/HeaderBreadcrumbs/HeaderBreadcrumbs.tsx#L1"
+            "path": "frontend/src/metabase/query_builder/components/view/View/ViewHeaderContainer/ViewHeaderContainer.jsx",
+            "line": 30,
+            "url": "https://github.com/metabase/metabase/blob/f42632893810325d9f74375a4cd29bd31d8daefa/frontend/src/metabase/query_builder/components/view/View/ViewHeaderContainer/ViewHeaderContainer.jsx#L30"
           }
         ],
         "analysisStatus": "inferred"
       },
       "reproductionPaths": [
         {
-          "id": "metabase-trash-action-local-collection-state-stale-querying-path-1",
+          "id": "metabase-archive-banner-permissions-cache-querying-path-1",
           "explanation": "Trash banner omits Restore right after moving an open question to trash.",
           "sourceBugs": [
             {
@@ -4977,7 +4972,7 @@
     },
     {
       "id": "metabase-native-hotkey-bypasses-runnable-guard",
-      "explanation": "Native SQL: Ctrl+Enter runs query with no database selected, shows generic 'server issues' error",
+      "explanation": "Native SQL: Ctrl+Enter runs query with no database selected, shows generic 'server issues' error.",
       "rootCause": {
         "explanation": "QueryBuilder registers mod+Enter and calls runOrCancelQuestionOrSelectedQuery whenever the mode is not notebook, without checking the same runnable/database-selected state used by the Run button. A missing database therefore reaches /api/dataset and its generic error display.",
         "sourceReferences": [
@@ -5024,7 +5019,7 @@
     },
     {
       "id": "metabase-repeated-join-picker-group-labels-ambiguous",
-      "explanation": "Repeated joins to the same table are indistinguishable in the filter field picker",
+      "explanation": "Repeated joins to the same table are indistinguishable in the filter field picker.",
       "rootCause": {
         "explanation": "Filter column picker headings use ColumnGroupDisplayInfo.displayName. getGroupName only adds a stage suffix for main groups at later stages, and does not add a distinguishing alias for repeated joined-table groups. The query may preserve separate aliases while the picker labels both Products.",
         "sourceReferences": [
@@ -5072,7 +5067,7 @@
     },
     {
       "id": "metabase-scalar-visualization-retains-first-column-selection",
-      "explanation": "Count by category displays the category instead of the count",
+      "explanation": "Selecting a scalar visualization for Count grouped by category displays the category value instead of the count.",
       "rootCause": {
         "explanation": "A saved Count question can retain scalar display/settings after a grouping adds a category column. Scalar resolves scalar.field by name or falls back to cols[0]; if its old metric selection is not reconciled, the first breakout value is displayed instead of the count. This explains the category-only output through the existing scalar selection boundary; exact saved visualization settings remain uninspected.",
         "sourceReferences": [
