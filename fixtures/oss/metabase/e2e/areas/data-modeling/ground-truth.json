@@ -140,11 +140,11 @@
     },
     {
       "id": "metabase-data-modeling-057",
-      "name": "Clearing a field description in Data Reference and saving restores the old description",
+      "name": "Clearing a saved Data Reference field text (description, caveats, or why it's interesting) restores the old text",
       "severity": 3,
       "summary": "Clearing a field description in Data Reference and saving restores the old description.",
-      "expected": "Saving an empty optional description removes the old description and shows the empty-description placeholder.",
-      "actual": "Details still displays 'QA metadata persistence: customer feedback body.' after Save. The multimodal assertion confirmed the old Description remains rather than 'No description yet'.",
+      "expected": "Saving an emptied optional field text (description, caveats, or 'Why this field is interesting') removes the old text and shows the empty placeholder.",
+      "actual": "After clearing the text and saving, Details still shows the previous text, e.g. 'QA metadata persistence: customer feedback body.' instead of 'No description yet'.",
       "reproSteps": [
         "As the authenticated admin, use Data → Databases → Learn about our data → Sample Database → Tables → Feedback → Fields → Body.",
         "Ensure the field has a nonempty description; in this check it was set via Table Metadata to 'QA metadata persistence: customer feedback body.'. The table and field were temporarily renamed Feedback QA Metadata and Feedback text QA.",
@@ -169,11 +169,11 @@
     },
     {
       "id": "metabase-data-modeling-150",
-      "name": "Renaming a restored model displays a permission error",
+      "name": "Editing a restored model or metric from its open page fails because it still points at Trash",
       "severity": 3,
       "summary": "Renaming a restored model displays a permission error.",
-      "expected": "The model is successfully renamed and remains accessible with its data displayed.",
-      "actual": "After renaming the model in the header, the view is replaced with a permission screen displaying a key icon and 'Sorry, you don’t have permission to see that.'",
+      "expected": "After restoring from the trash banner, renaming, converting or duplicating the model or metric works without a reload.",
+      "actual": "The open page still sends the Trash collection: renaming or 'Turn back to saved question' shows 'Sorry, you don't have permission to see that', and Duplicate stays disabled with valid inputs. Reloading fixes it.",
       "reproSteps": [
         "Sign in as a member (maya@example.test). Create a model from Products, then a metric that counts it.",
         "Move the model to the trash, open the metric and follow its source link. Confirm the model-in-trash banner.",
@@ -829,11 +829,11 @@
     },
     {
       "id": "metabase-data-modeling-347",
-      "name": "Reference field pie-chart suggestion opens a bar chart instead",
+      "name": "Reference field pie-chart suggestion opens a different chart type instead",
       "severity": 3,
       "summary": "Reference field pie-chart suggestion opens a bar chart instead.",
-      "expected": "Clicking the pie-icon “Number of Release Requests grouped by Approved” suggestion should open a pie chart visualization.",
-      "actual": "Clicking the pie-icon suggestion opens “Count by Approved” rendered as a bar chart (false=3, true=3).",
+      "expected": "Clicking a pie-icon 'Number of … grouped by …' suggestion on a Data Reference field opens a pie chart.",
+      "actual": "The pie-icon suggestion opens the field's default chart instead: a bar chart for Approved (false=3, true=3), a line chart for Created At.",
       "reproSteps": [
         "Read-only reference navigation; no table/field metadata edits or chart-settings changes needed. Fixture already contains six release requests, three true and three false.",
         "Open Data reference databases with supplied authenticated access.",
@@ -1553,6 +1553,39 @@
         "In the editor's Settings tab, select List and Save changes.",
         "Click QA Zero Record and inspect the address bar. Click Next row, then Previous row, and compare the URLs.",
         "Refresh while QA Zero Record is open."
+      ]
+    },
+    {
+      "id": "metabase-data-modeling-601",
+      "name": "Records from a trashed model remain in normal search results",
+      "severity": 3,
+      "summary": "Records from a trashed model remain in normal search results.",
+      "expected": "Normal search should exclude records belonging to trashed models. They should only appear when searching trash, if supported.",
+      "actual": "After enabling Title record search on a Products model and trashing that model, searching Rustic Paper Wallet still returns its indexed record. This persists after full page reload with Search items in trash unchecked.",
+      "reproSteps": [
+        "Sign in as eval@momentic.ai and open /browse/models → Create a new model.",
+        "Choose the query builder and Sample Database → Products. Run the model and save it with a unique name such as QA Searchable Products.",
+        "On the saved model, open the three-dot menu → Edit metadata, then Columns. Select the Title column by clicking its name.",
+        "Turn on “Surface individual records in search by matching against this column” and Save changes.",
+        "Use global Search for Rustic Paper Wallet; wait until a record in the new model appears, confirming indexing is ready.",
+        "Return to the model and use its three-dot menu → Move to trash, then confirm.",
+        "Search Rustic Paper Wallet again and open View and filter all results. Keep Search items in trash off, and reload the search page.",
+        "Observe that the record still appears. Open it to see the model's trash banner."
+      ]
+    },
+    {
+      "id": "metabase-data-modeling-609",
+      "name": "Searching models and metrics by date uses the server's GMT day, so recent items fall on the wrong day",
+      "severity": 3,
+      "summary": "Search's Creation date and Last edit date filters for models and metrics resolve dates on the server's GMT clock, so items created or edited in the evening in a timezone behind UTC are filtered as the next day.",
+      "expected": "A date filter on the search page includes an item edited or created minutes ago under Today, and Before/On a date matches the day the user sees.",
+      "actual": "After 00:00 GMT (for example after 5 PM in PT), an item edited minutes earlier disappears from Last edit: Today, and items created that local day disappear from Creation date: Before tomorrow.",
+      "reproSteps": [
+        "Do this in a timezone behind UTC, after 00:00 GMT (for example after 5 PM Pacific).",
+        "Create a metric with a unique name (for example by duplicating Number of Orders), then make and save an edit to it.",
+        "Search its unique name, open View and filter all results, and select content type Metric.",
+        "Set Creation date to Fixed date range > On today's date as shown in the picker; the metric appears.",
+        "Open Last edit date, select Current then Day. Observe no results instead of the metric edited minutes ago."
       ]
     }
   ]
