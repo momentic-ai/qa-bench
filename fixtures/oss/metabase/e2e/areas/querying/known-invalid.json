@@ -579,12 +579,11 @@
       "expected": "Orders by Created At: Day of week gives 1=2678, 2=2719, 3=2590, 4=2776, 5=2646, 6=2690, 7=2661 (total 18760). Excluding day 1 should return 16082. Excluding days 1 and 7 should return 13421. Excluding days 3 and 5 should return 13524. Each matches native SQL `day_of_week(created_at) not in (...)`.",
       "actual": "!= 1 returns 16041 (removes day 2 / Monday). != 1,7 also returns 16041: the SQL is only `extract(iso_day_of_week ...) <> 1 OR CREATED_AT IS NULL`, so the 7 is dropped entirely. != 3,5 returns 13323, with SQL `iso_day_of_week <> 3 AND iso_day_of_week <> 6`. By contrast, the SQL for = 1 is `(extract(iso_day_of_week ...) % 7) + 1 = 1`, which correctly returns 2678.",
       "reproSteps": [
-        "Sign in, then New > Question > Sample Database > Orders",
-        "Summarize Count by Created At: Day of week and note the per-day counts above",
-        "Change the query: Filter > Created At > Exclude > Days of the week, select Sunday (and also Saturday), Summarize Count",
-        "MBQL equivalent: ['!=', ['field',13,{'temporal-unit':'day-of-week'}], 1, 7]",
-        "The result is 16041 rather than 13421. View SQL / POST /api/dataset/native shows only `iso_day_of_week <> 1`",
-        "Excluding 1 alone also gives 16041 rather than 16082, while the = 1 filter gives the correct 2678"
+        "Sign in, then New > Question > Sample Database > Orders. Summarize Count by Created At: Day of week and note the per-day counts.",
+        "Send the same query through the API (POST /api/dataset) with a legacy numeric MBQL filter excluding Sunday and Saturday: ['!=', ['field', <Created At field id>, {'temporal-unit': 'day-of-week'}], 1, 7].",
+        "Observe the count is 16041 rather than 13421, and the native SQL (POST /api/dataset/native) contains only iso_day_of_week <> 1.",
+        "Send the filter with only 1: it also returns 16041 rather than 16082, while the = 1 filter returns the correct 2678.",
+        "For comparison, the UI Filter > Created At > Exclude > Days of the week picker excludes the right days."
       ],
       "reason": "Out of scope: only reachable through the API with legacy numeric MBQL; the UI Exclude picker and 'Not on' drill exclude the right days."
     },
