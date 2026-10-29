@@ -1,0 +1,930 @@
+{
+  "schemaVersion": 2,
+  "sourceGroundTruth": "ground-truth.json",
+  "logicalBugs": [
+    {
+      "id": "gitea-wiki-history-does-not-follow-renames",
+      "explanation": "Wiki page history stops at a rename.",
+      "rootCause": {
+        "explanation": "renderRevisionPage queries FileCommitsCount and CommitsByFileAndRange using only the current filename. It does not follow renames to the previous filename, hiding earlier revisions.",
+        "sourceReferences": [
+          {
+            "repository": "go-gitea/gitea",
+            "revision": "99053ce4fa2b45f1bca5837418c0c57f793ca824",
+            "path": "routers/web/repo/wiki.go",
+            "line": 425,
+            "url": "https://github.com/go-gitea/gitea/blob/99053ce4fa2b45f1bca5837418c0c57f793ca824/routers/web/repo/wiki.go#L425"
+          }
+        ]
+      },
+      "reproductionPaths": [
+        {
+          "id": "gitea-wiki-history-does-not-follow-renames-path-1",
+          "explanation": "Changing a wiki page title through Edit resets the page's visible Revisions list to the rename commit, even though the wiki commit itself identifies a file rename with an existing parent history. Users cannot review the page's earlier content revisions from the renamed page.",
+          "sourceBugs": [
+            {
+              "index": 0,
+              "id": null,
+              "name": "Renaming a wiki page hides its earlier revisions from page history"
+            }
+          ],
+          "expected": "A renamed wiki page retains its earlier creation and edit revisions in the page's Revisions view, so its content history remains accessible.",
+          "actual": "In eval/D-from-template, D-history-1 showed 2 revisions after creation and a content edit. Renaming it to D-history-2 preserved content but reduced the Revisions view to 1 commit, 'D- rename history'. A later edit raised it to only 2 commits (rename plus later edit), still omitting both pre-rename revisions. The rename commit detail shows D-history-1.-.md → D-history-2.-.md with a parent commit, confirming the earlier Git history exists. The old page URL redirects to Pages.",
+          "reproSteps": [
+            "Sign in as eval and open a repository’s Wiki.",
+            "Create a page named History-before with first content.",
+            "Edit its content without changing its title and save. Verify the page has two revisions.",
+            "Edit again, changing only the title to History-after, and save.",
+            "Open the renamed page’s Revisions. Observe only the rename commit appears, omitting the two earlier revisions even though the rename commit has a parent and records the filename change."
+          ],
+          "severity": 3
+        }
+      ]
+    },
+    {
+      "id": "gitea-wiki-mobile-history-hides-diff-link",
+      "explanation": "Wiki history hides its only revision-diff navigation on mobile.",
+      "rootCause": {
+        "explanation": "Wiki history reuses commits_list where the SHA cell links to /wiki/commit. The mobile .commit-table td.sha rule hides that cell, and the wiki branch omits the alternative view-at-revision action.",
+        "sourceReferences": [
+          {
+            "repository": "go-gitea/gitea",
+            "revision": "99053ce4fa2b45f1bca5837418c0c57f793ca824",
+            "path": "templates/repo/commits_list.tmpl",
+            "line": 33,
+            "url": "https://github.com/go-gitea/gitea/blob/99053ce4fa2b45f1bca5837418c0c57f793ca824/templates/repo/commits_list.tmpl#L33"
+          },
+          {
+            "repository": "go-gitea/gitea",
+            "revision": "99053ce4fa2b45f1bca5837418c0c57f793ca824",
+            "path": "web_src/css/repo.css",
+            "line": 2108,
+            "url": "https://github.com/go-gitea/gitea/blob/99053ce4fa2b45f1bca5837418c0c57f793ca824/web_src/css/repo.css#L2108"
+          }
+        ]
+      },
+      "reproductionPaths": [
+        {
+          "id": "gitea-wiki-mobile-history-hides-diff-link-path-1",
+          "explanation": "At a 390×844 viewport, wiki revision history provides no visible way to open a listed revision in the diff viewer. Desktop history links to the same working diff route.",
+          "sourceBugs": [
+            {
+              "index": 1,
+              "id": "gitea-novel-004",
+              "name": "Mobile wiki history provides no visible navigation to revision diffs"
+            }
+          ],
+          "expected": "The narrow-screen wiki history UI exposes a visible way to open a listed revision’s diff. It need not retain the SHA column or make the message text clickable if another normal UI control provides that navigation.",
+          "actual": "At 390×844 the SHA column and its revision-diff links are hidden. Revision messages are plain text, and the remaining copy-hash control does not open a diff. No alternative diff-navigation control is provided in the history UI. At 1440×1000 the same revision’s SHA link opens the diff viewer.",
+          "reproSteps": [
+            "Sign in with wiki write access to an unarchived repository and create a disposable wiki page with initial content.",
+            "Edit that page with distinct content, supply a unique plain-text commit note, and save, producing at least two revisions.",
+            "Use the page’s revision-history control to open its Revisions view and set the viewport to 390×844 CSS pixels.",
+            "Inspect the visible revision navigation. The SHA links are hidden, the commit-note text is not linked, and the copy-hash control offers no navigation to the diff viewer.",
+            "For comparison, view the same history at 1440×1000 and click a revision’s SHA link. It opens that wiki revision’s diff. The failure being graded is the absent mobile UI route to this working viewer, not omission of a particular column."
+          ],
+          "severity": 1
+        }
+      ]
+    },
+    {
+      "id": "gitea-wiki-rename-overwrites-existing-target",
+      "explanation": "Renaming a wiki page can overwrite another page.",
+      "rootCause": {
+        "explanation": "updateWikiPage rejects existing destination paths only in isNew mode. Edit mode removes the old path and adds the submitted content at the destination even when that destination already exists.",
+        "sourceReferences": [
+          {
+            "repository": "go-gitea/gitea",
+            "revision": "99053ce4fa2b45f1bca5837418c0c57f793ca824",
+            "path": "services/wiki/wiki.go",
+            "line": 144,
+            "url": "https://github.com/go-gitea/gitea/blob/99053ce4fa2b45f1bca5837418c0c57f793ca824/services/wiki/wiki.go#L144"
+          },
+          {
+            "repository": "go-gitea/gitea",
+            "revision": "99053ce4fa2b45f1bca5837418c0c57f793ca824",
+            "path": "services/wiki/wiki.go",
+            "line": 178,
+            "url": "https://github.com/go-gitea/gitea/blob/99053ce4fa2b45f1bca5837418c0c57f793ca824/services/wiki/wiki.go#L178"
+          }
+        ]
+      },
+      "reproductionPaths": [
+        {
+          "id": "gitea-wiki-rename-overwrites-existing-target-path-1",
+          "explanation": "The wiki rejects duplicate titles during page creation but fails to check them when renaming. Saving a renamed page replaces another page's content without warning and removes the source page.",
+          "sourceBugs": [
+            {
+              "index": 2,
+              "id": "codex-60m-gitea-3",
+              "name": "Renaming a wiki page to an existing title silently overwrites the target"
+            }
+          ],
+          "expected": "Renaming to an existing wiki title should show a duplicate-title error and preserve both pages, consistent with new-page validation.",
+          "actual": "Renaming Rename Source to Rename Target saves successfully. Rename Target now displays Source content marker QA instead of Target content marker QA, persists after reload, and the original Rename Source is removed. Also reproduced by renaming Folder/Page to existing Café guide.",
+          "reproSteps": [
+            "Sign in as admin and open /qa-org-20261009/qa-template-copy/wiki (or another editable repository wiki).",
+            "Create Rename Source with content Source content marker QA.",
+            "Create Rename Target with content Target content marker QA.",
+            "Edit Rename Source, change only Page title to Rename Target, and click Save Page.",
+            "Observe there is no duplicate-title error or overwrite confirmation. Rename Target now contains Source content marker QA.",
+            "Reload Rename Target and open the original Rename Source URL to verify the overwritten content persists and the source page no longer exists."
+          ],
+          "severity": 3
+        }
+      ]
+    },
+    {
+      "id": "gitea-wiki-preview-host-configuration",
+      "explanation": "Wiki preview builds links using the configured application origin.",
+      "rootCause": {
+        "explanation": "The preview wiki render path builds a repository wiki render context and enables absolute links. A stale localhost ROOT_URL in the served fixture therefore produces localhost preview destinations while relative links on saved pages use the current origin. This is a configuration-dependent defect; the reported hostname itself is not a hardcoded wiki source constant.",
+        "sourceReferences": [
+          {
+            "repository": "go-gitea/gitea",
+            "revision": "99053ce4fa2b45f1bca5837418c0c57f793ca824",
+            "path": "routers/common/markup.go",
+            "line": 85,
+            "url": "https://github.com/go-gitea/gitea/blob/99053ce4fa2b45f1bca5837418c0c57f793ca824/routers/common/markup.go#L85"
+          },
+          {
+            "repository": "go-gitea/gitea",
+            "revision": "99053ce4fa2b45f1bca5837418c0c57f793ca824",
+            "path": "modules/markup/html_link.go",
+            "line": 120,
+            "url": "https://github.com/go-gitea/gitea/blob/99053ce4fa2b45f1bca5837418c0c57f793ca824/modules/markup/html_link.go#L120"
+          }
+        ]
+      },
+      "reproductionPaths": [
+        {
+          "id": "gitea-wiki-preview-host-configuration-path-1",
+          "explanation": "Relative wiki links work in saved pages but preview renders them with https://localhost:5503, so clicking them leaves the hosted application and fails.",
+          "sourceBugs": [
+            {
+              "index": 3,
+              "id": "codex-60m-gitea-0",
+              "name": "Wiki preview links point to localhost and fail to open existing pages"
+            }
+          ],
+          "expected": "Preview links to another wiki page should open that page on the current application host, as they do on the saved page.",
+          "actual": "The preview's Second page link is https://localhost:5503/admin/harbor-handbook/wiki/Second-Page. Clicking it opens a browser error: localhost refused to connect, ERR_CONNECTION_REFUSED.",
+          "reproSteps": [
+            "Sign in as admin and open /admin/harbor-handbook/wiki.",
+            "Create a page named Second Page and save it with any content.",
+            "Create or edit Home with the Markdown link [Second page](Second-Page) and save. The saved link uses /admin/harbor-handbook/wiki/Second-Page.",
+            "Edit Home and select Preview.",
+            "Click Second page in the preview; observe the localhost connection failure."
+          ],
+          "severity": 5,
+          "matchingGuidance": [
+            {
+              "sourceBugIndex": 3,
+              "guidance": {
+                "acceptanceScope": "Accepted as a valid reference by user instruction; source prerequisites and remaining evidence gaps are retained below.",
+                "prerequisites": [
+                  "Preview request backend Host is localhost:5503 and forwarded scheme is https (or an equivalent incorrect guessed application origin)."
+                ]
+              }
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "id": "gitea-wiki-new-validation-replaces-content",
+      "explanation": "New wiki validation errors discard entered content.",
+      "rootCause": {
+        "explanation": "new.tmpl assigns the welcome text whenever PageIsWikiEdit is false, even on a POST rerender with submitted .content. Duplicate-name and whitespace-title validation preserve the form data server-side but the template overwrites its body.",
+        "sourceReferences": [
+          {
+            "repository": "go-gitea/gitea",
+            "revision": "99053ce4fa2b45f1bca5837418c0c57f793ca824",
+            "path": "templates/repo/wiki/new.tmpl",
+            "line": 23,
+            "url": "https://github.com/go-gitea/gitea/blob/99053ce4fa2b45f1bca5837418c0c57f793ca824/templates/repo/wiki/new.tmpl#L23"
+          }
+        ]
+      },
+      "reproductionPaths": [
+        {
+          "id": "gitea-wiki-new-validation-replaces-content-path-1",
+          "explanation": "Submitting a new wiki page with an existing title rejects the duplicate but replaces the submitted draft in the editor with \"Welcome to the Wiki.\".",
+          "sourceBugs": [
+            {
+              "index": 4,
+              "id": "gitea-novel-011",
+              "name": "Duplicate wiki title validation discards the draft"
+            }
+          ],
+          "expected": "After duplicate-title validation fails, retain the submitted draft in the editor so the user can correct the title or copy the content.",
+          "actual": "Gitea displays \"A wiki page with the same name already exists.\" and replaces the attempted draft with \"Welcome to the Wiki.\". The existing saved page is not overwritten.",
+          "reproSteps": [
+            "Sign in with wiki write access to an unarchived repository and use the English locale.",
+            "Choose Wiki > New Page, enter a unique disposable title and content \"Original saved content\", and save the page.",
+            "Choose New Page again. Enter the same title and distinct nonempty content \"Duplicate attempt draft to preserve\".",
+            "Click Save Page. Observe the duplicate-title validation error and that the editor now contains \"Welcome to the Wiki.\" instead of the attempted draft."
+          ],
+          "severity": 3
+        },
+        {
+          "id": "gitea-wiki-new-validation-replaces-content-path-2",
+          "explanation": "Creating a new wiki page with a title of only spaces shows \"Title cannot be empty\", but the content box is reset to the default \"Welcome to the Wiki.\" text, losing what the user typed.",
+          "sourceBugs": [
+            {
+              "index": 20,
+              "id": "gitea-wiki-blank-title-error-discards-body",
+              "name": "New wiki page with a whitespace-only title discards the entered content"
+            }
+          ],
+          "expected": "When the title is rejected, the new-page form keeps the entered content so the user can fix the title and save.",
+          "actual": "After submitting a whitespace-only title with typed content, the error appeared and the content was replaced with \"Welcome to the Wiki.\".",
+          "reproSteps": [
+            "Open the wiki's New Page form and type some content.",
+            "Enter only spaces as the title and click Save Page.",
+            "Check the error and the content box."
+          ],
+          "severity": 3,
+          "matchingGuidance": [
+            {
+              "sourceBugIndex": 20,
+              "guidance": {
+                "relatedReference": {
+                  "name": "Duplicate wiki title validation discards the draft",
+                  "distinction": "Same new-page error re-render that resets the content, but that entry is a duplicate title; this entry is a whitespace-only title."
+                }
+              }
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "id": "gitea-wiki-title-controls-overlap",
+      "explanation": "Long wiki titles paint across mobile header controls.",
+      "rootCause": {
+        "explanation": "The wiki header renders its title within a flex dropdown trigger beside action controls without a narrow-width truncation constraint. Long title text retains its width and overlaps the Code control.",
+        "sourceReferences": [
+          {
+            "repository": "go-gitea/gitea",
+            "revision": "99053ce4fa2b45f1bca5837418c0c57f793ca824",
+            "path": "templates/repo/wiki/view.tmpl",
+            "line": 12,
+            "url": "https://github.com/go-gitea/gitea/blob/99053ce4fa2b45f1bca5837418c0c57f793ca824/templates/repo/wiki/view.tmpl#L12"
+          }
+        ]
+      },
+      "reproductionPaths": [
+        {
+          "id": "gitea-wiki-title-controls-overlap-path-1",
+          "explanation": "At a 320px width, a long wiki-page title covers the Code button and intercepts normal clicks.",
+          "sourceBugs": [
+            {
+              "index": 5,
+              "id": "gitea-novel-012",
+              "name": "Long wiki title covers the mobile Code button"
+            }
+          ],
+          "expected": "At 320px, selecting a valid wiki page must keep the Code dropdown visible and usable without the title painting over it. Wrapping controls or truncating the displayed title is acceptable.",
+          "actual": "On Home, Page: Home and the blue Code dropdown were separately visible. After selecting CaseNarrowNav-7314 Δ Momentic2026, the page chooser stretched across the row and the Code dropdown was no longer visible. This remained the rendered state after a six-second wait.",
+          "reproSteps": [
+            "Sign in with wiki-write permission, set the viewport to 320 by 800 CSS pixels, and open the repository Wiki through its tab.",
+            "Choose New Page, use a unique title of similar length to CaseNarrowNav-7314 Δ Momentic2026, keep nonempty content, and save.",
+            "Use the Page chooser to select Home. Confirm the chooser and Code control are separately visible.",
+            "Open the Page chooser, filter for the unique title, and select that page.",
+            "After the row settles, observe that the title stretches across the row and covers the adjacent Code control."
+          ],
+          "severity": 3
+        }
+      ]
+    },
+    {
+      "id": "gitea-legacy-editor-dirty-state-not-propagated",
+      "explanation": "Legacy editor changes do not mark the owning form dirty.",
+      "rootCause": {
+        "explanation": "Dirty detection listens to input/change events on named form controls. EasyMDE updates the hidden textarea through forceSync and emits only a custom editor-content event from its CodeMirror change callback; it does not emit the textarea input event that the form dirty tracker requires.",
+        "sourceReferences": [
+          {
+            "repository": "go-gitea/gitea",
+            "revision": "99053ce4fa2b45f1bca5837418c0c57f793ca824",
+            "path": "web_src/js/features/comp/ComboMarkdownEditor.ts",
+            "line": 330,
+            "url": "https://github.com/go-gitea/gitea/blob/99053ce4fa2b45f1bca5837418c0c57f793ca824/web_src/js/features/comp/ComboMarkdownEditor.ts#L330"
+          },
+          {
+            "repository": "go-gitea/gitea",
+            "revision": "99053ce4fa2b45f1bca5837418c0c57f793ca824",
+            "path": "web_src/js/features/comp/ComboMarkdownEditor.ts",
+            "line": 342,
+            "url": "https://github.com/go-gitea/gitea/blob/99053ce4fa2b45f1bca5837418c0c57f793ca824/web_src/js/features/comp/ComboMarkdownEditor.ts#L342"
+          },
+          {
+            "repository": "go-gitea/gitea",
+            "revision": "99053ce4fa2b45f1bca5837418c0c57f793ca824",
+            "path": "web_src/js/vendor/jquery.are-you-sure.ts",
+            "line": 30,
+            "url": "https://github.com/go-gitea/gitea/blob/99053ce4fa2b45f1bca5837418c0c57f793ca824/web_src/js/vendor/jquery.are-you-sure.ts#L30"
+          }
+        ]
+      },
+      "reproductionPaths": [
+        {
+          "id": "gitea-legacy-editor-dirty-state-not-propagated-path-1",
+          "explanation": "When a wiki body has unsaved edits in the legacy editor, navigating to the repository Wiki page list proceeds without a warning and silently discards the changes. The simple editor presents a dismissible navigation confirmation for the same action.",
+          "sourceBugs": [
+            {
+              "index": 6,
+              "id": "gitea-wiki-legacy-editor-unsaved-navigation-loss",
+              "name": "Leaving the legacy wiki editor discards unsaved body changes without a warning"
+            }
+          ],
+          "expected": "Leaving a wiki page with unsaved legacy-editor content should show a navigation confirmation so the user can cancel and keep the edit, as in simple textarea mode.",
+          "actual": "After adding a visible marker to the legacy wiki body and blurring the editor, clicking the repository Wiki tab navigates to the page list without a warning. Reopening Edit shows only the saved baseline. With the same navigation in simple textarea mode, the confirmation can be dismissed and the unsaved marker remains in the form.",
+          "reproSteps": [
+            "Create and save a wiki page with a known baseline body, then open Edit and select Use the legacy editor instead.",
+            "Append a visible marker to the body and blur through the optional update-note field without saving.",
+            "Click the repository Wiki tab. Observe that navigation proceeds without a confirmation.",
+            "Reopen Edit and observe that only the saved baseline remains; the unsaved legacy marker was discarded.",
+            "Switch to simple textarea mode, append a different marker, blur the body, and click Wiki again. Dismiss the navigation confirmation and observe that the edit form and marker remain."
+          ],
+          "severity": 3
+        }
+      ]
+    },
+    {
+      "id": "gitea-wiki-title-normalization-unreported",
+      "explanation": "Wiki title normalization silently substitutes unnamed.",
+      "rootCause": {
+        "explanation": "UserTitleToWebPath trims whitespace and normalizes path segments, then substitutes unnamed for an empty result. EditWikiPost lacks the new-page whitespace-title validation and neither create nor edit tells the user when dot-only input normalizes to unnamed.",
+        "sourceReferences": [
+          {
+            "repository": "go-gitea/gitea",
+            "revision": "99053ce4fa2b45f1bca5837418c0c57f793ca824",
+            "path": "services/wiki/wiki_path.go",
+            "line": 157,
+            "url": "https://github.com/go-gitea/gitea/blob/99053ce4fa2b45f1bca5837418c0c57f793ca824/services/wiki/wiki_path.go#L157"
+          },
+          {
+            "repository": "go-gitea/gitea",
+            "revision": "99053ce4fa2b45f1bca5837418c0c57f793ca824",
+            "path": "routers/web/repo/wiki.go",
+            "line": 821,
+            "url": "https://github.com/go-gitea/gitea/blob/99053ce4fa2b45f1bca5837418c0c57f793ca824/routers/web/repo/wiki.go#L821"
+          }
+        ]
+      },
+      "reproductionPaths": [
+        {
+          "id": "gitea-wiki-title-normalization-unreported-path-1",
+          "explanation": "Saving an existing wiki page after replacing its title with three spaces succeeds without validation and renames the page to unnamed. New-page creation rejects the same whitespace-only title.",
+          "sourceBugs": [
+            {
+              "index": 7,
+              "id": "gitea-wiki-whitespace-title-renames-to-unnamed",
+              "name": "Editing a wiki page with a whitespace-only title renames it to unnamed"
+            }
+          ],
+          "expected": "A whitespace-only title should be rejected with “Title cannot be empty,” and the existing wiki page should keep its title.",
+          "actual": "Saving the existing page with a three-space title redirects to /wiki/unnamed. The heading and page selector show unnamed at revision 2, while the page content is unchanged. The new-page form rejects the same title.",
+          "reproSteps": [
+            "Create a wiki page named ReproWs77 with body “hello content.”",
+            "Open its Edit form and replace the title with exactly three spaces, leaving the content unchanged.",
+            "Click Save Page. Observe that no validation error is shown and the browser redirects to /wiki/unnamed.",
+            "Confirm the heading and page selector show unnamed at revision 2 and the page content remains unchanged.",
+            "As a control, attempt to create a new wiki page with the same three-space title and observe “Title cannot be empty.”"
+          ],
+          "severity": 3
+        },
+        {
+          "id": "gitea-wiki-title-normalization-unreported-path-2",
+          "explanation": "When a wiki page is saved with a title of only \".\", Gitea saves it as \"unnamed\" but shows no message, so the user isn't told their title was changed.",
+          "sourceBugs": [
+            {
+              "index": 22,
+              "id": "gitea-wiki-dot-title-renamed-silently",
+              "name": "Wiki page with a dot-only title is renamed to 'unnamed' without telling the user"
+            }
+          ],
+          "expected": "When Gitea changes a wiki title the user entered (such as \".\" becoming \"unnamed\"), it tells the user, or rejects the title with an explanation.",
+          "actual": "Saving a page titled \".\" opened the page as \"unnamed\" with no warning or notice that the title had been changed.",
+          "reproSteps": [
+            "Create a wiki page with the title \".\" and some content, and click Save Page.",
+            "Check the title the page is saved under and whether any message explains the change."
+          ],
+          "severity": 1
+        }
+      ]
+    },
+    {
+      "id": "gitea-wiki-edit-reserved-name-server-error",
+      "explanation": "Reserved-name validation on wiki edits returns an internal error page.",
+      "rootCause": {
+        "explanation": "updateWikiPage rejects reserved names, but EditWikiPost routes every service error to ServerError. Unlike NewWikiPost, it never handles ErrWikiReservedName by rerendering the draft with a field error.",
+        "sourceReferences": [
+          {
+            "repository": "go-gitea/gitea",
+            "revision": "99053ce4fa2b45f1bca5837418c0c57f793ca824",
+            "path": "routers/web/repo/wiki.go",
+            "line": 838,
+            "url": "https://github.com/go-gitea/gitea/blob/99053ce4fa2b45f1bca5837418c0c57f793ca824/routers/web/repo/wiki.go#L838"
+          },
+          {
+            "repository": "go-gitea/gitea",
+            "revision": "99053ce4fa2b45f1bca5837418c0c57f793ca824",
+            "path": "services/wiki/wiki_path.go",
+            "line": 44,
+            "url": "https://github.com/go-gitea/gitea/blob/99053ce4fa2b45f1bca5837418c0c57f793ca824/services/wiki/wiki_path.go#L44"
+          }
+        ]
+      },
+      "reproductionPaths": [
+        {
+          "id": "gitea-wiki-edit-reserved-name-server-error-path-1",
+          "explanation": "Renaming an existing wiki page to the reserved title `raw` replaces the editor with a full-page 500 error instead of showing an actionable validation message in the edit form.",
+          "sourceBugs": [
+            {
+              "index": 8,
+              "id": "gitea-wiki-reserved-title-edit-returns-500",
+              "name": "Renaming an existing wiki page to reserved title `raw` returns a full-page 500"
+            }
+          ],
+          "expected": "Reject the reserved title with the field-level message `The wiki page name \"raw\" is reserved.` and keep the existing-page edit form available for correction.",
+          "actual": "Saving an existing wiki page after changing its title to `raw` replaces the editor with a full-page 500 Internal Server Error displaying `EditWikiPage, wiki title is reserved: raw`. The original page remains at its previous title.",
+          "reproSteps": [
+            "Create an ordinary wiki page, such as `commit`, in /eval/harbor-handbook/wiki.",
+            "Open that page and select Edit.",
+            "Change Page title to `raw` and click Save Page.",
+            "Observe that the edit form is replaced by a full-page 500 with `EditWikiPage, wiki title is reserved: raw`; the original page remains unchanged."
+          ],
+          "severity": 5
+        }
+      ]
+    },
+    {
+      "id": "gitea-wiki-link-path-encoding-mismatch",
+      "explanation": "Wiki-style links do not use canonical wiki title encoding.",
+      "rootCause": {
+        "explanation": "The wiki-style markup processor substitutes spaces and uses url.PathEscape rather than wiki.UserTitleToWebPath. It never adds the .- marker for literal hyphens or .md suffixes and leaves + unescaped for a server decoder that uses QueryUnescape, so valid titles resolve as different pages.",
+        "sourceReferences": [
+          {
+            "repository": "go-gitea/gitea",
+            "revision": "99053ce4fa2b45f1bca5837418c0c57f793ca824",
+            "path": "modules/markup/html_link.go",
+            "line": 120,
+            "url": "https://github.com/go-gitea/gitea/blob/99053ce4fa2b45f1bca5837418c0c57f793ca824/modules/markup/html_link.go#L120"
+          },
+          {
+            "repository": "go-gitea/gitea",
+            "revision": "99053ce4fa2b45f1bca5837418c0c57f793ca824",
+            "path": "services/wiki/wiki_path.go",
+            "line": 78,
+            "url": "https://github.com/go-gitea/gitea/blob/99053ce4fa2b45f1bca5837418c0c57f793ca824/services/wiki/wiki_path.go#L78"
+          },
+          {
+            "repository": "go-gitea/gitea",
+            "revision": "99053ce4fa2b45f1bca5837418c0c57f793ca824",
+            "path": "services/wiki/wiki_path.go",
+            "line": 71,
+            "url": "https://github.com/go-gitea/gitea/blob/99053ce4fa2b45f1bca5837418c0c57f793ca824/services/wiki/wiki_path.go#L71"
+          }
+        ]
+      },
+      "reproductionPaths": [
+        {
+          "id": "gitea-wiki-link-path-encoding-mismatch-path-1",
+          "explanation": "A [[Title-With-Hyphen]] link renders as /wiki/Title-With-Hyphen, but Gitea stores a page whose title contains a literal hyphen at /wiki/Title-With-Hyphen.-, so the link redirects to the Pages list instead of opening the page.",
+          "sourceBugs": [
+            {
+              "index": 9,
+              "id": "gitea-wiki-bracket-link-hyphenated-title",
+              "name": "Wiki bracket links cannot resolve a page's literal hyphenated title"
+            }
+          ],
+          "expected": "A bracket link that uses a page's exact saved title opens that page, the same way the Pages list does.",
+          "actual": "The rendered link omits the `.-` marker, so clicking it redirects to /wiki/?action=_pages. If a page with the space-separated version of the title also exists, the link opens that other page instead. Opening the page from the Pages list works.",
+          "reproSteps": [
+            "Sign in to Gitea with the fixture account and open /eval/harbor-handbook/wiki.",
+            "Choose New Page, title it with a literal hyphen, for example `Pier-Notes`, add any content, and choose Save Page. The page opens at /wiki/Pier-Notes.-.",
+            "Choose New Page again, title it `Link Test`, set its content to `[[Pier-Notes]]`, and choose Save Page.",
+            "Click the rendered Pier-Notes link. Observe that the browser lands on /eval/harbor-handbook/wiki/?action=_pages instead of the page.",
+            "From the Pages list, open Pier-Notes and confirm it exists at /wiki/Pier-Notes.- with its content."
+          ],
+          "severity": 3
+        },
+        {
+          "id": "gitea-wiki-link-path-encoding-mismatch-path-2",
+          "explanation": "A [[Title.md]] link renders as /wiki/Title.md, but Gitea stores a page whose title ends in .md at /wiki/Title.md.-, so the link opens the page named Title instead, or the Pages list when no such page exists.",
+          "sourceBugs": [
+            {
+              "index": 10,
+              "id": "gitea-wiki-bracket-link-md-suffix-title",
+              "name": "Wiki-style links to a page whose title ends in .md open the wrong page"
+            }
+          ],
+          "expected": "A bracket link that uses a page's exact saved title, such as [[Home.md]], opens that page, the same way the Pages list does.",
+          "actual": "[[Home.md]] renders href /wiki/Home.md and opens the separate Home page. The page titled Home.md is only reached through its saved URL /wiki/Home.md.- or the Pages list. Aliased [[label|Home.md]] links fail the same way, and with no Home page the link redirects to /wiki/?action=_pages.",
+          "reproSteps": [
+            "Sign in to Gitea with the fixture account and open /eval/harbor-handbook/wiki.",
+            "Create a page titled `Home` with identifiable content.",
+            "Create a separate page titled `Home.md` with different content. It saves at /wiki/Home.md.-, and the Pages list shows Home and Home.md separately.",
+            "Edit Home to include `[[Home.md]]` and save.",
+            "Click the rendered Home.md link. Observe that it opens Home instead of the Home.md page. Opening Home.md from the Pages list shows the correct content."
+          ],
+          "severity": 3,
+          "matchingGuidance": [
+            {
+              "sourceBugIndex": 10,
+              "guidance": {
+                "relatedReference": {
+                  "id": "gitea-wiki-bracket-link-hyphenated-title",
+                  "distinction": "Both come from [[...]] links omitting the .- marker, but the triggers differ: this reference covers page titles ending in .md, and the related reference covers titles containing a literal hyphen. Credit this reference for the .md-suffix trigger and the related one for the hyphen trigger."
+                }
+              }
+            }
+          ]
+        },
+        {
+          "id": "gitea-wiki-link-path-encoding-mismatch-path-3",
+          "explanation": "A [[...]] link to a wiki page whose title contains '+' renders the '+' unescaped, and the server decodes '+' in wiki paths as a space, so the link opens the Pages list or a different page whose title has a space instead.",
+          "sourceBugs": [
+            {
+              "index": 12,
+              "id": "gitea-wiki-bracket-link-plus-title",
+              "name": "Wiki-style links to titles containing + fail to open the existing page"
+            }
+          ],
+          "expected": "[[Radio+Codes]] opens the page titled Radio+Codes, as the Pages list link does.",
+          "actual": "[[Radio+Codes]] renders a link to /wiki/Radio+Codes, which redirects to the Pages list, while the Pages list links the page as /wiki/Radio%2BCodes and opens it. If a page titled 'Radio Codes' also exists, the link silently opens that page instead. Links without '+' work, including titles with accented letters and '%'.",
+          "reproSteps": [
+            "Create a wiki page titled Radio+Codes with some content.",
+            "Create another wiki page whose content contains [[Radio+Codes]] and save it.",
+            "Click the rendered link and observe it opens the Pages list instead of Radio+Codes.",
+            "Open Radio+Codes from the Pages list and observe its URL uses %2B and the page opens."
+          ],
+          "severity": 3
+        }
+      ]
+    },
+    {
+      "id": "gitea-wiki-editor-no-revision-precondition",
+      "explanation": "Wiki saves have no stale-editor concurrency precondition.",
+      "rootCause": {
+        "explanation": "The web form submits title/content/message but no starting commit or blob ID. updateWikiPage reads the current HEAD and writes submitted content without comparing it with the revision opened by the editor, overwriting newer content or recreating an old/deleted path.",
+        "sourceReferences": [
+          {
+            "repository": "go-gitea/gitea",
+            "revision": "99053ce4fa2b45f1bca5837418c0c57f793ca824",
+            "path": "routers/web/repo/wiki.go",
+            "line": 821,
+            "url": "https://github.com/go-gitea/gitea/blob/99053ce4fa2b45f1bca5837418c0c57f793ca824/routers/web/repo/wiki.go#L821"
+          },
+          {
+            "repository": "go-gitea/gitea",
+            "revision": "99053ce4fa2b45f1bca5837418c0c57f793ca824",
+            "path": "services/wiki/wiki.go",
+            "line": 172,
+            "url": "https://github.com/go-gitea/gitea/blob/99053ce4fa2b45f1bca5837418c0c57f793ca824/services/wiki/wiki.go#L172"
+          },
+          {
+            "repository": "go-gitea/gitea",
+            "revision": "99053ce4fa2b45f1bca5837418c0c57f793ca824",
+            "path": "templates/repo/wiki/new.tmpl",
+            "line": 12,
+            "url": "https://github.com/go-gitea/gitea/blob/99053ce4fa2b45f1bca5837418c0c57f793ca824/templates/repo/wiki/new.tmpl#L12"
+          }
+        ]
+      },
+      "reproductionPaths": [
+        {
+          "id": "gitea-wiki-editor-no-revision-precondition-path-1",
+          "explanation": "The wiki editor carries no record of the revision it was opened from, so saving an editor opened before another save replaces the page with the older body. The newer saved change disappears without warning, unlike Gitea's file editor and issue editor, which reject the same stale save.",
+          "sourceBugs": [
+            {
+              "index": 11,
+              "id": "gitea-wiki-stale-editor-overwrites-newer-edit",
+              "name": "Saving a stale wiki editor silently discards newer edits"
+            }
+          ],
+          "expected": "When the page changed after the editor was opened, the save is refused with a conflict message (as the repository file editor and issue description editor do) or the edits are merged, and the newer saved change is kept.",
+          "actual": "Two editors are opened on a checklist page with 'Check ropes' and 'Check tide'. The second editor adds 'Check radio' and saves. The first, now stale, changes only 'Check ropes' to 'Check ropes carefully' and saves successfully with no warning. The page now lists 'Check ropes carefully' and 'Check tide'; 'Check radio' is gone, and the new revision's diff deletes it. Reload confirms the loss. The same happens across two users.",
+          "reproSteps": [
+            "Create a wiki page with a checklist containing 'Check ropes' and 'Check tide'.",
+            "Open that page's Edit form in two tabs before saving either.",
+            "In the second tab, append 'Check radio' and click Save Page.",
+            "In the first tab, change only 'Check ropes' to 'Check ropes carefully' and click Save Page.",
+            "Reload the page and observe 'Check radio' is gone, with no warning shown at save time."
+          ],
+          "severity": 3
+        },
+        {
+          "id": "gitea-wiki-editor-no-revision-precondition-path-2",
+          "explanation": "If a wiki page is renamed in one tab and an editor opened earlier in another tab then saves a body-only edit, Gitea silently creates a new page at the old title instead of warning or editing the renamed page, splitting the content across two pages.",
+          "sourceBugs": [
+            {
+              "index": 18,
+              "id": "gitea-wiki-stale-save-after-rename-recreates-old-page",
+              "name": "Saving a stale wiki editor after the page is renamed recreates the old page"
+            }
+          ],
+          "expected": "A stale edit to a page that was renamed elsewhere is rejected with a conflict warning or applied to the renamed page; it doesn't create a second page at the old title.",
+          "actual": "The stale save succeeded with no warning and created a page at the old title holding the stale edit. The renamed page kept its earlier content, and the page list showed both titles.",
+          "reproSteps": [
+            "Create a wiki page and open its editor in tab A without saving.",
+            "In tab B, edit the same page, change only its title, and save.",
+            "In tab A, change only the body and save.",
+            "Check the wiki page list and the contents of both titles."
+          ],
+          "severity": 3,
+          "matchingGuidance": [
+            {
+              "sourceBugIndex": 18,
+              "guidance": {
+                "relatedReference": {
+                  "name": "Saving a stale wiki editor silently discards newer edits",
+                  "distinction": "Same cause (wiki saves don't check the page's revision), but that entry is a stale save overwriting newer content on the same page; this entry is a stale save after a rename creating a second page at the old title."
+                }
+              }
+            }
+          ]
+        },
+        {
+          "id": "gitea-wiki-editor-no-revision-precondition-path-3",
+          "explanation": "If a wiki page is deleted in one tab, saving an editor for that page that was opened earlier in another tab silently creates the page again, with no warning that it was deleted.",
+          "sourceBugs": [
+            {
+              "index": 21,
+              "id": "gitea-wiki-stale-save-after-delete-recreates-page",
+              "name": "Saving a stale wiki editor after the page was deleted silently recreates it"
+            }
+          ],
+          "expected": "Saving an editor for a wiki page that was deleted in the meantime warns that the page no longer exists instead of silently recreating it.",
+          "actual": "After the page was deleted (and gone from the page list), saving the stale editor recreated the page with the editor's content and no deletion or conflict warning.",
+          "reproSteps": [
+            "Create a wiki page and open its Edit form in tab A.",
+            "In tab B, delete the page and confirm.",
+            "In tab A, change the content and click Save Page.",
+            "Check whether the page exists again and whether any warning appeared."
+          ],
+          "severity": 3,
+          "matchingGuidance": [
+            {
+              "sourceBugIndex": 21,
+              "guidance": {
+                "relatedReference": {
+                  "name": "Saving a stale wiki editor silently discards newer edits",
+                  "distinction": "Same missing revision check, but that entry is a stale save overwriting newer edits; this entry is a stale save recreating a page deleted elsewhere."
+                }
+              }
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "id": "gitea-wiki-page-picker-intrinsic-width",
+      "explanation": "Wiki page picker has no viewport width cap for long titles.",
+      "rootCause": {
+        "explanation": "The floating filter dropdown renders every full page title as an item and allows content-driven menu width. A single long title therefore widens the menu beyond phone width and increases horizontal scroll area.",
+        "sourceReferences": [
+          {
+            "repository": "go-gitea/gitea",
+            "revision": "99053ce4fa2b45f1bca5837418c0c57f793ca824",
+            "path": "templates/repo/wiki/view.tmpl",
+            "line": 8,
+            "url": "https://github.com/go-gitea/gitea/blob/99053ce4fa2b45f1bca5837418c0c57f793ca824/templates/repo/wiki/view.tmpl#L8"
+          }
+        ]
+      },
+      "reproductionPaths": [
+        {
+          "id": "gitea-wiki-page-picker-intrinsic-width-path-1",
+          "explanation": "At phone width, opening a wiki's Page picker when one page has a long title sizes the menu to that title with no width cap. The menu runs off the right edge and the whole page scrolls sideways, clipping the wiki's left edge.",
+          "sourceBugs": [
+            {
+              "index": 13,
+              "id": "gitea-wiki-page-picker-long-title-overflows-mobile",
+              "name": "Long wiki page title makes the open mobile Page picker overflow and shift the page"
+            }
+          ],
+          "expected": "At phone width the open Page picker fits the screen, wrapping or truncating long page names, and the rest of the wiki stays in place.",
+          "actual": "At 390×844 with a 73-character page title, the open Page menu was about 530px wide and its filter about 506px. The document grew to about 538px wide and scrolled sideways about 20px, cutting off the logo and the Page button at the left; the menu and long title ran off the right. Filtering and navigation still worked.",
+          "reproSteps": [
+            "Create a wiki page titled 'Harbor operations handbook for onboarding and emergency response procedures'.",
+            "At 390×844, open the wiki's Home page.",
+            "Tap the 'Page: Home' button to open the page picker and look at both edges of the screen."
+          ],
+          "severity": 1,
+          "matchingGuidance": [
+            {
+              "sourceBugIndex": 13,
+              "guidance": {
+                "relatedReference": {
+                  "id": "gitea-novel-012",
+                  "distinction": "Same long-title trigger. That entry is the closed page/title area covering the mobile Code button; this entry is the open Page picker menu overflowing and shifting the whole page sideways."
+                }
+              }
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "id": "gitea-markdown-heading-inserts-at-caret",
+      "explanation": "The simple Markdown heading button inserts at the caret rather than line start.",
+      "rootCause": {
+        "explanation": "The shared toolbar uses markdown-toolbar-element md-header directly. Its prefix operation uses the current selection/caret, and the integration does not expand the selection to the whole line, allowing ## to be inserted after existing text.",
+        "sourceReferences": [
+          {
+            "repository": "go-gitea/gitea",
+            "revision": "99053ce4fa2b45f1bca5837418c0c57f793ca824",
+            "path": "templates/shared/combomarkdowneditor.tmpl",
+            "line": 40,
+            "url": "https://github.com/go-gitea/gitea/blob/99053ce4fa2b45f1bca5837418c0c57f793ca824/templates/shared/combomarkdowneditor.tmpl#L40"
+          }
+        ]
+      },
+      "reproductionPaths": [
+        {
+          "id": "gitea-markdown-heading-inserts-at-caret-path-1",
+          "explanation": "In the wiki page editor, typing a line and clicking the heading toolbar button with the caret at the end of the line appends '## ' after the text, so the line renders as ordinary text rather than a heading.",
+          "sourceBugs": [
+            {
+              "index": 14,
+              "id": "gitea-wiki-heading-toolbar-appends-marker",
+              "name": "Wiki editor heading button appends ## after the text instead of making a heading"
+            }
+          ],
+          "expected": "Clicking Add heading turns the current line into a heading by putting the ## marker at the start of the line.",
+          "actual": "With 'Toolbar heading' typed and the caret at the end, clicking the H2 button produced 'Toolbar heading## '; Preview and the saved page showed ordinary text, not a heading. It works only with the caret at the start of the line or the line selected; the new issue editor inserts the heading correctly.",
+          "reproSteps": [
+            "Open a repository Wiki and click New Page.",
+            "Type 'Toolbar heading' in the content and leave the caret at the end with nothing selected.",
+            "Click the heading (H2) toolbar button, then click Preview."
+          ],
+          "severity": 3
+        }
+      ]
+    },
+    {
+      "id": "gitea-legacy-editor-shortcuts-replaced",
+      "explanation": "Legacy Markdown shortcuts are replaced while their tooltips remain.",
+      "rootCause": {
+        "explanation": "After EasyMDE creates its default keymap, switchToEasyMDE sets extraKeys to a new map containing quick-submit and mention-navigation handlers. It replaces the formatting shortcut bindings while toolbar titles still advertise them.",
+        "sourceReferences": [
+          {
+            "repository": "go-gitea/gitea",
+            "revision": "99053ce4fa2b45f1bca5837418c0c57f793ca824",
+            "path": "web_src/js/features/comp/ComboMarkdownEditor.ts",
+            "line": 343,
+            "url": "https://github.com/go-gitea/gitea/blob/99053ce4fa2b45f1bca5837418c0c57f793ca824/web_src/js/features/comp/ComboMarkdownEditor.ts#L343"
+          }
+        ]
+      },
+      "reproductionPaths": [
+        {
+          "id": "gitea-legacy-editor-shortcuts-replaced-path-1",
+          "explanation": "In the legacy (EasyMDE) Markdown editor, used after 'Use the legacy editor instead', the toolbar buttons' tooltips advertise shortcuts such as 'Bold (Ctrl-B)' and 'Italic (Ctrl-I)', but pressing them does nothing. The toolbar buttons themselves work.",
+          "sourceBugs": [
+            {
+              "index": 15,
+              "id": "gitea-legacy-editor-shortcuts-do-nothing",
+              "name": "Legacy editor toolbar advertises keyboard shortcuts that do nothing"
+            }
+          ],
+          "expected": "The advertised shortcuts apply their formatting (for example Ctrl-B makes the selection bold), or the tooltips don't advertise them.",
+          "actual": "In the legacy editor on a wiki page, with text selected, Ctrl+B and Ctrl+I left the text unchanged, while clicking the Bold button produced '**…**'. The buttons' titles read 'Bold (Ctrl-B)', 'Italic (Ctrl-I)', 'Link (Ctrl-K)' and so on.",
+          "reproSteps": [
+            "Open a wiki page editor and click 'Use the legacy editor instead' in the Markdown toolbar.",
+            "Type and select some text, then press Ctrl+B.",
+            "Hover the Bold button to read its tooltip, then click it on the same selection."
+          ],
+          "severity": 1,
+          "matchingGuidance": [
+            {
+              "sourceBugIndex": 15,
+              "guidance": {
+                "relatedReference": {
+                  "id": "gitea-wiki-heading-toolbar-appends-marker",
+                  "distinction": "Both are wiki editor formatting controls. That entry is the heading toolbar button appending ## at the end of the line; this entry is the legacy editor's advertised keyboard shortcuts doing nothing."
+                }
+              }
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "id": "gitea-markdown-leading-rule-frontmatter",
+      "explanation": "Leading Markdown rules are consumed as front matter.",
+      "rootCause": {
+        "explanation": "The Markdown renderer enables goldmark-meta unconditionally. A leading --- is parsed as YAML front matter rather than a horizontal rule; content before a closing delimiter/end is consumed/reformatted by that extension, affecting wiki footer/page output.",
+        "sourceReferences": [
+          {
+            "repository": "go-gitea/gitea",
+            "revision": "99053ce4fa2b45f1bca5837418c0c57f793ca824",
+            "path": "modules/markup/markdown/markdown.go",
+            "line": 130,
+            "url": "https://github.com/go-gitea/gitea/blob/99053ce4fa2b45f1bca5837418c0c57f793ca824/modules/markup/markdown/markdown.go#L130"
+          }
+        ]
+      },
+      "reproductionPaths": [
+        {
+          "id": "gitea-markdown-leading-rule-frontmatter-path-1",
+          "explanation": "A wiki _Footer (or other wiki page) whose Markdown starts with '---' renders without the horizontal rule, and its blank-line-separated paragraphs run together on one line. The leading '---' is treated as the start of front matter instead of a rule. Without the leading '---' the same content renders normally.",
+          "sourceBugs": [
+            {
+              "index": 16,
+              "id": "gitea-wiki-leading-rule-collapses-blocks",
+              "name": "Wiki content that starts with a --- horizontal rule loses its paragraphs and the rule"
+            }
+          ],
+          "expected": "A '---' line renders as a horizontal rule and blank-line-separated blocks render as separate paragraphs, wherever the rule appears in the wiki content.",
+          "actual": "A _Footer saved as '---', blank line, '**Special Footer QA**', blank line, 'FOOTER-SPECIAL-2026', blank line, a link, displayed below pages as one line ('Special Footer QA FOOTER-SPECIAL-2026 Structured guide') with no horizontal rule. The saved source still had the rule and blank lines; bold and the link still rendered.",
+          "reproSteps": [
+            "In a repository wiki, create or edit _Footer.",
+            "Set its content to '---', a blank line, '**Footer title**', a blank line, 'Second paragraph', a blank line, and a link to another wiki page.",
+            "Save and open any wiki page.",
+            "Check whether the footer shows a horizontal rule and separate paragraphs."
+          ],
+          "severity": 1
+        }
+      ]
+    },
+    {
+      "id": "gitea-markdown-table-size-silently-clamped",
+      "explanation": "Table insertion silently clamps invalid dimensions.",
+      "rootCause": {
+        "explanation": "The insert handler applies Math.max(1,Math.min(100,rows/cols)) without reporting an input error or visibly correcting the form before insertion.",
+        "sourceReferences": [
+          {
+            "repository": "go-gitea/gitea",
+            "revision": "99053ce4fa2b45f1bca5837418c0c57f793ca824",
+            "path": "web_src/js/features/comp/ComboMarkdownEditor.ts",
+            "line": 275,
+            "url": "https://github.com/go-gitea/gitea/blob/99053ce4fa2b45f1bca5837418c0c57f793ca824/web_src/js/features/comp/ComboMarkdownEditor.ts#L275"
+          }
+        ]
+      },
+      "reproductionPaths": [
+        {
+          "id": "gitea-markdown-table-size-silently-clamped-path-1",
+          "explanation": "In the Markdown editor's Insert Table panel, an out-of-range size is clamped without telling the user: entering 0 Rows inserts a table with one row, and nothing indicates the value was changed.",
+          "sourceBugs": [
+            {
+              "index": 17,
+              "id": "gitea-markdown-table-rows-zero-clamped-silently",
+              "name": "Markdown table insertion silently turns Rows 0 into a one-row table"
+            }
+          ],
+          "expected": "When Rows is outside the allowed range, the editor tells the user (or refuses the value) instead of silently inserting a table of a different size.",
+          "actual": "With Rows set to 0, Insert Table added a table with a header, separator and one Cell row, and no warning or adjustment message appeared; the one-row table stayed after saving and reopening.",
+          "reproSteps": [
+            "Open the editor for a new wiki page.",
+            "Open the toolbar's Insert Table panel and set Rows to 0.",
+            "Insert the table.",
+            "Check whether the inserted table has a row and whether any message said Rows was changed."
+          ],
+          "severity": 1
+        }
+      ]
+    },
+    {
+      "id": "gitea-markdown-textarea-leading-newline",
+      "explanation": "Opening stored content in a textarea drops its initial newline.",
+      "rootCause": {
+        "explanation": "The shared editor template writes TextareaContent immediately after the textarea opening tag. HTML parsing discards one initial LF in a textarea, so a body beginning with a blank line loses one line when loaded and resaved.",
+        "sourceReferences": [
+          {
+            "repository": "go-gitea/gitea",
+            "revision": "99053ce4fa2b45f1bca5837418c0c57f793ca824",
+            "path": "templates/shared/combomarkdowneditor.tmpl",
+            "line": 76,
+            "url": "https://github.com/go-gitea/gitea/blob/99053ce4fa2b45f1bca5837418c0c57f793ca824/templates/shared/combomarkdowneditor.tmpl#L76"
+          }
+        ]
+      },
+      "reproductionPaths": [
+        {
+          "id": "gitea-markdown-textarea-leading-newline-path-1",
+          "explanation": "When a wiki page's content starts with blank lines, opening it in the editor shows one fewer leading blank line than was saved, so saving it again without changes removes a blank line each time. The stored page keeps them; the editor loses one when loading.",
+          "sourceBugs": [
+            {
+              "index": 19,
+              "id": "gitea-wiki-editor-drops-leading-blank-line",
+              "name": "Reopening a wiki page in the editor drops one leading blank line"
+            }
+          ],
+          "expected": "Opening a saved wiki page for editing shows its content exactly as saved, including all leading blank lines.",
+          "actual": "A page saved with two blank lines before its text reopened in the editor with only one; saving again kept only one.",
+          "reproSteps": [
+            "Create or edit a wiki page so its content starts with two blank lines followed by text, and save.",
+            "Open the page's Edit form again.",
+            "Count the blank lines before the text in the editor."
+          ],
+          "severity": 3
+        }
+      ]
+    }
+  ]
+}
