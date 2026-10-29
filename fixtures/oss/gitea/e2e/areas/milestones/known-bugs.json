@@ -4,7 +4,7 @@
   "logicalBugs": [
     {
       "id": "gitea-dashboard-milestone-title-badge-overflow",
-      "explanation": "Milestone dashboard rows do not contain long titles and repository badges.",
+      "explanation": "At phone width, a global milestone row cannot keep a long title and its repository badge separate. A long milestone title or repository name makes the badge text overlap the milestone icon/title instead of fitting or truncating within the row.",
       "rootCause": {
         "explanation": "The dashboard header places a repository badge and title in the same flex row without wrapping/truncation constraints for long text. At phone width a shrinking badge/title box still paints its nowrap text across the neighboring item.",
         "sourceReferences": [
@@ -86,7 +86,7 @@
     },
     {
       "id": "gitea-milestone-name-sort-drops-repositories",
-      "explanation": "Name sorting loses the milestone dashboard repository filter.",
+      "explanation": "On global or organization Milestones, excluding a repository in the sidebar works until Sort > Name is chosen. That sort clears the repository selection and returns milestones from repositories the user excluded.",
       "rootCause": {
         "explanation": "The Name sort URL is built separately from the other sort links and omits repos. Both global and organization dashboards share this template, so excluded repository milestones return.",
         "sourceReferences": [
@@ -187,7 +187,7 @@
     },
     {
       "id": "gitea-milestone-search-drops-sort",
-      "explanation": "Repository milestone search does not carry the selected sorting.",
+      "explanation": "Searching milestones clears the selected Latest due date sort and shows the future-due milestone after the past-due milestone.",
       "rootCause": {
         "explanation": "The shared issue search form places its hidden sort field inside not PageIsMilestones. Milestone search thus omits sort and the handler chooses the default instead of the prior due-date ordering.",
         "sourceReferences": [
@@ -226,7 +226,7 @@
     },
     {
       "id": "gitea-legacy-zero-date-display",
-      "explanation": "Date display treats accepted zero sentinel dates as missing.",
+      "explanation": "Issue and milestone due dates that coincide with unset-date sentinel values, including January 1 of year 0001 or 1970, can save and remain visible in the editor but display as a dash or missing date in timeline/list views. The defect concerns an accepted date disappearing from presentation, rather than an editor rejecting it.",
       "rootCause": {
         "explanation": "Issue deadline comments and milestone date templates pass date-only strings through DateUtils.ParseLegacy, which reconstructs midnight in the server UI timezone. The shared anyToTime/dateTimeFormat renderer treats either Go zero time (0001-01-01 midnight in a matching timezone) or Unix timestamp 0 (1970-01-01 midnight UTC) as a missing value and prints a dash. A saved end-of-day deadline may be nonzero while this reparsed display value hits a zero sentinel; each reproduction path retains its specific date/timezone trigger.",
         "analysisStatus": "source-supported",
@@ -390,7 +390,7 @@
     },
     {
       "id": "gitea-issue-type-all-retains-derived-assignee",
-      "explanation": "Changing milestone issue Type retains the previous assignment restriction.",
+      "explanation": "After choosing Type > Assigned to you, switching back to All issues or to another ownership type can retain the old implicit assignee restriction. Repository/milestone issue lists and organization PR lists then omit otherwise matching records despite showing the new Type selection.",
       "rootCause": {
         "explanation": "The issue handler exports the effective self assignee after Type=assigned; shared filter_list copies that AssigneeID into subsequent Type links. Created by you therefore retains an unintended assignment restriction.",
         "sourceReferences": [
@@ -436,7 +436,7 @@
     },
     {
       "id": "gitea-milestone-close-state-misspelled",
-      "explanation": "Closing a milestone redirects to state=close rather than state=closed.",
+      "explanation": "Closing the milestone redirects to a list URL with `state=close`; the page reports one closed milestone but renders no row until the Closed filter changes the URL to `state=closed`.",
       "rootCause": {
         "explanation": "ChangeMilestoneStatus uses the action path segment as the state query. The close route therefore produces close, while the milestone list recognizes only closed; the resulting state-dependent data and controls disagree.",
         "sourceReferences": [
@@ -484,7 +484,7 @@
     },
     {
       "id": "gitea-milestone-title-trim-after-validation",
-      "explanation": "Milestones accept titles that become empty after trimming.",
+      "explanation": "A milestone title made only of spaces passes the required-title check, is trimmed to an empty name, and is saved, leaving a milestone whose title link, detail heading, and picker entry are blank.",
       "rootCause": {
         "explanation": "The form Required check accepts spaces; NewMilestone trims the Name only after that validation and inserts without checking the trimmed result.",
         "sourceReferences": [
@@ -531,7 +531,7 @@
     },
     {
       "id": "gitea-milestone-accented-count-case-mismatch",
-      "explanation": "Accented milestone search and counts use different case conversions.",
+      "explanation": "On SQLite, milestone search matches accented keywords with ASCII-only uppercasing, but the Open/Closed counters uppercase the keyword fully, so an accented search like café lists matching milestones under tabs that read 0 Open / 0 Closed.",
       "rootCause": {
         "explanation": "Row filtering uses BuildCaseInsensitiveLike, with database case conversion, but counters compare UPPER(name) to Go strings.ToUpper(keyword). SQLite uppercases ASCII only, so accented upper/lowercase values differ between these query paths.",
         "sourceReferences": [
@@ -577,7 +577,7 @@
     },
     {
       "id": "gitea-milestone-unbroken-title-overflow",
-      "explanation": "Unbroken milestone titles widen pages and mobile dialogs.",
+      "explanation": "A long allowed milestone title with no spaces or hyphens does not wrap in the repository milestone list, widening the page on mobile. Opening Delete for that milestone can center confirmation on the wider layout and clip its controls beyond the phone viewport.",
       "rootCause": {
         "explanation": "Repository milestone list/detail headings render the name without overflow-wrap/truncation. Their intrinsic minimum width can exceed the phone viewport, widening the page and moving viewport-centered modal controls partly out of view.",
         "sourceReferences": [
@@ -704,7 +704,7 @@
     },
     {
       "id": "gitea-milestone-status-redirect-drops-list-state",
-      "explanation": "Milestone status mutation discards search and sorting.",
+      "explanation": "The milestone list's Close and Open (reopen) actions redirect to the list with only a state parameter, so a search keyword and sort selected on the list are discarded and unrelated milestones reappear.",
       "rootCause": {
         "explanation": "ChangeMilestoneStatus redirects with only its state parameter and does not retain q/sort from the originating list, so unrelated rows return after close/reopen.",
         "sourceReferences": [
@@ -768,7 +768,7 @@
     },
     {
       "id": "gitea-milestone-delete-redirect-drops-list-state",
-      "explanation": "Deleting a milestone returns to the unfiltered default list.",
+      "explanation": "Deleting a milestone from the milestone list always redirects to the bare Milestones page, so the search keyword, sort, and Open/Closed state selected on the list are discarded and unrelated milestones reappear.",
       "rootCause": {
         "explanation": "DeleteMilestone unconditionally JSONRedirects to the bare milestones route, discarding search, sorting and open/closed state.",
         "sourceReferences": [
@@ -831,7 +831,7 @@
     },
     {
       "id": "gitea-issue-type-overrides-explicit-user-filter",
-      "explanation": "Type-derived filters silently override selected author/assignee values.",
+      "explanation": "In a milestone’s issue list, Type > Assigned to you or Created by you overrides a later explicit Assignee or Author selection. The dropdown/URL can show nobody or another user while the results remain restricted to the signed-in user.",
       "rootCause": {
         "explanation": "prepareIssueFilterAndList reads the explicit query filters, then overwrites assigneeID/posterUserID when Type is assigned/created_by. The visible independently selected filter is therefore not intersected with the ownership constraint.",
         "sourceReferences": [
@@ -938,7 +938,7 @@
     },
     {
       "id": "gitea-milestone-name-sort-descending",
-      "explanation": "The plain Name milestone sort uses descending order.",
+      "explanation": "Choosing Sort > Name on the repository or global Milestones list orders milestones in reverse alphabetical order, with no option for A to Z. Nothing breaks and the order is consistent, but a plain Name sort running Z to A is unintuitive.",
       "rootCause": {
         "explanation": "FindMilestoneOptions.ToOrders maps name to name DESC and provides no ascending name alternative. The UI labels it only Name, so its Z-to-A behavior is not signaled.",
         "sourceReferences": [
@@ -1001,7 +1001,7 @@
     },
     {
       "id": "gitea-issue-row-label-link-drops-query",
-      "explanation": "Label chip navigation rebuilds an incomplete query.",
+      "explanation": "On a milestone detail page, clicking a label chip on an issue row keeps the search, Type, state and Assignee filters but drops the selected Project, Sort and Author, so the list widens to issues the user had filtered out.",
       "rootCause": {
         "explanation": "Issue row label links rebuild their destination from a subset of issue query parameters instead of preserving the current URL. Project, sorting and author are omitted, broadening a filtered milestone detail list.",
         "sourceReferences": [
@@ -1040,7 +1040,7 @@
     },
     {
       "id": "gitea-fetch-action-non-json-errors",
-      "explanation": "Shared fetch actions assume client-error responses are JSON.",
+      "explanation": "Issue and pull request form actions can expose a raw JSON-parsing SyntaxError labelled Network error when the server rejects an unavailable or unauthorized action. Confirmed triggers include stale deleted/locked/archived comment or issue forms, deleted milestone/time-entry targets and rejected review actions; the UI does not explain the actual refusal.",
       "rootCause": {
         "explanation": "fetchActionDoRequest unconditionally calls resp.json() for HTTP 4xx and labels parsing exceptions Network error. Plain-text missing-issue/permission responses therefore expose SyntaxError rather than the rejection reason. Deleted comment inline edits use a separate parser and are kept separate.",
         "sourceReferences": [
@@ -1143,7 +1143,7 @@
     },
     {
       "id": "gitea-label-exclusion-keyboard-event-order",
-      "explanation": "Alt+Enter label exclusion loses to the dropdown keyboard handler.",
+      "explanation": "Issues, Pull Requests and milestone issue lists advertise Alt+Enter to exclude a label, but using that keyboard shortcut includes the label instead. Alt+click on the same label correctly applies the exclusion.",
       "rootCause": {
         "explanation": "The exclusion listener is attached to the dropdown keydown, but the Fomantic keyboard path selects/activates the anchor on Enter. Its normal include navigation runs instead of the intended exclusion navigation, whereas the direct Alt+click handler sees the modifier.",
         "sourceReferences": [
@@ -1206,7 +1206,7 @@
     },
     {
       "id": "gitea-milestone-search-like-wildcards",
-      "explanation": "Milestone search interprets literal wildcard characters as SQL patterns.",
+      "explanation": "Milestone title search interprets SQL wildcard characters instead of consistently searching their literal text. An underscore or bare percent can match unrelated titles, while a term beginning or ending with a literal percent can fail to find a title that contains it.",
       "rootCause": {
         "explanation": "Milestone queries use LIKE through BuildCaseInsensitiveLike/builder.Like without escaping user % and _. The builder also treats leading/trailing % as an already-specified pattern rather than adding both substring wildcards, so 100% anchors at the beginning instead of finding the literal term anywhere.",
         "sourceReferences": [
@@ -1295,7 +1295,7 @@
     },
     {
       "id": "gitea-milestone-new-issue-permission-mismatch",
-      "explanation": "Public milestone pages offer issue creation with an unusable milestone.",
+      "explanation": "A public repository's milestone page shows New Issue to users who aren't members or collaborators. The button opens a form with the milestone preselected (but shown as No Milestone and locked), and Create Issue then fails. The user should either not be offered the button or be able to create the issue.",
       "rootCause": {
         "explanation": "The New Issue link is outside the CanWriteIssues/CanWritePulls conditional and always includes milestone. Issue validation only permits candidate milestone IDs from authorized metadata, so a nonmember can open the advertised form but cannot submit its selected milestone.",
         "sourceReferences": [
@@ -1364,7 +1364,7 @@
     },
     {
       "id": "gitea-milestone-create-repeated-submit",
-      "explanation": "Repeated milestone form submissions insert duplicate records.",
+      "explanation": "Two rapid clicks on Create Milestone during one completed form submission can insert two persistent milestones with identical titles and descriptions.",
       "rootCause": {
         "explanation": "The new milestone form uses a normal submit without an in-flight submission guard or request token; NewMilestone inserts each request independently and has no deduplication boundary.",
         "sourceReferences": [
@@ -1441,7 +1441,7 @@
     },
     {
       "id": "gitea-milestone-detail-overdue-wrong-context",
-      "explanation": "Milestone detail reads overdue state from the wrong template context.",
+      "explanation": "For an open milestone whose due date has passed, the milestone list shows the due date in red as overdue, but the milestone's own detail page shows the same date in the normal color with no overdue indication.",
       "rootCause": {
         "explanation": "The detail template checks .IsOverdue and .IsClosed at the page root while the actual values belong to .Milestone. The date string is correctly read from .Milestone, but the overdue color condition remains false.",
         "sourceReferences": [
@@ -1479,7 +1479,7 @@
     },
     {
       "id": "gitea-milestone-earliest-includes-zero-first",
-      "explanation": "Earliest due-date sort orders missing dates before actual dates.",
+      "explanation": "On a repository's Milestones list, the default sort and Sort > Earliest due date put milestones with no due date at the top, ahead of overdue and upcoming ones, while Latest due date puts them last.",
       "rootCause": {
         "explanation": "The default milestone order is deadline_unix ASC, name ASC. Missing deadlines use zero, and the ORDER BY contains no CASE/null-last handling, so undated rows precede overdue/future deadlines.",
         "sourceReferences": [
