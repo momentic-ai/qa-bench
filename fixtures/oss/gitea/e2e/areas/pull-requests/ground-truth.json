@@ -757,6 +757,174 @@
         "Check whether the Author and Assignee filters are still applied."
       ],
       "severity": 3
+    },
+    {
+      "id": "gitea-global-pr-search-due-sort-stale",
+      "name": "Global pull-request keyword search sorts by stale due dates after sidebar updates",
+      "severity": 3,
+      "owningArea": "gitea/pull-requests",
+      "summary": "Setting or changing a pull request due date updates the database without refreshing the search index. The global PR dashboard orders keyword searches using outdated indexed dates while displaying the current saved dates.",
+      "expected": "Nearest and Farthest due-date sorting on global Pull Requests uses current saved deadlines for matching PRs.",
+      "actual": "With matching PRs due November 15 and December 20, Nearest due date can place December 20 first, and Farthest can retain an equally incorrect stale order. Reloading does not repair the ordering. Clearing the keyword or using the repository PR list sorts correctly. Posting comments on both PRs refreshes their index records and restores ordering; another due-date-only edit can break it again.",
+      "reproSteps": [
+        "Create two disposable pull requests whose titles share a fresh nonnumeric search prefix.",
+        "Set their due dates from the PR sidebar, giving the older PR an earlier date and the newer PR a later date.",
+        "Open global Pull Requests, select Created by you and Open, search for the prefix, and choose Nearest due date.",
+        "Observe the later-dated PR listed above the earlier-dated PR. Reload and compare Nearest/Farthest ordering against the displayed saved dates.",
+        "As controls, clear the keyword or use the repository PR list and confirm current-date ordering.",
+        "Post a normal comment on each PR, repeat the global keyword sort and confirm it recovers. Change only a due date and check for stale ordering again."
+      ],
+      "sourceReport": {
+        "sessionId": "bd66ed23-d8b0-5502-8fc0-7bbad86262c9",
+        "webUrl": "https://app.momentic.ai/mo/sessions/bd66ed23-d8b0-5502-8fc0-7bbad86262c9?tab=bug%3ANearest%20due%20date%20places%20a%20later%20pull%20request%20first",
+        "recording": {
+          "startedAt": 1793228274440,
+          "finishedAt": 1793228304752,
+          "agentId": "bd66ed23-d8b0-5502-8fc0-7bbad86262c9:sandbox-bugbash-v2:lists",
+          "windowId": "f14b9889-e14e-4a98-86f4-cb0b1a49b2dd",
+          "artifactId": "596ae8c0-7cd8-4d4c-a950-ae713344b81c"
+        }
+      },
+      "matchingGuidance": {
+        "relatedReference": {
+          "id": "gitea-issue-search-due-sort-ignores-new-due-dates",
+          "distinction": "The existing reference covers global Issues search after setting due dates. This entry covers global Pull Requests keyword search using stale PR deadlines. The shared missing index refresh is the cause, but the dashboard entry point differs."
+        },
+        "otherRelatedReference": {
+          "id": "gitea-issue-search-due-sort-stale-after-due-date-edit",
+          "distinction": "Related global Issues case for changing already-indexed dates; this entry covers stale PR due-date sorting."
+        },
+        "scope": "Require a keyword search on the global PR dashboard and ordering that disagrees with current saved deadlines. Pure visual query retention, repository-list ordering and undated-milestone database sorting have separate coverage. Some creation/date arrangements coincide with the stale order and appear correct; no universal reversed-order claim is made."
+      },
+      "reviewEvidence": {
+        "basis": "Explicit user approval as a related severity-3 entry after independent Codex and Claude reproductions, passing controls and coordinator source checks. Both final reviewers accepted at severity 3.",
+        "userAccepted": true,
+        "sourceRevision": "99053ce4fa2b45f1bca5837418c0c57f793ca824",
+        "severityReason": "Severity 3: incorrect ordering of matching pull requests under supported due-date sorts. Saved due dates themselves remain correct.",
+        "analysis": [
+          "Claude reproduced on two fresh PR pairs, set dates through the sidebar, and confirmed no-keyword/repository-list controls. Reindexing only one PR could make both directions wrong; comments on both restored correct ordering.",
+          "Codex reproduced after checking creation-order arrangements, repaired ordering through comments, then reproduced again with a due-date-only edit. It also confirmed desktop and narrower-width variants.",
+          "The deadline handler and model update storage and add timeline history without notifying the search indexer. The global dashboard preserves index-result ordering while loading current saved PR data for display.",
+          "Normal comments notify the indexer, explaining the repair control. The repository list uses index results for matching IDs, then sorts current database records, explaining its passing control.",
+          "Latest source retains the missing deadline refresh; latest runtime was not tested."
+        ],
+        "sourceReferences": [
+          "https://github.com/go-gitea/gitea/blob/99053ce4fa2b45f1bca5837418c0c57f793ca824/routers/web/repo/issue.go#L384-L407",
+          "https://github.com/go-gitea/gitea/blob/99053ce4fa2b45f1bca5837418c0c57f793ca824/models/issues/issue_update.go#L510-L532",
+          "https://github.com/go-gitea/gitea/blob/99053ce4fa2b45f1bca5837418c0c57f793ca824/services/indexer/notify.go#L36-L43",
+          "https://github.com/go-gitea/gitea/blob/99053ce4fa2b45f1bca5837418c0c57f793ca824/modules/indexer/issues/util.go#L100-L124",
+          "https://github.com/go-gitea/gitea/blob/99053ce4fa2b45f1bca5837418c0c57f793ca824/routers/web/user/home.go#L544-L555",
+          "https://github.com/go-gitea/gitea/blob/965d7522e0b3d323ea2da6615e7d4b39684d16e5/models/issues/issue_update.go#L530-L548"
+        ],
+        "limitations": [
+          "The exact deployed search backend and stored index contents were not directly inspected; stale index behavior is supported by source and intervention controls.",
+          "Organization dashboards and direct API deadline mutations were not independently browser-tested.",
+          "Latest runtime and complete historical fix coverage were not verified."
+        ]
+      }
+    },
+    {
+      "id": "gitea-pr-conversation-navigation-leaves-target-folded",
+      "name": "Previous and Next conversation navigation leaves target comments hidden in collapsed files",
+      "severity": 3,
+      "owningArea": "gitea/pull-requests",
+      "summary": "Files Changed conversation navigation changes the comment URL without expanding its collapsed file, leaving the target discussion hidden.",
+      "expected": "Previous and Next reveal the target conversation, expanding its file when necessary.",
+      "actual": "The URL changes to the target comment but its Viewed or manually collapsed file remains folded. The discussion stays hidden. Expanding the file manually or reloading the comment URL reveals it.",
+      "reproSteps": [
+        "Create a pull request with inline review conversations in two different files.",
+        "Mark the first file Viewed so it collapses.",
+        "Click Previous beneath the second file’s conversation.",
+        "Observe the target comment hash in the URL while the first file and its discussion remain collapsed.",
+        "Expand the first file or reload the target comment URL to reveal the discussion."
+      ],
+      "sourceReport": {
+        "sessionId": "3c735475-bbf2-5fda-9289-11d8d93febf0",
+        "webUrl": "https://app.momentic.ai/mo/sessions/3c735475-bbf2-5fda-9289-11d8d93febf0?tab=bug%3APrevious%20conversation%20link%20fails%20to%20reveal%20comment%20in%20collapsed%20Viewed%20file",
+        "recording": {
+          "startedAt": 1793216485633,
+          "finishedAt": 1793216527594,
+          "agentId": "3c735475-bbf2-5fda-9289-11d8d93febf0:sandbox-bug-reproducer:26785b01-611b-40c7-b44a-ed236943fe56",
+          "windowId": "db593623-cfe9-43e1-8a60-189159a7d5ac"
+        }
+      },
+      "matchingGuidance": {
+        "scope": "Covers Previous/Next navigation into Viewed or manually folded files. Missing comments after file renames and unrelated file-tree navigation defects have separate causes."
+      },
+      "reviewEvidence": {
+        "basis": "Explicit user acceptance at severity 3 after Claude’s final acceptance and Codex’s independently observed reproductions; Codex final verdict was pending at approval.",
+        "userAccepted": true,
+        "sourceRevision": "99053ce4fa2b45f1bca5837418c0c57f793ca824",
+        "severityReason": "Conversation navigation fails to reveal its destination; manual expansion or reload is required.",
+        "analysis": [
+          "Claude reproduced twice with working expanded-file controls, Next wraparound and manual folding.",
+          "Codex independently reproduced twice and confirmed Next, manual folding, split view, a narrower viewport and a contributor account. Final verdict pending at approval.",
+          "The navigation handler changes only the hash. The hashchange handler scrolls without unfolding; the page-load handler explicitly unfolds the target file.",
+          "Latest inspected source retains this separation; latest runtime was not tested."
+        ],
+        "sourceReferences": [
+          "https://github.com/go-gitea/gitea/blob/99053ce4fa2b45f1bca5837418c0c57f793ca824/web_src/js/features/repo-diff.ts#L119-L134",
+          "https://github.com/go-gitea/gitea/blob/99053ce4fa2b45f1bca5837418c0c57f793ca824/web_src/js/features/repo-diff.ts#L214-L244",
+          "https://github.com/go-gitea/gitea/blob/99053ce4fa2b45f1bca5837418c0c57f793ca824/web_src/js/features/repo-issue.ts#L258-L279"
+        ],
+        "limitations": [
+          "No saved comment loss observed.",
+          "Complete upstream history and latest runtime were not verified."
+        ]
+      }
+    },
+    {
+      "id": "gitea-pr-quote-reply-comment-disabled",
+      "name": "Pull-request Quote Reply populates the draft but leaves Comment disabled",
+      "severity": 3,
+      "owningArea": "gitea/pull-requests",
+      "summary": "Choosing Quote Reply populates the comment composer, but Comment stays disabled. Switching to Preview and back to Write does not enable posting the generated quote.",
+      "expected": "Quote Reply should produce a draft that can be posted using Comment without requiring an extra text edit.",
+      "actual": "Quote Reply populates Write and Preview, but Comment remains disabled. Typing a space enables submission and the quote posts successfully.",
+      "reproSteps": [
+        "Create a disposable pull request and post a discussion comment.",
+        "Edit the comment and save it.",
+        "With the reply composer empty, choose Quote Reply from that comment’s menu.",
+        "Observe the populated draft and disabled Comment button, including after switching Preview and Write.",
+        "Type a space and confirm Comment enables and posts the quote."
+      ],
+      "sourceReport": {
+        "sessionId": "9c010173-29fe-5bff-bc3a-2e745356d758",
+        "webUrl": "https://app.momentic.ai/mo/sessions/9c010173-29fe-5bff-bc3a-2e745356d758?tab=bug%3AQuote%20reply%20leaves%20the%20Comment%20button%20disabled",
+        "recording": {
+          "startedAt": 1793221082500,
+          "finishedAt": 1793221119800,
+          "agentId": "9c010173-29fe-5bff-bc3a-2e745356d758:sandbox-bugbash-v2:discussion",
+          "windowId": "0d66c2d0-78dc-4bb6-a6a9-fd01d4c8494c",
+          "artifactId": "c4c530ff-cc31-440f-9fea-f470e5775190"
+        }
+      },
+      "matchingGuidance": {
+        "relatedReference": {
+          "id": "gitea-issue-quote-reply-stale-comment-controls",
+          "distinction": "The existing reference covers Issue discussion controls after Quote Reply. This entry covers pull-request discussion Quote Reply leaving Comment disabled."
+        },
+        "scope": "Require a populated quote draft with stale disabled submission controls. Quote content lost after submission is a separate claim."
+      },
+      "reviewEvidence": {
+        "basis": "Explicit user acceptance as a related severity-3 entry after Codex independently reproduced on two fresh PRs. Final reviewer verdicts were pending when approved.",
+        "userAccepted": true,
+        "sourceRevision": "99053ce4fa2b45f1bca5837418c0c57f793ca824",
+        "severityReason": "The generated reply cannot be submitted until the user makes an extra edit.",
+        "analysis": [
+          "Codex observed the generated quote in Write and Preview on two fresh PRs while Comment remained disabled.",
+          "Typing a single space enabled Comment and allowed submission.",
+          "The shared quote handler assigns the editor value programmatically; the observed control state remains stale until a subsequent user edit."
+        ],
+        "sourceReferences": [
+          "https://github.com/go-gitea/gitea/blob/99053ce4fa2b45f1bca5837418c0c57f793ca824/web_src/js/features/repo-issue-edit.ts#L126-L151"
+        ],
+        "limitations": [
+          "Claude review and Codex final verdict were pending at user approval.",
+          "No saved-comment loss observed.",
+          "Latest runtime was not tested."
+        ]
+      }
     }
   ]
 }
