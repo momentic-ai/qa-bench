@@ -4,7 +4,7 @@
   "logicalBugs": [
     {
       "id": "gitea-notification-pin-overwrites-read-state",
-      "explanation": "Pinning replaces rather than preserves read state.",
+      "explanation": "Pinning an already-read notification changes its action and unread count as if it became unread.",
       "rootCause": {
         "explanation": "Read/unread and pinned are mutually exclusive NotificationStatus enum values. Pinning changes Read to Pinned; templates render pinned rows with unread-style Mark as read controls rather than retaining an independent read flag.",
         "sourceReferences": [
@@ -49,7 +49,7 @@
     },
     {
       "id": "gitea-subscription-toolbar-mobile-overflow",
-      "explanation": "Subscription controls and their dropdown do not fit phone width.",
+      "explanation": "Open Notifications subscriptions at 320px and try the Sort control. The toolbar clips the control, and opening it leaves its menu labels outside the right viewport edge.",
       "rootCause": {
         "explanation": "The subscriptions template places state/type/sort controls in horizontal flex/filter menus without a narrow-width wrapping rule or viewport-constrained dropdown. The toolbar intrinsic width clips Sort, and opening that clipped menu leaves its labels offscreen.",
         "sourceReferences": [
@@ -66,12 +66,17 @@
       "reproductionPaths": [
         {
           "id": "gitea-subscription-toolbar-mobile-overflow-notifications-path-1",
-          "explanation": "At 320px mobile width, the closed subscription toolbar exceeds the page width and clips the Sort control.",
+          "explanation": "Open Notifications subscriptions at 320px and try the Sort control. The toolbar clips the control, and opening it leaves its menu labels outside the right viewport edge.",
           "sourceBugs": [
             {
               "index": 1,
               "id": "gitea-subscriptions-sort-control-overflow-mobile",
               "name": "Subscriptions filter bar overflows a 320px mobile viewport and clips Sort"
+            },
+            {
+              "index": 2,
+              "id": "gitea-subscriptions-sort-menu-clipped-mobile",
+              "name": "Subscriptions Sort menu opens with clipped option labels at the initial mobile viewport"
             }
           ],
           "expected": "Fit or wrap the subscription filter controls within the mobile viewport so the closed Sort control is fully visible without horizontally scrolling the whole page.",
@@ -89,6 +94,12 @@
               "guidance": {
                 "scope": "Closed toolbar/control layout. The separately approved opened-menu clipping reference covers menu option labels; whole-page horizontal displacement is a consequence of this overflow, not a third defect. Sorting itself works once revealed."
               }
+            },
+            {
+              "sourceBugIndex": 2,
+              "guidance": {
+                "scope": "Opened menu option visibility, not sorting correctness. The original expected behavior describes fitting/wrapping the toolbar; horizontal page movement and persistence after reload do not establish a third independent bug."
+              }
             }
           ],
           "sourceConstraints": [
@@ -102,37 +113,7 @@
                   "scope": "Credit the closed Sort control/filter bar clipping. A report solely about menu option labels outside the viewport matches the separate opened-menu reference."
                 }
               }
-            }
-          ]
-        },
-        {
-          "id": "gitea-subscription-toolbar-mobile-overflow-notifications-path-2",
-          "explanation": "At the initial320px subscription viewport, opening the partly visible Sort trigger opens a menu whose option labels extend beyond the right viewport edge.",
-          "sourceBugs": [
-            {
-              "index": 2,
-              "id": "gitea-subscriptions-sort-menu-clipped-mobile",
-              "name": "Subscriptions Sort menu opens with clipped option labels at the initial mobile viewport"
-            }
-          ],
-          "expected": "When Sort is opened, position its menu so its options and labels are fully visible within the mobile viewport without requiring horizontal page scrolling.",
-          "actual": "At 320×740 and scrollX=0, clicking the visible sliver of Sort opens the menu from x199.59 to x373.11, visibly clipping option labels beyond x320. After scrolling the page right 53px the menu fits; the claim is specifically the initial viewport state.",
-          "reproSteps": [
-            "Sign in as eval, set320×740, and open /notifications/subscriptions at scrollX=0.",
-            "Without horizontally scrolling first, click the visible portion of Sort at approximatelyx310,y150.",
-            "Observe the opened menu: its right edge and option labels are clipped outside the 320px viewport.",
-            "As a control, scroll the page horizontally right 53px; the menu becomes visible. This workaround does not make the initial clipped menu fit."
-          ],
-          "severity": 1,
-          "matchingGuidance": [
-            {
-              "sourceBugIndex": 2,
-              "guidance": {
-                "scope": "Opened menu option visibility, not sorting correctness. The original expected behavior describes fitting/wrapping the toolbar; horizontal page movement and persistence after reload do not establish a third independent bug."
-              }
-            }
-          ],
-          "sourceConstraints": [
+            },
             {
               "sourceBugIndex": 2,
               "constraints": {
@@ -144,13 +125,89 @@
                 }
               }
             }
+          ],
+          "sourceReproductions": [
+            {
+              "id": "gitea-subscription-toolbar-mobile-overflow-notifications-path-1",
+              "explanation": "At 320px mobile width, the closed subscription toolbar exceeds the page width and clips the Sort control.",
+              "expected": "Fit or wrap the subscription filter controls within the mobile viewport so the closed Sort control is fully visible without horizontally scrolling the whole page.",
+              "actual": "At 320×740 with scrollX=0, document width is 373px and Sort extends from x304.45 to x373.11. Horizontal scrolling 53px reveals it while shifting the left navigation/content out of view.",
+              "reproSteps": [
+                "Sign in as eval and set the viewport to 320×740.",
+                "Open /notifications/subscriptions at its initial horizontal position, scrollX=0.",
+                "Observe that the closed Sort control extends beyond the right viewport edge.",
+                "Scroll horizontally right to reveal Sort; left navigation/content moves offscreen. The original Mo reproduction also confirms persistence after Type→Pull Requests, Closed and reload."
+              ],
+              "severity": 1,
+              "matchingGuidance": [
+                {
+                  "sourceBugIndex": 1,
+                  "guidance": {
+                    "scope": "Closed toolbar/control layout. The separately approved opened-menu clipping reference covers menu option labels; whole-page horizontal displacement is a consequence of this overflow, not a third defect. Sorting itself works once revealed."
+                  }
+                }
+              ],
+              "sourceConstraints": [
+                {
+                  "sourceBugIndex": 1,
+                  "constraints": {
+                    "matchingGuidance": {
+                      "scope": "Closed toolbar/control layout. The separately approved opened-menu clipping reference covers menu option labels; whole-page horizontal displacement is a consequence of this overflow, not a third defect. Sorting itself works once revealed."
+                    },
+                    "matchNotes": {
+                      "scope": "Credit the closed Sort control/filter bar clipping. A report solely about menu option labels outside the viewport matches the separate opened-menu reference."
+                    }
+                  }
+                }
+              ],
+              "sourceBugIndices": [
+                1
+              ]
+            },
+            {
+              "id": "gitea-subscription-toolbar-mobile-overflow-notifications-path-2",
+              "explanation": "At the initial320px subscription viewport, opening the partly visible Sort trigger opens a menu whose option labels extend beyond the right viewport edge.",
+              "expected": "When Sort is opened, position its menu so its options and labels are fully visible within the mobile viewport without requiring horizontal page scrolling.",
+              "actual": "At 320×740 and scrollX=0, clicking the visible sliver of Sort opens the menu from x199.59 to x373.11, visibly clipping option labels beyond x320. After scrolling the page right 53px the menu fits; the claim is specifically the initial viewport state.",
+              "reproSteps": [
+                "Sign in as eval, set320×740, and open /notifications/subscriptions at scrollX=0.",
+                "Without horizontally scrolling first, click the visible portion of Sort at approximatelyx310,y150.",
+                "Observe the opened menu: its right edge and option labels are clipped outside the 320px viewport.",
+                "As a control, scroll the page horizontally right 53px; the menu becomes visible. This workaround does not make the initial clipped menu fit."
+              ],
+              "severity": 1,
+              "matchingGuidance": [
+                {
+                  "sourceBugIndex": 2,
+                  "guidance": {
+                    "scope": "Opened menu option visibility, not sorting correctness. The original expected behavior describes fitting/wrapping the toolbar; horizontal page movement and persistence after reload do not establish a third independent bug."
+                  }
+                }
+              ],
+              "sourceConstraints": [
+                {
+                  "sourceBugIndex": 2,
+                  "constraints": {
+                    "matchingGuidance": {
+                      "scope": "Opened menu option visibility, not sorting correctness. The original expected behavior describes fitting/wrapping the toolbar; horizontal page movement and persistence after reload do not establish a third independent bug."
+                    },
+                    "matchNotes": {
+                      "scope": "Credit clipped opened Sort menu/option labels at the initial narrow viewport. A closed-control-only clipping claim matches the separate toolbar reference."
+                    }
+                  }
+                }
+              ],
+              "sourceBugIndices": [
+                2
+              ]
+            }
           ]
         }
       ]
     },
     {
       "id": "gitea-watching-size-sort-unhandled",
-      "explanation": "Watching ignores both size sorts and highlights the default sort.",
+      "explanation": "On Notifications > Watching, choose Smallest size or Largest size. The URL changes to the size sort, but repository order and the active Sort indicator remain Recently updated.",
       "rootCause": {
         "explanation": "NotificationWatching has no size/reversesize switch cases. Those query values fall through to recentupdate, overwriting SortType and using recent updated ordering; both the rows and highlighted menu entry are therefore wrong.",
         "sourceReferences": [
@@ -174,12 +231,17 @@
       "reproductionPaths": [
         {
           "id": "gitea-watching-size-sort-unhandled-notifications-path-1",
-          "explanation": "The Watching page URL switches to sort=reversesize, but reopening Sort still marks Recently updated as active.",
+          "explanation": "On Notifications > Watching, choose Smallest size or Largest size. The URL changes to the size sort, but repository order and the active Sort indicator remain Recently updated.",
           "sourceBugs": [
             {
               "index": 3,
               "id": null,
               "name": "Watching sort menu highlights Recently updated after Largest size is chosen"
+            },
+            {
+              "index": 9,
+              "id": "gitea-watching-size-sort-ignored",
+              "name": "Watching list ignores Smallest size and Largest size sorts"
             }
           ],
           "expected": "The Sort menu should mark Largest size as the active choice.",
@@ -189,27 +251,64 @@
             "Choose Sort → Largest size.",
             "Reopen Sort and compare the highlighted item with the URL and resulting order."
           ],
-          "severity": 3
-        },
-        {
-          "id": "gitea-watching-size-sort-unhandled-notifications-path-2",
-          "explanation": "On Notifications > Watching, choosing Sort > Smallest size or Largest size doesn't sort by repository size: the list stays in Recently updated order, so a large repository can be listed above a small one under Smallest size and both size sorts give the same order. Explore, profile and organization repository lists sort by size correctly.",
-          "sourceBugs": [
+          "severity": 3,
+          "sourceReproductions": [
             {
-              "index": 9,
-              "id": "gitea-watching-size-sort-ignored",
-              "name": "Watching list ignores Smallest size and Largest size sorts"
+              "id": "gitea-watching-size-sort-unhandled-notifications-path-1",
+              "explanation": "The Watching page URL switches to sort=reversesize, but reopening Sort still marks Recently updated as active.",
+              "expected": "The Sort menu should mark Largest size as the active choice.",
+              "actual": "The Watching page URL switches to sort=reversesize, but reopening Sort still marks Recently updated as active.",
+              "reproSteps": [
+                "Open Notifications → Watching.",
+                "Choose Sort → Largest size.",
+                "Reopen Sort and compare the highlighted item with the URL and resulting order."
+              ],
+              "severity": 3,
+              "sourceBugIndices": [
+                3
+              ]
+            },
+            {
+              "id": "gitea-watching-size-sort-unhandled-notifications-path-2",
+              "explanation": "On Notifications > Watching, choosing Sort > Smallest size or Largest size doesn't sort by repository size: the list stays in Recently updated order, so a large repository can be listed above a small one under Smallest size and both size sorts give the same order. Explore, profile and organization repository lists sort by size correctly.",
+              "expected": "With Smallest size selected, watched repositories are listed from smallest to largest, and Largest size lists them from largest to smallest.",
+              "actual": "Under Smallest size (sort=size), qa-watch-empty (175 KiB) was listed above qa-watch-alpha (23 KiB). The order was identical under Largest size and under the default Recently updated sort.",
+              "reproSteps": [
+                "Watch at least two repositories of clearly different sizes and note each size from its repository sidebar.",
+                "Open Notifications > Watching.",
+                "Choose Sort > Smallest size, then Sort > Largest size.",
+                "Check whether the order follows repository size and differs between the two sorts."
+              ],
+              "severity": 3,
+              "matchingGuidance": [
+                {
+                  "sourceBugIndex": 9,
+                  "guidance": {
+                    "relatedReference": {
+                      "name": "Watching sort menu highlights Recently updated after Largest size is chosen",
+                      "distinction": "Same cause (the Watching handler has no size sort and falls back to Recently updated), but that entry is the sort menu highlighting the wrong item; this entry is the list order not following repository size."
+                    }
+                  }
+                }
+              ],
+              "sourceConstraints": [
+                {
+                  "sourceBugIndex": 9,
+                  "constraints": {
+                    "matchingGuidance": {
+                      "relatedReference": {
+                        "name": "Watching sort menu highlights Recently updated after Largest size is chosen",
+                        "distinction": "Same cause (the Watching handler has no size sort and falls back to Recently updated), but that entry is the sort menu highlighting the wrong item; this entry is the list order not following repository size."
+                      }
+                    }
+                  }
+                }
+              ],
+              "sourceBugIndices": [
+                9
+              ]
             }
           ],
-          "expected": "With Smallest size selected, watched repositories are listed from smallest to largest, and Largest size lists them from largest to smallest.",
-          "actual": "Under Smallest size (sort=size), qa-watch-empty (175 KiB) was listed above qa-watch-alpha (23 KiB). The order was identical under Largest size and under the default Recently updated sort.",
-          "reproSteps": [
-            "Watch at least two repositories of clearly different sizes and note each size from its repository sidebar.",
-            "Open Notifications > Watching.",
-            "Choose Sort > Smallest size, then Sort > Largest size.",
-            "Check whether the order follows repository size and differs between the two sorts."
-          ],
-          "severity": 3,
           "matchingGuidance": [
             {
               "sourceBugIndex": 9,
@@ -239,7 +338,7 @@
     },
     {
       "id": "gitea-repository-alphabetical-sort-case-sensitive",
-      "explanation": "Repository alphabetical sorting uses raw case-sensitive names.",
+      "explanation": "An uppercase Hello-World repository sorts before lowercase names beginning with g and h in both profile Repositories and Watching.",
       "rootCause": {
         "explanation": "SearchOrderByAlphabetically orders name ASC rather than lower_name or a case-insensitive expression. The SQLite fixture therefore orders uppercase names ahead of lowercase names across repository lists.",
         "sourceReferences": [
@@ -277,7 +376,7 @@
     },
     {
       "id": "gitea-notification-action-drops-read-filter",
-      "explanation": "Notification actions drop the current Read view.",
+      "explanation": "On Notifications with the Read filter selected (?q=read), row actions such as Mark as unread and Pin redirect to /notifications?page=1, dropping the filter and showing the Unread view.",
       "rootCause": {
         "explanation": "NotificationStatusPost redirects with page only and getNotifications chooses Read solely from q=read. Status forms do not retain q, so a read-view action returns to the default Unread view.",
         "sourceReferences": [
@@ -317,7 +416,7 @@
     },
     {
       "id": "gitea-repository-watch-leaves-issue-watch-ui-stale",
-      "explanation": "Repository watch changes do not refresh inherited issue subscription state.",
+      "explanation": "On an issue page, clicking the repository's Unwatch button updates only the header. The issue sidebar's Notifications button, which inherits the repository watch, keeps showing Unsubscribe until the page is reloaded, and clicking it sends the stale action.",
       "rootCause": {
         "explanation": "The repository watch/unwatch form uses htmx hx-target=\"this\", replacing only that header form. The issue subscription form separately renders its hidden watch value and button label from IssueWatch.IsWatching and is not a target of the repository response, so its inherited state remains stale until reload.",
         "sourceReferences": [
@@ -362,7 +461,7 @@
     },
     {
       "id": "gitea-notification-worker-message-envelope",
-      "explanation": "Live notification updates parse the worker envelope instead of its data.",
+      "explanation": "With a page open, new notifications (a mention, or new issues in a watched repository) never update the bell's unread count or the open Notifications list. The new count and notifications appear only after a reload.",
       "rootCause": {
         "explanation": "SharedWorker sends {type,data}, where data is the SSE JSON string. The message handler passes the outer MessageEvent to receiveUpdateCount, which JSON.parse(event.data) attempts to parse the envelope object. It throws before updating count/table; the successful worker branch also returns without starting the periodic fallback.",
         "sourceReferences": [
@@ -414,7 +513,7 @@
     },
     {
       "id": "gitea-notification-pinned-pagination-count-mismatch",
-      "explanation": "Pinned notifications consume page slots omitted from the page count.",
+      "explanation": "Pinned notifications consume slots in the same paginated Read or Unread list as ordinary rows, but the page count excludes those pinned rows. With enough notifications, ordinary rows disappear beyond the last available page even though they still exist.",
       "rootCause": {
         "explanation": "getNotifications counts only the requested read/unread status but selects rows with both that status and Pinned using the same page size. The undercount hides a next page even when pinned rows displace ordinary rows.",
         "sourceReferences": [
@@ -496,7 +595,7 @@
     },
     {
       "id": "gitea-notification-list-stale-permissions",
-      "explanation": "Existing notifications are displayed without current repository authorization.",
+      "explanation": "After a user is removed as a collaborator from a private repository, their Notifications list still shows notifications from it, including the private repository's name and the issue's title. Opening one leads to a 404, and the entry stays listed. The list loads repositories and issues without checking whether the user can still read them.",
       "rootCause": {
         "explanation": "getNotifications loads repositories/issues by ID and removes only missing records. It does not check current actor read permission after access is revoked, so stored private notification metadata remains visible.",
         "sourceReferences": [
@@ -542,7 +641,7 @@
     },
     {
       "id": "gitea-notification-revoked-recipient-updates-unresolved",
-      "explanation": "A reported revoked recipient continues receiving private activity updates.",
+      "explanation": "After a user is removed from a private repository, new activity on an issue they were subscribed to still shows up in their Notifications: the issue's entry jumps back to the top as 'now' each time someone comments, telling them there is new private activity they can no longer open.",
       "rootCause": {
         "explanation": "Source attribution remains unresolved: retained issue watches/participant rows supply candidate recipients, but the pinned createOrUpdateIssueNotifications implementation explicitly checks CheckRepoUnitUser before updating an existing notification. The reported continued updates cannot be attributed to an absent permission check in this revision; a distinct deployment revision, permission state or delivery path must be established before merging this with the display-only permission defect.",
         "sourceReferences": [
@@ -612,7 +711,7 @@
     },
     {
       "id": "gitea-watching-out-of-range-page",
-      "explanation": "Watching does not redirect after its last page becomes invalid.",
+      "explanation": "On Notifications > Watching, unwatching the only repository on the last page and coming back to that page shows \"No matching results found.\" with no pagination, even though earlier pages still list watched repositories. Unlike Subscriptions, the Watching page never redirects an out-of-range page to the last valid one.",
       "rootCause": {
         "explanation": "NotificationWatching creates pagination after querying the requested page but never compares its clamped current page with the request or redirects. An empty out-of-range result therefore has no usable page controls despite earlier records.",
         "sourceReferences": [
@@ -651,7 +750,7 @@
     },
     {
       "id": "gitea-pinned-notification-comment-pointer-stale",
-      "explanation": "Pinned notifications retain the old comment target on later activity.",
+      "explanation": "After a user reads an issue notification and pins it, a new comment on the issue moves the pinned notification to the top with a new time, but opening it still scrolls to and highlights the earlier comment the user already read instead of the new comment.",
       "rootCause": {
         "explanation": "updateIssueNotification changes CommentID only when the previous status is Read. A pinned notification follows the else branch, updating activity/order metadata while retaining its old comment link.",
         "sourceReferences": [
