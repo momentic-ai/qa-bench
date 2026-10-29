@@ -162,7 +162,7 @@ async function runFixture({
       agent,
       message:
         agentName === "mo"
-          ? bugbashBrief(url, stopAfterMs, fixture)
+          ? bugbashBrief(url, timeLimitMs, fixture)
           : basicBugbashBrief(
               url,
               stopAfterMs,
