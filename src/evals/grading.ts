@@ -252,7 +252,13 @@ export async function gradeFixture(
     outside_area_known_invalid_sha256: outsideKnownInvalidHash,
     duplicates,
     known_invalid: knownInvalidCount,
-    ...metrics(knownHits, knownInvalidCount, groundTruth.length),
+    ...metrics(
+      knownHits,
+      knownInvalidCount,
+      groundTruth.length,
+      scores.duplicate_known_hits,
+      scores.duplicate_known_invalid,
+    ),
     ...throughput(bugs.length, knownHits, report.durationSeconds),
     review_path: options.runId
       ? path.posix.join(options.runId, reviewPath)
