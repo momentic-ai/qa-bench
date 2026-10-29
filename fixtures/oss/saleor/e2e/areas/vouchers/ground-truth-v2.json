@@ -1,0 +1,2073 @@
+{
+  "schemaVersion": 2,
+  "sourceGroundTruth": "ground-truth.json",
+  "logicalBugs": [
+    {
+      "id": "saleor-catalogue-tab-unconditional-variant-map",
+      "explanation": "Assigning categories/products crashes voucher creation.",
+      "rootCause": {
+        "explanation": "VoucherCreatePage unconditionally calls mapLocalVariantsToSavedVariants on paginatedSpecificItems for every active tab. On category/product tabs those objects have no variant.product, which the mapper dereferences.",
+        "sourceReferences": [
+          {
+            "repository": "saleor/saleor-dashboard",
+            "revision": "a6e7bee68ab183147ec680e03e86c29f717a11d5",
+            "path": "src/discounts/components/VoucherCreatePage/VoucherCreatePage.tsx",
+            "line": 462,
+            "url": "https://github.com/saleor/saleor-dashboard/blob/a6e7bee68ab183147ec680e03e86c29f717a11d5/src/discounts/components/VoucherCreatePage/VoucherCreatePage.tsx#L462"
+          }
+        ]
+      },
+      "reproductionPaths": [
+        {
+          "id": "saleor-catalogue-tab-unconditional-variant-map-path-1",
+          "explanation": "Assigning an eligible category or product while creating a Products-scope voucher replaces the editor with an unexpected-error screen.",
+          "sourceBugs": [
+            {
+              "index": 0,
+              "id": null,
+              "name": "Assigning an eligible category or product crashes the voucher editor"
+            }
+          ],
+          "expected": "The selected category or product should be assigned and the voucher editor should remain usable.",
+          "actual": "Confirming an Accessories category or Monospace Tee product assignment displays “We’ve encountered an unexpected error” and the editor remains unusable.",
+          "reproSteps": [
+            "Use the signed-in Saleor admin session for admin@example.com (restored from the provided saved authenticated session; no interactive sign-in was needed).",
+            "Navigate to /discounts/vouchers and select Create voucher. The new editor is at /discounts/vouchers/add.",
+            "In the draft, generate one voucher code, assign Channel-USD, and select Products under Discount.",
+            "Open Eligible products and choose Assign in the Categories row. The assignment dialog URL is /discounts/vouchers/add?action=assign-category.",
+            "Select the existing seeded Accessories category and click “Assign (1 item).” Observe the unexpected-error screen at /discounts/vouchers/add; it remains visible after five seconds.",
+            "Variant: in a new Products-scope voucher, open Eligible products > Products, select Monospace Tee, and click Assign (1 item); the same unexpected-error screen appears."
+          ],
+          "severity": 5
+        }
+      ]
+    },
+    {
+      "id": "saleor-setup-code-count-double-counts-drafts",
+      "explanation": "The setup checklist counts manually staged codes twice.",
+      "rootCause": {
+        "explanation": "getVoucherSetupReadiness adds listedCodesCount and draftCodesCount when no saved total exists; the client list already includes the same draft codes.",
+        "sourceReferences": [
+          {
+            "repository": "saleor/saleor-dashboard",
+            "revision": "a6e7bee68ab183147ec680e03e86c29f717a11d5",
+            "path": "src/discounts/components/VoucherSetupCard/getVoucherSetupReadiness.ts",
+            "line": 86,
+            "url": "https://github.com/saleor/saleor-dashboard/blob/a6e7bee68ab183147ec680e03e86c29f717a11d5/src/discounts/components/VoucherSetupCard/getVoucherSetupReadiness.ts#L86"
+          }
+        ]
+      },
+      "reproductionPaths": [
+        {
+          "id": "saleor-setup-code-count-double-counts-drafts-path-1",
+          "explanation": "A fresh voucher with one manually added code was labeled “2 codes ready” in the setup checklist, while its code table contained one row; after saving, the voucher still contained only that one code. Reported variant: The voucher setup summary reports 6 codes ready after generating a quantity of 3, while the voucher-code table shows only three draft rows; this persisted on a second fresh run after settling. Count this as the same reference rather than a separate bug.",
+          "sourceBugs": [
+            {
+              "index": 1,
+              "id": null,
+              "name": "Voucher setup checklist overcounts manually added codes"
+            }
+          ],
+          "expected": "After adding one manual code, the setup checklist should report one code ready, matching the single row in the Voucher codes table.",
+          "actual": "The checklist displayed “2 codes ready” while the table contained only the one manual Draft code row. I completed the safe creation flow; the saved voucher still had only that one code, now Active.",
+          "reproSteps": [
+            "Start signed in to Saleor Dashboard as admin@example.com using the provided admin session; no credentials were entered. Open the observed vouchers listing URL: /discounts/vouchers?asc=true&sort=code.",
+            "Click Create voucher and name the disposable voucher mo-saleor-04-promotions-voucher-checklist-20260620-1.",
+            "Under Voucher codes, click Add code > Manual code, enter mo-saleor-04-promotions-code-checklist-20260620-1, and confirm.",
+            "Before saving, compare the Add a code checklist status with the visible Voucher codes table: it says “2 codes ready,” while the table contains one Draft row for the manual code.",
+            "To complete the safe creation flow, assign Channel-USD, enter a 10% percentage discount, and click Save.",
+            "On the saved voucher at /discounts/vouchers/Vm91Y2hlcjoxMw%3D%3D, verify the table still contains only the single code, now Active.",
+            "Reported variant: At a 390 × 844 CSS-pixel viewport, load the supplied saved admin authentication state to enter the authorized admin session; no credentials were typed. Open /discounts/vouchers?asc=true&sort=code.",
+            "Reported variant: Click Create voucher, opening /discounts/vouchers/add.",
+            "Reported variant: Scroll to Details and enter a fresh voucher name, for example `voucher-verify-20261008-b91e`.",
+            "Reported variant: In Voucher codes, click + Add code and choose Generate codes.",
+            "Reported variant: Set Code Quantity to 3 and enter the fresh prefix `VOUCHER-VERIFY-MOB-B91E`; click Confirm once.",
+            "Reported variant: Observe the setup summary: it says “6 codes ready.” Scroll to Voucher codes and observe exactly three draft rows. Return to the setup summary and wait five seconds; it still says “6 codes ready.”"
+          ],
+          "severity": 3
+        }
+      ]
+    },
+    {
+      "id": "saleor-detail-section-scroll-wrong-responsive-root",
+      "explanation": "Voucher section shortcuts fail when responsive layouts change the scroll owner.",
+      "rootCause": {
+        "explanation": "All setup and navigation actions call scrollElementIntoDetailContent, which selects the marked detail root and computes scrolling only within it. At mobile/tablet breakpoints where the effective document scroll owner differs, scrolling that root cannot reveal the requested section.",
+        "sourceReferences": [
+          {
+            "repository": "saleor/saleor-dashboard",
+            "revision": "a6e7bee68ab183147ec680e03e86c29f717a11d5",
+            "path": "src/components/Layouts/Detail/scrollElementIntoDetailContent.ts",
+            "line": 108,
+            "url": "https://github.com/saleor/saleor-dashboard/blob/a6e7bee68ab183147ec680e03e86c29f717a11d5/src/components/Layouts/Detail/scrollElementIntoDetailContent.ts#L108"
+          }
+        ]
+      },
+      "reproductionPaths": [
+        {
+          "id": "saleor-detail-section-scroll-wrong-responsive-root-path-1",
+          "explanation": "At 390 × 844, clicking Add codes in the fresh-voucher setup checklist leaves the viewport unchanged instead of scrolling to the Voucher codes section. The same mobile shortcut failure was independently reproduced in two Mo runs.",
+          "sourceBugs": [
+            {
+              "index": 2,
+              "id": null,
+              "name": "Mobile voucher Add codes checklist shortcut fails to scroll to Voucher codes"
+            },
+            {
+              "index": 42,
+              "id": "mo-12m-saleor-vouchers-run4-9",
+              "name": "Mobile voucher setup Add codes shortcut does nothing"
+            }
+          ],
+          "expected": "When no voucher codes have been added, clicking Add codes in the setup checklist should scroll the Voucher codes section into view so the administrator can use its code-entry controls.",
+          "actual": "Repeated Add codes clicks leave the checklist and viewport unchanged at 390 × 844, including after dismissing the Saleor Pulse announcement. Manually scrolling to Voucher codes and choosing Add code > Manual code opens the working code-entry dialog. The second reproduction also successfully adds a draft code through that manual path.",
+          "reproSteps": [
+            "Set the viewport to 390 × 844 CSS pixels, sign in as the fixture administrator and open Discounts > Vouchers.",
+            "Choose Create voucher to open /discounts/vouchers/add. Use a fresh draft with no voucher codes and expand the Add a code setup-checklist step if needed.",
+            "Click Add codes in the setup checklist and wait for scrolling to settle. Click it again and observe that the viewport remains on the checklist instead of reaching Voucher codes.",
+            "Dismiss the Saleor Pulse announcement if present and repeat Add codes. Observe the same unchanged viewport.",
+            "Scroll manually to Voucher codes and choose Add code > Manual code. Observe that the code-entry dialog opens. In the second recorded reproduction, entering a fresh code and confirming also adds the draft code."
+          ],
+          "severity": 3,
+          "matchingGuidance": [
+            {
+              "sourceBugIndex": 2,
+              "guidance": {
+                "claimScope": "One mobile Add codes scroll failure reported twice. Opening a modal directly is not the expected shortcut action. The existing mobile Set value reference targets a different section under different prerequisites."
+              }
+            }
+          ]
+        },
+        {
+          "id": "saleor-detail-section-scroll-wrong-responsive-root-path-2",
+          "explanation": "At 390 × 844, the voucher setup card’s Set value shortcut leaves the discount field below the viewport; the admin must scroll manually to reach it.",
+          "sourceBugs": [
+            {
+              "index": 13,
+              "id": null,
+              "name": "Voucher Set value shortcut fails to scroll to the discount field on mobile"
+            }
+          ],
+          "expected": "After codes and a channel are assigned, activating Set value should take the admin to the discount-value entry so it can be configured. The card itself labels this outstanding requirement “Set the discount value,” says to enter a percentage or fixed amount, and presents “Set value →”.",
+          "actual": "With codes ready and Channel-USD assigned, the setup card shows 2 of 3. Clicking Set value twice leaves Discount amount below the viewport, including after waiting five seconds. Manually scrolling reaches the field.",
+          "reproSteps": [
+            "Set the viewport to 390 × 844 CSS pixels, sign in as the fixture administrator and open Discounts > Vouchers.",
+            "Choose Create voucher and enter a fresh voucher name.",
+            "In Voucher codes, choose Add code > Generate codes, enter quantity 1 and confirm.",
+            "Choose Manage channels in the setup card, select Channel-USD and confirm. The card shows 2 of 3 requirements complete.",
+            "Click Set value and wait for the page to settle. Click it again and wait five seconds. Observe that Discount amount remains below the viewport.",
+            "Scroll manually to Discount > Discount amount and observe that the field is reachable."
+          ],
+          "severity": 3
+        },
+        {
+          "id": "saleor-detail-section-scroll-wrong-responsive-root-path-3",
+          "explanation": "At 768 × 1024, clicking Codes in the voucher-create section navigation jumps the viewport to the page top instead of aligning the Voucher codes section.",
+          "sourceBugs": [
+            {
+              "index": 14,
+              "id": null,
+              "name": "Tablet voucher Codes navigation jumps to the top instead of its target section"
+            }
+          ],
+          "expected": "Selecting Codes in the section navigation should scroll the Voucher codes section into view, preserving useful access to its code-entry controls.",
+          "actual": "From a scrolled position with the Details and Voucher codes cards visible, clicking Codes abruptly returns the viewport to the top. The setup checklist, Schedule and Availability become visible while Voucher codes and the section navigation move out of view. Manual scrolling can still reach the controls.",
+          "reproSteps": [
+            "Set the viewport to 768 × 1024 CSS pixels, sign in as the fixture administrator and open Discounts > Vouchers.",
+            "Choose Create voucher to open /discounts/vouchers/add and dismiss the Saleor Pulse announcement if present.",
+            "Scroll down until the section navigation and Details/Voucher codes cards are visible. The independent reproduction scrolled approximately 630 pixels.",
+            "Click Codes in the section navigation and wait for scrolling to settle.",
+            "Observe that the viewport jumps to the page top, showing the setup checklist and Schedule/Availability panels instead of aligning Voucher codes. Scroll manually to reach Voucher codes again."
+          ],
+          "severity": 3,
+          "matchingGuidance": [
+            {
+              "sourceBugIndex": 14,
+              "guidance": {
+                "claimScope": "Tablet Codes section-navigation click on a fresh voucher. Do not require or infer failures for every navigation item. This differs from the mobile Add codes checklist and existing Set value shortcut in control, target conditions and visible outcome, while sharing the scroll helper."
+              }
+            }
+          ]
+        },
+        {
+          "id": "saleor-detail-section-scroll-wrong-responsive-root-path-4",
+          "explanation": "At 768 × 1024, selecting Requirements in a saved voucher’s section navigation leaves earlier form sections visible instead of bringing Minimum Requirements into view. The user directly reviewed the native Mo reproduction and confirmed this scroll failure.",
+          "sourceBugs": [
+            {
+              "index": 15,
+              "id": null,
+              "name": "Tablet voucher Requirements navigation fails to scroll to Minimum Requirements"
+            }
+          ],
+          "expected": "Selecting Requirements in the saved voucher editor’s section navigation should bring the Minimum Requirements section and its controls into view.",
+          "actual": "After clicking Requirements at 768 × 1024, Details, Voucher codes and Discount remain visible while Minimum Requirements is not brought into view. Manually scrolling down reveals the Minimum Requirements controls.",
+          "reproSteps": [
+            "Set the viewport to 768 × 1024 CSS pixels and sign in as the fixture administrator.",
+            "Create and save a disposable Entire order percentage voucher with a unique name and code and an assigned channel. Reopen it from the Vouchers list.",
+            "From the top of the saved voucher editor, click Requirements in the section navigation and wait for scrolling to settle.",
+            "Observe that the view still shows Details, Voucher codes and Discount instead of bringing Minimum Requirements into view.",
+            "Scroll down manually and observe that the Minimum Requirements card and its controls are present and reachable."
+          ],
+          "severity": 3,
+          "matchingGuidance": [
+            {
+              "sourceBugIndex": 15,
+              "guidance": {
+                "claimScope": "Requirements navigation in a saved voucher at tablet width. A particular active-marker transition is not required; the observable failure is not reaching Minimum Requirements. Mobile Add codes, tablet create-page Codes navigation and mobile Set value exercise different controls or starting states with the same shared helper."
+              }
+            }
+          ]
+        },
+        {
+          "id": "saleor-detail-section-scroll-wrong-responsive-root-path-5",
+          "explanation": "At 390 × 844, the voucher setup card’s Usage limits shortcut under Worth reviewing leaves the view on the checklist; the Usage Limit section stays far below the viewport.",
+          "sourceBugs": [
+            {
+              "index": 38,
+              "id": "mo-12m-saleor-vouchers-0",
+              "name": "Mobile voucher setup Usage limits shortcut does not scroll to the Usage Limit section"
+            }
+          ],
+          "expected": "Activating the Usage limits shortcut should bring the Usage Limit settings into view so the admin can review them, as the checklist entry offers.",
+          "actual": "After clicking Usage limits, the page does not scroll (window.scrollY remains 0). The Usage Limit heading stays about 2,870px down the page and must be reached by manual scrolling.",
+          "reproSteps": [
+            "Set the viewport to 390 × 844 CSS pixels, sign in as the fixture administrator and open Discounts > Vouchers.",
+            "Choose Create voucher so the setup checklist is shown.",
+            "In the checklist’s Worth reviewing group, click Usage limits and wait for the page to settle.",
+            "Observe that the view stays on the checklist and the Usage Limit section remains below the viewport; scroll manually to confirm it is reachable."
+          ],
+          "severity": 3
+        }
+      ]
+    },
+    {
+      "id": "saleor-name-column-sorts-code",
+      "explanation": "Voucher Name sorting uses the hidden voucher code.",
+      "rootCause": {
+        "explanation": "The displayed code column renders rowData.name, but getSortQueryField maps its sort key to VoucherSortField.CODE instead of NAME.",
+        "sourceReferences": [
+          {
+            "repository": "saleor/saleor-dashboard",
+            "revision": "a6e7bee68ab183147ec680e03e86c29f717a11d5",
+            "path": "src/discounts/views/VoucherList/sort.ts",
+            "line": 27,
+            "url": "https://github.com/saleor/saleor-dashboard/blob/a6e7bee68ab183147ec680e03e86c29f717a11d5/src/discounts/views/VoucherList/sort.ts#L27"
+          }
+        ]
+      },
+      "reproductionPaths": [
+        {
+          "id": "saleor-name-column-sorts-code-path-1",
+          "explanation": "The descending Name indicator updates, but stable visible voucher names remain out of descending name order. Row-count changes also occurred during concurrent fixture churn, so I am not attributing the reported missing-row symptom to sorting.",
+          "sourceBugs": [
+            {
+              "index": 3,
+              "id": null,
+              "name": "Voucher Name sort does not order rows by visible name"
+            }
+          ],
+          "expected": "After clicking Name once from ascending order, the visible voucher rows should be ordered by their displayed names in descending order, with the visible voucher set preserved.",
+          "actual": "The Name indicator changed to descending and the URL became /discounts/vouchers?asc=false&sort=code, but rows were not in descending visible-name order: voucher names beginning “mo-saleor-04-promotions-voucher…” appeared before “Percentage order discount” and “Single Use Vouchers.” This relative order persisted when I repeated the sort with a stable seven-row subset. Fixture rows appeared and disappeared during the run, so the changing row count is not reliable evidence that sorting itself dropped a voucher.",
+          "reproSteps": [
+            "Sign in as the fixture Saleor admin. Open Discounts > Vouchers and confirm the Name column is initially ascending at /discounts/vouchers?asc=true&sort=code. Existing vouchers were treated as read-only.",
+            "Click the Name column heading once.",
+            "Inspect the descending indicator and visible rows at /discounts/vouchers?asc=false&sort=code; compare the displayed names, including the voucher-checklist and voucher-c1 rows, Percentage order discount, and Single Use Vouchers."
+          ],
+          "severity": 3
+        }
+      ]
+    },
+    {
+      "id": "saleor-discount-type-update-nonatomic-channels",
+      "explanation": "Changing discount type and channel values can persist incompatible partial state.",
+      "rootCause": {
+        "explanation": "The detail save runs updateVoucher and updateChannels independently in Promise.all. The voucher type/name can commit while channel amount validation fails, and type changes do not revalidate existing channel values as one atomic mutation.",
+        "sourceReferences": [
+          {
+            "repository": "saleor/saleor-dashboard",
+            "revision": "a6e7bee68ab183147ec680e03e86c29f717a11d5",
+            "path": "src/discounts/views/VoucherDetails/handlers.ts",
+            "line": 145,
+            "url": "https://github.com/saleor/saleor-dashboard/blob/a6e7bee68ab183147ec680e03e86c29f717a11d5/src/discounts/views/VoucherDetails/handlers.ts#L145"
+          }
+        ]
+      },
+      "reproductionPaths": [
+        {
+          "id": "saleor-discount-type-update-nonatomic-channels-path-1",
+          "explanation": "A saved Entire order voucher with PLN 50 and USD 20 fixed discounts accepts a switch to Percentage with PLN 120 and USD 15. Save reports success and a reload retains the invalid PLN 120% value.",
+          "sourceBugs": [
+            {
+              "index": 4,
+              "id": null,
+              "name": "Percentage above 100 persists after changing a voucher from fixed amount to percentage"
+            }
+          ],
+          "expected": "Percentage discounts must not exceed 100% for any assigned channel. Saving PLN 120% should report a validation error rather than successfully persist that percentage.",
+          "actual": "Save displays “Voucher updated.” After reloading, the saved voucher still uses Percentage with Channel-PLN 120% and Channel-USD 15%.",
+          "reproSteps": [
+            "Sign in as the fixture administrator and create a disposable voucher with a unique name and manual code.",
+            "Assign both Channel-PLN and Channel-USD. Select Entire order and Fixed amount, enter PLN 50 and USD 20, and save with a valid active schedule. Wait for “Voucher created” and for Save to become disabled.",
+            "Change the discount amount to Percentage. Enter PLN 120 and USD 15, then click Save.",
+            "Observe “Voucher updated” and wait for Save to become disabled.",
+            "Reload the saved voucher detail and inspect Discount. Observe Percentage with Channel-PLN 120% and Channel-USD 15%."
+          ],
+          "severity": 3
+        },
+        {
+          "id": "saleor-discount-type-update-nonatomic-channels-path-2",
+          "explanation": "Renaming an existing percentage voucher while submitting an invalid120% channel discount reports a failed Save, but the new name is already persisted. The UI does not clearly disclose that the name saved while the channel change failed.",
+          "sourceBugs": [
+            {
+              "index": 18,
+              "id": null,
+              "name": "Failed voucher edit persists a rename without clear partial-save feedback"
+            }
+          ],
+          "expected": "A failed edit should preserve the previous saved name and percentages, or clearly identify partial success: the name saved while the percentage change failed and remains a draft. Generic failed-save feedback and a Channels-only unsaved label should not leave it ambiguous which edits have already persisted before the user chooses to discard or keep editing.",
+          "actual": "Starting with a saved original name and PLN10%/USD15%, submitting a new name with PLN120% shows Invalid percentage value and Couldn’t save voucher. Only Channels remains marked unsaved, but there is no explicit partial-success explanation. After Back > Ignore changes and reopening, the NEW name persists while PLN remains10% and USD15%. Failed Save > Back > Keep editing > refresh produces the same stored values. The partial write occurs on Save, before either dialog choice.",
+          "reproSteps": [
+            "Create and save a disposable Entire order Percentage voucher with a unique original name and manual code, assigned to Channel-PLN and Channel-USD with PLN10% and USD15%. Reload to verify this clean saved baseline.",
+            "Change Voucher Name to a unique new name and change Channel-PLN from10 to120, leaving Channel-USD at15.",
+            "Click Save. Observe Invalid percentage value and Couldn’t save voucher. Channels remains marked unsaved; the UI does not explicitly say the name update already succeeded.",
+            "Click Back, then Ignore changes in Leave without saving changes?. Reopen the same voucher and inspect its name and both channel percentages. The new name remains saved while the percentages remain10/15.",
+            "Variant: on a fresh valid saved baseline, make the same rename and invalid percentage edit and click Save. After failure, choose Back > Keep editing, then refresh. The new name again persists with the old valid percentages. Keep editing itself performs no save."
+          ],
+          "severity": 3
+        },
+        {
+          "id": "saleor-discount-type-update-nonatomic-channels-path-3",
+          "explanation": "Failed discount save changes a shipping voucher into a 100% order discount.",
+          "sourceBugs": [
+            {
+              "index": 48,
+              "id": "saleor-vouchers-b02",
+              "name": "Failed discount save changes a shipping voucher into a 100% order discount"
+            }
+          ],
+          "expected": "A rejected save preserves the previously saved Free shipping voucher and does not change its scope or channel discounts.",
+          "actual": "The rejected save changes the header to Entire order; both fields become 100. After refresh Entire order and 100% for both channels persist, rather than the prior Free shipping or entered 101/10 values.",
+          "reproSteps": [
+            "Create an own ELIG-QA-* voucher with a code and both channels, then save it as Free shipping.",
+            "Switch scope to Entire order. Enter 101 in Percentage for Channel-PLN, leaving USD blank; click Save (USD is marked Invalid discount value).",
+            "Enter 10 in Percentage for Channel-USD and click Save.",
+            "Observe Invalid percentage value and Couldn't save voucher; refresh and reopen Discount."
+          ],
+          "severity": 3
+        }
+      ]
+    },
+    {
+      "id": "saleor-create-voucher-channel-failure-no-rollback",
+      "explanation": "Rejected channel amounts leave a created, code-reserving voucher.",
+      "rootCause": {
+        "explanation": "createHandler first creates the voucher and its codes, then separately updates channel listings. A channel error is returned without deleting/rolling back the already-created voucher, leaving an active incomplete record.",
+        "sourceReferences": [
+          {
+            "repository": "saleor/saleor-dashboard",
+            "revision": "a6e7bee68ab183147ec680e03e86c29f717a11d5",
+            "path": "src/discounts/views/VoucherCreate/handlers.ts",
+            "line": 33,
+            "url": "https://github.com/saleor/saleor-dashboard/blob/a6e7bee68ab183147ec680e03e86c29f717a11d5/src/discounts/views/VoucherCreate/handlers.ts#L33"
+          }
+        ]
+      },
+      "reproductionPaths": [
+        {
+          "id": "saleor-create-voucher-channel-failure-no-rollback-path-1",
+          "explanation": "A failed 120% voucher save still creates a voucher with one code and no channel discount; correcting the percentage then fails because that code already exists.",
+          "sourceBugs": [
+            {
+              "index": 5,
+              "id": null,
+              "name": "Invalid voucher percentage persists an incomplete voucher and reserves its code"
+            },
+            {
+              "index": 53,
+              "id": "saleor-vouchers-b13",
+              "name": "Rejected voucher creation still adds an active voucher with no offer"
+            }
+          ],
+          "expected": "An invalid percentage should reject the entire voucher creation without saving the voucher or reserving its code.",
+          "actual": "Saving a voucher with a 120% Channel-USD discount stayed on Create Voucher and showed `Invalid percentage value`. Retrying at 10% showed `Promo code already exists`. After leaving the form, the voucher GraphQL list contained the test voucher with `codesCount.totalCount = 1` and no channel listings. The claimed Active list badge was not visible in this local run.",
+          "reproSteps": [
+            "Open Discounts > Vouchers > Create voucher in the local Saleor dashboard.",
+            "Enter a unique name, add a manual code, assign Channel-USD, and set its percentage to 120.",
+            "Select Save and observe `Invalid percentage value` while remaining on the create form.",
+            "Change the percentage to 10 and select Save again; observe the duplicate-code error.",
+            "Return to the voucher list and inspect its GraphQL response: the named voucher exists with one code and no channel listing."
+          ],
+          "severity": 3
+        }
+      ]
+    },
+    {
+      "id": "saleor-min-spend-cell-no-cross-channel-summary",
+      "explanation": "Minimum spend is blank without a selected channel.",
+      "rootCause": {
+        "explanation": "The min-spent cell looks up the selected channel and renders its value; when channels exist but none is selected it passes null to moneyCell without summarizing equal values or Varies by channel.",
+        "sourceReferences": [
+          {
+            "repository": "saleor/saleor-dashboard",
+            "revision": "a6e7bee68ab183147ec680e03e86c29f717a11d5",
+            "path": "src/discounts/components/VoucherListDatagrid/datagrid.ts",
+            "line": 284,
+            "url": "https://github.com/saleor/saleor-dashboard/blob/a6e7bee68ab183147ec680e03e86c29f717a11d5/src/discounts/components/VoucherListDatagrid/datagrid.ts#L284"
+          }
+        ]
+      },
+      "reproductionPaths": [
+        {
+          "id": "saleor-min-spend-cell-no-cross-channel-summary-path-1",
+          "explanation": "Without a selected channel, Min. Spent is blank despite a saved minimum. It should summarize assigned channel values like Offer: show the currency and amount when unambiguous, or Varies by channel when the values differ.",
+          "sourceBugs": [
+            {
+              "index": 6,
+              "id": null,
+              "name": "Voucher minimum spend list column lacks the value or Varies by channel summary"
+            }
+          ],
+          "expected": "In the unfiltered voucher list, Min. Spent should use the same summary pattern as Offer. Show the currency and saved minimum when there is one unambiguous currency/amount across assigned channels, such as USD50.25. When channel amounts or currencies differ, show Varies by channel. The absence of a selected channel should not silently blank the summary. A selected channel may still show its specific minimum.",
+          "actual": "A voucher assigned only to Channel-USD retains its USD50.25 minimum after saving and reloading. Without a channel filter, Min. Spent is blank while Offer displays USD12.34. Selecting Channel-USD makes the already saved USD50.25 minimum appear. Offer already supports labeled currency/amount and Varies by channel summaries; Min. Spent has no equivalent unfiltered summary.",
+          "reproSteps": [
+            "Create and save a disposable voucher with a unique name and code, assigned only to Channel-USD. Use Entire order, Fixed amount USD12.34 and Minimal order value USD50.25.",
+            "Reload the saved detail and verify the enabled USD50.25 minimum remains saved.",
+            "Return to All vouchers, enable Min. Spent using Pick columns, and find the voucher without selecting a channel filter.",
+            "Compare the two columns: Offer displays the currency and USD12.34 amount, while Min. Spent is empty instead of summarizing its saved USD50.25 minimum.",
+            "Apply Channel is Channel-USD and verify the same Min. Spent cell now displays USD50.25. The minimum was saved throughout; the missing behavior is the unfiltered value/summary."
+          ],
+          "severity": 1
+        }
+      ]
+    },
+    {
+      "id": "saleor-list-filters-fixed-search-width",
+      "explanation": "Voucher list search and selection actions overflow phone width.",
+      "rootCause": {
+        "explanation": "ListFilters puts a fixed 360px search field plus filter controls and actions in an auto/1fr grid without a responsive stacked alternative, widening the page and pushing bulk actions out of view.",
+        "sourceReferences": [
+          {
+            "repository": "saleor/saleor-dashboard",
+            "revision": "a6e7bee68ab183147ec680e03e86c29f717a11d5",
+            "path": "src/components/AppLayout/ListFilters/ListFilters.tsx",
+            "line": 28,
+            "url": "https://github.com/saleor/saleor-dashboard/blob/a6e7bee68ab183147ec680e03e86c29f717a11d5/src/components/AppLayout/ListFilters/ListFilters.tsx#L28"
+          }
+        ]
+      },
+      "reproductionPaths": [
+        {
+          "id": "saleor-list-filters-fixed-search-width-path-1",
+          "explanation": "At 390 × 844, the voucher search control extends beyond the right edge. Bringing its offscreen editing area into view shifts the hidden-overflow main content pane sideways, moving the heading and Filters control offscreen. This occurs through ordinary typing of a long query as well as the locator-based search click in the recorded flow.",
+          "sourceBugs": [
+            {
+              "index": 7,
+              "id": null,
+              "name": "Mobile voucher search overflows the viewport and shifts the main content sideways"
+            }
+          ],
+          "expected": "The voucher search control should fit the available mobile width and remain usable without moving the surrounding heading and filter controls outside their visible content pane.",
+          "actual": "Before interaction, the text input extends to about x=533 in a 390px viewport. Clicking its visible portion alone keeps the pane in place, but typing a long query moves the main pane to scrollLeft=143 while window.scrollX remains 0. Bringing the full input into view with a locator click also causes that shift. Earlier content moves out of view, and a normal horizontal wheel gesture does not restore the pane.",
+          "reproSteps": [
+            "Sign in as the fixture administrator, set the viewport to 390 × 844 CSS pixels and open Discounts > Vouchers with a populated list.",
+            "Observe that the Search vouchers control extends past the viewport’s right edge.",
+            "Click the visible portion of Search vouchers using an ordinary screen-coordinate click. Type a long unmatched query, such as LIST-no-match-987- followed by 64 lowercase a characters, so the editing caret reaches the input’s offscreen area.",
+            "Observe the surrounding main content shift sideways, moving the heading and Filters control out of view. This is a shift of the containing pane, not merely internal scrolling of the input text.",
+            "Try scrolling horizontally left over the content with an ordinary horizontal wheel gesture. Observe that the shifted main pane does not return to its initial position."
+          ],
+          "severity": 3,
+          "matchingGuidance": [
+            {
+              "sourceBugIndex": 7,
+              "guidance": {
+                "claimScope": "Overflowing mobile search control and surrounding-content displacement. The later empty-state message clipping is a separate approved observable consequence and is not required to match this reference."
+              }
+            }
+          ]
+        },
+        {
+          "id": "saleor-list-filters-fixed-search-width-path-2",
+          "explanation": "After voucher search shifts the mobile main pane sideways, zero results replace the grid but retain the pane’s horizontal offset. The leading “No” in “No vouchers found” is clipped, leaving the misleading visible fragment “vouchers found.”",
+          "sourceBugs": [
+            {
+              "index": 8,
+              "id": null,
+              "name": "Mobile voucher empty search result keeps a horizontal offset and clips the message"
+            }
+          ],
+          "expected": "After a search returns no rows, the complete “No vouchers found” message should remain readable within the mobile content pane. Removing the results grid should not leave the empty state clipped at a stale horizontal offset.",
+          "actual": "At 390 × 844, searching after the main pane has shifted to scrollLeft=143 removes the grid and its horizontal scrollbar while preserving that outer offset. The empty message begins around x=10.47 inside a pane clipped from x=33, hiding “No.” A leftward horizontal wheel gesture does not restore it. A fresh load of the same empty query without focusing search displays the full message.",
+          "reproSteps": [
+            "Sign in as the fixture administrator, set the viewport to 390 × 844 CSS pixels and open Discounts > Vouchers with a populated list.",
+            "Click the visible search field and type a long unmatched query, for example LIST-no-match-987- followed by 64 lowercase a characters, until the main content shifts sideways. The native Mo reproduction reaches the same shifted state when its locator-based click brings the search field into view before typing LIST-no-match-987.",
+            "Wait for the search to settle with no matching rows. Observe that the grid and its scrollbar are replaced by the empty state.",
+            "Inspect the empty message: its leading “No” is clipped at the left boundary and only “vouchers found” is readable.",
+            "Attempt an ordinary horizontal wheel gesture to the left over the empty content and observe that the message remains clipped. Loading the same query in a fresh, unfocused page is a control that displays the complete message."
+          ],
+          "severity": 1,
+          "matchingGuidance": [
+            {
+              "sourceBugIndex": 8,
+              "guidance": {
+                "claimScope": "A no-result message clipped after mobile search shifts the containing pane. A missing grid scrollbar alone is not this bug: the grid is intentionally replaced for empty results. No claim is made that every empty search is clipped or that the message text is absent from the DOM."
+              }
+            }
+          ]
+        },
+        {
+          "id": "saleor-list-filters-fixed-search-width-path-3",
+          "explanation": "Mobile voucher selection hides the bulk delete action.",
+          "sourceBugs": [
+            {
+              "index": 46,
+              "id": "saleor-vouchers-b07",
+              "name": "Mobile voucher selection hides the bulk delete action"
+            }
+          ],
+          "expected": "After selecting a voucher row, a bulk delete action is visible or reachable in mobile view.",
+          "actual": "The voucher row and header checkboxes are checked, but no bulk delete button or action toolbar is visible or accessible.",
+          "reproSteps": [
+            "Open Vouchers as admin at mobile width 390px.",
+            "Search for one voucher; a fresh disposable fixture can be created with a unique LIST-QA name.",
+            "Check the voucher row's selection box.",
+            "Attempt horizontal scrolling in the list toolbar to reach Delete vouchers (1)."
+          ],
+          "severity": 3
+        }
+      ]
+    },
+    {
+      "id": "saleor-countries-select-all-channel-label",
+      "explanation": "Country assignment reuses channel-specific select-all wording.",
+      "rootCause": {
+        "explanation": "DiscountCountrySelectDialog renders ChannelsAvailabilitySelectAll directly without overriding its channel terminology for countries.",
+        "sourceReferences": [
+          {
+            "repository": "saleor/saleor-dashboard",
+            "revision": "a6e7bee68ab183147ec680e03e86c29f717a11d5",
+            "path": "src/discounts/components/DiscountCountrySelectDialog/DiscountCountrySelectDialog.tsx",
+            "line": 3,
+            "url": "https://github.com/saleor/saleor-dashboard/blob/a6e7bee68ab183147ec680e03e86c29f717a11d5/src/discounts/components/DiscountCountrySelectDialog/DiscountCountrySelectDialog.tsx#L3"
+          }
+        ]
+      },
+      "reproductionPaths": [
+        {
+          "id": "saleor-countries-select-all-channel-label-path-1",
+          "explanation": "Country assignment dialog uses a channel label for its select-all checkbox",
+          "sourceBugs": [
+            {
+              "index": 9,
+              "id": null,
+              "name": "Country assignment dialog uses a channel label for its select-all checkbox"
+            }
+          ],
+          "expected": "The select-all checkbox in the Assign Countries dialog is labeled to indicate that it selects all countries.",
+          "actual": "The dialog is titled Assign Countries and lists countries, but the checkbox label says “Select all channels.”",
+          "reproSteps": [
+            "/discounts/vouchers/add",
+            "Sign in to the dashboard as an admin using the authorized saved session.",
+            "Open the create-voucher page at /discounts/vouchers/add.",
+            "Select the Free shipping discount scope.",
+            "In the Countries section, click Assign.",
+            "Observe the select-all checkbox label in the Assign Countries dialog."
+          ],
+          "severity": 1
+        }
+      ]
+    },
+    {
+      "id": "saleor-percentage-filter-includes-shipping",
+      "explanation": "Percentage voucher filtering includes free shipping.",
+      "rootCause": {
+        "explanation": "filter_discount_type filters PERCENTAGE only by discount_value_type; shipping vouchers also store percentage type and are not excluded by their voucher type.",
+        "sourceReferences": [
+          {
+            "repository": "saleor/saleor",
+            "revision": "44dd076f00584c0660449e4e238f60ffcb32e691",
+            "path": "saleor/graphql/discount/filters.py",
+            "line": 86,
+            "url": "https://github.com/saleor/saleor/blob/44dd076f00584c0660449e4e238f60ffcb32e691/saleor/graphql/discount/filters.py#L86"
+          }
+        ]
+      },
+      "reproductionPaths": [
+        {
+          "id": "saleor-percentage-filter-includes-shipping-path-1",
+          "explanation": "The Percentage discount-type filter persistently returns the Free shipping voucher alongside percentage-off vouchers, including after refresh.",
+          "sourceBugs": [
+            {
+              "index": 10,
+              "id": null,
+              "name": "Percentage voucher filter includes the Free shipping voucher"
+            }
+          ],
+          "expected": "Applying Discount type is Percentage should show only vouchers of the Percentage type.",
+          "actual": "The filtered results include “Free shipping” with the “Free shipping” offer, as well as “Single Use Vouchers” with “10% off” and “Percentage order discount” with “5% off.” The selected Discount type is Percentage, and the Free shipping result remains after refresh.",
+          "reproSteps": [
+            "Open /discounts/vouchers.",
+            "Click Filters and set the condition to Discount type is Percentage.",
+            "Click Apply and inspect the voucher names and offers; note that Free shipping appears with a Free shipping offer alongside percentage-off vouchers.",
+            "Refresh the page, reopen Filters to confirm Discount type is Percentage, and verify that the Free shipping voucher remains in the results."
+          ],
+          "severity": 3
+        }
+      ]
+    },
+    {
+      "id": "saleor-voucher-channel-dialog-product-title",
+      "explanation": "Voucher channel chooser uses a product title.",
+      "rootCause": {
+        "explanation": "VoucherCreate supplies the copied Manage Products Channel Availability title to the shared channel dialog rather than voucher-specific copy.",
+        "sourceReferences": [
+          {
+            "repository": "saleor/saleor-dashboard",
+            "revision": "a6e7bee68ab183147ec680e03e86c29f717a11d5",
+            "path": "src/discounts/views/VoucherCreate/VoucherCreate.tsx",
+            "line": 299,
+            "url": "https://github.com/saleor/saleor-dashboard/blob/a6e7bee68ab183147ec680e03e86c29f717a11d5/src/discounts/views/VoucherCreate/VoucherCreate.tsx#L299"
+          }
+        ]
+      },
+      "reproductionPaths": [
+        {
+          "id": "saleor-voucher-channel-dialog-product-title-path-1",
+          "explanation": "Voucher availability chooser is titled “Manage Products Channel Availability”",
+          "sourceBugs": [
+            {
+              "index": 11,
+              "id": null,
+              "name": "Voucher availability chooser is titled “Manage Products Channel Availability”"
+            }
+          ],
+          "expected": "The channel-selection dialog title identifies voucher availability, or uses a generic channel-availability label.",
+          "actual": "The dialog opened from a voucher’s Availability card is titled “Manage Products Channel Availability.”",
+          "reproSteps": [
+            "/discounts/vouchers/add",
+            "The current screenshot shows the voucher creation form behind the channel chooser; the chooser was opened from this voucher's Availability card.",
+            "Sign in to the Saleor Dashboard as an admin and open /discounts/vouchers/add.",
+            "Scroll to the Availability card and click Manage.",
+            "Inspect the title of the channel-selection dialog."
+          ],
+          "severity": 1
+        }
+      ]
+    },
+    {
+      "id": "saleor-countries-empty-contradictory-copy",
+      "explanation": "An unrestricted shipping voucher displays contradictory country copy.",
+      "rootCause": {
+        "explanation": "The country section uses empty countries for the worldwide state while also rendering its restricted-country explanatory description, so the two independent text paths contradict one another.",
+        "sourceReferences": [
+          {
+            "repository": "saleor/saleor-dashboard",
+            "revision": "a6e7bee68ab183147ec680e03e86c29f717a11d5",
+            "path": "src/discounts/components/VoucherCreatePage/VoucherCreatePage.tsx",
+            "line": 509,
+            "url": "https://github.com/saleor/saleor-dashboard/blob/a6e7bee68ab183147ec680e03e86c29f717a11d5/src/discounts/components/VoucherCreatePage/VoucherCreatePage.tsx#L509"
+          }
+        ]
+      },
+      "reproductionPaths": [
+        {
+          "id": "saleor-countries-empty-contradictory-copy-path-1",
+          "explanation": "The saved voucher's empty-country state displays contradictory country-scope copy.",
+          "sourceBugs": [
+            {
+              "index": 12,
+              "id": "mo-60m-saleor-37",
+              "name": "The saved voucher's empty-country state displays contradictory country-scope copy."
+            }
+          ],
+          "expected": "With no countries assigned, the country-scope copy should consistently indicate that the voucher applies everywhere, or otherwise make clear that the section heading is generic.",
+          "actual": "The Countries section says “Voucher is limited to these countries” even though its empty-state message directly below says “Voucher applies to all countries.”",
+          "reproSteps": [
+            "/vouchers/",
+            "Use the browser only. Work only with a newly created voucher/code prefixed bb-voucherfreeshippingall-*. Do not change authentication, and do not use source code, benchmarks, ground truth, or prior evaluation reports.",
+            "Open the target URL and, while signed in as an admin, navigate through Discounts > Vouchers using the UI.",
+            "Create a fresh voucher with a unique manual code prefixed bb-voucherfreeshippingall- and assign one available sales channel.",
+            "Choose Free shipping and leave Countries unassigned, then save the voucher.",
+            "Open the saved voucher's Countries section and inspect the displayed country-scope text."
+          ],
+          "severity": 1
+        }
+      ]
+    },
+    {
+      "id": "saleor-normalized-save-retains-inactive-draft-dirty-state",
+      "explanation": "Successful saves leave false unsaved state for normalized/disabled fields.",
+      "rootCause": {
+        "explanation": "The submit handler clears inactive discount drafts and converts zero requirements/disabled values to server representations, but the form dirty comparison still contains the original local toggles/values and compares them to newly derived server initial data. Those unsaved local representations are not reconciled on success.",
+        "sourceReferences": [
+          {
+            "repository": "saleor/saleor-dashboard",
+            "revision": "a6e7bee68ab183147ec680e03e86c29f717a11d5",
+            "path": "src/discounts/data.ts",
+            "line": 11,
+            "url": "https://github.com/saleor/saleor-dashboard/blob/a6e7bee68ab183147ec680e03e86c29f717a11d5/src/discounts/data.ts#L11"
+          }
+        ]
+      },
+      "reproductionPaths": [
+        {
+          "id": "saleor-normalized-save-retains-inactive-draft-dirty-state-path-1",
+          "explanation": "Values entered into a requirement or end-date control remain in the dirty-state comparison after that control is switched off. Successful saves persist the enabled settings but leave false warnings and repeat-save/reload prompts.",
+          "sourceBugs": [
+            {
+              "index": 16,
+              "id": "codex-60m-saleor-6",
+              "name": "Saving a voucher leaves false unsaved warnings for disabled fields"
+            }
+          ],
+          "expected": "A successful Save clears the unsaved state, including ignored values in disabled controls.",
+          "actual": "Voucher updated appears, but Unsaved changes: General settings or Schedule remains and Save stays enabled. Repeated saves do not clear it. A second tab shows the final settings saved with Save disabled, while reloading the original prompts beforeunload.",
+          "reproSteps": [
+            "Sign in and open an existing voucher with Channel-PLN pricing, Minimal order value enabled at PLN100, and Minimum quantity of items off. Start with Save disabled.",
+            "Enable Minimum quantity of items, enter 3, then enable Minimal order value again, retaining PLN100 and switching quantity off.",
+            "Click Save and wait for Voucher updated.",
+            "Observe Unsaved changes: General settings remains; repeat Save and observe the same.",
+            "Open the voucher in another tab to confirm the settings persisted, then reload the original to see the false unsaved warning.",
+            "Alternate trigger: enable Set end date, change the date, turn Set end date off, make another valid edit, and Save. The success toast appears but Unsaved changes: Schedule remains."
+          ],
+          "severity": 3
+        },
+        {
+          "id": "saleor-normalized-save-retains-inactive-draft-dirty-state-path-2",
+          "explanation": "Enabling Minimal order value with a channel amount of 0 on a saved voucher shows “Voucher updated” after Save, but retains an enabled zero draft, “Unsaved changes: General settings,” an enabled Save button and a false leave warning. Reopening shows the requirement disabled with a clean editor. Reviewed item-quantity variant: enabling Minimum quantity of items at 0 also reports success while retaining the invalid draft, General settings dirty state and leave warning. Count these as one save-state reference.",
+          "sourceBugs": [
+            {
+              "index": 17,
+              "id": null,
+              "name": "Saving zero minimum order value leaves false unsaved warnings after success"
+            }
+          ],
+          "expected": "A successful Save should reconcile the editor with the persisted requirement and clear false unsaved indicators and navigation warnings. If zero is displayed as no minimum requirement after reopening, the live editor should represent that saved state consistently and cleanly.",
+          "actual": "Starting with no minimum requirement, enabling Minimal order value and saving Channel-USD at 0 displays “Voucher updated.” After settling, the enabled 0.00 USD draft, General settings dirty banner and enabled Save remain. Back opens “Leave without saving changes?” After Ignore changes and reopening, Minimal order value is off and Save is disabled. Zero rendering as disabled is not itself the defect. Item-quantity variant: enabling Minimum quantity of items at 0 shows “Enter at least 1 item.” Save nevertheless displays “Voucher updated” while the enabled zero draft, inline error and General settings dirty state remain; leaving still prompts to discard changes.",
+          "reproSteps": [
+            "Sign in as the fixture administrator. Create and save a disposable voucher with a unique name and manual code, Channel-USD assigned, an Entire order percentage discount, and both minimum requirements disabled.",
+            "Reopen the saved voucher and establish a clean baseline with Save disabled. Open Requirements.",
+            "Enable Minimal order value, not Minimum quantity of items, and enter 0 for Channel-USD.",
+            "Click Save and wait at least three seconds. Observe “Voucher updated” while the enabled 0.00 USD draft, “Unsaved changes: General settings” and enabled Save remain.",
+            "Click Back. Observe “Leave without saving changes?” Choose Ignore changes, reopen the voucher and inspect Requirements: Minimal order value is off and Save is disabled.",
+            "Item-quantity variant: from a saved voucher with no minimum requirement and a disabled Save button, enable Minimum quantity of items instead of Minimal order value and enter 0.",
+            "Click Save and observe “Voucher updated” together with “Enter at least 1 item,” the retained enabled zero draft and unsaved General settings state. Attempt to leave and observe the false discard warning. This is another trigger of this same save-state reference, not another independently scored bug."
+          ],
+          "severity": 3,
+          "matchingGuidance": [
+            {
+              "sourceBugIndex": 17,
+              "guidance": {
+                "claimScope": "Zero monetary Minimal order value or zero Minimum quantity of items enabled on a saved voucher. Match successful Save combined with retained enabled zero draft and false dirty/navigation state. The item-quantity trigger additionally retains its inline minimum-one error. Reopening either requirement disabled alone does not establish a defect or data loss. Group order-value and item-quantity reports of this same save-state failure under this one reference. Usage-limit behavior and fields explicitly switched off before Save are separate references.",
+                "relatedReference": "Saving a voucher leaves false unsaved warnings for disabled fields shares the false-dirty symptom family. That reference starts with populated controls then switches them off; this approved case enables an ORDER requirement at zero. Shared form code alone does not establish an exact duplicate."
+              }
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "id": "saleor-voucher-code-replacement-nonatomic",
+      "explanation": "A rejected code replacement can still delete old codes.",
+      "rootCause": {
+        "explanation": "The detail update starts voucherUpdate and voucherCodesDelete independently in the requests array; deletion commits even if adding the replacement code fails. No transaction or compensation spans the calls.",
+        "sourceReferences": [
+          {
+            "repository": "saleor/saleor-dashboard",
+            "revision": "a6e7bee68ab183147ec680e03e86c29f717a11d5",
+            "path": "src/discounts/views/VoucherDetails/handlers.ts",
+            "line": 103,
+            "url": "https://github.com/saleor/saleor-dashboard/blob/a6e7bee68ab183147ec680e03e86c29f717a11d5/src/discounts/views/VoucherDetails/handlers.ts#L103"
+          }
+        ]
+      },
+      "reproductionPaths": [
+        {
+          "id": "saleor-voucher-code-replacement-nonatomic-path-1",
+          "explanation": "Replacing voucher A’s existing code with a code already used by voucher B reports a failed Save, but A’s staged code deletion still persists. Choosing Back > Ignore changes and reopening A reveals that its original active code is gone.",
+          "sourceBugs": [
+            {
+              "index": 19,
+              "id": null,
+              "name": "Failed voucher code replacement silently commits the staged code deletion"
+            }
+          ],
+          "expected": "A failed code replacement should preserve the existing code or clearly report any partial persistence. Choosing Ignore changes must not silently leave the original active code deleted after the failed edit.",
+          "actual": "Save shows “Promo code already exists,” a failed-save message, and Try again. After Back > Ignore changes and reopening voucher A, its code section shows “No voucher codes found” and requires adding a code; the original active code is gone and the duplicate replacement is absent.",
+          "reproSteps": [
+            "Sign in as the fixture administrator and create two disposable active vouchers A and B, each with its own unique manual code, Channel-USD availability, and a valid 10% Entire order discount.",
+            "Reopen A and verify its original code is active. Select that code, choose Delete codes, and confirm the dialog stating it will be removed when the voucher is saved.",
+            "Choose Add code > Manual code, enter the exact active code already used by B, confirm, and click Save.",
+            "Observe “Promo code already exists,” the failed-save message directing correction of the codes section, and Try again. Click Back, then Ignore changes in the leave-without-saving dialog.",
+            "Find A in the vouchers list and reopen it. Observe the required Add a code state and “No voucher codes found”; A’s original active code has disappeared despite the failed replacement and Ignore changes."
+          ],
+          "severity": 3
+        }
+      ]
+    },
+    {
+      "id": "saleor-usage-limit-zero-validation-not-enforced",
+      "explanation": "Zero usage limits can save as disabled despite inline feedback.",
+      "rootCause": {
+        "explanation": "VoucherLimits derives hasInvalidUsageLimit for display only, while the save path submits hasUsageLimit/usageLimit without using that validation to stop the request; zero is then interpreted as an absent cap in display logic.",
+        "sourceReferences": [
+          {
+            "repository": "saleor/saleor-dashboard",
+            "revision": "a6e7bee68ab183147ec680e03e86c29f717a11d5",
+            "path": "src/discounts/components/VoucherLimits/VoucherLimits.tsx",
+            "line": 65,
+            "url": "https://github.com/saleor/saleor-dashboard/blob/a6e7bee68ab183147ec680e03e86c29f717a11d5/src/discounts/components/VoucherLimits/VoucherLimits.tsx#L65"
+          }
+        ]
+      },
+      "reproductionPaths": [
+        {
+          "id": "saleor-usage-limit-zero-validation-not-enforced-path-1",
+          "explanation": "A zero total usage limit saves despite the minimum-one error, then reload displays the cap as disabled while the backend retains zero.",
+          "sourceBugs": [
+            {
+              "index": 20,
+              "id": null,
+              "name": "Saving an invalid zero limit succeeds and misleadingly displays the cap as disabled"
+            }
+          ],
+          "expected": "The zero limit should prevent Save and retain the minimum-one error. The displayed cap state should match the stored limit.",
+          "actual": "Save succeeds despite “Enter a limit of at least 1.” After reload, the total usage-limit toggle is off and its input is hidden, while the backend still stores usageLimit 0 rather than an unset limit.",
+          "reproSteps": [
+            "Sign in as the fixture administrator, open Discounts > Vouchers, and open a disposable unused voucher with a code and Channel-USD assigned.",
+            "Enable “Limit number of times this discount can be used in total,” enter 1, save, and confirm the limit remains enabled at 1.",
+            "Replace the limit with 0. Observe “Enter a limit of at least 1.” and click Save.",
+            "Reload the saved voucher. Observe the limit toggle off and its input hidden; the saved voucher response still contains usageLimit 0."
+          ],
+          "severity": 3
+        }
+      ]
+    },
+    {
+      "id": "saleor-bulk-delete-list-cache-stale",
+      "explanation": "Bulk deleted vouchers reappear from cached list results.",
+      "rootCause": {
+        "explanation": "Bulk deletion refetches the active list but does not evict deleted entities from all cached variable variants, allowing navigation to show an old cached result before the network refresh.",
+        "sourceReferences": [
+          {
+            "repository": "saleor/saleor-dashboard",
+            "revision": "a6e7bee68ab183147ec680e03e86c29f717a11d5",
+            "path": "src/discounts/views/VoucherList/VoucherList.tsx",
+            "line": 145,
+            "url": "https://github.com/saleor/saleor-dashboard/blob/a6e7bee68ab183147ec680e03e86c29f717a11d5/src/discounts/views/VoucherList/VoucherList.tsx#L145"
+          }
+        ]
+      },
+      "reproductionPaths": [
+        {
+          "id": "saleor-bulk-delete-list-cache-stale-path-1",
+          "explanation": "Returning to the Vouchers list briefly displays already deleted vouchers from stale cached UI state before fresh data removes them.",
+          "sourceBugs": [
+            {
+              "index": 21,
+              "id": null,
+              "name": "Bulk-deleted vouchers briefly reappear after in-app navigation"
+            }
+          ],
+          "expected": "After successful bulk deletion, reopening the list should keep the deleted vouchers absent.",
+          "actual": "After navigating away and back, the deleted voucher rows briefly reappear as Active, then disappear automatically when fresh list data arrives. Reloading and searching confirms they remain deleted.",
+          "reproSteps": [
+            "Sign in as the fixture administrator, create two disposable unused vouchers with a unique shared name prefix, and open the unfiltered Vouchers list.",
+            "Search for that prefix, select only the two owned vouchers, and confirm bulk deletion. Verify “Vouchers deleted” and an empty filtered list.",
+            "Navigate to Home, then return through Discounts > Vouchers. Observe the deleted rows briefly reappear and disappear automatically without refreshing.",
+            "Reload the list and search for the same prefix; verify the deleted vouchers remain absent."
+          ],
+          "severity": 1
+        }
+      ]
+    },
+    {
+      "id": "saleor-missing-voucher-loading-gate",
+      "explanation": "A deleted voucher remains on permanent skeletons.",
+      "rootCause": {
+        "explanation": "VoucherDetailsPage reveals the layout only when voucher exists and codes loading settles; a completed null lookup never sets revealedForVoucherId or renders a not-found state.",
+        "sourceReferences": [
+          {
+            "repository": "saleor/saleor-dashboard",
+            "revision": "a6e7bee68ab183147ec680e03e86c29f717a11d5",
+            "path": "src/discounts/components/VoucherDetailsPage/VoucherDetailsPage.tsx",
+            "line": 221,
+            "url": "https://github.com/saleor/saleor-dashboard/blob/a6e7bee68ab183147ec680e03e86c29f717a11d5/src/discounts/components/VoucherDetailsPage/VoucherDetailsPage.tsx#L221"
+          }
+        ]
+      },
+      "reproductionPaths": [
+        {
+          "id": "saleor-missing-voucher-loading-gate-path-1",
+          "explanation": "Revisiting the saved detail URL of a voucher deleted through the list leaves the page on loading skeletons even after the lookup completes with no voucher. A fresh revisit produces the same terminal state.",
+          "sourceBugs": [
+            {
+              "index": 22,
+              "id": null,
+              "name": "Deleted voucher detail URL remains on loading skeletons after lookup completes"
+            }
+          ],
+          "expected": "After a completed detail lookup finds no voucher, the page should show a clear missing or deleted state instead of continuing to display loading skeletons.",
+          "actual": "The detail lookup completes successfully with data.voucher=null, but Details, Voucher codes, Discount, Availability and Schedule remain skeleton placeholders without a missing or deleted message. Repeating fresh navigation to the same URL produces the same result.",
+          "reproSteps": [
+            "Sign in as the fixture administrator and open Discounts > Vouchers. Create and save a disposable voucher with a unique name and manual code, Channel-USD, and a valid 10% Entire order discount. Note its saved detail URL.",
+            "Return to All vouchers, search the exact unique name, verify it is the sole result, select only that voucher, choose Delete vouchers, and confirm deletion. Observe the success notification and “No vouchers found.”",
+            "Navigate directly to the deleted voucher’s saved detail URL. Wait for the GraphQL detail lookup to complete with HTTP 200 and data.voucher=null.",
+            "Observe that the rendered page still shows skeleton placeholders across Details, Voucher codes, Discount, Availability and Schedule, without a missing or deleted state.",
+            "Freshly navigate to the same detail URL again. After the repeated lookup completes with data.voucher=null, verify the page remains skeleton-only."
+          ],
+          "severity": 1
+        }
+      ]
+    },
+    {
+      "id": "saleor-variant-table-header-copy",
+      "explanation": "The variant product-type column repeats the product-name heading.",
+      "rootCause": {
+        "explanation": "DiscountVariants assigns discountVariantsTableProductHeader to both the product name and type columns instead of a product-type label.",
+        "sourceReferences": [
+          {
+            "repository": "saleor/saleor-dashboard",
+            "revision": "a6e7bee68ab183147ec680e03e86c29f717a11d5",
+            "path": "src/discounts/components/DiscountVariants/DiscountVariants.tsx",
+            "line": 85,
+            "url": "https://github.com/saleor/saleor-dashboard/blob/a6e7bee68ab183147ec680e03e86c29f717a11d5/src/discounts/components/DiscountVariants/DiscountVariants.tsx#L85"
+          }
+        ]
+      },
+      "reproductionPaths": [
+        {
+          "id": "saleor-variant-table-header-copy-path-1",
+          "explanation": "The saved voucher variant eligibility table gives two different columns the same Product Name heading.",
+          "sourceBugs": [
+            {
+              "index": 23,
+              "id": null,
+              "name": "Variant eligibility table repeats the Product Name column heading"
+            }
+          ],
+          "expected": "Columns displaying different values should have distinct headings so product names and product types can be distinguished.",
+          "actual": "The saved table headings are Product Name, Variant Name, and Product Name; a row displays Monospace Tee, S, and Top. The first column contains a product name while the third contains its product type.",
+          "reproSteps": [
+            "Sign in as the fixture administrator and create a disposable voucher.",
+            "Assign the Monospace Tee variant S as an eligible variant and save the voucher.",
+            "Read the saved variant eligibility table: Product Name appears above both Monospace Tee and the different value Top."
+          ],
+          "severity": 1
+        }
+      ]
+    },
+    {
+      "id": "saleor-catalogue-pagination-context-shape",
+      "explanation": "Assigned variant pagination receives a nested rather than flattened pageInfo.",
+      "rootCause": {
+        "explanation": "The create page spreads specificItemsPagination into PaginatorContext, leaving hasNextPage/hasPreviousPage nested under pageInfo; consumer controls read flattened flags and remain disabled despite another local page.",
+        "sourceReferences": [
+          {
+            "repository": "saleor/saleor-dashboard",
+            "revision": "a6e7bee68ab183147ec680e03e86c29f717a11d5",
+            "path": "src/discounts/components/VoucherCreatePage/VoucherCreatePage.tsx",
+            "line": 391,
+            "url": "https://github.com/saleor/saleor-dashboard/blob/a6e7bee68ab183147ec680e03e86c29f717a11d5/src/discounts/components/VoucherCreatePage/VoucherCreatePage.tsx#L391"
+          }
+        ]
+      },
+      "reproductionPaths": [
+        {
+          "id": "saleor-catalogue-pagination-context-shape-path-1",
+          "explanation": "A fresh unsaved Products-scope voucher with 11 assigned variants shows only 10 rows at page size 10, with Next disabled.",
+          "sourceBugs": [
+            {
+              "index": 24,
+              "id": null,
+              "name": "Voucher variants table disables pagination with 11 assigned variants and page size 10"
+            }
+          ],
+          "expected": "With 11 assigned variants and page size 10, Next should be enabled and open a second page containing the remaining variant.",
+          "actual": "The draft reports 11 assigned variants but renders 10 rows with Next disabled. Changing the page size to 20 reveals all 11 variants; restoring 10 disables Next again. The same behavior occurs in a second fresh unsaved draft.",
+          "reproSteps": [
+            "Open Discounts > Vouchers > Create voucher in the signed-in Saleor dashboard and select Products under Discount; keep the new draft unsaved.",
+            "In Eligible products > Variants, open Assign, select all 11 variants of the seeded Hoodie product, and confirm assignment.",
+            "Set No. of rows to 10 and observe 11 assigned variants, 10 visible variant rows, and a disabled Next button.",
+            "Change No. of rows to 20 and wait for the table to update; observe all 11 variants. Restore 10 and observe Next disabled again, then discard the unsaved draft."
+          ],
+          "severity": 3
+        }
+      ]
+    },
+    {
+      "id": "saleor-local-pagination-not-clamped-on-delete",
+      "explanation": "Removing the last item on a page hides surviving local items.",
+      "rootCause": {
+        "explanation": "useLocalPageInfo resets page only when paginateBy changes, not when values shrink below its current page. Removing final-page variants or codes leaves pageValues as an empty out-of-range slice.",
+        "sourceReferences": [
+          {
+            "repository": "saleor/saleor-dashboard",
+            "revision": "a6e7bee68ab183147ec680e03e86c29f717a11d5",
+            "path": "src/hooks/useLocalPageInfo.ts",
+            "line": 19,
+            "url": "https://github.com/saleor/saleor-dashboard/blob/a6e7bee68ab183147ec680e03e86c29f717a11d5/src/hooks/useLocalPageInfo.ts#L19"
+          }
+        ]
+      },
+      "reproductionPaths": [
+        {
+          "id": "saleor-local-pagination-not-clamped-on-delete-path-1",
+          "explanation": "On a saved Products voucher with 11 assigned variants and page size 10, unassigning the only variant on page 2 reduces the count to 10 but leaves an empty table with no pagination. This occurs before Save; the remaining assigned variants should remain reachable.",
+          "sourceBugs": [
+            {
+              "index": 25,
+              "id": null,
+              "name": "Unassigning the sole last-page voucher variant hides remaining assigned variants"
+            }
+          ],
+          "expected": "After unassigning the only row on the last page, the eligible-variants table should return to a valid page showing the remaining 10 assigned variants, with a consistent count and usable pagination when needed.",
+          "actual": "The count changes from 11 assigned to 10 assigned, but the table displays “No variants found” and hides both the page-size selector and pagination controls. This persists for at least five seconds while the change is still unsaved.",
+          "reproSteps": [
+            "Sign in as the fixture administrator and open Discounts > Vouchers > Create voucher. Use a disposable voucher with a unique name and manual code.",
+            "Assign Channel-USD, select Products, configure a 10% discount, assign all 11 Hoodie variants, and save the voucher.",
+            "In Eligible products, set the page size to 10 and click Next page. Confirm that page 2 contains only Hoodie / HD-WH-XL and the count is 11 assigned.",
+            "Select HD-WH-XL, click Unassign, and confirm Unassign in the dialog.",
+            "Before clicking Save, wait at least five seconds. Observe 10 assigned alongside “No variants found,” with neither the page-size selector nor pagination controls available to reach the surviving variants."
+          ],
+          "severity": 3
+        },
+        {
+          "id": "saleor-local-pagination-not-clamped-on-delete-path-2",
+          "explanation": "Deleting all seven codes on page 2 of a saved 17-code voucher leaves the editor showing no codes and no pagination, even after a successful Save. Reload restores the ten surviving codes.",
+          "sourceBugs": [
+            {
+              "index": 37,
+              "id": null,
+              "name": "Deleting the last voucher-code page hides surviving codes until reload"
+            }
+          ],
+          "expected": "Deleting the last page of codes should return the table to a valid page and display the surviving codes. A successful Save should leave the editor consistent with the saved state shown after reload.",
+          "actual": "Confirming deletion replaces the seven page-2 rows with “No voucher codes found” and removes pagination. Save shows “Voucher updated,” but the table remains empty. Reload shows the ten surviving codes.",
+          "reproSteps": [
+            "Sign in as the fixture administrator and create a disposable voucher with a unique name, exactly 17 unique codes, Channel-USD availability, and a valid Entire order discount of 10%. Save the voucher.",
+            "Set the saved voucher-code table page size to 10 and navigate to page 2. Verify that it contains the remaining seven codes.",
+            "Select all seven codes, choose Delete codes (7), and confirm Delete. Observe “No voucher codes found” and the absence of pagination.",
+            "Click Save and observe “Voucher updated” while the code table remains empty.",
+            "Reload the voucher detail page. Observe the ten surviving saved codes, confirming that the empty editor hid existing codes."
+          ],
+          "severity": 3
+        }
+      ]
+    },
+    {
+      "id": "saleor-manual-empty-code-not-generated-until-save",
+      "explanation": "Blank manual codes remain empty drafts.",
+      "rootCause": {
+        "explanation": "generateDraftVoucherCode stores its supplied string directly, and manual confirmation permits an empty code; only API creation trims/generates a replacement later, leaving a blank draft until Save.",
+        "sourceReferences": [
+          {
+            "repository": "saleor/saleor-dashboard",
+            "revision": "a6e7bee68ab183147ec680e03e86c29f717a11d5",
+            "path": "src/discounts/components/VoucherCreatePage/utils.ts",
+            "line": 4,
+            "url": "https://github.com/saleor/saleor-dashboard/blob/a6e7bee68ab183147ec680e03e86c29f717a11d5/src/discounts/components/VoucherCreatePage/utils.ts#L4"
+          }
+        ]
+      },
+      "reproductionPaths": [
+        {
+          "id": "saleor-manual-empty-code-not-generated-until-save-path-1",
+          "explanation": "Confirming a blank manual code adds an empty Draft row; its generated code appears only after the voucher is saved.",
+          "sourceBugs": [
+            {
+              "index": 26,
+              "id": null,
+              "name": "Blank manual voucher code remains empty in the draft until Save generates it"
+            }
+          ],
+          "expected": "A blank manual code is generated in the draft or rejected before saving.",
+          "actual": "The manual-code dialog accepts an empty value and displays a blank Draft code row. Saving succeeds and replaces the blank row with a generated code that was not shown in the draft.",
+          "reproSteps": [
+            "Sign in as the fixture administrator and open Discounts > Vouchers > Create voucher.",
+            "Enter a unique voucher name. In Voucher codes, select Add code > Manual code, leave the code empty, and click Confirm.",
+            "Observe the empty code row marked Draft; no generated code is displayed.",
+            "Assign Channel-USD, set a valid 10% discount, and click Save. Observe the previously empty row now contains a generated code."
+          ],
+          "severity": 3
+        }
+      ]
+    },
+    {
+      "id": "saleor-voucher-header-mobile-status-clipping",
+      "explanation": "Voucher header status is clipped on phone screens.",
+      "rootCause": {
+        "explanation": "The TopNav/detail header retains title/status/action row widths without enough nonshrinking room for the Active badge at 390px.",
+        "sourceReferences": [
+          {
+            "repository": "saleor/saleor-dashboard",
+            "revision": "a6e7bee68ab183147ec680e03e86c29f717a11d5",
+            "path": "src/discounts/components/VoucherDetailsPage/VoucherDetailsPageFormContent.tsx",
+            "line": 4,
+            "url": "https://github.com/saleor/saleor-dashboard/blob/a6e7bee68ab183147ec680e03e86c29f717a11d5/src/discounts/components/VoucherDetailsPage/VoucherDetailsPageFormContent.tsx#L4"
+          }
+        ]
+      },
+      "reproductionPaths": [
+        {
+          "id": "saleor-voucher-header-mobile-status-clipping-path-1",
+          "explanation": "At a 390px mobile viewport, the voucher detail header clips the Active label beside its toolbar controls, obscuring the status that tells the administrator whether the voucher is active.",
+          "sourceBugs": [
+            {
+              "index": 27,
+              "id": null,
+              "name": "Voucher detail header clips Active status at 390px"
+            }
+          ],
+          "expected": "The voucher status remains fully legible within the mobile header.",
+          "actual": "The header displays a green status dot followed by only “Ac”; the remaining letters of “Active” are clipped beside the action icons.",
+          "reproSteps": [
+            "Sign in as the fixture administrator and open Discounts > Vouchers.",
+            "Create a voucher with a fresh name and manual code, assign Channel-USD, and configure Entire order with a 15% percentage discount.",
+            "Click Save to open the saved voucher details.",
+            "Set the viewport to 390 × 844 CSS pixels and inspect the detail header; the Active label is clipped, including after waiting five seconds."
+          ],
+          "severity": 1
+        }
+      ]
+    },
+    {
+      "id": "saleor-notification-fixed-width-mobile",
+      "explanation": "Save notifications extend beyond narrow phone viewports.",
+      "rootCause": {
+        "explanation": "The toast stylesheet sets width:380px independently of viewport width; placement in the notification viewport adds an inset, exceeding a 390px screen.",
+        "sourceReferences": [
+          {
+            "repository": "saleor/saleor-dashboard",
+            "revision": "a6e7bee68ab183147ec680e03e86c29f717a11d5",
+            "path": "src/components/notifications/Toast.module.css",
+            "line": 7,
+            "url": "https://github.com/saleor/saleor-dashboard/blob/a6e7bee68ab183147ec680e03e86c29f717a11d5/src/components/notifications/Toast.module.css#L7"
+          }
+        ]
+      },
+      "reproductionPaths": [
+        {
+          "id": "saleor-notification-fixed-width-mobile-path-1",
+          "explanation": "At a 390px mobile viewport, pressing Save on a voucher displays a toast partly outside the screen, obscuring the feedback about the save.",
+          "sourceBugs": [
+            {
+              "index": 28,
+              "id": null,
+              "name": "Voucher Save notification is clipped outside the mobile viewport"
+            }
+          ],
+          "expected": "The Save notification remains fully visible and legible within the mobile viewport.",
+          "actual": "The toast after Save is off the side of the screen and only partly visible within the viewport.",
+          "reproSteps": [
+            "Sign in as the fixture administrator and set the viewport to 390 × 844 CSS pixels.",
+            "Open Discounts > Vouchers and create a voucher with a fresh name and manual code.",
+            "Assign Channel-USD and configure Entire order with a 15% percentage discount.",
+            "Click Save."
+          ],
+          "severity": 1
+        }
+      ]
+    },
+    {
+      "id": "saleor-integer-requirements-fraction-validation",
+      "explanation": "Fractional quantities and create-time caps are accepted then truncated.",
+      "rootCause": {
+        "explanation": "Number fields lack an integer constraint, and handlers submit parseFloat quantity/numeric usage limits into integer GraphQL/model fields. Neither path reports the lossy integer coercion to the user.",
+        "sourceReferences": [
+          {
+            "repository": "saleor/saleor-dashboard",
+            "revision": "a6e7bee68ab183147ec680e03e86c29f717a11d5",
+            "path": "src/discounts/views/VoucherCreate/handlers.ts",
+            "line": 50,
+            "url": "https://github.com/saleor/saleor-dashboard/blob/a6e7bee68ab183147ec680e03e86c29f717a11d5/src/discounts/views/VoucherCreate/handlers.ts#L50"
+          }
+        ]
+      },
+      "reproductionPaths": [
+        {
+          "id": "saleor-integer-requirements-fraction-validation-path-1",
+          "explanation": "The integer minimum-item quantity field accepts a visible 1.5 and reports a successful Save, but silently stores 1. The form should visibly filter out the decimal point while typing or reject the fractional value on Save; successful saving should preserve the displayed accepted quantity.",
+          "sourceBugs": [
+            {
+              "index": 29,
+              "id": null,
+              "name": "Fractional minimum quantity silently truncates on save"
+            }
+          ],
+          "expected": "The form should either strip the decimal point while typing so 1.5 visibly becomes 15 before Save and saves as 15, or reject the fractional value on Save. A successful Save must preserve the displayed accepted quantity.",
+          "actual": "The field displays 1.5. Save shows “Voucher updated” and changes the quantity to 1 without a validation message; the saved quantity remains 1 after reload.",
+          "reproSteps": [
+            "Sign in as the fixture administrator and open Discounts > Vouchers > Create voucher.",
+            "Enter a unique voucher name and manual code, assign Channel-USD, configure an Entire order discount of 10%, and click Save.",
+            "Open Requirements, enable Minimum quantity of items, clear its input, and type 1.5. Observe that the decimal point remains visible instead of the field displaying 15.",
+            "Click Save. Observe “Voucher updated” and the quantity changing to 1.",
+            "Reload the voucher and reopen Requirements. Observe that Minimum quantity of items remains enabled with the stored value 1."
+          ],
+          "severity": 3
+        },
+        {
+          "id": "saleor-integer-requirements-fraction-validation-path-2",
+          "explanation": "The integer Limit of Uses field accepts a visible 7.5 and reports a successful Save, but silently stores 7. The form should visibly filter out the decimal point while typing or reject the fractional value on Save; successful saving should preserve the displayed accepted usage limit.",
+          "sourceBugs": [
+            {
+              "index": 35,
+              "id": null,
+              "name": "Fractional voucher usage limit silently truncates on save"
+            }
+          ],
+          "expected": "The form should either strip the decimal point while typing so 7.5 visibly becomes 75 before Save and saves as 75, or reject the fractional value on Save. A successful Save must preserve the displayed accepted usage limit.",
+          "actual": "The Limit of Uses field displays 7.5 without validation. Save shows “Voucher created” and changes the limit to 7; Uses left shows 7 and the redemption summary shows 0 of 7 used / 7 redemptions left.",
+          "reproSteps": [
+            "Sign in as the fixture administrator and open Discounts > Vouchers > Create voucher.",
+            "Enter a unique voucher name and manual code, assign Channel-USD, and configure an Entire order discount of 10%. To match the recorded setup, enable Minimum quantity of items and enter 2.5; that separate known truncation behavior is not the finding being assessed.",
+            "Enable Limit number of times this discount can be used in total, clear Limit of Uses, and type 7.5. Observe that the decimal point remains visible instead of the field displaying 75.",
+            "Click Save. Observe “Voucher created” and open Limits: Limit of Uses and Uses left both display 7.",
+            "Inspect the redemption summary: it shows 0 of 7 used and 7 redemptions left, confirming that the successful Save accepted a smaller cap than the displayed 7.5."
+          ],
+          "severity": 3
+        }
+      ]
+    },
+    {
+      "id": "saleor-voucher-status-schedule-only",
+      "explanation": "Voucher Active status ignores exhausted redemption limits.",
+      "rootCause": {
+        "explanation": "Status labels derive promotion/schedule phase from startDate and endDate only, without incorporating usageLimit versus used; exhausted vouchers therefore still read Active.",
+        "sourceReferences": [
+          {
+            "repository": "saleor/saleor-dashboard",
+            "revision": "a6e7bee68ab183147ec680e03e86c29f717a11d5",
+            "path": "src/discounts/components/VoucherListDatagrid/datagrid.ts",
+            "line": 83,
+            "url": "https://github.com/saleor/saleor-dashboard/blob/a6e7bee68ab183147ec680e03e86c29f717a11d5/src/discounts/components/VoucherListDatagrid/datagrid.ts#L83"
+          }
+        ]
+      },
+      "reproductionPaths": [
+        {
+          "id": "saleor-voucher-status-schedule-only-path-1",
+          "explanation": "A voucher whose redemption limit is exhausted appears in Expired results but is still labeled Active because the badge checks dates alone. With current valid dates and a zero total limit, the row shows 0 of 0 and Active even though no redemptions remain; the status should reflect the exhausted limit.",
+          "sourceBugs": [
+            {
+              "index": 30,
+              "id": null,
+              "name": "Voucher status remains Active after its redemption limit is exhausted"
+            }
+          ],
+          "expected": "A voucher that has exhausted its total usage limit should display an expired or inactive status, consistently with its inclusion in the Expired filter.",
+          "actual": "An already-started voucher with no past end date and a saved total usage limit of 0 appears in Expired results while its row displays Active and 0 of 0. The contradiction remains after waiting for the filtered results to settle.",
+          "reproSteps": [
+            "Sign in as the fixture administrator and open Discounts > Vouchers. Use a disposable saved voucher with a code, Channel-USD, a valid discount, a start date in the past, and no expired end date.",
+            "Prepare the exhausted-limit prerequisite: enable the total usage limit, enter 0, and save. This fixture accepts the zero limit despite its separate validation error; the saved voucher has 0 uses out of a total limit of 0.",
+            "Return to Vouchers, open Filters, set voucher Status to Expired, and click Apply.",
+            "Locate the exhausted voucher in the filtered results. Observe 0 of 0 redemptions alongside the Active badge, including after waiting five seconds."
+          ],
+          "severity": 3
+        }
+      ]
+    },
+    {
+      "id": "saleor-partial-time-silently-defaulted",
+      "explanation": "An incomplete start time saves as midnight.",
+      "rootCause": {
+        "explanation": "joinDateTime falls back to 00:00 for falsy time input. The partially entered native time control produces an empty value that is silently replaced instead of rejected.",
+        "sourceReferences": [
+          {
+            "repository": "saleor/saleor-dashboard",
+            "revision": "a6e7bee68ab183147ec680e03e86c29f717a11d5",
+            "path": "src/misc.ts",
+            "line": 398,
+            "url": "https://github.com/saleor/saleor-dashboard/blob/a6e7bee68ab183147ec680e03e86c29f717a11d5/src/misc.ts#L398"
+          }
+        ]
+      },
+      "reproductionPaths": [
+        {
+          "id": "saleor-partial-time-silently-defaulted-path-1",
+          "explanation": "A start time showing 10:00 with AM/PM missing is saved as midnight, discarding the entered hour and minutes. The incomplete native input exposes an empty value, so the blank-time fallback treats a partially entered time as completely blank. Save should reject the incomplete time or fill AM/PM while preserving 10:00.",
+          "sourceBugs": [
+            {
+              "index": 31,
+              "id": null,
+              "name": "Partial voucher start time is discarded and saved as midnight"
+            }
+          ],
+          "expected": "For a partially entered 10:00 time with AM/PM missing, Save should either reject the incomplete time or supply AM/PM while preserving the entered hour and minutes. Defaulting a genuinely blank time field to midnight remains valid.",
+          "actual": "The start-time field visibly shows 10:00 with its AM/PM segment empty. Save succeeds and the schedule shows 12:00 AM; reloading retains midnight instead of the entered 10:00.",
+          "reproSteps": [
+            "Sign in as the fixture administrator and open Discounts > Vouchers > Create voucher. Enter a unique name and manual code, assign Channel-USD, and configure a valid Entire order discount of 10%.",
+            "In Schedule, set the start date to a future date, such as 2030-12-31, and set the start time to 10:00 AM.",
+            "Focus the AM/PM segment and clear only that segment with Backspace, keeping 10:00 visible. Blur the field and verify it displays 10:00 with AM/PM missing, rather than a completely blank time.",
+            "Click Save. Observe success and the saved Schedule card displaying 12:00 AM on the selected date.",
+            "Reload the voucher and inspect Schedule. Observe that the saved start time remains midnight."
+          ],
+          "severity": 3
+        }
+      ]
+    },
+    {
+      "id": "saleor-schedule-end-error-date-only",
+      "explanation": "An end-before-start error marks only the date field.",
+      "rootCause": {
+        "explanation": "DiscountDates maps the API endDate DateTime error to the End Date control and explicitly does not paint it onto End Hour, even when time order causes the failure.",
+        "sourceReferences": [
+          {
+            "repository": "saleor/saleor-dashboard",
+            "revision": "a6e7bee68ab183147ec680e03e86c29f717a11d5",
+            "path": "src/discounts/components/DiscountDates/DiscountDates.tsx",
+            "line": 164,
+            "url": "https://github.com/saleor/saleor-dashboard/blob/a6e7bee68ab183147ec680e03e86c29f717a11d5/src/discounts/components/DiscountDates/DiscountDates.tsx#L164"
+          }
+        ]
+      },
+      "reproductionPaths": [
+        {
+          "id": "saleor-schedule-end-error-date-only-path-1",
+          "explanation": "A same-day end of 09:30 before a 10:00 start is correctly rejected, but only End Date has error styling. End Hour remains visually valid even though changing that hour resolves the conflict.",
+          "sourceBugs": [
+            {
+              "index": 32,
+              "id": null,
+              "name": "Same-day end-before-start validation highlights End Date but leaves End Hour unmarked"
+            }
+          ],
+          "expected": "When Start Date and End Date are the same and End Hour is earlier than Start Hour, saving should highlight both End Date and End Hour as invalid. The existing “End date cannot be before the start date” message and rejection are correct and may remain.",
+          "actual": "Before Save, both calendar dates are June 1, 2030 with Start Hour 10:00 AM and End Hour 09:30 AM. After Save, the timestamp is correctly rejected, but only End Date is outlined as invalid and displays “End date cannot be before the start date.” End Hour remains unmarked, implying that only the calendar date needs correction. Keeping the dates unchanged and changing End Hour to 10:30 AM allows Save.",
+          "reproSteps": [
+            "Sign in as the fixture administrator and create and save a disposable voucher with a unique name and manual code, Channel-PLN, and a valid 10% entire-order discount.",
+            "In Schedule, enable Set end date, set Start Date and End Date to June 1, 2030, Start Hour to 10:00 AM, and End Hour to 09:30 AM.",
+            "Click Save. Observe that it correctly rejects the earlier end timestamp and shows “End date cannot be before the start date.”",
+            "Compare both end controls: End Date is outlined as invalid, while End Hour is not, incorrectly directing attention exclusively to the calendar date.",
+            "Keep both calendar dates unchanged, change End Hour to 10:30 AM, and save successfully."
+          ],
+          "severity": 1,
+          "matchingGuidance": [
+            {
+              "sourceBugIndex": 32,
+              "guidance": {
+                "claimScope": "Accept only the missing End Hour error indication when the combined end timestamp is invalid. The error wording and chronological validation are correct. This is distinct from stale errors after correction and post-success save-state bugs."
+              }
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "id": "saleor-schedule-input-draft-not-reset",
+      "explanation": "Schedule fields retain stale local date values after save.",
+      "rootCause": {
+        "explanation": "The form is initialized from split saved DateTimes but keeps changed local fields through prop reconciliation; normalized mutation/refetch values are not explicitly reset into the native date/time draft after submission.",
+        "sourceReferences": [
+          {
+            "repository": "saleor/saleor-dashboard",
+            "revision": "a6e7bee68ab183147ec680e03e86c29f717a11d5",
+            "path": "src/discounts/components/VoucherDetailsPage/VoucherDetailsPage.tsx",
+            "line": 257,
+            "url": "https://github.com/saleor/saleor-dashboard/blob/a6e7bee68ab183147ec680e03e86c29f717a11d5/src/discounts/components/VoucherDetailsPage/VoucherDetailsPage.tsx#L257"
+          }
+        ]
+      },
+      "reproductionPaths": [
+        {
+          "id": "saleor-schedule-input-draft-not-reset-path-1",
+          "explanation": "After clearing an existing current-day Start Date, Save correctly stores today’s default but the editor keeps the date blank and reports unsaved Schedule changes. With an initially absent end date, saving a cleared End Date similarly leaves Set end date checked although no end date is stored. Successful Save should display the stored defaults, as initial creation does.",
+          "sourceBugs": [
+            {
+              "index": 33,
+              "id": null,
+              "name": "Voucher schedule keeps stale date inputs after successful Save"
+            }
+          ],
+          "expected": "After successful Save, the editor should display the stored current Start Date or disable Set end date when no end date is stored, and clear the corresponding unsaved Schedule state.",
+          "actual": "A saved current-day voucher accepts a completely cleared Start Date and shows Voucher updated, but the field remains blank with Unsaved changes: Schedule and Save enabled after five seconds. For an initially absent end date, enabling and clearing End Date saves null but leaves the checkbox checked and the same unsaved state. Reload displays today’s start date, turns the absent end date off, and clears the unsaved state.",
+          "reproSteps": [
+            "Sign in as the fixture administrator and create a disposable voucher with a unique name and manual code, Channel-USD, and a valid 10% Entire order discount. Leave Start Date blank and save; confirm the saved form displays today’s default date.",
+            "On that saved voucher, clear the entire Start Date field so no date segments remain, then blur it. Leave the other settings unchanged.",
+            "Click Save and observe Voucher updated.",
+            "Wait five seconds. Observe that Start Date is still blank, Unsaved changes: Schedule remains visible, and Save is still enabled.",
+            "Reload the voucher. Observe today’s stored date displayed and the unsaved Schedule state cleared.",
+            "End-date variant: on a saved voucher with no existing end date, enable Set end date, clear every segment of the seeded End Date field, blur, and click Save.",
+            "Observe successful feedback while Set end date remains checked, its date remains blank, and Schedule remains unsaved. Reload; Set end date is off and the End Date input is hidden because the stored end date is null."
+          ],
+          "severity": 1
+        }
+      ]
+    },
+    {
+      "id": "saleor-cursor-page-empty-after-voucher-delete",
+      "explanation": "Deleting the sole final-page voucher leaves an inert Previous control.",
+      "rootCause": {
+        "explanation": "Voucher list deletion refetches with the existing cursor and keeps pagination anchored to the deleted page instead of navigating to a valid page; an empty edge list cannot supply the cursor for previous navigation.",
+        "sourceReferences": [
+          {
+            "repository": "saleor/saleor-dashboard",
+            "revision": "a6e7bee68ab183147ec680e03e86c29f717a11d5",
+            "path": "src/discounts/views/VoucherList/VoucherList.tsx",
+            "line": 145,
+            "url": "https://github.com/saleor/saleor-dashboard/blob/a6e7bee68ab183147ec680e03e86c29f717a11d5/src/discounts/views/VoucherList/VoucherList.tsx#L145"
+          }
+        ]
+      },
+      "reproductionPaths": [
+        {
+          "id": "saleor-cursor-page-empty-after-voucher-delete-path-1",
+          "explanation": "Deleting the only voucher on page 2 leaves an empty list with an enabled Previous button that does nothing. The surviving vouchers remain accessible after resetting the list through navigation.",
+          "sourceBugs": [
+            {
+              "index": 34,
+              "id": null,
+              "name": "Deleting the sole voucher on the last page leaves Previous enabled but inert"
+            }
+          ],
+          "expected": "After deleting the only row on the last page, the list should return to a valid page or let Previous navigate to the surviving vouchers.",
+          "actual": "Deletion shows “Vouchers deleted,” but the list remains on the same after-cursor URL with “No vouchers found.” Clicking the enabled Previous button changes neither the URL nor the rendered list; reopening Vouchers through the sidebar reveals the surviving records.",
+          "reproSteps": [
+            "Sign in as the fixture administrator. With no other session mutating the voucher list, prepare exactly 11 vouchers using uniquely named disposable vouchers alongside the seeded vouchers. Give one disposable voucher a unique high-sorting code so it is the sole row on page 2.",
+            "Open /discounts/vouchers?asc=true&sort=code, set No. of rows to 10, and navigate to page 2. Verify that the only row is the owned disposable voucher.",
+            "Select that row, choose Delete vouchers, and confirm deletion. Observe “Vouchers deleted” followed by “No vouchers found” at the same after-cursor URL.",
+            "Click the visibly enabled Previous button. Observe that the URL and empty list remain unchanged; repeat with the visible control to confirm.",
+            "Navigate through the sidebar to reopen Discounts > Vouchers. Observe the ten surviving vouchers, confirming that the empty page did not mean the list was empty."
+          ],
+          "severity": 3
+        }
+      ]
+    },
+    {
+      "id": "saleor-conditional-filter-value-clipped-mobile",
+      "explanation": "Mobile filter rows clip required value selectors.",
+      "rootCause": {
+        "explanation": "ConditionalFilter rows lay out condition/operator/value controls within the narrow panel and apply overflow:hidden to valueField. The selector can be pushed outside its available width and then clipped.",
+        "sourceReferences": [
+          {
+            "repository": "saleor/saleor-dashboard",
+            "revision": "a6e7bee68ab183147ec680e03e86c29f717a11d5",
+            "path": "src/components/ConditionalFilter/UI/Row.module.css",
+            "line": 11,
+            "url": "https://github.com/saleor/saleor-dashboard/blob/a6e7bee68ab183147ec680e03e86c29f717a11d5/src/components/ConditionalFilter/UI/Row.module.css#L11"
+          }
+        ]
+      },
+      "reproductionPaths": [
+        {
+          "id": "saleor-conditional-filter-value-clipped-mobile-path-1",
+          "explanation": "At a 390px viewport, selecting Status in voucher Filters clips the required value selector outside the panel, leaving Apply disabled and preventing normal touch interaction with the filter.",
+          "sourceBugs": [
+            {
+              "index": 36,
+              "id": null,
+              "name": "Mobile voucher Status filter clips the required value selector"
+            }
+          ],
+          "expected": "The required Status value selector and Apply control should be reachable through normal touch interaction at a 390 × 844 viewport.",
+          "actual": "The filter row shows Status and its operator, but the value selector is clipped beyond the panel’s right edge. Tapping the visible edge and dragging horizontally do not expose it, and Apply remains disabled. A locator-targeted click can auto-scroll the hidden control into view, but that does not provide normal touch access.",
+          "reproSteps": [
+            "Sign in as the fixture administrator, set the browser viewport to 390 × 844 CSS pixels, and open /discounts/vouchers?asc=true&sort=code.",
+            "Tap Filters, open the field selector, and select Status.",
+            "Inspect the filter row: Status and its operator are visible, but the required value selector is clipped beyond the panel’s right edge and Apply is disabled.",
+            "Tap the panel’s visible right edge and attempt a horizontal drag using normal touch interaction. Observe that the value selector remains unreachable and the filter cannot be applied.",
+            "Do not count a locator-targeted click that auto-scrolls the hidden value selector into view as normal touch access."
+          ],
+          "severity": 3
+        },
+        {
+          "id": "saleor-conditional-filter-value-clipped-mobile-path-2",
+          "explanation": "Mobile collection assignment filters hide their value selectors.",
+          "sourceBugs": [
+            {
+              "index": 54,
+              "id": "saleor-vouchers-b14",
+              "name": "Mobile collection assignment filters hide their value selectors"
+            }
+          ],
+          "expected": "Filter value selectors remain fully visible and usable within the Conditions panel at mobile width",
+          "actual": "The value selectors to the right of the 'is' operators extend past the right edge of the Conditions panel and are clipped",
+          "reproSteps": [
+            "Own RESP-mobile-1028 voucher exists at /discounts/vouchers/Vm91Y2hlcjoxNQ%3D%3D. No need to change any linked collection or channel.",
+            "Open a Products-scope voucher as administrator at 390x844.",
+            "Under Eligible products, click Collections Assign.",
+            "Open Filters, click Add filter, and choose Is published (ArrowDown then Enter commits the choice).",
+            "Inspect the publication and dependent Channel rows."
+          ],
+          "severity": 3
+        }
+      ]
+    },
+    {
+      "id": "saleor-minimum-quantity-zero-save-not-gated",
+      "explanation": "Invalid zero item requirements save and clear persisted requirements.",
+      "rootCause": {
+        "explanation": "VoucherRequirements displays an error for a value below one but the submit handler does not stop on that UI-only condition; it forwards zero, which means no item requirement, and other independent successful updates can produce a success acknowledgement.",
+        "sourceReferences": [
+          {
+            "repository": "saleor/saleor-dashboard",
+            "revision": "a6e7bee68ab183147ec680e03e86c29f717a11d5",
+            "path": "src/discounts/components/VoucherRequirements/VoucherRequirements.tsx",
+            "line": 55,
+            "url": "https://github.com/saleor/saleor-dashboard/blob/a6e7bee68ab183147ec680e03e86c29f717a11d5/src/discounts/components/VoucherRequirements/VoucherRequirements.tsx#L55"
+          }
+        ]
+      },
+      "reproductionPaths": [
+        {
+          "id": "saleor-minimum-quantity-zero-save-not-gated-path-1",
+          "explanation": "With Minimum quantity of items set to 0, Save keeps the Enter at least 1 item. error and the unsaved General settings indicator, yet shows a green Voucher updated toast.",
+          "sourceBugs": [
+            {
+              "index": 39,
+              "id": "mo-12m-saleor-vouchers-2",
+              "name": "Saving a rejected zero minimum quantity shows a Voucher updated success toast"
+            },
+            {
+              "index": 41,
+              "id": "mo-12m-saleor-vouchers-run4-4",
+              "name": "Saving a rejected zero minimum quantity removes the saved quantity requirement"
+            }
+          ],
+          "expected": "Save should be blocked by the validation error, or the feedback should state that the change was not saved. No success notification should appear for a rejected requirement.",
+          "actual": "A green Voucher updated toast appears for about five seconds while Enter at least 1 item. and Unsaved changes: General settings remain. The invalid quantity was the only pending change.",
+          "reproSteps": [
+            "Sign in as the fixture administrator and create a disposable voucher with a unique name and manual code, both channels assigned and a 10% percentage discount. Save it and observe Voucher created.",
+            "Open Requirements, enable Minimum quantity of items, enter 0 and move focus out of the field. Observe Enter at least 1 item.",
+            "Click Save. Observe the green Voucher updated toast while the validation error and Unsaved changes: General settings remain."
+          ],
+          "severity": 3
+        }
+      ]
+    },
+    {
+      "id": "saleor-detail-back-location-state-loss",
+      "explanation": "Voucher Back loses list search and sort.",
+      "rootCause": {
+        "explanation": "The detail backlink depends on history.state.prevLocation; navigation paths lacking that state, including plain row anchors, fall back to voucherListPath without the originating query.",
+        "sourceReferences": [
+          {
+            "repository": "saleor/saleor-dashboard",
+            "revision": "a6e7bee68ab183147ec680e03e86c29f717a11d5",
+            "path": "src/hooks/useBackLinkWithState.ts",
+            "line": 40,
+            "url": "https://github.com/saleor/saleor-dashboard/blob/a6e7bee68ab183147ec680e03e86c29f717a11d5/src/hooks/useBackLinkWithState.ts#L40"
+          }
+        ]
+      },
+      "reproductionPaths": [
+        {
+          "id": "saleor-detail-back-location-state-loss-path-1",
+          "explanation": "Opening a voucher from a searched, descending-sorted Vouchers list and clicking the detail page's Back button returns to the unfiltered list in ascending order.",
+          "sourceBugs": [
+            {
+              "index": 40,
+              "id": "mo-12m-saleor-vouchers-run2-5",
+              "name": "Voucher detail Back discards the originating list search and sort"
+            }
+          ],
+          "expected": "Back returns to the originating voucher list with its search and sort intact. The dashboard implements this: list rows pass the previous location when opening a voucher, and the detail page's Back uses that saved list URL.",
+          "actual": "Back opens the full voucher list with the search cleared and the Name sort reset from descending to ascending. Refreshing the list before opening the voucher had kept both.",
+          "reproSteps": [
+            "Sign in as the fixture administrator and open Discounts > Vouchers.",
+            "Sort by Name descending, then search for free so only the Free shipping voucher remains (or search for a fresh uniquely named voucher).",
+            "Open the matching voucher from the list without editing it.",
+            "Click the Back button in the detail page's bottom bar and inspect the list search and sort."
+          ],
+          "severity": 1
+        }
+      ]
+    },
+    {
+      "id": "saleor-partial-save-success-notification",
+      "explanation": "A failed total-usage save can show a success toast.",
+      "rootCause": {
+        "explanation": "The save flow includes independent voucher/channel mutations whose completion and notification paths can acknowledge a successful component while another component returns field validation errors, lacking one transaction-level success signal.",
+        "sourceReferences": [
+          {
+            "repository": "saleor/saleor-dashboard",
+            "revision": "a6e7bee68ab183147ec680e03e86c29f717a11d5",
+            "path": "src/discounts/views/VoucherDetails/handlers.ts",
+            "line": 145,
+            "url": "https://github.com/saleor/saleor-dashboard/blob/a6e7bee68ab183147ec680e03e86c29f717a11d5/src/discounts/views/VoucherDetails/handlers.ts#L145"
+          }
+        ]
+      },
+      "reproductionPaths": [
+        {
+          "id": "saleor-partial-save-success-notification-path-1",
+          "explanation": "With the total usage limit enabled, saving an empty limit (or 2147483648) shows a green Voucher updated toast while Save turns into Try again and Unsaved changes remains.",
+          "sourceBugs": [
+            {
+              "index": 43,
+              "id": "mo-12m-saleor-vouchers-run4-14",
+              "name": "Saving an invalid total usage limit shows Voucher updated beside a failed save"
+            }
+          ],
+          "expected": "A rejected limit should block Save or report failure; no success notification should appear for a save that did not apply.",
+          "actual": "Enter a limit of at least 1. is shown before Save. After Save, a green Voucher updated toast appears alongside the Try again action and the unsaved-changes notice; the invalid field stays unsaved.",
+          "reproSteps": [
+            "Sign in as the fixture administrator and create a disposable voucher with a unique code, existing channels and a 10% discount. Enable the total usage limit at 1 and Save.",
+            "In Limits, clear Limit of Uses with the total limit still enabled and blur. Observe Enter a limit of at least 1.",
+            "Click Save. Observe the Voucher updated toast together with Try again and Unsaved changes.",
+            "Variant: enter 2147483648 instead of clearing the field and Save."
+          ],
+          "severity": 3
+        }
+      ]
+    },
+    {
+      "id": "saleor-detail-fractional-cap-kept-in-state",
+      "explanation": "Fractional usage caps are displayed as persisted after editing.",
+      "rootCause": {
+        "explanation": "The usage-limit input accepts decimal values without an integer check; detail mutation/cache reconciliation retains the submitted numeric cap for uses-left/redemption arithmetic instead of validating/reloading an integer representation.",
+        "sourceReferences": [
+          {
+            "repository": "saleor/saleor-dashboard",
+            "revision": "a6e7bee68ab183147ec680e03e86c29f717a11d5",
+            "path": "src/discounts/components/VoucherLimits/VoucherLimits.tsx",
+            "line": 64,
+            "url": "https://github.com/saleor/saleor-dashboard/blob/a6e7bee68ab183147ec680e03e86c29f717a11d5/src/discounts/components/VoucherLimits/VoucherLimits.tsx#L64"
+          }
+        ]
+      },
+      "reproductionPaths": [
+        {
+          "id": "saleor-detail-fractional-cap-kept-in-state-path-1",
+          "explanation": "On an existing voucher, setting Limit of Uses to 1.5 saves successfully and the voucher then shows 1.5 redemptions left.",
+          "sourceBugs": [
+            {
+              "index": 44,
+              "id": "mo-12m-saleor-vouchers-run3-5",
+              "name": "Editing a saved voucher's usage limit to 1.5 persists a fractional cap"
+            }
+          ],
+          "expected": "The integer Limit of Uses should reject or filter a fractional value; a redemption cap should not persist as 1.5.",
+          "actual": "Save shows Voucher updated, and Uses left and the redemption summary show 1.5 redemptions left.",
+          "reproSteps": [
+            "Sign in as the fixture administrator and create a disposable voucher with a unique manual code, Channel-PLN and a 10% discount. Save it.",
+            "Open Limits and enable the total usage limit.",
+            "Enter 1.5 in Limit of Uses, blur and Save.",
+            "Observe Voucher updated and 1.5 redemptions left."
+          ],
+          "severity": 3
+        }
+      ]
+    },
+    {
+      "id": "saleor-country-empty-selection-not-cleared",
+      "explanation": "Unchecking the last selected country does not clear its assignment.",
+      "rootCause": {
+        "explanation": "The country picker stages an empty array as the worldwide/no-country state; the assignment confirmation and draft-to-saved merge must distinguish this explicit empty selection from an unchanged baseline, otherwise the old country list survives.",
+        "sourceReferences": [
+          {
+            "repository": "saleor/saleor-dashboard",
+            "revision": "a6e7bee68ab183147ec680e03e86c29f717a11d5",
+            "path": "src/discounts/views/VoucherDetails/VoucherDetails.tsx",
+            "line": 875,
+            "url": "https://github.com/saleor/saleor-dashboard/blob/a6e7bee68ab183147ec680e03e86c29f717a11d5/src/discounts/views/VoucherDetails/VoucherDetails.tsx#L875"
+          }
+        ]
+      },
+      "reproductionPaths": [
+        {
+          "id": "saleor-country-empty-selection-not-cleared-path-1",
+          "explanation": "On an unsaved free-shipping voucher restricted to Canada, reopening Assign countries, unchecking Canada and confirming leaves Canada assigned.",
+          "sourceBugs": [
+            {
+              "index": 45,
+              "id": "mo-12m-saleor-vouchers-run6-3",
+              "name": "Unchecking the only assigned country in Assign countries does not remove it"
+            }
+          ],
+          "expected": "Confirming the dialog applies its selection: with Canada unchecked, the voucher should no longer be restricted to Canada. The dialog starts from the assigned countries and submits the full selected set.",
+          "actual": "The dialog closes, but Countries still shows Canada and Valid in 1 country.",
+          "reproSteps": [
+            "Sign in as the fixture administrator and choose Create voucher. Enter a unique name.",
+            "Choose Free shipping. In Countries, click Assign, filter for Canada, check Canada and confirm.",
+            "Reopen Assign countries, filter for Canada, uncheck Canada and confirm.",
+            "Observe that Countries still lists Canada and Valid in 1 country."
+          ],
+          "severity": 3
+        }
+      ]
+    },
+    {
+      "id": "saleor-date-between-incomplete-query",
+      "explanation": "Incomplete date-between filters generate an invalid voucher query.",
+      "rootCause": {
+        "explanation": "Voucher date filtering calls joinDateTime for each optional bound and passes the pair onward without ensuring both bounds are a complete valid between expression; a half-entered condition reaches the API as an invalid filter.",
+        "sourceReferences": [
+          {
+            "repository": "saleor/saleor-dashboard",
+            "revision": "a6e7bee68ab183147ec680e03e86c29f717a11d5",
+            "path": "src/discounts/views/VoucherList/filters.ts",
+            "line": 82,
+            "url": "https://github.com/saleor/saleor-dashboard/blob/a6e7bee68ab183147ec680e03e86c29f717a11d5/src/discounts/views/VoucherList/filters.ts#L82"
+          }
+        ]
+      },
+      "reproductionPaths": [
+        {
+          "id": "saleor-date-between-incomplete-query-path-1",
+          "explanation": "Incomplete date-between filter breaks the voucher list.",
+          "sourceBugs": [
+            {
+              "index": 47,
+              "id": "saleor-vouchers-b10",
+              "name": "Incomplete date-between filter breaks the voucher list"
+            }
+          ],
+          "expected": "An incomplete date range should be rejected with usable validation, or treated as an open range without breaking the list.",
+          "actual": "The list is replaced by a loading indicator and an Error notification reporting status code 400.",
+          "reproSteps": [
+            "Open Vouchers as admin and open Filters.",
+            "Choose Started and the between operator.",
+            "Leave the first date empty and enter January 1, 2030 00:00 in the second date field.",
+            "Click the enabled Apply button."
+          ],
+          "severity": 3
+        }
+      ]
+    },
+    {
+      "id": "saleor-row-selection-index-reused-after-filter",
+      "explanation": "Filtering transfers selection to a different voucher row.",
+      "rootCause": {
+        "explanation": "Datagrid selection is reported by row index; handleSelectVouchersIds maps those indexes against the new vouchers array after the filter changes before clearing the old selection, selecting different IDs at the same positions.",
+        "sourceReferences": [
+          {
+            "repository": "saleor/saleor-dashboard",
+            "revision": "a6e7bee68ab183147ec680e03e86c29f717a11d5",
+            "path": "src/discounts/views/VoucherList/VoucherList.tsx",
+            "line": 165,
+            "url": "https://github.com/saleor/saleor-dashboard/blob/a6e7bee68ab183147ec680e03e86c29f717a11d5/src/discounts/views/VoucherList/VoucherList.tsx#L165"
+          }
+        ]
+      },
+      "reproductionPaths": [
+        {
+          "id": "saleor-row-selection-index-reused-after-filter-path-1",
+          "explanation": "Changing a filter transfers selection to a different voucher.",
+          "sourceBugs": [
+            {
+              "index": 49,
+              "id": "saleor-vouchers-b03",
+              "name": "Changing a filter transfers selection to a different voucher"
+            }
+          ],
+          "expected": "Selection stays attached to Free shipping or is cleared safely; a different voucher must not become selected.",
+          "actual": "The percentage voucher, now first in the list, becomes checked; Free shipping is unchecked and Delete vouchers (1) stays visible.",
+          "reproSteps": [
+            "Create a percentage voucher whose name sorts ahead of Free shipping in Name/code ascending order.",
+            "Open Vouchers at desktop width.",
+            "Apply Discount type is Shipping so only Free shipping is listed.",
+            "Select the Free shipping row checkbox.",
+            "Open Filters; change Discount type operator to in and select Shipping and Percentage.",
+            "Close the value dropdown and click Apply.",
+            "Inspect the selected row in the expanded list."
+          ],
+          "severity": 3
+        }
+      ]
+    },
+    {
+      "id": "saleor-codes-toolbar-mobile-action-pagination-overlap",
+      "explanation": "Delete-code actions overlap the page-size dropdown.",
+      "rootCause": {
+        "explanation": "Voucher codes table toolbar/pagination retain their horizontal control geometry on narrow screens without reserving width for selected-row deletion actions.",
+        "sourceReferences": [
+          {
+            "repository": "saleor/saleor-dashboard",
+            "revision": "a6e7bee68ab183147ec680e03e86c29f717a11d5",
+            "path": "src/discounts/components/VoucherCodesTable/VoucherCodesTable.module.css",
+            "line": 1,
+            "url": "https://github.com/saleor/saleor-dashboard/blob/a6e7bee68ab183147ec680e03e86c29f717a11d5/src/discounts/components/VoucherCodesTable/VoucherCodesTable.module.css#L1"
+          }
+        ]
+      },
+      "reproductionPaths": [
+        {
+          "id": "saleor-codes-toolbar-mobile-action-pagination-overlap-path-1",
+          "explanation": "Mobile delete-codes action overlaps the rows dropdown.",
+          "sourceBugs": [
+            {
+              "index": 50,
+              "id": "saleor-vouchers-b06",
+              "name": "Mobile delete-codes action overlaps the rows dropdown"
+            }
+          ],
+          "expected": "The delete action and rows dropdown have separate readable space.",
+          "actual": "Delete codes (1) overlaps the rows dropdown.",
+          "reproSteps": [
+            "Open a saved voucher with two codes at 390×844 CSS viewport.",
+            "Select the checkbox of the first code.",
+            "Inspect the Voucher codes footer."
+          ],
+          "severity": 1
+        }
+      ]
+    },
+    {
+      "id": "saleor-setup-percentage-copy-shared-value",
+      "explanation": "Setup copy falsely states percentage values are shared across channels.",
+      "rootCause": {
+        "explanation": "The setup message hardcodes Percentage discounts use one value across channels, but channel listings retain independent percentageDiscountValue drafts.",
+        "sourceReferences": [
+          {
+            "repository": "saleor/saleor-dashboard",
+            "revision": "a6e7bee68ab183147ec680e03e86c29f717a11d5",
+            "path": "src/discounts/components/VoucherSetupCard/messages.ts",
+            "line": 126,
+            "url": "https://github.com/saleor/saleor-dashboard/blob/a6e7bee68ab183147ec680e03e86c29f717a11d5/src/discounts/components/VoucherSetupCard/messages.ts#L126"
+          }
+        ]
+      },
+      "reproductionPaths": [
+        {
+          "id": "saleor-setup-percentage-copy-shared-value-path-1",
+          "explanation": "Voucher setup incorrectly describes percentage discounts as shared across channels.",
+          "sourceBugs": [
+            {
+              "index": 51,
+              "id": "saleor-vouchers-b12",
+              "name": "Voucher setup incorrectly describes percentage discounts as shared across channels"
+            }
+          ],
+          "expected": "Setup guidance should describe the supported per-channel percentage values consistently with the editor.",
+          "actual": "Setup states “Percentage discounts use one value across channels. Fixed amounts are set per channel currency.” The editor says “Percentage off, per channel” and “values can differ when markets need different offers”; independently saved PLN 10 and USD 20 were verified.",
+          "reproSteps": [
+            "Open Create Voucher.",
+            "Expand the Set the discount value checklist row.",
+            "Read its explanatory text."
+          ],
+          "severity": 1
+        }
+      ]
+    },
+    {
+      "id": "saleor-offer-sort-reset-before-channel-ready",
+      "explanation": "Refresh drops channel-dependent Offer sorting.",
+      "rootCause": {
+        "explanation": "VoucherList effect calls canBeSorted before selectedChannel resolves; a channel-dependent value sort is treated as unsupported and replaced with DEFAULT_SORT_KEY.",
+        "sourceReferences": [
+          {
+            "repository": "saleor/saleor-dashboard",
+            "revision": "a6e7bee68ab183147ec680e03e86c29f717a11d5",
+            "path": "src/discounts/views/VoucherList/VoucherList.tsx",
+            "line": 118,
+            "url": "https://github.com/saleor/saleor-dashboard/blob/a6e7bee68ab183147ec680e03e86c29f717a11d5/src/discounts/views/VoucherList/VoucherList.tsx#L118"
+          }
+        ]
+      },
+      "reproductionPaths": [
+        {
+          "id": "saleor-offer-sort-reset-before-channel-ready-path-1",
+          "explanation": "Refreshing vouchers loses the Offer sort.",
+          "sourceBugs": [
+            {
+              "index": 52,
+              "id": "saleor-vouchers-b11",
+              "name": "Refreshing vouchers loses the Offer sort"
+            }
+          ],
+          "expected": "Refreshing should retain the selected Offer descending sort and row ordering, as Scope and Name sorting do.",
+          "actual": "The active header changes to Name descending. CODE-QA-0717-A is first and Percentage order discount is second instead of last.",
+          "reproSteps": [
+            "Open Vouchers as admin.",
+            "Filter Channel is Channel-USD and Apply.",
+            "Click Offer header twice to sort descending; Percentage order discount (5% off) appears last.",
+            "Refresh the page."
+          ],
+          "severity": 3
+        }
+      ]
+    },
+    {
+      "id": "saleor-percentage-storage-precision-not-validated",
+      "explanation": "Tiny percentage discounts silently round to zero.",
+      "rootCause": {
+        "explanation": "VoucherChannelListing.discount_value has fixed DEFAULT_DECIMAL_PLACES while percentage validation checks the maximum but not precision/minimum representable nonzero amount, so storage rounds a finer value.",
+        "sourceReferences": [
+          {
+            "repository": "saleor/saleor",
+            "revision": "44dd076f00584c0660449e4e238f60ffcb32e691",
+            "path": "saleor/discount/models.py",
+            "line": 249,
+            "url": "https://github.com/saleor/saleor/blob/44dd076f00584c0660449e4e238f60ffcb32e691/saleor/discount/models.py#L249"
+          }
+        ]
+      },
+      "reproductionPaths": [
+        {
+          "id": "saleor-percentage-storage-precision-not-validated-path-1",
+          "explanation": "Small percentage discount silently saves as zero.",
+          "sourceBugs": [
+            {
+              "index": 55,
+              "id": "saleor-vouchers-b16",
+              "name": "Small percentage discount silently saves as zero"
+            }
+          ],
+          "expected": "The accepted percentage remains 0.000001 after saving, or unsupported precision is clearly rejected before success.",
+          "actual": "The saved Channel-USD percentage reads 0 instead of the entered 0.000001, while the voucher is Active.",
+          "reproSteps": [
+            "Create a fresh voucher with unique name/manual code (observed VC-NUM-TINY-2207).",
+            "Assign Channel-USD, retain Entire order and Percentage.",
+            "Enter 0.000001 in Percentage for Channel-USD; blur and verify it reads exactly 0.000001.",
+            "Click Save; observe Voucher created and the new saved voucher details.",
+            "Refresh the page, wait for the saved voucher to load, and open its Discount section."
+          ],
+          "severity": 3
+        }
+      ]
+    },
+    {
+      "id": "saleor-whitespace-voucher-name",
+      "explanation": "Whitespace-only voucher names render unidentified rows.",
+      "rootCause": {
+        "explanation": "The name string is submitted without trimming/nonblank validation, and the list uses name directly with nullish fallback only, so whitespace passes and displays as a blank row.",
+        "sourceReferences": [
+          {
+            "repository": "saleor/saleor-dashboard",
+            "revision": "a6e7bee68ab183147ec680e03e86c29f717a11d5",
+            "path": "src/discounts/components/VoucherListDatagrid/datagrid.ts",
+            "line": 250,
+            "url": "https://github.com/saleor/saleor-dashboard/blob/a6e7bee68ab183147ec680e03e86c29f717a11d5/src/discounts/components/VoucherListDatagrid/datagrid.ts#L250"
+          }
+        ]
+      },
+      "reproductionPaths": [
+        {
+          "id": "saleor-whitespace-voucher-name-path-1",
+          "explanation": "Whitespace voucher name leaves an unidentified list row.",
+          "sourceBugs": [
+            {
+              "index": 56,
+              "id": "saleor-vouchers-b18",
+              "name": "Whitespace voucher name leaves an unidentified list row"
+            }
+          ],
+          "expected": "A whitespace-only name should be treated as unnamed and show an identifying fallback (such as its code), or be rejected with validation rather than producing an unidentified list row.",
+          "actual": "Save succeeds. After refresh and Back, the voucher row's Name cell shows only “1 code”; neither the voucher name nor its code is displayed.",
+          "reproSteps": [
+            "As authenticated admin, create a fresh voucher with unique NAME-prefixed code and NAME-prefixed name, one available channel and entire-order 10% discount; save.",
+            "Change Voucher Name to exactly three ordinary spaces and Save.",
+            "Verify Voucher updated appears, then refresh and use Back to return to All vouchers.",
+            "Inspect the voucher's Name cell."
+          ],
+          "severity": 1
+        }
+      ]
+    },
+    {
+      "id": "saleor-mobile-grid-pinned-name-width",
+      "explanation": "The fixed pinned Name column leaves no space for other mobile columns.",
+      "rootCause": {
+        "explanation": "The shared Datagrid defaults freezeColumns to 1 while the voucher first column keeps desktop width; at phone width it consumes nearly the entire scrolling viewport.",
+        "sourceReferences": [
+          {
+            "repository": "saleor/saleor-dashboard",
+            "revision": "a6e7bee68ab183147ec680e03e86c29f717a11d5",
+            "path": "src/components/Datagrid/Datagrid.tsx",
+            "line": 160,
+            "url": "https://github.com/saleor/saleor-dashboard/blob/a6e7bee68ab183147ec680e03e86c29f717a11d5/src/components/Datagrid/Datagrid.tsx#L160"
+          }
+        ]
+      },
+      "reproductionPaths": [
+        {
+          "id": "saleor-mobile-grid-pinned-name-width-path-1",
+          "explanation": "Mobile pinned Name column leaves other voucher columns unreadable.",
+          "sourceBugs": [
+            {
+              "index": 57,
+              "id": "saleor-vouchers-b21",
+              "name": "Mobile pinned Name column leaves other voucher columns unreadable"
+            }
+          ],
+          "expected": "The mobile table provides enough width to read data columns such as status, offer and redemptions.",
+          "actual": "Name fills roughly330 of357 available table pixels, leaving only a clipped strip of other columns. The visible redemption text is cut off at the right edge.",
+          "reproSteps": [
+            "Open Vouchers as vouchers admin at390x844.",
+            "Inspect a loaded voucher row with default columns.",
+            "Optionally horizontally scroll the grid; Name remains pinned over almost all available width."
+          ],
+          "severity": 1
+        }
+      ]
+    },
+    {
+      "id": "saleor-redemption-message-ignores-readiness",
+      "explanation": "The redemption summary claims availability without channels or codes.",
+      "rootCause": {
+        "explanation": "formatScheduleStatus derives Redeemable now solely from scheduleData; codesCount and channelsCount are shown separately but do not gate that claim.",
+        "sourceReferences": [
+          {
+            "repository": "saleor/saleor-dashboard",
+            "revision": "a6e7bee68ab183147ec680e03e86c29f717a11d5",
+            "path": "src/discounts/components/VoucherRedemptionsCard/VoucherRedemptionsCard.tsx",
+            "line": 35,
+            "url": "https://github.com/saleor/saleor-dashboard/blob/a6e7bee68ab183147ec680e03e86c29f717a11d5/src/discounts/components/VoucherRedemptionsCard/VoucherRedemptionsCard.tsx#L35"
+          }
+        ]
+      },
+      "reproductionPaths": [
+        {
+          "id": "saleor-redemption-message-ignores-readiness-path-1",
+          "explanation": "After removing all of a voucher's channels or deleting all its codes, the Redemptions card still says 'Redeemable now', while the same page's checklist says the voucher can't be redeemed.",
+          "sourceBugs": [
+            {
+              "index": 58,
+              "id": "saleor-vouchers-001",
+              "name": "Redemptions card says 'Redeemable now' when the voucher can't be redeemed (no channels or no codes)"
+            }
+          ],
+          "expected": "Readiness should account for required voucher setup; a voucher with no channels should indicate that channels must be assigned.",
+          "actual": "After saving removal of all channels, Redemptions shows '1 code', '0 channels', '5 redemptions left' and 'Redeemable now.' The same page's checklist says 'Customers can’t redeem this voucher until the required steps are done.' Reproduced on two vouchers.",
+          "reproSteps": [
+            "Sign in as admin@example.com / admin. Create a voucher with an unused manual code, Channel-USD and valid percentage 10.",
+            "Enable total usage limit and set 5. Keep schedule currently active, then Save.",
+            "In Availability click Manage, deselect all channels, confirm 0 channels, and Save.",
+            "Observe the setup checklist warns customers cannot redeem, but Redemptions still says 'Redeemable now.' despite 0 channels."
+          ],
+          "severity": 1
+        }
+      ]
+    },
+    {
+      "id": "saleor-schedule-status-no-clock-invalidation",
+      "explanation": "Open voucher pages do not update status when schedule boundaries pass.",
+      "rootCause": {
+        "explanation": "getVoucherSchedulePhase evaluates Date.now only when React renders. No timer/subscription schedules a render at start/end, so status remains stale on an otherwise idle page.",
+        "sourceReferences": [
+          {
+            "repository": "saleor/saleor-dashboard",
+            "revision": "a6e7bee68ab183147ec680e03e86c29f717a11d5",
+            "path": "src/discounts/components/VoucherChannelAvailabilityCard/getVoucherSchedulePhase.ts",
+            "line": 16,
+            "url": "https://github.com/saleor/saleor-dashboard/blob/a6e7bee68ab183147ec680e03e86c29f717a11d5/src/discounts/components/VoucherChannelAvailabilityCard/getVoucherSchedulePhase.ts#L16"
+          }
+        ]
+      },
+      "reproductionPaths": [
+        {
+          "id": "saleor-schedule-status-no-clock-invalidation-path-1",
+          "explanation": "On an open voucher detail page, the header status, the Schedule card label and the channel dot do not change when the scheduled start or end time passes. After the start time it still said \"Scheduled · in 2 minutes\". After the end time it still said Active, with a green Channel-USD dot. Refreshing the page shows the correct phase each time.",
+          "sourceBugs": [
+            {
+              "index": 59,
+              "id": "saleor-vouchers-002",
+              "name": "Open voucher detail page keeps stale schedule status after start and end times pass"
+            }
+          ],
+          "expected": "While the page stays open, the header status, Schedule card label and channel indicator change from Scheduled to Active to Inactive/Ended as the start and end times pass, matching what a refresh shows.",
+          "actual": "Start was 02:49 and end was 02:51 EDT on Oct 28 2026. At 02:49:12 and again at 02:49:54 the page still showed \"Scheduled · in 2 minutes\", and the Schedule card still said Scheduled. A refresh at 02:50:05 showed Active. At 02:51:30, after the end time, the page still showed Active with a green Channel-USD dot. Refreshing then showed \"Inactive · 1 minute ago\", \"Ended\" and a grey channel dot.",
+          "reproSteps": [
+            "Sign in as the vouchers admin (saved session) with browser timezone America/New_York, then open /discounts/vouchers/add",
+            "Name: voucher-schedule-mo1. Add a manual code SCHEDMO1. Under Availability > Manage, assign Channel-USD. Set the Channel-USD percentage to 5.",
+            "Set Start Date to 10/28/2026 and Start Hour to 02:49 AM (about 3 minutes ahead). Check Set end date and set End Date to 10/28/2026 and End Hour to 02:51 AM. Click Save; the toast says 'Voucher created' and the header shows 'Scheduled · in 2 minutes'.",
+            "Leave the page open past 02:49. At 02:49:54 the header still shows 'Scheduled · in 2 minutes'.",
+            "Refresh at 02:50: the header shows Active and the Channel-USD dot is green.",
+            "Leave the page open past 02:51. At 02:51:30 it still shows Active with a green Channel-USD dot. Refreshing shows 'Inactive · 1 minute ago' and Ended."
+          ],
+          "severity": 1
+        }
+      ]
+    }
+  ]
+}
