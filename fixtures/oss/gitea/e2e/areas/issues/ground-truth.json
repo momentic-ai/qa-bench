@@ -1184,6 +1184,54 @@
         }
       },
       "sourceCause": "Setting or changing an issue's due date (UpdateIssueDeadline in models/issues/issue_update.go) only updates the database and adds a timeline comment; it never notifies the issue indexer, and services/indexer/notify.go has no due-date hook (it reindexes on comments, title, content, status, assignees, milestones and labels). When a keyword is entered, the issue list sorts by the indexer's copy of the deadline (DeadlineUnix, captured in modules/indexer/issues/util.go when the issue is indexed), so the sort uses the date from the last reindex: 0 for a date set after the issue was first indexed, or the old date after a change. Whether it reproduces depends on timing: a date set before the issue's first index job runs is picked up correctly. Any later reindexing change, such as posting a comment, fixes the order. Unchanged at latest upstream."
+    },
+    {
+      "id": "gitea-org-issues-active-ownership-entry-drops-assignee",
+      "name": "Reselecting the active In your repositories entry drops the organization Issues Assignee filter",
+      "summary": "On an organization's Issues page, with an Assignee filter applied, clicking the already-selected 'In your repositories' sidebar entry removes the assignee from the URL, so unassigned issues reappear. The sort order is kept.",
+      "expected": "Clicking the sidebar entry that is already selected keeps the Assignee filter, so only issues assigned to that user stay listed.",
+      "actual": "With Assignee set to one user (one issue listed) and Oldest sorting, clicking the active 'In your repositories' entry reloaded without the assignee parameter and listed all three open issues, including the two unassigned ones.",
+      "reproSteps": [
+        "Open an organization's Issues page with several open issues, only one assigned to a given user.",
+        "Choose that user in the Assignee filter, so only their issue is listed, and choose Sort > Oldest.",
+        "Click the already-active 'In your repositories' entry in the sidebar.",
+        "Check whether the Assignee filter is still applied in the URL and results."
+      ],
+      "matchingGuidance": {
+        "relatedReference": {
+          "id": "gitea-global-issues-ownership-link-drops-assignee-filter",
+          "distinction": "Same kind of ownership-link navigation dropping the Assignee filter. That entry is the global Issues page; this entry is an organization's Issues page and reselecting the already-active entry."
+        },
+        "scope": "Organization Issues: clicking the sidebar ownership entry (including the already-active one) drops an explicitly selected Assignee filter."
+      },
+      "owningArea": "gitea/issues",
+      "severity": 3
+    },
+    {
+      "id": "gitea-repo-issues-type-switch-retains-implicit-assignee",
+      "name": "Switching repository issue Type from Assigned to you back to All issues keeps the assignment restriction",
+      "summary": "On a repository's Issues list, choosing Type > Assigned to you and then Type > All issues still shows only issues assigned to you (with a search, the list stays empty), instead of returning to all matching issues.",
+      "expected": "Type > All issues lifts the restriction that Type > Assigned to you added, so the list returns to every issue matching the other filters and search.",
+      "actual": "After Type > Assigned to you followed by Type > All issues, the list stayed filtered to the user's assignments and showed '0 Open' and 'No results' for a search whose unassigned matches had been listed before.",
+      "reproSteps": [
+        "In a repository, create two open issues with a shared search term, one assigned to you and one unassigned.",
+        "Open the repository Issues list and search the shared term; both issues appear.",
+        "Choose Type > Assigned to you.",
+        "Choose Type > All issues and check whether the unassigned issue comes back."
+      ],
+      "matchingGuidance": {
+        "relatedReference": {
+          "id": "gitea-repo-pr-type-switch-retains-implicit-assignee",
+          "distinction": "Same implicit assignment carried over from a previous Type choice. That entry is the repository Pull Requests list; this entry is the repository Issues list."
+        },
+        "otherRelatedReference": {
+          "id": "gitea-pass2-005",
+          "distinction": "Same retained Assigned to you restriction on a milestone's issue list."
+        },
+        "scope": "Only the Type control: going from Type > Assigned to you to Type > All issues (or another Type) keeps the assignment restriction that the earlier Type choice added. This is not a toggle of an explicit filter. If the user also selected themselves in the Assignee filter, keeping that explicit Assignee filter after changing Type is expected and is not this bug."
+      },
+      "owningArea": "gitea/issues",
+      "severity": 3
     }
   ]
 }
