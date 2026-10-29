@@ -1170,6 +1170,61 @@
           "Complete historical fix coverage and latest runtime were not verified."
         ]
       }
+    },
+    {
+      "id": "gitea-org-team-review-request-search-omits-members",
+      "name": "Organization requested-review search hides a matching team review request",
+      "severity": 3,
+      "owningArea": "gitea/pull-requests",
+      "summary": "Organization Review requested keyword search omits matching PRs requested from the viewer’s team because indexed requested reviewers do not expand team membership.",
+      "expected": "A matching PR requesting review from a team the viewer belongs to remains listed when searching Review requested.",
+      "actual": "Fresh team-requested PRs appear without a keyword but disappear for matching title keywords. Numeric searches work. Ordinary-comment reindexing does not repair team-only requests, while an indexed direct request to the user works.",
+      "reproSteps": [
+        "Create an organization repository and a reviewer team containing another fixture user.",
+        "Create two fresh PRs and request review from that team.",
+        "As the team member, open organization Pull Requests → Review requested and confirm the PRs appear without search.",
+        "Submit a matching title keyword and observe missing results. Clear it or search by PR number as controls.",
+        "Post an ordinary comment to refresh indexing and confirm the team-only request remains absent. Compare an individually requested reviewer after index refresh."
+      ],
+      "sourceReport": {
+        "sessionId": "9c010173-29fe-5bff-bc3a-2e745356d758",
+        "webUrl": "https://app.momentic.ai/mo/sessions/9c010173-29fe-5bff-bc3a-2e745356d758?tab=bug%3AOrganization%20requested-review%20search%20hides%20a%20matching%20team%20review%20request",
+        "recording": {
+          "startedAt": 1793222769000,
+          "finishedAt": 1793222798000,
+          "agentId": "9c010173-29fe-5bff-bc3a-2e745356d758:sandbox-bugbash-v2:org",
+          "windowId": "61904756-3f86-4970-a48c-40dd1464081a",
+          "artifactId": "075a4e67-b55b-48c0-8b69-baecb70e0852"
+        }
+      },
+      "matchingGuidance": {
+        "relatedReference": {
+          "id": "gitea-global-requested-review-search-stale-index",
+          "distinction": "That entry covers missing refresh after individual review-request mutations, repaired by reindexing. This entry covers team-member omission even after reindexing, demonstrated on the organization dashboard."
+        },
+        "scope": "Require a team request where the viewer is a member and matching keyword search omits the PR. Team-only omission after forced reindex distinguishes this from stale individual-review metadata."
+      },
+      "reviewEvidence": {
+        "basis": "Explicit user acceptance at severity 3 after Codex and Claude independently accepted and each reproduced on two fresh team-requested PRs.",
+        "userAccepted": true,
+        "sourceRevision": "99053ce4fa2b45f1bca5837418c0c57f793ca824",
+        "severityReason": "Supported reviewer search hides qualifying PRs awaiting the viewer’s team.",
+        "analysis": [
+          "Both reviewers confirmed no-keyword/numeric-query controls and matching-keyword failure on organization dashboards.",
+          "Ordinary-comment reindexing did not repair team-only requests; an individual review request worked after reindexing.",
+          "Both also observed the symptom on global and repository PR lists.",
+          "Coordinator inspected index-data construction: it records Review.ReviewerID without expanding the requested team’s members.",
+          "Merged upstream feature discussion explicitly includes review requests for teams the viewer belongs to."
+        ],
+        "sourceReferences": [
+          "https://github.com/go-gitea/gitea/blob/99053ce4fa2b45f1bca5837418c0c57f793ca824/modules/indexer/issues/util.go#L63-L82",
+          "https://github.com/go-gitea/gitea/pull/13701"
+        ],
+        "limitations": [
+          "Alternative search backends and API runtime scope were not independently verified.",
+          "Latest runtime was not tested."
+        ]
+      }
     }
   ]
 }
