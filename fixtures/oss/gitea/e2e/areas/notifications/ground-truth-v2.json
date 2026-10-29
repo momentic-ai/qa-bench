@@ -1,0 +1,618 @@
+{
+  "schemaVersion": 2,
+  "sourceGroundTruth": "ground-truth.json",
+  "logicalBugs": [
+    {
+      "id": "gitea-notification-pin-overwrites-read-state",
+      "explanation": "Pinning replaces rather than preserves read state.",
+      "rootCause": {
+        "explanation": "Read/unread and pinned are mutually exclusive NotificationStatus enum values. Pinning changes Read to Pinned; templates render pinned rows with unread-style Mark as read controls rather than retaining an independent read flag.",
+        "sourceReferences": [
+          {
+            "repository": "go-gitea/gitea",
+            "revision": "99053ce4fa2b45f1bca5837418c0c57f793ca824",
+            "path": "models/activities/notification.go",
+            "line": 36,
+            "url": "https://github.com/go-gitea/gitea/blob/99053ce4fa2b45f1bca5837418c0c57f793ca824/models/activities/notification.go#L36"
+          },
+          {
+            "repository": "go-gitea/gitea",
+            "revision": "99053ce4fa2b45f1bca5837418c0c57f793ca824",
+            "path": "templates/user/notification/notification_div.tmpl",
+            "line": 86,
+            "url": "https://github.com/go-gitea/gitea/blob/99053ce4fa2b45f1bca5837418c0c57f793ca824/templates/user/notification/notification_div.tmpl#L86"
+          }
+        ]
+      },
+      "reproductionPaths": [
+        {
+          "id": "gitea-notification-pin-overwrites-read-state-path-1",
+          "explanation": "Pinning an already-read notification changes its action and unread count as if it became unread.",
+          "sourceBugs": [
+            {
+              "index": 0,
+              "id": null,
+              "name": "Pinning a read notification changes its read/unread action state"
+            }
+          ],
+          "expected": "Pinning a read notification should leave its read state and unread count unchanged.",
+          "actual": "Pinning an already-read notification changes its action and unread count as if it became unread.",
+          "reproSteps": [
+            "Open the Read notifications tab and locate an already-read notification.",
+            "Confirm its action is Mark as unread, then pin it.",
+            "Refresh the Read tab and observe Mark as read plus an Unread count of 1."
+          ],
+          "severity": 3
+        }
+      ]
+    },
+    {
+      "id": "gitea-subscription-toolbar-mobile-overflow",
+      "explanation": "Subscription controls and their dropdown do not fit phone width.",
+      "rootCause": {
+        "explanation": "The subscriptions template places state/type/sort controls in horizontal flex/filter menus without a narrow-width wrapping rule or viewport-constrained dropdown. The toolbar intrinsic width clips Sort, and opening that clipped menu leaves its labels offscreen.",
+        "sourceReferences": [
+          {
+            "repository": "go-gitea/gitea",
+            "revision": "99053ce4fa2b45f1bca5837418c0c57f793ca824",
+            "path": "templates/user/notification/notification_subscriptions.tmpl",
+            "line": 14,
+            "url": "https://github.com/go-gitea/gitea/blob/99053ce4fa2b45f1bca5837418c0c57f793ca824/templates/user/notification/notification_subscriptions.tmpl#L14"
+          }
+        ]
+      },
+      "reproductionPaths": [
+        {
+          "id": "gitea-subscription-toolbar-mobile-overflow-path-1",
+          "explanation": "At 320px mobile width, the closed subscription toolbar exceeds the page width and clips the Sort control.",
+          "sourceBugs": [
+            {
+              "index": 1,
+              "id": "gitea-subscriptions-sort-control-overflow-mobile",
+              "name": "Subscriptions filter bar overflows a 320px mobile viewport and clips Sort"
+            }
+          ],
+          "expected": "Fit or wrap the subscription filter controls within the mobile viewport so the closed Sort control is fully visible without horizontally scrolling the whole page.",
+          "actual": "At 320×740 with scrollX=0, document width is 373px and Sort extends from x304.45 to x373.11. Horizontal scrolling 53px reveals it while shifting the left navigation/content out of view.",
+          "reproSteps": [
+            "Sign in as eval and set the viewport to 320×740.",
+            "Open /notifications/subscriptions at its initial horizontal position, scrollX=0.",
+            "Observe that the closed Sort control extends beyond the right viewport edge.",
+            "Scroll horizontally right to reveal Sort; left navigation/content moves offscreen. The original Mo reproduction also confirms persistence after Type→Pull Requests, Closed and reload."
+          ],
+          "severity": 1,
+          "matchingGuidance": [
+            {
+              "sourceBugIndex": 1,
+              "guidance": {
+                "scope": "Closed toolbar/control layout. The separately approved opened-menu clipping reference covers menu option labels; whole-page horizontal displacement is a consequence of this overflow, not a third defect. Sorting itself works once revealed."
+              }
+            }
+          ]
+        },
+        {
+          "id": "gitea-subscription-toolbar-mobile-overflow-path-2",
+          "explanation": "At the initial320px subscription viewport, opening the partly visible Sort trigger opens a menu whose option labels extend beyond the right viewport edge.",
+          "sourceBugs": [
+            {
+              "index": 2,
+              "id": "gitea-subscriptions-sort-menu-clipped-mobile",
+              "name": "Subscriptions Sort menu opens with clipped option labels at the initial mobile viewport"
+            }
+          ],
+          "expected": "When Sort is opened, position its menu so its options and labels are fully visible within the mobile viewport without requiring horizontal page scrolling.",
+          "actual": "At 320×740 and scrollX=0, clicking the visible sliver of Sort opens the menu from x199.59 to x373.11, visibly clipping option labels beyond x320. After scrolling the page right 53px the menu fits; the claim is specifically the initial viewport state.",
+          "reproSteps": [
+            "Sign in as eval, set320×740, and open /notifications/subscriptions at scrollX=0.",
+            "Without horizontally scrolling first, click the visible portion of Sort at approximatelyx310,y150.",
+            "Observe the opened menu: its right edge and option labels are clipped outside the 320px viewport.",
+            "As a control, scroll the page horizontally right 53px; the menu becomes visible. This workaround does not make the initial clipped menu fit."
+          ],
+          "severity": 1,
+          "matchingGuidance": [
+            {
+              "sourceBugIndex": 2,
+              "guidance": {
+                "scope": "Opened menu option visibility, not sorting correctness. The original expected behavior describes fitting/wrapping the toolbar; horizontal page movement and persistence after reload do not establish a third independent bug."
+              }
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "id": "gitea-watching-size-sort-unhandled",
+      "explanation": "Watching ignores both size sorts and highlights the default sort.",
+      "rootCause": {
+        "explanation": "NotificationWatching has no size/reversesize switch cases. Those query values fall through to recentupdate, overwriting SortType and using recent updated ordering; both the rows and highlighted menu entry are therefore wrong.",
+        "sourceReferences": [
+          {
+            "repository": "go-gitea/gitea",
+            "revision": "99053ce4fa2b45f1bca5837418c0c57f793ca824",
+            "path": "routers/web/user/notification.go",
+            "line": 341,
+            "url": "https://github.com/go-gitea/gitea/blob/99053ce4fa2b45f1bca5837418c0c57f793ca824/routers/web/user/notification.go#L341"
+          },
+          {
+            "repository": "go-gitea/gitea",
+            "revision": "99053ce4fa2b45f1bca5837418c0c57f793ca824",
+            "path": "routers/web/user/notification.go",
+            "line": 374,
+            "url": "https://github.com/go-gitea/gitea/blob/99053ce4fa2b45f1bca5837418c0c57f793ca824/routers/web/user/notification.go#L374"
+          }
+        ]
+      },
+      "reproductionPaths": [
+        {
+          "id": "gitea-watching-size-sort-unhandled-path-1",
+          "explanation": "The Watching page URL switches to sort=reversesize, but reopening Sort still marks Recently updated as active.",
+          "sourceBugs": [
+            {
+              "index": 3,
+              "id": null,
+              "name": "Watching sort menu highlights Recently updated after Largest size is chosen"
+            }
+          ],
+          "expected": "The Sort menu should mark Largest size as the active choice.",
+          "actual": "The Watching page URL switches to sort=reversesize, but reopening Sort still marks Recently updated as active.",
+          "reproSteps": [
+            "Open Notifications → Watching.",
+            "Choose Sort → Largest size.",
+            "Reopen Sort and compare the highlighted item with the URL and resulting order."
+          ],
+          "severity": 3
+        },
+        {
+          "id": "gitea-watching-size-sort-unhandled-path-2",
+          "explanation": "On Notifications > Watching, choosing Sort > Smallest size or Largest size doesn't sort by repository size: the list stays in Recently updated order, so a large repository can be listed above a small one under Smallest size and both size sorts give the same order. Explore, profile and organization repository lists sort by size correctly.",
+          "sourceBugs": [
+            {
+              "index": 9,
+              "id": "gitea-watching-size-sort-ignored",
+              "name": "Watching list ignores Smallest size and Largest size sorts"
+            }
+          ],
+          "expected": "With Smallest size selected, watched repositories are listed from smallest to largest, and Largest size lists them from largest to smallest.",
+          "actual": "Under Smallest size (sort=size), qa-watch-empty (175 KiB) was listed above qa-watch-alpha (23 KiB). The order was identical under Largest size and under the default Recently updated sort.",
+          "reproSteps": [
+            "Watch at least two repositories of clearly different sizes and note each size from its repository sidebar.",
+            "Open Notifications > Watching.",
+            "Choose Sort > Smallest size, then Sort > Largest size.",
+            "Check whether the order follows repository size and differs between the two sorts."
+          ],
+          "severity": 3,
+          "matchingGuidance": [
+            {
+              "sourceBugIndex": 9,
+              "guidance": {
+                "relatedReference": {
+                  "name": "Watching sort menu highlights Recently updated after Largest size is chosen",
+                  "distinction": "Same cause (the Watching handler has no size sort and falls back to Recently updated), but that entry is the sort menu highlighting the wrong item; this entry is the list order not following repository size."
+                }
+              }
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "id": "gitea-repository-alphabetical-sort-case-sensitive",
+      "explanation": "Repository alphabetical sorting uses raw case-sensitive names.",
+      "rootCause": {
+        "explanation": "SearchOrderByAlphabetically orders name ASC rather than lower_name or a case-insensitive expression. The SQLite fixture therefore orders uppercase names ahead of lowercase names across repository lists.",
+        "sourceReferences": [
+          {
+            "repository": "go-gitea/gitea",
+            "revision": "99053ce4fa2b45f1bca5837418c0c57f793ca824",
+            "path": "models/db/search.go",
+            "line": 15,
+            "url": "https://github.com/go-gitea/gitea/blob/99053ce4fa2b45f1bca5837418c0c57f793ca824/models/db/search.go#L15"
+          }
+        ]
+      },
+      "reproductionPaths": [
+        {
+          "id": "gitea-repository-alphabetical-sort-case-sensitive-path-1",
+          "explanation": "An uppercase Hello-World repository sorts before lowercase names beginning with g and h in both profile Repositories and Watching.",
+          "sourceBugs": [
+            {
+              "index": 4,
+              "id": null,
+              "name": "Repository alphabetical sorting is case sensitive"
+            }
+          ],
+          "expected": "Alphabetically should order repository names without treating uppercase and lowercase as separate blocks.",
+          "actual": "An uppercase Hello-World repository sorts before lowercase names beginning with g and h in both profile Repositories and Watching.",
+          "reproSteps": [
+            "Create disposable repositories named Hello-World and gt-hook-check under the same account.",
+            "Choose Alphabetically in the profile Repositories tab and in Notifications → Watching.",
+            "Observe Hello-World before gt-hook-check in both lists."
+          ],
+          "severity": 3
+        }
+      ]
+    },
+    {
+      "id": "gitea-notification-action-drops-read-filter",
+      "explanation": "Notification actions drop the current Read view.",
+      "rootCause": {
+        "explanation": "NotificationStatusPost redirects with page only and getNotifications chooses Read solely from q=read. Status forms do not retain q, so a read-view action returns to the default Unread view.",
+        "sourceReferences": [
+          {
+            "repository": "go-gitea/gitea",
+            "revision": "99053ce4fa2b45f1bca5837418c0c57f793ca824",
+            "path": "routers/web/user/notification.go",
+            "line": 179,
+            "url": "https://github.com/go-gitea/gitea/blob/99053ce4fa2b45f1bca5837418c0c57f793ca824/routers/web/user/notification.go#L179"
+          }
+        ]
+      },
+      "reproductionPaths": [
+        {
+          "id": "gitea-notification-action-drops-read-filter-path-1",
+          "explanation": "On Notifications with the Read filter selected (?q=read), row actions such as Mark as unread and Pin redirect to /notifications?page=1, dropping the filter and showing the Unread view.",
+          "sourceBugs": [
+            {
+              "index": 5,
+              "id": "gitea-notification-action-drops-read-filter",
+              "name": "Changing a notification from the Read view switches to Unread"
+            }
+          ],
+          "expected": "After changing a notification's status from the Read view, the user stays on the Read view, with the changed row removed or updated there.",
+          "actual": "Mark as unread on a row in the Read view redirects to /notifications?page=1, which shows Unread. Pin redirects to /notifications?page= and also shows Unread, and Mark as read on a pinned row shown in Read does the same. The status change itself is saved correctly.",
+          "reproSteps": [
+            "Sign in as the fixture account and make sure it has at least one read notification, for example by having another account mention it in an issue and opening that notification.",
+            "Open Notifications and choose Read, so the URL is /notifications?q=read.",
+            "On a row, choose Mark as unread.",
+            "Observe that the page goes to /notifications?page=1 with Unread selected instead of staying on Read.",
+            "Return to Read and choose Pin on a row. Observe that it goes to /notifications?page= with Unread selected."
+          ],
+          "severity": 3
+        }
+      ]
+    },
+    {
+      "id": "gitea-repository-watch-leaves-issue-watch-ui-stale",
+      "explanation": "Repository watch changes do not refresh inherited issue subscription state.",
+      "rootCause": {
+        "explanation": "The repository header watch action updates its own button/count. The issue sidebar independently renders the effective subscription from repository/issue watch state and is not refreshed when the inherited repository watch changes.",
+        "sourceReferences": [
+          {
+            "repository": "go-gitea/gitea",
+            "revision": "99053ce4fa2b45f1bca5837418c0c57f793ca824",
+            "path": "templates/repo/issue/view_content/sidebar.tmpl",
+            "line": 1,
+            "url": "https://github.com/go-gitea/gitea/blob/99053ce4fa2b45f1bca5837418c0c57f793ca824/templates/repo/issue/view_content/sidebar.tmpl#L1"
+          }
+        ]
+      },
+      "reproductionPaths": [
+        {
+          "id": "gitea-repository-watch-leaves-issue-watch-ui-stale-path-1",
+          "explanation": "On an issue page, clicking the repository's Unwatch button updates only the header. The issue sidebar's Notifications button, which inherits the repository watch, keeps showing Unsubscribe until the page is reloaded, and clicking it sends the stale action.",
+          "sourceBugs": [
+            {
+              "index": 6,
+              "id": "gitea-issue-subscribe-button-stale-after-repo-unwatch",
+              "name": "Issue Notifications button still shows Unsubscribe after unwatching the repository"
+            }
+          ],
+          "expected": "After Unwatch on an issue page, the issue Notifications button updates to Subscribe when there is no explicit issue subscription.",
+          "actual": "Clicking Unwatch changed the header to Watch, but the issue sidebar's Notifications button still showed Unsubscribe. Reloading the page changed it to Subscribe with no other action.",
+          "reproSteps": [
+            "Watch a repository and open one of its issues that you have not explicitly subscribed to; the sidebar Notifications button shows Unsubscribe.",
+            "Click Unwatch in the repository header on that issue page.",
+            "Look at the sidebar Notifications button, then reload the page and look again."
+          ],
+          "severity": 1
+        }
+      ]
+    },
+    {
+      "id": "gitea-notification-worker-message-envelope",
+      "explanation": "Live notification updates parse the worker envelope instead of its data.",
+      "rootCause": {
+        "explanation": "SharedWorker sends {type,data}, where data is the SSE JSON string. The message handler passes the outer MessageEvent to receiveUpdateCount, which JSON.parse(event.data) attempts to parse the envelope object. It throws before updating count/table; the successful worker branch also returns without starting the periodic fallback.",
+        "sourceReferences": [
+          {
+            "repository": "go-gitea/gitea",
+            "revision": "99053ce4fa2b45f1bca5837418c0c57f793ca824",
+            "path": "web_src/js/features/eventsource.sharedworker.ts",
+            "line": 51,
+            "url": "https://github.com/go-gitea/gitea/blob/99053ce4fa2b45f1bca5837418c0c57f793ca824/web_src/js/features/eventsource.sharedworker.ts#L51"
+          },
+          {
+            "repository": "go-gitea/gitea",
+            "revision": "99053ce4fa2b45f1bca5837418c0c57f793ca824",
+            "path": "web_src/js/features/notification.ts",
+            "line": 36,
+            "url": "https://github.com/go-gitea/gitea/blob/99053ce4fa2b45f1bca5837418c0c57f793ca824/web_src/js/features/notification.ts#L36"
+          },
+          {
+            "repository": "go-gitea/gitea",
+            "revision": "99053ce4fa2b45f1bca5837418c0c57f793ca824",
+            "path": "web_src/js/features/notification.ts",
+            "line": 80,
+            "url": "https://github.com/go-gitea/gitea/blob/99053ce4fa2b45f1bca5837418c0c57f793ca824/web_src/js/features/notification.ts#L80"
+          }
+        ]
+      },
+      "reproductionPaths": [
+        {
+          "id": "gitea-notification-worker-message-envelope-path-1",
+          "explanation": "With a page open, new notifications (a mention, or new issues in a watched repository) never update the bell's unread count or the open Notifications list. The new count and notifications appear only after a reload.",
+          "sourceBugs": [
+            {
+              "index": 7,
+              "id": "gitea-notification-bell-live-update-broken",
+              "name": "Notification bell count doesn't update live when new notifications arrive"
+            }
+          ],
+          "expected": "The bell's unread count, and an open Notifications list, update on their own when new notifications arrive.",
+          "actual": "An open Notifications page kept showing 1 for over a minute after another user mentioned the signed-in user; reloading showed 2 and the new notification. In another run the bell stayed at 2 while five new notifications arrived, and reload showed 7. The browser console logged a SyntaxError that \"[object Object]\" is not valid JSON for each update.",
+          "reproSteps": [
+            "Sign in as one user, open Notifications, note the bell count, and leave the page open.",
+            "In another browser session, sign in as a second user and mention the first user in an issue comment.",
+            "Wait at least a minute on the first user's page without reloading, then reload and compare the bell count."
+          ],
+          "severity": 3
+        }
+      ]
+    },
+    {
+      "id": "gitea-notification-pinned-pagination-count-mismatch",
+      "explanation": "Pinned notifications consume page slots omitted from the page count.",
+      "rootCause": {
+        "explanation": "getNotifications counts only the requested read/unread status but selects rows with both that status and Pinned using the same page size. The undercount hides a next page even when pinned rows displace ordinary rows.",
+        "sourceReferences": [
+          {
+            "repository": "go-gitea/gitea",
+            "revision": "99053ce4fa2b45f1bca5837418c0c57f793ca824",
+            "path": "routers/web/user/notification.go",
+            "line": 88,
+            "url": "https://github.com/go-gitea/gitea/blob/99053ce4fa2b45f1bca5837418c0c57f793ca824/routers/web/user/notification.go#L88"
+          }
+        ]
+      },
+      "reproductionPaths": [
+        {
+          "id": "gitea-notification-pinned-pagination-count-mismatch-path-1",
+          "explanation": "The Notifications page shows pinned rows in the same 20-row page as unread rows, but pagination counts only unread ones. Each pinned row takes a slot, so an equal number of unread notifications fall off the page with no next page to reach them.",
+          "sourceBugs": [
+            {
+              "index": 8,
+              "id": "gitea-pinned-notification-hides-unread-page-slot",
+              "name": "Pinned notifications make later notifications inaccessible at the page boundary"
+            }
+          ],
+          "expected": "Every unread and pinned notification can be reached: pagination counts the pinned rows it displays, or pinned rows don't use up unread page slots.",
+          "actual": "With 21 unread notifications and no pins, page 1 showed 20 rows and a page 2 held the 21st. After pinning one, the unread badge correctly read 20 (a pin isn't unread), but page 1 showed 20 rows: 1 pinned and only 19 unread. Pagination disappeared, so the 20th unread notification couldn't be reached; ?page=2 redirected to page 1. With 20 unread and two pins, two unread notifications were hidden.",
+          "reproSteps": [
+            "Start with no unread or pinned notifications, then have another user create 21 issues in a repository you watch.",
+            "Open Notifications: 21 unread, 20 rows on page 1 and a page 2.",
+            "Pin one notification and reload: count the unread rows shown and check for page 2."
+          ],
+          "severity": 3
+        },
+        {
+          "id": "gitea-notification-pinned-pagination-count-mismatch-path-2",
+          "explanation": "The Notifications page's Read tab shows pinned rows in the same 20-row page as read rows, but pagination counts only read ones. Each pinned row takes a slot, so an equal number of the oldest read notifications fall off with no next page to reach them.",
+          "sourceBugs": [
+            {
+              "index": 12,
+              "id": "gitea-pinned-notification-hides-read-page-slot",
+              "name": "Pinned notifications make older read notifications inaccessible on the Read tab"
+            }
+          ],
+          "expected": "Every read notification is reachable from the Read tab's pagination, whether or not some notifications are pinned.",
+          "actual": "With 20 read notifications and 2 pinned, the Read tab showed 2 pinned and 18 read rows on one page with no pagination; the oldest read notifications couldn't be reached, and requesting page 2 returned page 1. If every notification is pinned, those beyond the first 20 can't be reached from either tab.",
+          "reproSteps": [
+            "Have another user create at least 20 issues in a repository you watch, then mark all notifications as read.",
+            "Pin one or two of the notifications.",
+            "Open the Notifications page's Read tab: count the read rows shown and check for a page 2.",
+            "Request the Read tab's page 2 directly and compare."
+          ],
+          "severity": 3,
+          "matchingGuidance": [
+            {
+              "sourceBugIndex": 12,
+              "guidance": {
+                "relatedReference": {
+                  "name": "Pinned notifications make later notifications inaccessible at the page boundary",
+                  "distinction": "Same cause (page count excludes pinned rows), but that entry is the Unread tab; this entry is the Read tab, plus the all-pinned case where extra pins are unreachable from both tabs."
+                }
+              }
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "id": "gitea-notification-list-stale-permissions",
+      "explanation": "Existing notifications are displayed without current repository authorization.",
+      "rootCause": {
+        "explanation": "getNotifications loads repositories/issues by ID and removes only missing records. It does not check current actor read permission after access is revoked, so stored private notification metadata remains visible.",
+        "sourceReferences": [
+          {
+            "repository": "go-gitea/gitea",
+            "revision": "99053ce4fa2b45f1bca5837418c0c57f793ca824",
+            "path": "routers/web/user/notification.go",
+            "line": 106,
+            "url": "https://github.com/go-gitea/gitea/blob/99053ce4fa2b45f1bca5837418c0c57f793ca824/routers/web/user/notification.go#L106"
+          },
+          {
+            "repository": "go-gitea/gitea",
+            "revision": "99053ce4fa2b45f1bca5837418c0c57f793ca824",
+            "path": "models/activities/notification_list.go",
+            "line": 202,
+            "url": "https://github.com/go-gitea/gitea/blob/99053ce4fa2b45f1bca5837418c0c57f793ca824/models/activities/notification_list.go#L202"
+          }
+        ]
+      },
+      "reproductionPaths": [
+        {
+          "id": "gitea-notification-list-stale-permissions-path-1",
+          "explanation": "After a user is removed as a collaborator from a private repository, their Notifications list still shows notifications from it, including the private repository's name and the issue's title. Opening one leads to a 404, and the entry stays listed. The list loads repositories and issues without checking whether the user can still read them.",
+          "sourceBugs": [
+            {
+              "index": 10,
+              "id": "gitea-revoked-collaborator-sees-private-notification",
+              "name": "Notifications still show a private repository's issue to a collaborator who lost access"
+            }
+          ],
+          "expected": "Once a user can no longer read a repository, their Notifications don't show that private repository's name or its issue titles, and don't offer links that lead to a 404.",
+          "actual": "After alex was removed from the private repository eval/qa-access-private-0717, alex's Unread notifications still listed 'eval/qa-access-private-0717 #1 – qa-access confidential issue'. Clicking it showed 404 Not Found (not authorized), and going back the entry was still listed as unread.",
+          "reproSteps": [
+            "In a private repository, add a second user as a collaborator and create an issue.",
+            "As the second user, subscribe to the issue; as the owner, comment on it so the second user gets a notification.",
+            "As the owner, remove the second user from Settings > Collaborators.",
+            "As the second user, open Notifications and check whether the private repository's name and issue title are still shown; click the entry."
+          ],
+          "severity": 3
+        }
+      ]
+    },
+    {
+      "id": "gitea-notification-revoked-recipient-updates-unresolved",
+      "explanation": "A reported revoked recipient continues receiving private activity updates.",
+      "rootCause": {
+        "explanation": "Source attribution remains unresolved: retained issue watches/participant rows supply candidate recipients, but the pinned createOrUpdateIssueNotifications implementation explicitly checks CheckRepoUnitUser before updating an existing notification. The reported continued updates cannot be attributed to an absent permission check in this revision; a distinct deployment revision, permission state or delivery path must be established before merging this with the display-only permission defect.",
+        "sourceReferences": [
+          {
+            "repository": "go-gitea/gitea",
+            "revision": "99053ce4fa2b45f1bca5837418c0c57f793ca824",
+            "path": "models/activities/notification_list.go",
+            "line": 86,
+            "url": "https://github.com/go-gitea/gitea/blob/99053ce4fa2b45f1bca5837418c0c57f793ca824/models/activities/notification_list.go#L86"
+          },
+          {
+            "repository": "go-gitea/gitea",
+            "revision": "99053ce4fa2b45f1bca5837418c0c57f793ca824",
+            "path": "models/activities/notification_list.go",
+            "line": 155,
+            "url": "https://github.com/go-gitea/gitea/blob/99053ce4fa2b45f1bca5837418c0c57f793ca824/models/activities/notification_list.go#L155"
+          }
+        ]
+      },
+      "reproductionPaths": [
+        {
+          "id": "gitea-notification-revoked-recipient-updates-unresolved-path-1",
+          "explanation": "After a user is removed from a private repository, new activity on an issue they were subscribed to still shows up in their Notifications: the issue's entry jumps back to the top as 'now' each time someone comments, telling them there is new private activity they can no longer open.",
+          "sourceBugs": [
+            {
+              "index": 11,
+              "id": "gitea-revoked-collaborator-keeps-getting-notified",
+              "name": "A collaborator who lost access to a private repository keeps being notified of new activity there"
+            }
+          ],
+          "expected": "Once a user loses access to a private repository, new activity there no longer reaches their Notifications, and existing entries don't change.",
+          "actual": "After alex was removed from eval/qa-access-private-0717, alex's notification for the confidential issue showed '2 minutes ago'. eval then commented on the issue, and on reload alex's notification showed 'now'. Opening it as alex gave a 404.",
+          "reproSteps": [
+            "In a private repository, add a second user as a collaborator and have them subscribe to an issue; trigger one notification for them.",
+            "As the owner, remove the second user from Settings > Collaborators.",
+            "Wait a few minutes, note the notification's time in the second user's Notifications, then comment on the issue as the owner.",
+            "As the second user, reload Notifications and check whether the entry updated to the new activity."
+          ],
+          "severity": 3,
+          "matchingGuidance": [
+            {
+              "sourceBugIndex": 11,
+              "guidance": {
+                "relatedReference": {
+                  "name": "Notifications still show a private repository's issue to a collaborator who lost access",
+                  "distinction": "Same missing access check, but that entry is old notifications from before the removal still being shown; this entry is new activity after the removal still reaching the user's Notifications."
+                }
+              }
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "id": "gitea-watching-out-of-range-page",
+      "explanation": "Watching does not redirect after its last page becomes invalid.",
+      "rootCause": {
+        "explanation": "NotificationWatching creates pagination after querying the requested page but never compares its clamped current page with the request or redirects. An empty out-of-range result therefore has no usable page controls despite earlier records.",
+        "sourceReferences": [
+          {
+            "repository": "go-gitea/gitea",
+            "revision": "99053ce4fa2b45f1bca5837418c0c57f793ca824",
+            "path": "routers/web/user/notification.go",
+            "line": 341,
+            "url": "https://github.com/go-gitea/gitea/blob/99053ce4fa2b45f1bca5837418c0c57f793ca824/routers/web/user/notification.go#L341"
+          }
+        ]
+      },
+      "reproductionPaths": [
+        {
+          "id": "gitea-watching-out-of-range-page-path-1",
+          "explanation": "On Notifications > Watching, unwatching the only repository on the last page and coming back to that page shows \"No matching results found.\" with no pagination, even though earlier pages still list watched repositories. Unlike Subscriptions, the Watching page never redirects an out-of-range page to the last valid one.",
+          "sourceBugs": [
+            {
+              "index": 13,
+              "id": "gitea-watching-unwatch-last-page-strands-empty",
+              "name": "Unwatching the only repository on the last Watching page leaves an empty page with no pagination"
+            }
+          ],
+          "expected": "After the last page empties, the Watching page shows the last page that still has results, or at least keeps pagination so earlier pages can be reached.",
+          "actual": "Returning to page 2 after unwatching its only repository showed \"No matching results found.\" and no pagination, while page 1 still listed 15 watched repositories.",
+          "reproSteps": [
+            "Watch at least 16 repositories, so Notifications > Watching has a second page with one repository (optionally filtered by a search that matches all of them).",
+            "Open page 2 and unwatch its only repository.",
+            "Go back to or reload Watching page 2.",
+            "Check the message shown and whether pagination is still available."
+          ],
+          "severity": 3
+        }
+      ]
+    },
+    {
+      "id": "gitea-pinned-notification-comment-pointer-stale",
+      "explanation": "Pinned notifications retain the old comment target on later activity.",
+      "rootCause": {
+        "explanation": "updateIssueNotification changes CommentID only when the previous status is Read. A pinned notification follows the else branch, updating activity/order metadata while retaining its old comment link.",
+        "sourceReferences": [
+          {
+            "repository": "go-gitea/gitea",
+            "revision": "99053ce4fa2b45f1bca5837418c0c57f793ca824",
+            "path": "models/activities/notification.go",
+            "line": 179,
+            "url": "https://github.com/go-gitea/gitea/blob/99053ce4fa2b45f1bca5837418c0c57f793ca824/models/activities/notification.go#L179"
+          }
+        ]
+      },
+      "reproductionPaths": [
+        {
+          "id": "gitea-pinned-notification-comment-pointer-stale-path-1",
+          "explanation": "After a user reads an issue notification and pins it, a new comment on the issue moves the pinned notification to the top with a new time, but opening it still scrolls to and highlights the earlier comment the user already read instead of the new comment.",
+          "sourceBugs": [
+            {
+              "index": 14,
+              "id": "gitea-notification-pinned-update-keeps-earlier-comment",
+              "name": "Updated pinned notification still opens the earlier comment instead of the new one"
+            }
+          ],
+          "expected": "Opening the updated pinned notification leads to the new comment that updated it, the first comment the user has not seen.",
+          "actual": "The pinned notification's time updated, but opening it went to the earlier, already-read comment and highlighted it, with the new comment below. Gitea only moves a notification's target comment forward when the notification is Read, and a pinned notification is never Read.",
+          "reproSteps": [
+            "As one user, create a public repository and an issue.",
+            "As a second user, subscribe to the issue without watching the repository.",
+            "As the owner, post a comment on the issue.",
+            "As the second user, open the notification to read the comment, then pin it from the Read tab.",
+            "As the owner, post a second comment.",
+            "As the second user, open the pinned notification from Notifications and check which comment it opens and highlights."
+          ],
+          "severity": 1,
+          "matchingGuidance": [
+            {
+              "sourceBugIndex": 14,
+              "guidance": {
+                "scope": "Only reports that a pinned notification updated by a new comment opens or highlights an earlier comment instead of the new one. Do not match pinned notifications that disappear, become unreachable at page boundaries, change read state, or affect other notifications."
+              }
+            }
+          ]
+        }
+      ]
+    }
+  ]
+}
