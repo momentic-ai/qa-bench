@@ -51,7 +51,7 @@ export function bugbashBrief(
   url: URL,
   timeLimitMs: number | undefined,
   fixture: Fixture,
-  browserTool?: "Playwright MCP" | "agent-browser",
+  browserTool?: "Playwright MCP" | "agent-browser" | "Devin native browser",
 ) {
   const evaluationContext =
     "This is a long-duration evaluation of your ability to find true bugs.";
