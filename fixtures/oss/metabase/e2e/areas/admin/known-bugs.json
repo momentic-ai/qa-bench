@@ -44,17 +44,17 @@
       "id": "metabase-people-full-name-search",
       "explanation": "People search does not reliably match a displayed full name.",
       "rootCause": {
-        "explanation": "The displayed common name and server-side user-search representation differ. The People query forwards searchText unchanged; the exact matching failure requires tracing the backend search tokenization.",
+        "explanation": "Backend query-clause searches first_name, last_name and email independently with OR LIKE predicates. It never searches concatenated first_name + space + last_name, so a displayed full name containing both parts matches neither individual column.",
         "sourceReferences": [
           {
             "repository": "metabase/metabase",
             "revision": "f42632893810325d9f74375a4cd29bd31d8daefa",
-            "path": "frontend/src/metabase/admin/people/hooks/use-people-query.ts",
-            "line": 21,
-            "url": "https://github.com/metabase/metabase/blob/f42632893810325d9f74375a4cd29bd31d8daefa/frontend/src/metabase/admin/people/hooks/use-people-query.ts#L21"
+            "path": "src/metabase/users/models/user.clj",
+            "line": 539,
+            "url": "https://github.com/metabase/metabase/blob/f42632893810325d9f74375a4cd29bd31d8daefa/src/metabase/users/models/user.clj#L539"
           }
         ],
-        "analysisStatus": "inferred"
+        "analysisStatus": "source-supported"
       },
       "reproductionPaths": [
         {
@@ -290,17 +290,17 @@
       "id": "metabase-https-description",
       "explanation": "Redirect to HTTPS displays the Site URL description.",
       "rootCause": {
-        "explanation": "HttpsOnlyWidget reads the Site URL setting metadata for its description rather than the HTTPS setting metadata.",
+        "explanation": "HttpsOnlyWidget destructures description from useAdminSetting(\"site-url\") and passes that description to the redirect-all-requests-to-https AdminSettingInput.",
         "sourceReferences": [
           {
             "repository": "metabase/metabase",
             "revision": "f42632893810325d9f74375a4cd29bd31d8daefa",
             "path": "frontend/src/metabase/admin/settings/components/widgets/HttpsOnlyWidget.tsx",
-            "line": 17,
-            "url": "https://github.com/metabase/metabase/blob/f42632893810325d9f74375a4cd29bd31d8daefa/frontend/src/metabase/admin/settings/components/widgets/HttpsOnlyWidget.tsx#L17"
+            "line": 20,
+            "url": "https://github.com/metabase/metabase/blob/f42632893810325d9f74375a4cd29bd31d8daefa/frontend/src/metabase/admin/settings/components/widgets/HttpsOnlyWidget.tsx#L20"
           }
         ],
-        "analysisStatus": "inferred"
+        "analysisStatus": "source-supported"
       },
       "reproductionPaths": [
         {
@@ -771,17 +771,17 @@
       "id": "metabase-smtp-clear-draft",
       "explanation": "Clearing SMTP settings does not reset the local unsaved form.",
       "rootCause": {
-        "explanation": "EmailSettingsPage clears persisted settings through a mutation but its existing form draft and validation state survive the clear operation.",
+        "explanation": "BaseSMTPConnectionForm.handleClearEmailSettings invokes deleteMutation and shows a toast, but never calls Formik resetForm or clears errors. With only unsaved edits, the server settings/initialValues need not change, so enableReinitialize cannot reset the local draft.",
         "sourceReferences": [
           {
             "repository": "metabase/metabase",
             "revision": "f42632893810325d9f74375a4cd29bd31d8daefa",
-            "path": "frontend/src/metabase/admin/settings/components/SettingsPages/EmailSettingsPage.tsx",
-            "line": 19,
-            "url": "https://github.com/metabase/metabase/blob/f42632893810325d9f74375a4cd29bd31d8daefa/frontend/src/metabase/admin/settings/components/SettingsPages/EmailSettingsPage.tsx#L19"
+            "path": "frontend/src/metabase/admin/settings/components/Email/BaseSMTPConnectionForm.tsx",
+            "line": 122,
+            "url": "https://github.com/metabase/metabase/blob/f42632893810325d9f74375a4cd29bd31d8daefa/frontend/src/metabase/admin/settings/components/Email/BaseSMTPConnectionForm.tsx#L122"
           }
         ],
-        "analysisStatus": "inferred"
+        "analysisStatus": "source-supported"
       },
       "reproductionPaths": [
         {
@@ -1049,17 +1049,17 @@
       "id": "metabase-global-formatting-persistence",
       "explanation": "Localization formatting edits do not persist as shown.",
       "rootCause": {
-        "explanation": "FormattingWidget combines inherited/default formatting with saved values; the update path fails to retain the selected overrides across a settings refresh.",
+        "explanation": "FormattingWidget initializes localValue once from DEFAULT_FORMATTING_SETTINGS and initialValue, before the asynchronous useAdminSetting result is necessarily available. Unlike FormattingInput, its parent never synchronizes localValue when initialValue arrives, so reload can show defaults despite a successful persisted update.",
         "sourceReferences": [
           {
             "repository": "metabase/metabase",
             "revision": "f42632893810325d9f74375a4cd29bd31d8daefa",
             "path": "frontend/src/metabase/admin/settings/components/widgets/FormattingWidget.tsx",
-            "line": 39,
-            "url": "https://github.com/metabase/metabase/blob/f42632893810325d9f74375a4cd29bd31d8daefa/frontend/src/metabase/admin/settings/components/widgets/FormattingWidget.tsx#L39"
+            "line": 46,
+            "url": "https://github.com/metabase/metabase/blob/f42632893810325d9f74375a4cd29bd31d8daefa/frontend/src/metabase/admin/settings/components/widgets/FormattingWidget.tsx#L46"
           }
         ],
-        "analysisStatus": "inferred"
+        "analysisStatus": "source-supported"
       },
       "reproductionPaths": [
         {
@@ -1237,67 +1237,6 @@
             "Set it to qa.example.com and refresh to confirm it saved.",
             "Clear the field and move focus away; observe Changes saved.",
             "Refresh and observe the default domain list is back."
-          ],
-          "severity": 3
-        }
-      ]
-    },
-    {
-      "id": "metabase-homepage-dashboard-picker-scope",
-      "explanation": "Homepage dashboard picker search and list include the wrong dashboard set.",
-      "rootCause": {
-        "explanation": "CustomHomepageDashboardSetting delegates to dashboard picker list/search sources whose collection and archive scopes differ from Recents, excluding personal dashboards from search and retaining trashed items in the tab.",
-        "sourceReferences": [
-          {
-            "repository": "metabase/metabase",
-            "revision": "f42632893810325d9f74375a4cd29bd31d8daefa",
-            "path": "frontend/src/metabase/admin/settings/components/widgets/CustomHomepageDashboardSetting.tsx",
-            "line": 15,
-            "url": "https://github.com/metabase/metabase/blob/f42632893810325d9f74375a4cd29bd31d8daefa/frontend/src/metabase/admin/settings/components/widgets/CustomHomepageDashboardSetting.tsx#L15"
-          }
-        ],
-        "analysisStatus": "inferred"
-      },
-      "reproductionPaths": [
-        {
-          "id": "metabase-homepage-dashboard-picker-scope-path-1",
-          "explanation": "Custom homepage picker search cannot find a personal dashboard shown in Recents.",
-          "sourceBugs": [
-            {
-              "index": 31,
-              "id": "metabase-admin-112",
-              "name": "Custom homepage picker search cannot find a personal dashboard shown in Recents"
-            }
-          ],
-          "expected": "Searching the exact name of a dashboard the picker offers in Recents returns that dashboard.",
-          "actual": "A dashboard in the admin's personal collection appears in Recents and can be selected as the homepage, but searching its exact name shows Didn't find anything.",
-          "reproSteps": [
-            "As an admin, create an empty dashboard named QA Homepage in your personal collection.",
-            "Open Admin > Settings > General, enable Custom homepage, and open Pick a dashboard.",
-            "Select QA Homepage from Recents and save.",
-            "Open the picker again and search QA Homepage.",
-            "Observe no results."
-          ],
-          "severity": 3
-        },
-        {
-          "id": "metabase-homepage-dashboard-picker-scope-path-2",
-          "explanation": "Custom homepage Dashboards tab offers a trashed dashboard that Recents correctly excludes.",
-          "sourceBugs": [
-            {
-              "index": 51,
-              "id": "metabase-admin-186",
-              "name": "Custom homepage Dashboards tab offers a trashed dashboard that Recents correctly excludes"
-            }
-          ],
-          "expected": "The homepage picker should exclude trashed dashboards consistently, rather than offer archived content as an active homepage.",
-          "actual": "The trashed MO-GEN-HOME-20261021 disappears from Recents but is offered and selectable in Dashboards. Its selection remains displayed after refresh.",
-          "reproSteps": [
-            "Exit Admin > New > Dashboard. Create and Save an empty uniquely named MO-GEN-HOME dashboard in your personal collection.",
-            "In Admin > Settings > General enable Custom homepage and select that dashboard from Recents.",
-            "Open the same dashboard, use its three-dot menu > Move to trash and confirm. Observe This dashboard is in the trash.",
-            "Return to General > Custom homepage picker. Observe that Recents excludes the trashed dashboard.",
-            "Switch to the Dashboards tab. The trashed dashboard is listed and can be selected; refreshing retains its name as homepage."
           ],
           "severity": 3
         }
@@ -1618,125 +1557,6 @@
       ]
     },
     {
-      "id": "metabase-reactivation-group-state",
-      "explanation": "Reactivated users do not recover all prior group state.",
-      "rootCause": {
-        "explanation": "reactivate-user! explicitly reactivates with is_superuser false and does not restore removed administrative membership. Cached group membership views can also remain stale after that user mutation.",
-        "sourceReferences": [
-          {
-            "repository": "metabase/metabase",
-            "revision": "f42632893810325d9f74375a4cd29bd31d8daefa",
-            "path": "src/metabase/users_rest/api.clj",
-            "line": 605,
-            "url": "https://github.com/metabase/metabase/blob/f42632893810325d9f74375a4cd29bd31d8daefa/src/metabase/users_rest/api.clj#L605"
-          }
-        ],
-        "analysisStatus": "inferred"
-      },
-      "reproductionPaths": [
-        {
-          "id": "metabase-reactivation-group-state-path-1",
-          "explanation": "After reactivating a deactivated group member, a group detail page visited while they were deactivated still shows zero members until reload.",
-          "sourceBugs": [
-            {
-              "index": 37,
-              "id": "metabase-admin-035",
-              "name": "Group detail still shows no members after a member is reactivated"
-            }
-          ],
-          "expected": "Opening the group after reactivation shows the restored member and count.",
-          "actual": "The Groups list shows 1 member, but the group detail shows 0 members and the empty state until the page is reloaded.",
-          "reproSteps": [
-            "As an admin, create a user and a group in Admin > People, and add the user to the group.",
-            "Deactivate the user, then open the group's detail page; it shows 0 members.",
-            "Reactivate the user from People > Deactivated.",
-            "Open Groups, then the group: the list shows 1 member but the detail still shows 0."
-          ],
-          "severity": 3
-        },
-        {
-          "id": "metabase-reactivation-group-state-path-2",
-          "explanation": "Reactivation does not restore Administrators membership.",
-          "sourceBugs": [
-            {
-              "index": 113,
-              "id": "metabase-admin-b55",
-              "name": "Reactivation does not restore Administrators membership"
-            }
-          ],
-          "expected": "The user returns with Admin membership, matching the prior persisted membership and the reactivation confirmation promise.",
-          "actual": "The user returns with Default instead of Admin.",
-          "reproSteps": [
-            "As admin create a distinct PeopleQA-prefixed user with a unique example.test email, add them to the Administrators group, and dismiss success.",
-            "Open the user's ellipsis menu > Deactivate user and confirm.",
-            "Select Deactivated and open the user's reactivate icon.",
-            "Read the confirmation that the user will be placed back into the groups they were in before deactivation, then press Reactivate.",
-            "Inspect the reactivated user's Groups cell."
-          ],
-          "severity": 3
-        }
-      ]
-    },
-    {
-      "id": "metabase-admin-modal-url-query",
-      "explanation": "Admin routed dialogs discard the underlying list query.",
-      "rootCause": {
-        "explanation": "Tasks/log tools navigate between modal and list routes without preserving the list query string, dropping task sort/filter and log-filter state on close or refresh.",
-        "sourceReferences": [
-          {
-            "repository": "metabase/metabase",
-            "revision": "f42632893810325d9f74375a4cd29bd31d8daefa",
-            "path": "frontend/src/metabase/admin/tools/components/TasksApp/TasksApp.tsx",
-            "line": 118,
-            "url": "https://github.com/metabase/metabase/blob/f42632893810325d9f74375a4cd29bd31d8daefa/frontend/src/metabase/admin/tools/components/TasksApp/TasksApp.tsx#L118"
-          }
-        ],
-        "analysisStatus": "inferred"
-      },
-      "reproductionPaths": [
-        {
-          "id": "metabase-admin-modal-url-query-path-1",
-          "explanation": "Opening a task detail and closing it removes the task list's query parameters, so a refresh or shared link loses the filter and sort.",
-          "sourceBugs": [
-            {
-              "index": 38,
-              "id": "metabase-admin-031",
-              "name": "Opening and closing a task drops the task list's filter and sort from the URL"
-            }
-          ],
-          "expected": "Closing a task detail returns to the task list URL with its filter and sort intact.",
-          "actual": "The URL becomes /admin/tools/tasks with no parameters. The filter still looks selected until a refresh, which shows the unfiltered list.",
-          "reproSteps": [
-            "As an admin, open Admin > Tools > Tasks and filter by sync. Confirm the URL contains task=sync.",
-            "Open a task row, then close the detail.",
-            "Observe the URL has no task parameter. Refresh and the unfiltered list returns."
-          ],
-          "severity": 3
-        },
-        {
-          "id": "metabase-admin-modal-url-query-path-2",
-          "explanation": "Opening and dismissing Customize log levels causes log filter to be lost upon page refresh.",
-          "sourceBugs": [
-            {
-              "index": 57,
-              "id": "metabase-admin-185",
-              "name": "Opening and dismissing Customize log levels causes log filter to be lost upon page refresh"
-            }
-          ],
-          "expected": "Dismissing log-level customization without changes should preserve the existing log filter after refreshing the page.",
-          "actual": "After opening and dismissing the Customize log levels modal, refreshing the page clears the filter input and displays unfiltered logs.",
-          "reproSteps": [
-            "As Admin, open Tools > Logs.",
-            "Enter DEBUG in Filter logs and verify matching entries.",
-            "Open Customize log levels, then press Escape without changing or saving anything.",
-            "Observe DEBUG still in Filter logs, but the page URL has returned to /admin/tools/logs without query=DEBUG.",
-            "Refresh. The filter input is empty and unfiltered logs are displayed."
-          ],
-          "severity": 3
-        }
-      ]
-    },
-    {
       "id": "metabase-segment-form-query-validation",
       "explanation": "Segment Save eligibility lags or misses changes to its query definition.",
       "rootCause": {
@@ -1857,14 +1677,14 @@
       "id": "metabase-field-mapping-cache",
       "explanation": "Field display-value edits leave previews and mapping dialogs stale.",
       "rootCause": {
-        "explanation": "RemappingPicker updates field values/dimensions separately from table metadata and preview queries; cached representations are reused without a coordinated refresh, retaining previous custom or foreign labels.",
+        "explanation": "updateFieldValues invalidates field-values and parameter-values tags only, while TablePreview gets its rendered values from useGetAdhocQueryQuery dataset results. No dataset invalidation occurs on this mutation, allowing the preview to retain the prior remapped values.",
         "sourceReferences": [
           {
             "repository": "metabase/metabase",
             "revision": "f42632893810325d9f74375a4cd29bd31d8daefa",
-            "path": "frontend/src/metabase/metadata/components/FieldSection/BehaviorSection/RemappingPicker/RemappingPicker.tsx",
-            "line": 221,
-            "url": "https://github.com/metabase/metabase/blob/f42632893810325d9f74375a4cd29bd31d8daefa/frontend/src/metabase/metadata/components/FieldSection/BehaviorSection/RemappingPicker/RemappingPicker.tsx#L221"
+            "path": "frontend/src/metabase/api/field.ts",
+            "line": 87,
+            "url": "https://github.com/metabase/metabase/blob/f42632893810325d9f74375a4cd29bd31d8daefa/frontend/src/metabase/api/field.ts#L87"
           }
         ],
         "analysisStatus": "inferred"
@@ -2515,17 +2335,17 @@
       "id": "metabase-hidden-table-admin-search",
       "explanation": "Admin metadata search excludes hidden tables.",
       "rootCause": {
-        "explanation": "The DataModel table search uses visibility-filtered table metadata rather than including hidden tables for this administrative management surface.",
+        "explanation": "The Admin metadata picker useSearch calls the generic search API with only q and models:[\"table\"], omitting an administrative include-hidden option. Its results therefore inherit generic visible-table search filtering.",
         "sourceReferences": [
           {
             "repository": "metabase/metabase",
             "revision": "f42632893810325d9f74375a4cd29bd31d8daefa",
-            "path": "frontend/src/metabase/metadata/pages/DataModelV1/DataModelV1.tsx",
-            "line": 40,
-            "url": "https://github.com/metabase/metabase/blob/f42632893810325d9f74375a4cd29bd31d8daefa/frontend/src/metabase/metadata/pages/DataModelV1/DataModelV1.tsx#L40"
+            "path": "frontend/src/metabase/metadata/pages/DataModelV1/components/TablePicker/hooks/useSearch.ts",
+            "line": 19,
+            "url": "https://github.com/metabase/metabase/blob/f42632893810325d9f74375a4cd29bd31d8daefa/frontend/src/metabase/metadata/pages/DataModelV1/components/TablePicker/hooks/useSearch.ts#L19"
           }
         ],
-        "analysisStatus": "inferred"
+        "analysisStatus": "source-supported"
       },
       "reproductionPaths": [
         {
@@ -2852,17 +2672,17 @@
       "id": "metabase-api-key-blank-name",
       "explanation": "API-key edits accept whitespace-only names.",
       "rootCause": {
-        "explanation": "API key validation requires a string but does not trim before required-name validation; EditApiKeyModal submits vals.name unchanged.",
+        "explanation": "API_KEY_VALIDATION_SCHEMA uses Yup.string().required() without trim or a nonblank test. EditApiKeyModal submits vals.name unchanged, so a whitespace-only string satisfies frontend validation.",
         "sourceReferences": [
           {
             "repository": "metabase/metabase",
             "revision": "f42632893810325d9f74375a4cd29bd31d8daefa",
-            "path": "frontend/src/metabase/admin/settings/components/ApiKeys/EditApiKeyModal.tsx",
-            "line": 106,
-            "url": "https://github.com/metabase/metabase/blob/f42632893810325d9f74375a4cd29bd31d8daefa/frontend/src/metabase/admin/settings/components/ApiKeys/EditApiKeyModal.tsx#L106"
+            "path": "frontend/src/metabase/admin/settings/components/ApiKeys/utils.ts",
+            "line": 11,
+            "url": "https://github.com/metabase/metabase/blob/f42632893810325d9f74375a4cd29bd31d8daefa/frontend/src/metabase/admin/settings/components/ApiKeys/utils.ts#L11"
           }
         ],
-        "analysisStatus": "inferred"
+        "analysisStatus": "source-supported"
       },
       "reproductionPaths": [
         {
@@ -3053,17 +2873,17 @@
       "id": "metabase-segment-preview-row-plural",
       "explanation": "Segment preview always labels rows in the plural.",
       "rootCause": {
-        "explanation": "PreviewStep builds its result-count label with a fixed rows string rather than a singular/plural translation.",
+        "explanation": "PreviewStep renders t`${count} rows` directly; it never uses ngettext/msgid to select a singular noun at count=1.",
         "sourceReferences": [
           {
             "repository": "metabase/metabase",
             "revision": "f42632893810325d9f74375a4cd29bd31d8daefa",
             "path": "frontend/src/metabase/querying/segments/components/SegmentEditor/PreviewStep/PreviewStep.tsx",
-            "line": 37,
-            "url": "https://github.com/metabase/metabase/blob/f42632893810325d9f74375a4cd29bd31d8daefa/frontend/src/metabase/querying/segments/components/SegmentEditor/PreviewStep/PreviewStep.tsx#L37"
+            "line": 49,
+            "url": "https://github.com/metabase/metabase/blob/f42632893810325d9f74375a4cd29bd31d8daefa/frontend/src/metabase/querying/segments/components/SegmentEditor/PreviewStep/PreviewStep.tsx#L49"
           }
         ],
-        "analysisStatus": "inferred"
+        "analysisStatus": "source-supported"
       },
       "reproductionPaths": [
         {
@@ -3352,17 +3172,17 @@
       "id": "metabase-database-ssl-troubleshooting",
       "explanation": "SQLite connection errors offer irrelevant SSL advice.",
       "rootCause": {
-        "explanation": "DatabaseFormError troubleshooting chooses generic SSL connection tips without restricting them to engines with an SSL option.",
+        "explanation": "useTroubleshootingTips receives only isHostAndPortError and expanded, never the database engine. It unconditionally includes an ssl tip and selects ssl among initialTips for self-hosted and cloud databases, including SQLite.",
         "sourceReferences": [
           {
             "repository": "metabase/metabase",
             "revision": "f42632893810325d9f74375a4cd29bd31d8daefa",
             "path": "frontend/src/metabase/databases/components/DatabaseFormError/useTroubleshootingTips.tsx",
-            "line": 24,
-            "url": "https://github.com/metabase/metabase/blob/f42632893810325d9f74375a4cd29bd31d8daefa/frontend/src/metabase/databases/components/DatabaseFormError/useTroubleshootingTips.tsx#L24"
+            "line": 76,
+            "url": "https://github.com/metabase/metabase/blob/f42632893810325d9f74375a4cd29bd31d8daefa/frontend/src/metabase/databases/components/DatabaseFormError/useTroubleshootingTips.tsx#L76"
           }
         ],
-        "analysisStatus": "inferred"
+        "analysisStatus": "source-supported"
       },
       "reproductionPaths": [
         {
@@ -3469,7 +3289,7 @@
       "id": "metabase-sql-like-wildcard-escaping",
       "explanation": "Text containment filters interpret percent as a SQL wildcard.",
       "rootCause": {
-        "explanation": "The text filter SQL compilation passes wildcard-bearing values into LIKE patterns without escaping literal percent/underscore characters for this execution path.",
+        "explanation": "SQL query processor builds LIKE patterns for text containment/prefix/suffix without escaping user-provided percent and underscore characters. Its like-clause helper explicitly has a TODO noting this missing escaping.",
         "sourceReferences": [
           {
             "repository": "metabase/metabase",
@@ -3479,7 +3299,7 @@
             "url": "https://github.com/metabase/metabase/blob/f42632893810325d9f74375a4cd29bd31d8daefa/src/metabase/driver/sql/query_processor.clj#L1558"
           }
         ],
-        "analysisStatus": "inferred"
+        "analysisStatus": "source-supported"
       },
       "reproductionPaths": [
         {
@@ -3546,17 +3366,17 @@
       "id": "metabase-invite-result-route-state",
       "explanation": "Refreshing user success loses invitation failure status.",
       "rootCause": {
-        "explanation": "UserSuccessModal derives invitation status from transient navigation props rather than a durable invitation result; refresh falls back to the successful-invitation copy.",
+        "explanation": "UserSuccessModal selects failed-invitation copy solely when the Redux temporaryPassword is present. That transient value disappears on refresh; a fetched existing user with no temporaryPassword unconditionally renders EmailSuccess and claims an invite was sent.",
         "sourceReferences": [
           {
             "repository": "metabase/metabase",
             "revision": "f42632893810325d9f74375a4cd29bd31d8daefa",
             "path": "frontend/src/metabase/admin/people/containers/UserSuccessModal.tsx",
-            "line": 26,
-            "url": "https://github.com/metabase/metabase/blob/f42632893810325d9f74375a4cd29bd31d8daefa/frontend/src/metabase/admin/people/containers/UserSuccessModal.tsx#L26"
+            "line": 76,
+            "url": "https://github.com/metabase/metabase/blob/f42632893810325d9f74375a4cd29bd31d8daefa/frontend/src/metabase/admin/people/containers/UserSuccessModal.tsx#L76"
           }
         ],
-        "analysisStatus": "inferred"
+        "analysisStatus": "source-supported"
       },
       "reproductionPaths": [
         {
@@ -4018,17 +3838,17 @@
       "id": "metabase-webhook-duplicate-error-field",
       "explanation": "Duplicate webhook rename attaches raw database error to URL.",
       "rootCause": {
-        "explanation": "WebhookForm mutation errors are mapped to the URL form field rather than translating a name uniqueness violation into a name error.",
+        "explanation": "WebhookForm.handleFieldError converts any string error or data.message to errors.url, irrespective of the originating field. Duplicate-name database errors therefore appear underneath Webhook URL.",
         "sourceReferences": [
           {
             "repository": "metabase/metabase",
             "revision": "f42632893810325d9f74375a4cd29bd31d8daefa",
             "path": "frontend/src/metabase/admin/settings/components/widgets/Notifications/WebhookForm.tsx",
-            "line": 68,
-            "url": "https://github.com/metabase/metabase/blob/f42632893810325d9f74375a4cd29bd31d8daefa/frontend/src/metabase/admin/settings/components/widgets/Notifications/WebhookForm.tsx#L68"
+            "line": 92,
+            "url": "https://github.com/metabase/metabase/blob/f42632893810325d9f74375a4cd29bd31d8daefa/frontend/src/metabase/admin/settings/components/widgets/Notifications/WebhookForm.tsx#L92"
           }
         ],
-        "analysisStatus": "inferred"
+        "analysisStatus": "source-supported"
       },
       "reproductionPaths": [
         {
@@ -4115,6 +3935,250 @@
           "severity": 1
         }
       ]
+    },
+    {
+      "id": "metabase-task-modal-url-query",
+      "explanation": "Task details navigation drops list filters and sorting.",
+      "rootCause": {
+        "explanation": "TasksTable.onClickTask pushes a pathname-only /admin/tools/tasks/${task.id} URL. TasksApp stores filters/sort in useUrlState(location), so entering the dialog removes those query values.",
+        "sourceReferences": [
+          {
+            "repository": "metabase/metabase",
+            "revision": "f42632893810325d9f74375a4cd29bd31d8daefa",
+            "path": "frontend/src/metabase/admin/tools/components/TasksApp/TasksTable.tsx",
+            "line": 42,
+            "url": "https://github.com/metabase/metabase/blob/f42632893810325d9f74375a4cd29bd31d8daefa/frontend/src/metabase/admin/tools/components/TasksApp/TasksTable.tsx#L42"
+          }
+        ],
+        "analysisStatus": "source-supported"
+      },
+      "reproductionPaths": [
+        {
+          "id": "metabase-task-modal-url-query-path-1",
+          "explanation": "Opening a task detail and closing it removes the task list's query parameters, so a refresh or shared link loses the filter and sort.",
+          "sourceBugs": [
+            {
+              "index": 38,
+              "id": "metabase-admin-031",
+              "name": "Opening and closing a task drops the task list's filter and sort from the URL"
+            }
+          ],
+          "expected": "Closing a task detail returns to the task list URL with its filter and sort intact.",
+          "actual": "The URL becomes /admin/tools/tasks with no parameters. The filter still looks selected until a refresh, which shows the unfiltered list.",
+          "reproSteps": [
+            "As an admin, open Admin > Tools > Tasks and filter by sync. Confirm the URL contains task=sync.",
+            "Open a task row, then close the detail.",
+            "Observe the URL has no task parameter. Refresh and the unfiltered list returns."
+          ],
+          "severity": 3
+        }
+      ]
+    },
+    {
+      "id": "metabase-log-modal-url-query",
+      "explanation": "Opening log customization drops the log filter URL.",
+      "rootCause": {
+        "explanation": "Logs renders Customize log levels as a Link to the pathname-only /admin/tools/logs/levels route, without the current location query; the list filter uses useUrlState and is lost across that navigation.",
+        "sourceReferences": [
+          {
+            "repository": "metabase/metabase",
+            "revision": "f42632893810325d9f74375a4cd29bd31d8daefa",
+            "path": "frontend/src/metabase/admin/tools/components/Logs/Logs.tsx",
+            "line": 133,
+            "url": "https://github.com/metabase/metabase/blob/f42632893810325d9f74375a4cd29bd31d8daefa/frontend/src/metabase/admin/tools/components/Logs/Logs.tsx#L133"
+          }
+        ],
+        "analysisStatus": "source-supported"
+      },
+      "reproductionPaths": [
+        {
+          "id": "metabase-log-modal-url-query-path-1",
+          "explanation": "Opening and dismissing Customize log levels causes log filter to be lost upon page refresh.",
+          "sourceBugs": [
+            {
+              "index": 57,
+              "id": "metabase-admin-185",
+              "name": "Opening and dismissing Customize log levels causes log filter to be lost upon page refresh"
+            }
+          ],
+          "expected": "Dismissing log-level customization without changes should preserve the existing log filter after refreshing the page.",
+          "actual": "After opening and dismissing the Customize log levels modal, refreshing the page clears the filter input and displays unfiltered logs.",
+          "reproSteps": [
+            "As Admin, open Tools > Logs.",
+            "Enter DEBUG in Filter logs and verify matching entries.",
+            "Open Customize log levels, then press Escape without changing or saving anything.",
+            "Observe DEBUG still in Filter logs, but the page URL has returned to /admin/tools/logs without query=DEBUG.",
+            "Refresh. The filter input is empty and unfiltered logs are displayed."
+          ],
+          "severity": 3
+        }
+      ]
+    },
+    {
+      "id": "metabase-reactivation-group-cache",
+      "explanation": "Reactivated members remain absent from a mounted group detail.",
+      "rootCause": {
+        "explanation": "reactivateUser invalidates user and permissions-group tags, but group detail also consumes separately cached membership data. The precise stale membership cache path requires additional confirmation.",
+        "sourceReferences": [
+          {
+            "repository": "metabase/metabase",
+            "revision": "f42632893810325d9f74375a4cd29bd31d8daefa",
+            "path": "frontend/src/metabase/api/user.ts",
+            "line": 93,
+            "url": "https://github.com/metabase/metabase/blob/f42632893810325d9f74375a4cd29bd31d8daefa/frontend/src/metabase/api/user.ts#L93"
+          }
+        ],
+        "analysisStatus": "inferred"
+      },
+      "reproductionPaths": [
+        {
+          "id": "metabase-reactivation-group-cache-path-1",
+          "explanation": "After reactivating a deactivated group member, a group detail page visited while they were deactivated still shows zero members until reload.",
+          "sourceBugs": [
+            {
+              "index": 37,
+              "id": "metabase-admin-035",
+              "name": "Group detail still shows no members after a member is reactivated"
+            }
+          ],
+          "expected": "Opening the group after reactivation shows the restored member and count.",
+          "actual": "The Groups list shows 1 member, but the group detail shows 0 members and the empty state until the page is reloaded.",
+          "reproSteps": [
+            "As an admin, create a user and a group in Admin > People, and add the user to the group.",
+            "Deactivate the user, then open the group's detail page; it shows 0 members.",
+            "Reactivate the user from People > Deactivated.",
+            "Open Groups, then the group: the list shows 1 member but the detail still shows 0."
+          ],
+          "severity": 3
+        }
+      ]
+    },
+    {
+      "id": "metabase-reactivation-admin-membership",
+      "explanation": "Reactivation does not restore administrator membership.",
+      "rootCause": {
+        "explanation": "Backend reactivate-user! explicitly updates is_superuser to false. Reactivation therefore cannot restore the former administrator role through the user reactivation call.",
+        "sourceReferences": [
+          {
+            "repository": "metabase/metabase",
+            "revision": "f42632893810325d9f74375a4cd29bd31d8daefa",
+            "path": "src/metabase/users_rest/api.clj",
+            "line": 608,
+            "url": "https://github.com/metabase/metabase/blob/f42632893810325d9f74375a4cd29bd31d8daefa/src/metabase/users_rest/api.clj#L608"
+          }
+        ],
+        "analysisStatus": "source-supported"
+      },
+      "reproductionPaths": [
+        {
+          "id": "metabase-reactivation-admin-membership-path-1",
+          "explanation": "Reactivation does not restore Administrators membership.",
+          "sourceBugs": [
+            {
+              "index": 113,
+              "id": "metabase-admin-b55",
+              "name": "Reactivation does not restore Administrators membership"
+            }
+          ],
+          "expected": "The user returns with Admin membership, matching the prior persisted membership and the reactivation confirmation promise.",
+          "actual": "The user returns with Default instead of Admin.",
+          "reproSteps": [
+            "As admin create a distinct PeopleQA-prefixed user with a unique example.test email, add them to the Administrators group, and dismiss success.",
+            "Open the user's ellipsis menu > Deactivate user and confirm.",
+            "Select Deactivated and open the user's reactivate icon.",
+            "Read the confirmation that the user will be placed back into the groups they were in before deactivation, then press Reactivate.",
+            "Inspect the reactivated user's Groups cell."
+          ],
+          "severity": 3
+        }
+      ]
+    },
+    {
+      "id": "metabase-homepage-personal-dashboard-search",
+      "explanation": "Homepage search excludes personal dashboards despite Recents showing them.",
+      "rootCause": {
+        "explanation": "DashboardSelector sets showPersonalCollections:false. DashboardPickerModal translates that option into filter_items_in_personal_collection:\"exclude\" for search, whereas Recents is supplied separately and can still show a personal dashboard.",
+        "sourceReferences": [
+          {
+            "repository": "metabase/metabase",
+            "revision": "f42632893810325d9f74375a4cd29bd31d8daefa",
+            "path": "frontend/src/metabase/common/components/DashboardSelector/DashboardSelector.tsx",
+            "line": 79,
+            "url": "https://github.com/metabase/metabase/blob/f42632893810325d9f74375a4cd29bd31d8daefa/frontend/src/metabase/common/components/DashboardSelector/DashboardSelector.tsx#L79"
+          }
+        ],
+        "analysisStatus": "source-supported"
+      },
+      "reproductionPaths": [
+        {
+          "id": "metabase-homepage-personal-dashboard-search-path-1",
+          "explanation": "Custom homepage picker search cannot find a personal dashboard shown in Recents.",
+          "sourceBugs": [
+            {
+              "index": 31,
+              "id": "metabase-admin-112",
+              "name": "Custom homepage picker search cannot find a personal dashboard shown in Recents"
+            }
+          ],
+          "expected": "Searching the exact name of a dashboard the picker offers in Recents returns that dashboard.",
+          "actual": "A dashboard in the admin's personal collection appears in Recents and can be selected as the homepage, but searching its exact name shows Didn't find anything.",
+          "reproSteps": [
+            "As an admin, create an empty dashboard named QA Homepage in your personal collection.",
+            "Open Admin > Settings > General, enable Custom homepage, and open Pick a dashboard.",
+            "Select QA Homepage from Recents and save.",
+            "Open the picker again and search QA Homepage.",
+            "Observe no results."
+          ],
+          "severity": 3
+        }
+      ]
+    },
+    {
+      "id": "metabase-homepage-trashed-dashboard-list",
+      "explanation": "Homepage Dashboards tab includes a trashed dashboard.",
+      "rootCause": {
+        "explanation": "Dashboard picker collection listing and Recents apply different archive scopes. The exact archived-record source in the picker list has not been confirmed.",
+        "sourceReferences": [
+          {
+            "repository": "metabase/metabase",
+            "revision": "f42632893810325d9f74375a4cd29bd31d8daefa",
+            "path": "frontend/src/metabase/common/components/Pickers/DashboardPicker/components/DashboardPickerModal.tsx",
+            "line": 31,
+            "url": "https://github.com/metabase/metabase/blob/f42632893810325d9f74375a4cd29bd31d8daefa/frontend/src/metabase/common/components/Pickers/DashboardPicker/components/DashboardPickerModal.tsx#L31"
+          }
+        ],
+        "analysisStatus": "inferred"
+      },
+      "reproductionPaths": [
+        {
+          "id": "metabase-homepage-trashed-dashboard-list-path-1",
+          "explanation": "Custom homepage Dashboards tab offers a trashed dashboard that Recents correctly excludes.",
+          "sourceBugs": [
+            {
+              "index": 51,
+              "id": "metabase-admin-186",
+              "name": "Custom homepage Dashboards tab offers a trashed dashboard that Recents correctly excludes"
+            }
+          ],
+          "expected": "The homepage picker should exclude trashed dashboards consistently, rather than offer archived content as an active homepage.",
+          "actual": "The trashed MO-GEN-HOME-20261021 disappears from Recents but is offered and selectable in Dashboards. Its selection remains displayed after refresh.",
+          "reproSteps": [
+            "Exit Admin > New > Dashboard. Create and Save an empty uniquely named MO-GEN-HOME dashboard in your personal collection.",
+            "In Admin > Settings > General enable Custom homepage and select that dashboard from Recents.",
+            "Open the same dashboard, use its three-dot menu > Move to trash and confirm. Observe This dashboard is in the trash.",
+            "Return to General > Custom homepage picker. Observe that Recents excludes the trashed dashboard.",
+            "Switch to the Dashboards tab. The trashed dashboard is listed and can be selected; refreshing retains its name as homepage."
+          ],
+          "severity": 3
+        }
+      ]
     }
-  ]
+  ],
+  "sourceContext": {
+    "repository": "metabase/metabase",
+    "revision": "f42632893810325d9f74375a4cd29bd31d8daefa",
+    "runtimeVersion": "v0.58.24",
+    "runtimeRevision": "03d994f",
+    "limitation": "fixture.json identifies the public revision as approximate; the actual runtime build revision is unavailable publicly. source-supported means the cited public source supports the mechanism, not that the private runtime implementation was independently verified. Inferred causes are hypotheses requiring additional source or runtime evidence."
+  }
 }
