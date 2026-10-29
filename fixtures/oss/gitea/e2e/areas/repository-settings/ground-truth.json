@@ -407,6 +407,101 @@
         "Check whether an error is shown and what role the menu displays; then refresh."
       ],
       "severity": 1
+    },
+    {
+      "id": "gitea-publish-draft-protected-tag-server-error",
+      "name": "Publishing a draft release whose tag is protected shows a full-page 500",
+      "summary": "When a draft release uses a tag name that a protected-tag rule doesn't allow the user to create, clicking Publish Release from the Edit Release page replaces the form with a full-page 500 Internal Server Error, and the unsaved title and notes are lost. Creating the same release from New Release shows a readable error instead.",
+      "expected": "Publishing is rejected with a readable protected-tag error in the form, as on New Release, and the draft stays editable.",
+      "actual": "Publish Release returned a full-page 500 Internal Server Error (\"UpdateRelease, release tag name is protected\"); the draft wasn't published and the unsaved edits were lost.",
+      "reproSteps": [
+        "In a repository's Settings > Tags, protect a tag pattern so that you aren't allowed to create matching tags.",
+        "Create a draft release with a new tag name matching that pattern and save it as a draft.",
+        "Edit the draft and click Publish Release.",
+        "Check whether a readable error or a 500 page appears."
+      ],
+      "severity": 5
+    },
+    {
+      "id": "gitea-archived-repo-wiki-editor-save-404",
+      "name": "Archived repository still opens the wiki editor, and Save Page ends in a 404",
+      "summary": "In an archived repository, the wiki hides its create and edit buttons, but opening the wiki's New Page (or Edit) URL directly still shows an editable form with Save Page. Saving replaces the page with a full 404 instead of saying the repository is archived and read-only.",
+      "expected": "Wiki create and edit URLs in an archived repository refuse up front with a read-only message, as other editors in archived repositories do.",
+      "actual": "The wiki New Page URL showed the title, content and Save Page controls despite the Archived badge; clicking Save Page showed a full-page 404 Not Found. Nothing was saved.",
+      "reproSteps": [
+        "In a repository with the wiki enabled, create a wiki page and note the New Page URL (ending /wiki?action=_new).",
+        "Archive the repository in Settings.",
+        "Open the wiki's New Page URL directly, enter a title and content, and click Save Page.",
+        "Check what the page shows."
+      ],
+      "severity": 3
+    },
+    {
+      "id": "gitea-whitespace-branch-protection-pattern-saved",
+      "name": "Whitespace-only branch protection pattern saves a blank rule",
+      "summary": "In a repository's branch protection settings, a rule's Protected Branch Name Pattern made only of spaces is accepted with a success message and saved as a blank-looking rule. An empty pattern is rejected, but spaces aren't trimmed.",
+      "expected": "A branch protection pattern made only of whitespace is rejected like an empty one.",
+      "actual": "Editing a rule's pattern to three spaces saved with a success message; the branch protection list showed a blank rule name, and reopening it showed a blank-looking pattern.",
+      "reproSteps": [
+        "In a repository's Settings > Branches, add a protection rule with a normal pattern and save.",
+        "Edit the rule, replace the pattern with only spaces, and save.",
+        "Reload the branch protection list and reopen the rule."
+      ],
+      "severity": 3,
+      "matchingGuidance": {
+        "relatedReference": {
+          "name": "Whitespace-only tag protection pattern saves as an empty rule, and editing a rule to whitespace disables it",
+          "distinction": "Same missing whitespace check, but that entry is tag protection; this entry is branch protection."
+        }
+      }
+    },
+    {
+      "id": "gitea-archived-issue-new-issue-button-404",
+      "name": "Archived issue detail offers New Issue button that opens a 404",
+      "severity": 3,
+      "owningArea": "gitea/repository-settings",
+      "summary": "After archiving a private repository, an existing issue still offers New Issue. Clicking it opens 404 Not Found rather than an available action or an archive explanation.",
+      "expected": "An archived repository should not offer an unusable New Issue action; hide or disable it consistently with the archived issues list, or explain why creation is unavailable.",
+      "actual": "Existing issue detail shows New Issue, and clicking it loads /issues/new with 404 Not Found. The existing issue otherwise correctly reports that comments are unavailable because the repository is archived.",
+      "reproSteps": [
+        "Create a disposable initialized repository and an issue.",
+        "Archive the repository through Settings and confirm.",
+        "Reopen the existing issue and click its visible New Issue button.",
+        "Observe that /issues/new displays 404 Not Found."
+      ],
+      "sourceReport": {
+        "sessionId": "105936d3-687c-5d96-9408-954610478026",
+        "webUrl": "https://app.momentic.ai/mo/sessions/105936d3-687c-5d96-9408-954610478026?tab=bug%3AArchived%20issue%20detail%20offers%20New%20Issue%20button%20that%20opens%20a%20404",
+        "recording": {
+          "startedAt": 1793218043000,
+          "finishedAt": 1793218052500,
+          "agentId": "105936d3-687c-5d96-9408-954610478026:sandbox-bugbash-v2:lifecycle",
+          "windowId": "99c7b682-ec1d-48c3-a3ce-aabeb77c864e",
+          "artifactId": "89d46e1b-5dac-4410-ae71-0eb48a0c0953"
+        }
+      },
+      "matchingGuidance": {
+        "relatedReference": {
+          "id": "gitea-archived-repo-wiki-editor-save-404",
+          "distinction": "The existing reference covers an archived wiki editor offering Save Page and then returning 404. This entry covers the visible New Issue button on an existing archived issue leading to a 404."
+        },
+        "scope": "Grade the unusable New Issue action offered on an archived issue detail page, not the intended restriction against creating issues in archived repositories."
+      },
+      "reviewEvidence": {
+        "basis": "Explicit user acceptance as a related severity-3 entry based on two Mo reports. Independent verdicts pending at approval.",
+        "userAccepted": true,
+        "sourceRevision": "99053ce4fa2b45f1bca5837418c0c57f793ca824",
+        "severityReason": "An offered action navigates to a 404 rather than an available form or archive explanation.",
+        "analysis": [
+          "Two Mo submissions report the same archive lifecycle and visible New Issue action ending in 404.",
+          "The issue creation restriction itself is expected; the user approved the unusable offered action as the defect."
+        ],
+        "sourceReferences": [],
+        "limitations": [
+          "No independent browser verdict or complete source-cause review available at approval.",
+          "Latest runtime was not tested."
+        ]
+      }
     }
   ]
 }

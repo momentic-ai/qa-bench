@@ -645,9 +645,9 @@
     },
     {
       "id": "metabase-data-modeling-179",
-      "name": "Duplicate glossary term silently discards the new definition",
+      "name": "A failed glossary save (duplicate or over-255-character term) silently discards the edit",
       "severity": 3,
-      "summary": "Duplicate glossary term silently discards the new definition.",
+      "summary": "When a glossary term create or edit fails on the server, for example a duplicate term or a term longer than 255 characters, the row briefly shows the new values and then silently reverts, with no error and the entered definition lost.",
       "expected": "Show duplicate-term validation and retain the entered draft so the user can choose another name.",
       "actual": "The editor closes without an error, the original entry remains unchanged, and reopening New term shows blank fields: the new draft definition is lost. The observed glossary POST returns 500 with a unique constraint failure.",
       "reproSteps": [
@@ -717,9 +717,9 @@
     },
     {
       "id": "metabase-data-modeling-303",
-      "name": "Metric formula preview retains previous aggregation's axis label after rerunning",
+      "name": "Metric editor results keep the saved column label after the aggregation or time grouping changes",
       "severity": 1,
-      "summary": "Metric formula preview retains previous aggregation's axis label after rerunning.",
+      "summary": "In the metric editor, rerunning after changing the aggregation (e.g. Cumulative count to Count) or the time grouping (e.g. Month to Year) keeps the saved column's label and type, such as an axis still reading 'Created At: Month' over yearly points.",
       "expected": "The completed preview updates the vertical axis label to match the new formula (Count).",
       "actual": "After changing the formula to Count of rows and re-running the preview, the values update to monthly counts under 100, but the vertical axis still reads 'Cumulative count'.",
       "reproSteps": [
@@ -1489,6 +1489,70 @@
         "Open Sample Database reference and select Orders.",
         "Open Questions about this table and scroll to Unique customers per month.",
         "Open the question and inspect the displayed period and grouping."
+      ]
+    },
+    {
+      "id": "metabase-data-modeling-b34",
+      "name": "Data Reference table detail header shows the internal schema ID (\"1:PUBLIC\") instead of the schema name",
+      "severity": 1,
+      "summary": "Data Reference table detail header shows the internal schema ID (\"1:PUBLIC\") instead of the schema name.",
+      "expected": "Show the plain schema name (\"PUBLIC\" / \"public\") to match the table list, or hide it, since each of these databases has only one schema.",
+      "actual": "On /reference/databases/2/tables/9 it reads \"2:public\" above \"Release Requests\".",
+      "reproSteps": [
+        "Sign in as eval@momentic.ai / momentic-eval-1.",
+        "Go to /reference/databases and click \"Sample Database\".",
+        "Click \"Tables in Sample Database\" and note that the schema group header reads \"PUBLIC\".",
+        "Click the \"Products\" table (/reference/databases/1/tables/3).",
+        "Observe that the small label above the \"Products\" heading reads \"1:PUBLIC\".",
+        "Optionally open /reference/databases/2/tables/9 and observe \"2:public\"."
+      ]
+    },
+    {
+      "id": "metabase-data-modeling-b28",
+      "name": "Model records with slash characters in their entity key open a missing-page error",
+      "severity": 3,
+      "summary": "Model records with slash characters in their entity key open a missing-page error.",
+      "expected": "The string entity key should be URL-encoded and the record's detail panel should open, showing the original key and title.",
+      "actual": "The app navigates to /model/<id>-<slug>/qa/a%20b# and renders 'We're a little lost... The page you asked for couldn't be found.' The slash remains a path separator and the key is mangled. Reproduced again from the saved model after a full page navigation.",
+      "reproSteps": [
+        "Sign in and open /browse/models → Create a new model → Use a native query. Select Release operations if a database is not selected.",
+        "Enter SELECT 'qa/a b?#' AS record_key, 'QA Special Record' AS title and run it with Ctrl+Enter.",
+        "Save the model as 'QA Special Keys Model'.",
+        "Open the model's three-dot menu → Edit metadata → Columns. Select record_key and set Column type to Entity Key. Select title and set Column type to Entity Name.",
+        "Open the model editor's Settings tab, choose List as the default view, and Save changes.",
+        "Reload the saved model and click QA Special Record in its list."
+      ]
+    },
+    {
+      "id": "metabase-data-modeling-b29",
+      "name": "Refreshing a model record with entity key 'query' opens the model editor",
+      "severity": 3,
+      "summary": "Refreshing a model record with entity key 'query' opens the model editor.",
+      "expected": "Refreshing the record URL should reopen the same record details.",
+      "actual": "After refresh, the app opens the model's Query/Columns/Settings editor, with Cancel and Save changes, instead of the record. Verified on a saved model with record_key='query': before refresh its dialog displayed 'QA Query Key' and 'record_key query'; after refresh the same /model/<id>-<slug>/query URL displayed the SQL model editor.",
+      "reproSteps": [
+        "Open /browse/models → Create a new model → Use a native query, using the Release operations database.",
+        "Run SELECT 'query' AS record_key, 'QA Query Key' AS title and save it as 'QA Reserved Key Model'.",
+        "Choose the model's three-dot menu → Edit metadata → Columns. Set record_key's Column type to Entity Key, and title's Column type to Entity Name.",
+        "In the model editor's Settings tab, select List and Save changes.",
+        "Click QA Query Key in the model list. Confirm its record details appear and the browser URL ends with /model/<model-id>-qa-reserved-key-model/query.",
+        "Refresh the browser at that URL."
+      ]
+    },
+    {
+      "id": "metabase-data-modeling-b30",
+      "name": "Opening a model record with numeric entity key 0 leaves the URL at the model list",
+      "severity": 3,
+      "summary": "Opening a model record with numeric entity key 0 leaves the URL at the model list.",
+      "expected": "The zero record should have its own URL ending in /0, and refreshing should preserve the selected record, as it does for other keys.",
+      "actual": "QA Zero Record opens with record_key 0, but the URL remains /model/<id>-<slug>. Next row changes the URL to /model/<id>-<slug>/-1, and Previous row returns to the bare model URL while displaying key 0. Refresh closes the record and loads the list. The full-page control correctly exposes /model/<id>-<slug>/detail/0, demonstrating that 0 is a valid record key. Repeated through direct list clicks and next/previous navigation.",
+      "reproSteps": [
+        "Open /browse/models → Create a new model → Use a native query, using Release operations.",
+        "Run SELECT 0 AS record_key, 'QA Zero Record' AS title UNION ALL SELECT -1 AS record_key, 'QA Negative Record' AS title and save as 'QA Zero Key Model'.",
+        "Open the model's three-dot menu → Edit metadata → Columns. Set record_key to Entity Key and title to Entity Name.",
+        "In the editor's Settings tab, select List and Save changes.",
+        "Click QA Zero Record and inspect the address bar. Click Next row, then Previous row, and compare the URLs.",
+        "Refresh while QA Zero Record is open."
       ]
     }
   ]

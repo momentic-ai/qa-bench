@@ -21,7 +21,7 @@ e.g. `claude-playwright-mcp (no subagents)`.
 
 ## Setup
 
-Requires Node.js 22.9+ and pnpm.
+Requires Node.js 22.12+ and pnpm.
 
 ```bash
 pnpm install
@@ -41,6 +41,12 @@ Environment:
 `mo` needs `qa` 0.27.0 exactly, signed in. Set `MO_EVAL_CLI` to use another
 executable. Use `--effort low|medium|high|max` to set Mo's effort preset
 (default: medium). An explicit `--effort` is recorded in `duration.json`.
+
+## Development
+
+Run `pnpm lint`, `pnpm format:check` and `pnpm typecheck` before submitting
+changes. CI runs the same checks. Use `pnpm lint:fix` and `pnpm format` to apply
+automatic fixes to `src/`.
 
 ## Run
 
@@ -70,3 +76,18 @@ with `pnpm stop-fixture <sandbox-id>`.
 Each app lives under `fixtures/oss/<app>/`: a Compose recipe, seed scripts and
 `e2e/areas/<area>/` with `fixture.json` (scope and entry points),
 `ground-truth.json` and `known-invalid.json`.
+
+## agent-browser variants
+
+`codex-agent-browser` and `claude-agent-browser` use the pinned agent-browser CLI
+and its official bundled skill in place of Playwright MCP. Use the same fixture,
+time-limit and browser options. agent-browser declares Node.js 24+ support.
+
+```bash
+pnpm eval --agent codex-agent-browser --fixtures twenty/areas --time-limit 30m
+pnpm eval --agent claude-agent-browser --fixtures twenty/areas --time-limit 30m
+```
+
+Codex's CLI variant uses a writable workspace with network access so the CLI can
+create its browser socket. Each run owns its socket directory and Browserbase
+connection; native agents choose how to use subagents, sessions and tabs.

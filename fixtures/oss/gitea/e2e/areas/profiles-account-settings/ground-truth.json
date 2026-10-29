@@ -86,7 +86,7 @@
         "Click Unfollow in the sidebar.",
         "Check whether your card is removed from the list, then reload and check again."
       ],
-      "severity": 3,
+      "severity": 1,
       "matchingGuidance": {
         "relatedReference": {
           "name": "Following a user from their Followers tab doesn't add your card to the list until reload",
@@ -208,12 +208,145 @@
         "Click Follow in the sidebar.",
         "Check whether your card appears in the list, then reload and check again."
       ],
-      "severity": 3,
+      "severity": 1,
       "matchingGuidance": {
         "relatedReference": {
           "name": "Unfollowing a user from their Followers tab leaves your card in the list until reload",
           "distinction": "Same Followers tab and cause (Follow/Unfollow refreshes only the sidebar), but that entry is Unfollow leaving your card in the list; this entry is Follow not adding your card."
         }
+      }
+    },
+    {
+      "id": "gitea-projects-search-clears-query",
+      "name": "Projects search clears the entered query after submitting it",
+      "summary": "On a user's or organization's Projects page, submitting a search filters the list but reloads with the search box empty, and the Open, Closed and sort links drop the search, so switching state or sort loses it.",
+      "expected": "After searching projects, the search box keeps the query and the Open, Closed and sort links keep the search applied.",
+      "actual": "After submitting a query, the page reloaded with the search box showing only the 'Search projects...' placeholder; clicking Closed or a sort option then showed results without the search.",
+      "reproSteps": [
+        "Open a user's or organization's Projects page with several projects.",
+        "Search for a word from one project's title and submit.",
+        "Check the search box, then click Closed (or change the sort) and check whether the search is still applied."
+      ],
+      "severity": 3
+    },
+    {
+      "severity": 3,
+      "owningArea": "gitea/profiles-account-settings",
+      "reviewEvidence": {
+        "basis": "Explicit user approval of both reports as separate related severity-3 entries after independent Codex and Claude acceptance at severity 3 and coordinator source checks.",
+        "userAccepted": true,
+        "sourceRevision": "99053ce4fa2b45f1bca5837418c0c57f793ca824",
+        "severityReason": "Severity 3: supported search and sort actions discard the other selected criterion and change the returned project list. No project data is lost.",
+        "analysis": [
+          "Both reviewers reproduced search dropping alphabetical sorting twice on fresh user projects. A direct URL containing both q and sort returned the correct filtered alphabetical list.",
+          "Both also observed the reverse trigger: sort links after search have an empty q, bringing back unfiltered projects.",
+          "The shared project search form contains state but no sort input. Separately, project handlers read q for the database search but do not expose Keyword for the template links.",
+          "The template and handlers are shared by user, organization and repository project listings; user project behavior was independently reproduced by both reviewers, with additional repository ordering checked by Codex.",
+          "Latest source retains the relevant omissions; latest runtime was not tested."
+        ],
+        "sourceReferences": [
+          "https://github.com/go-gitea/gitea/blob/99053ce4fa2b45f1bca5837418c0c57f793ca824/templates/projects/list.tmpl#L21-L38",
+          "https://github.com/go-gitea/gitea/blob/99053ce4fa2b45f1bca5837418c0c57f793ca824/routers/web/org/projects.go#L44-L76",
+          "https://github.com/go-gitea/gitea/blob/99053ce4fa2b45f1bca5837418c0c57f793ca824/routers/web/org/projects.go#L124-L133",
+          "https://github.com/go-gitea/gitea/blob/99053ce4fa2b45f1bca5837418c0c57f793ca824/models/project/project.go#L242-L257",
+          "https://github.com/go-gitea/gitea/blob/965d7522e0b3d323ea2da6615e7d4b39684d16e5/templates/projects/list.tmpl#L21-L38"
+        ],
+        "limitations": [
+          "Retention of selected search/sort criteria is inferred from UI consistency and passing controls; no explicit maintainer specification was established.",
+          "Latest runtime, other roles and all sort choices were not independently tested."
+        ]
+      },
+      "id": "gitea-project-search-drops-sort",
+      "name": "Searching projects resets the selected sort order",
+      "summary": "Submitting a project-list search discards the selected sort and switches the matching results back to newest-first.",
+      "expected": "Searching narrows the project list while preserving the selected sort.",
+      "actual": "Alphabetically displays project 01 before project 02. Submitting their shared search prefix drops sort=alphabetically and displays the newer project 02 first. A direct URL containing q and sort preserves both.",
+      "reproSteps": [
+        "Create two disposable user projects with a shared unique prefix, creating suffix 01 before suffix 02.",
+        "Open the user Projects list and choose Sort → Alphabetically; confirm 01 appears before 02.",
+        "Search for the shared prefix and submit.",
+        "Observe that the sort query disappears and the matching list returns to newest-first, with 02 before 01.",
+        "As a control, open the same list URL with both q and sort=alphabetically and confirm the filtered alphabetical order."
+      ],
+      "sourceReport": {
+        "sessionId": "e1c12b59-3aff-5d6d-a7b3-6520c06925f8",
+        "webUrl": "https://app.momentic.ai/mo/sessions/e1c12b59-3aff-5d6d-a7b3-6520c06925f8?tab=bug%3ASearching%20projects%20resets%20their%20selected%20sort%20order",
+        "recording": {
+          "startedAt": 1793223193805,
+          "finishedAt": 1793223221429,
+          "agentId": "e1c12b59-3aff-5d6d-a7b3-6520c06925f8:sandbox-bugbash-v2:profile-tabs",
+          "windowId": "0f4186e8-0b17-4774-ae62-309bcdef8f3f",
+          "artifactId": "cf279343-b7dc-4c5d-b0cc-e7dd93a9e5b3"
+        }
+      },
+      "matchingGuidance": {
+        "relatedReference": {
+          "id": "gitea-project-sort-drops-search",
+          "distinction": "This entry is Search dropping sort because the search form omits its sort field. The related entry is Sort dropping the existing search because Keyword is not supplied to template links."
+        },
+        "otherRelatedReference": {
+          "id": "gitea-milestone-search-sort-reset",
+          "distinction": "Similar missing-sort field on milestone search, but a different project-list template and entry point."
+        },
+        "scope": "Requires submitting a project search after selecting a nondefault sort and observing the sort actually reset. Plain default-order search is not a failure."
+      }
+    },
+    {
+      "severity": 3,
+      "owningArea": "gitea/profiles-account-settings",
+      "reviewEvidence": {
+        "basis": "Explicit user approval of both reports as separate related severity-3 entries after independent Codex and Claude acceptance at severity 3 and coordinator source checks.",
+        "userAccepted": true,
+        "sourceRevision": "99053ce4fa2b45f1bca5837418c0c57f793ca824",
+        "severityReason": "Severity 3: supported search and sort actions discard the other selected criterion and change the returned project list. No project data is lost.",
+        "analysis": [
+          "Both reviewers reproduced search dropping alphabetical sorting twice on fresh user projects. A direct URL containing both q and sort returned the correct filtered alphabetical list.",
+          "Both also observed the reverse trigger: sort links after search have an empty q, bringing back unfiltered projects.",
+          "The shared project search form contains state but no sort input. Separately, project handlers read q for the database search but do not expose Keyword for the template links.",
+          "The template and handlers are shared by user, organization and repository project listings; user project behavior was independently reproduced by both reviewers, with additional repository ordering checked by Codex.",
+          "Latest source retains the relevant omissions; latest runtime was not tested."
+        ],
+        "sourceReferences": [
+          "https://github.com/go-gitea/gitea/blob/99053ce4fa2b45f1bca5837418c0c57f793ca824/templates/projects/list.tmpl#L21-L38",
+          "https://github.com/go-gitea/gitea/blob/99053ce4fa2b45f1bca5837418c0c57f793ca824/routers/web/org/projects.go#L44-L76",
+          "https://github.com/go-gitea/gitea/blob/99053ce4fa2b45f1bca5837418c0c57f793ca824/routers/web/org/projects.go#L124-L133",
+          "https://github.com/go-gitea/gitea/blob/99053ce4fa2b45f1bca5837418c0c57f793ca824/models/project/project.go#L242-L257",
+          "https://github.com/go-gitea/gitea/blob/965d7522e0b3d323ea2da6615e7d4b39684d16e5/templates/projects/list.tmpl#L21-L38"
+        ],
+        "limitations": [
+          "Retention of selected search/sort criteria is inferred from UI consistency and passing controls; no explicit maintainer specification was established.",
+          "Latest runtime, other roles and all sort choices were not independently tested."
+        ]
+      },
+      "id": "gitea-project-sort-drops-search",
+      "name": "Sorting filtered projects removes the search filter",
+      "summary": "After a project search, the page fails to retain the query for its controls. Choosing a sort navigates with an empty q and restores unrelated projects.",
+      "expected": "Sorting an already-filtered project list preserves the active search and changes only its ordering.",
+      "actual": "Search returns matching projects, but the search field and sort links contain an empty query. Selecting Alphabetically navigates with q= and returns unfiltered projects.",
+      "reproSteps": [
+        "Have at least two projects sharing a fresh prefix and another project that does not match it.",
+        "On the user Projects list, search for the shared prefix and confirm only matching projects appear.",
+        "Choose Sort → Alphabetically.",
+        "Observe that q becomes empty and the unrelated project returns.",
+        "As a control, open a URL explicitly containing both the shared query and sort=alphabetically and confirm the unrelated project stays excluded."
+      ],
+      "sourceReport": {
+        "sessionId": "e1c12b59-3aff-5d6d-a7b3-6520c06925f8",
+        "webUrl": "https://app.momentic.ai/mo/sessions/e1c12b59-3aff-5d6d-a7b3-6520c06925f8?tab=bug%3ASorting%20filtered%20projects%20removes%20the%20search%20filter",
+        "recording": {
+          "startedAt": 1793221700135,
+          "finishedAt": 1793221729500,
+          "agentId": "e1c12b59-3aff-5d6d-a7b3-6520c06925f8:sandbox-bugbash-v2:profile-tabs",
+          "windowId": "7990a9a2-42cc-493c-966a-2ee3439aecf6",
+          "artifactId": "dd6e706b-c4ed-42a2-9fec-ce32e1ef7d49"
+        }
+      },
+      "matchingGuidance": {
+        "relatedReference": {
+          "id": "gitea-project-search-drops-sort",
+          "distinction": "This entry is Sort dropping an existing project search because Keyword is omitted from template data. The related entry is submitting Search dropping the chosen sort because a hidden sort field is missing."
+        },
+        "scope": "Requires a completed project search followed by a sort action that clears q and restores unfiltered results. It is distinct from browser Back retaining an unapplied search draft, which has a rejected reference."
       }
     }
   ]

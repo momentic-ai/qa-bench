@@ -24,6 +24,7 @@ import { z } from "zod";
 import { Browser, EvalAgentDefinition } from "../../evals/agent";
 import { combinedCost } from "../../evals/browser-cost";
 import { writeJson } from "../../evals/json-file";
+import { BrowserTool, validateAgentBrowser } from "../agent-browser";
 import { CodexAgent } from "../codex/codex-agent";
 import { FindingsStore } from "../codex/findings-store";
 import { validateLocalChromium } from "../local-browser";
@@ -128,6 +129,7 @@ class MessageQueue implements AsyncIterable<SDKUserMessage> {
 }
 
 export class ClaudeAgent extends CodexAgent {
+  protected skillOwner = ".claude" as const;
   private session: Query | undefined;
   private reporting:
     | Awaited<ReturnType<typeof startReportingServer>>
@@ -172,9 +174,9 @@ export class ClaudeAgent extends CodexAgent {
       mkdir(this.codexHome, { recursive: true }),
     ]);
     const setup = await this.prepare();
+    const agentBrowser = this.browserTool === "agent-browser";
     const artifacts = path.join(this.context.runDirectory, "browser-artifacts");
     this.workspace = workspace;
-    this.readableRoots = [workspace, artifacts];
     const readable = {
       ":minimal": "read",
       ":workspace_roots": "read",
@@ -185,49 +187,53 @@ export class ClaudeAgent extends CodexAgent {
         : {}),
       [artifacts]: "read",
     };
-    this.shellSandbox = [
-      process.execPath,
-      this.command,
-      "sandbox",
-      "--permission-profile",
-      "eval",
-      "--cd",
-      workspace,
-      "-c",
-      `permissions.eval={filesystem={${Object.entries(readable)
-        .map(
-          ([file, permission]) =>
-            `${JSON.stringify(file)}=${JSON.stringify(permission)}`,
-        )
-        .join(",")}},network={enabled=false}}`,
-      "--",
-      "bash",
-      "-c",
-    ];
-    const playwright = PlaywrightServerSchema.parse(
-      setup.mcpServers.playwright,
-    );
-    this.browserProxy = new BrowserProxy({
-      command: playwright.command,
-      args: playwright.args,
-      env: {
-        PATH: process.env.PATH || "",
-        HOME: process.env.HOME || "",
-        ...playwright.env,
-      },
-      disabledTools: [DISABLED_BROWSER_TOOL],
-    });
-    const browserUrl = await this.browserProxy.start();
+    if (!agentBrowser) this.readableRoots = [workspace, artifacts];
+    if (!agentBrowser)
+      this.shellSandbox = [
+        process.execPath,
+        this.command,
+        "sandbox",
+        "--permission-profile",
+        "eval",
+        "--cd",
+        workspace,
+        "-c",
+        `permissions.eval={filesystem={${Object.entries(readable)
+          .map(
+            ([file, permission]) =>
+              `${JSON.stringify(file)}=${JSON.stringify(permission)}`,
+          )
+          .join(",")}},network={enabled=false}}`,
+        "--",
+        "bash",
+        "-c",
+      ];
+    if (!agentBrowser) {
+      const servers: Record<string, unknown> = setup.mcpServers;
+      const playwright = PlaywrightServerSchema.parse(servers.playwright);
+      this.browserProxy = new BrowserProxy({
+        command: playwright.command,
+        args: playwright.args,
+        env: {
+          PATH: process.env.PATH || "",
+          HOME: process.env.HOME || "",
+          ...playwright.env,
+        },
+        disabledTools: [DISABLED_BROWSER_TOOL],
+      });
+    }
+    const browserUrl = await this.browserProxy?.start();
     this.reporting = await startReportingServer(this.findings);
     signal.throwIfAborted();
     this.transcript = createWriteStream(
       path.join(this.context.reportDirectory, "transcript.jsonl"),
     );
     const tools = [
-      ...(setup.subagents ? ORCHESTRATION_TOOLS : []),
+      ...(setup.subagents === false ? [] : ORCHESTRATION_TOOLS),
       ...FILE_TOOLS,
       "Bash",
       "TodoWrite",
+      ...(agentBrowser ? ["Skill"] : []),
     ];
     this.session = query({
       prompt: this.input,
@@ -237,14 +243,22 @@ export class ClaudeAgent extends CodexAgent {
         model: "claude-opus-5-5",
         effort: "medium",
         systemPrompt: { type: "preset", preset: "claude_code" },
-        settingSources: [],
-        skills: [],
+        settingSources: agentBrowser ? ["project"] : [],
+        ...(agentBrowser ? {} : { skills: [] }),
         tools,
         allowedTools: [...tools, "mcp__playwright__*", "mcp__reporting__*"],
         disallowedTools: [`mcp__playwright__${DISABLED_BROWSER_TOOL}`],
         permissionMode: "dontAsk",
         mcpServers: {
-          playwright: { type: "http", url: browserUrl, timeout: 120_000 },
+          ...(browserUrl
+            ? {
+                playwright: {
+                  type: "http" as const,
+                  url: browserUrl,
+                  timeout: 120_000,
+                },
+              }
+            : {}),
           reporting: { type: "http", url: this.reporting.url },
         },
         hooks: {
@@ -262,7 +276,8 @@ export class ClaudeAgent extends CodexAgent {
           ],
         },
         env: {
-          PATH: process.env.PATH,
+          ...setup.env,
+          PATH: setup.env?.PATH ?? process.env.PATH,
           HOME: process.env.HOME,
           ANTHROPIC_API_KEY: process.env.ANTHROPIC_API_KEY,
           CLAUDE_CONFIG_DIR: configDirectory,
@@ -434,7 +449,7 @@ export class ClaudeAgent extends CodexAgent {
         "Send your findings to the parent; only the root agent accepts eval results.",
       );
     }
-    if (input.tool_name === "Bash") {
+    if (input.tool_name === "Bash" && this.shellSandbox.length) {
       const bash = BashInputSchema.parse(input.tool_input);
       return {
         hookSpecificOutput: {
@@ -449,7 +464,7 @@ export class ClaudeAgent extends CodexAgent {
         },
       };
     }
-    if (FILE_TOOLS.includes(input.tool_name)) {
+    if (FILE_TOOLS.includes(input.tool_name) && this.readableRoots.length) {
       const {
         file_path,
         path: searchPath,
@@ -511,15 +526,24 @@ export class ClaudeAgent extends CodexAgent {
   }
 }
 
-export function claudeAgent(browser: Browser): EvalAgentDefinition {
+export function claudeAgent(
+  browser: Browser,
+  browserTool: BrowserTool = "playwright-mcp",
+): EvalAgentDefinition {
   return {
-    name: "claude-playwright-mcp",
-    reportSubdirectory: "claude-playwright-mcp",
+    name: `claude-${browserTool}`,
+    reportSubdirectory: `claude-${browserTool}`,
     concurrency: browser === "local" ? 2 : Infinity,
-    config: { browser, subagents: browser !== "local" },
+    config: {
+      browser,
+      ...(browserTool === "playwright-mcp"
+        ? { subagents: browser !== "local" }
+        : {}),
+    },
     async validateEnvironment() {
       if (!process.env.ANTHROPIC_API_KEY)
         throw new Error("ANTHROPIC_API_KEY is required.");
+      if (browserTool === "agent-browser") await validateAgentBrowser();
       if (browser === "local") await validateLocalChromium();
       else if (!process.env.BROWSERBASE_API_KEY)
         throw new Error("BROWSERBASE_API_KEY is required.");
@@ -527,8 +551,8 @@ export function claudeAgent(browser: Browser): EvalAgentDefinition {
     },
     create(context) {
       return browser === "local"
-        ? new LocalClaudeAgent(context)
-        : new ClaudeAgent(context);
+        ? new LocalClaudeAgent(context, browserTool)
+        : new ClaudeAgent(context, browserTool);
     },
   };
 }

@@ -234,6 +234,78 @@
         "Compare the Entire order · % header pill with the 10% channel value."
       ],
       "reason": "Intended. The header pill labels the voucher's scope and discount type, not its amount: getVoucherTypePillLabel renders scope plus % or Fixed, and its unit test expects exactly Entire order · %. Percentages can differ by channel and are shown in the Discount section. The post-run reproducer reached the same conclusion."
+    },
+    {
+      "id": "saleor-vouchers-b08",
+      "name": "Saving zero minimum order value turns the requirement off",
+      "summary": "Saving zero minimum order value turns the requirement off.",
+      "expected": "Saving should be blocked while an 'Invalid minimum spend' error is present, or the zero amount should be handled with clear feedback.",
+      "actual": "Save completes successfully with a checkmark, but reloading the voucher shows the Minimal order value toggle switched off.",
+      "reproSteps": [
+        "Create a fresh unique REQ-QA voucher with Channel-PLN and a 10% entire-order discount.",
+        "Enable Minimal order value and save a positive amount such as 12.34 PLN.",
+        "Change the enabled amount to 0, blur, and click Save.",
+        "After Voucher updated, refresh and scroll to Minimum Requirements."
+      ],
+      "reason": "Works as intended: a minimum order value of 0 means no minimum, so the requirement shows as off after saving."
+    },
+    {
+      "id": "saleor-vouchers-b09",
+      "name": "Fixed amount bulk paste silently skips negative values and truncates precision",
+      "summary": "Fixed amount bulk paste silently skips negative values and truncates precision.",
+      "expected": "Invalid or truncated pasted values should be validated with clear user feedback rather than silently skipping a row or truncating precision without notice.",
+      "actual": "Channel-PLN remains unchanged at 31.25 while Channel-USD updates to 22.34 without any validation warning, and saving reports 'Voucher updated' with the values persisting on reload.",
+      "reproSteps": [
+        "Create a unique DISC-QA voucher with code and PLN/USD channels. Select Products and Fixed amount.",
+        "Save fixed amounts PLN 31.25 and USD 42.50.",
+        "Copy a two-line column containing -5 then 22.345, focus the PLN amount and paste.",
+        "Observe PLN remains 31.25 while USD becomes 22.34; click Save.",
+        "Observe Voucher updated and reopen the voucher; amounts remain 31.25 and 22.34."
+      ],
+      "reason": "Works as intended: bulk paste skips invalid cells such as negatives and limits amounts to the currency's decimal places, the same as typing."
+    },
+    {
+      "id": "saleor-vouchers-b01",
+      "name": "Products voucher saves without required eligible assignments",
+      "summary": "Products voucher saves without required eligible assignments.",
+      "expected": "Saving is blocked with validation feedback until at least one category, collection, product, or variant is assigned.",
+      "actual": "The voucher saves successfully with a 'Voucher updated' notification and updates the header badge to 'Products · %' with all assignment groups remaining empty.",
+      "reproSteps": [
+        "As the administrator, create a fresh ELIG-QA-* voucher with a manual code, both available channels and 10% discount for each channel; save.",
+        "Select Products under What the voucher discounts.",
+        "Leave categories, collections and products/variants unassigned and click Save."
+      ],
+      "reason": "Works as intended: the edit page deliberately lets a voucher be saved before setup is finished and tracks the missing catalogue as a pending \"Required to redeem\" step (\"Finish them now or come back later\"). An empty catalogue doesn't apply to any line items, so nothing is corrupted."
+    },
+    {
+      "id": "saleor-vouchers-b04",
+      "name": "Stale voucher discount save erases a newer saved name",
+      "summary": "Stale voucher discount save erases a newer saved name.",
+      "expected": "Saving a distinct discount field should preserve the newer saved voucher name, or show a conflict requiring resolution rather than silently losing the rename.",
+      "actual": "Save showed Voucher updated; after refresh the name had reverted to QA-MULTI-MAYA-0723-JORDAN and percentage was 23.",
+      "reproSteps": [
+        "As Maya staff, create a unique QA-MULTI voucher with one code, entire-order percentage discount and Channel-PLN assigned; save it.",
+        "Open its detail in tab A with name QA-MULTI-MAYA-0723-JORDAN and percentage 17.",
+        "Open the same voucher in tab B, rename to QA-MULTI-MAYA-0723-TAB2, save and refresh to confirm persistence.",
+        "Switch back to tab A without refreshing. Confirm it still shows the original name and 17%.",
+        "Change only Channel-PLN percentage to 23 and Save.",
+        "Refresh tab A and inspect saved name and percentage."
+      ],
+      "reason": "Works as intended: saving from a stale tab overwrites a newer concurrent edit, which is last-write-wins. Like Metabase's concurrent-edit labels, the app isn't expected to merge or detect conflicting saves."
+    },
+    {
+      "id": "saleor-vouchers-b15",
+      "name": "Clearing the only draft name still triggers an unsaved-changes warning",
+      "summary": "Clearing the only draft name still triggers an unsaved-changes warning.",
+      "expected": "After restoring the edited Voucher Name field to its initial blank state, clicking Back navigates back without an unsaved changes warning.",
+      "actual": "A 'Leave without saving changes?' confirmation dialog appears upon clicking Back.",
+      "reproSteps": [
+        "As administrator, open a fresh Create Voucher form with no prerequisites or settings edited.",
+        "Enter EDIT-newdraft-undo in Voucher Name.",
+        "Select all text in Voucher Name, press Backspace and blur the field.",
+        "Click Back in the bottom action bar."
+      ],
+      "reason": "Works as intended: the unsaved-changes warning tracks whether the form was edited, not whether it returns to its original values, so typing and clearing a name still warns."
     }
   ]
 }

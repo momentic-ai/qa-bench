@@ -332,6 +332,84 @@
           "distinction": "Same label row layout, but that entry is phone width; this entry is an organization's Settings > Labels at tablet width."
         }
       }
+    },
+    {
+      "id": "gitea-org-labels-accept-whitespace-names",
+      "name": "Organization labels accept whitespace-only names",
+      "summary": "On an organization's Settings > Labels page, a label name made only of spaces is accepted, creating (or renaming to) a label with no visible name. The empty name is blocked, but spaces aren't trimmed.",
+      "expected": "An organization label name made only of whitespace is rejected like an empty name.",
+      "actual": "Creating an organization label named with three spaces saved a nameless label chip, which persisted after reload; Edit Label reopened it with the spaces. Applied to an issue, it showed as a blank chip and a blank row in the Labels picker.",
+      "reproSteps": [
+        "Open an organization's Settings > Labels and click New Label.",
+        "Enter only spaces as the name, pick a color, and save.",
+        "Check the label list after a reload.",
+        "Optionally edit an existing organization label's name to only spaces and save."
+      ],
+      "severity": 1,
+      "matchingGuidance": {
+        "relatedReference": {
+          "name": "Labels accept whitespace-only names",
+          "distinction": "Same missing whitespace check, but that entry is a repository's Labels page; this entry is an organization's Settings > Labels page."
+        }
+      }
+    },
+    {
+      "id": "gitea-repo-label-edit-drops-sort",
+      "name": "Saving a repository label edit resets the selected list sorting",
+      "severity": 3,
+      "owningArea": "gitea/labels",
+      "summary": "Saving the label Edit dialog discards the selected list sort and returns to alphabetical ordering, even when issue counts did not change.",
+      "expected": "Saving a label edit preserves the selected list ordering, as reloading or canceling the same edit does.",
+      "actual": "With Most issues selected, the two-issue label appears first. Saving its rename or description edit navigates to the bare Labels URL, makes Alphabetically active and moves it to its alphabetical position. The label edit itself saves correctly.",
+      "reproSteps": [
+        "In a writable repository, create three disposable labels A, B and C. Assign B to one open issue and C to two open issues, leaving A unused.",
+        "On Labels, choose Sort → Most issues and confirm C appears before B and A.",
+        "Edit C, change its name or description, and click Save.",
+        "Observe that the URL loses its sort query and the list returns to alphabetical order.",
+        "As controls, reselect Most issues, reload, and open Edit then Cancel; confirm those operations retain the selected sort."
+      ],
+      "sourceReport": {
+        "sessionId": "5234e9b6-1175-5529-bd6c-8e02f39c4d52",
+        "webUrl": "https://app.momentic.ai/mo/sessions/5234e9b6-1175-5529-bd6c-8e02f39c4d52?tab=bug%3AEditing%20a%20label%20resets%20the%20selected%20issue-count%20sorting",
+        "recording": {
+          "startedAt": 1793215104365,
+          "finishedAt": 1793215128741,
+          "agentId": "5234e9b6-1175-5529-bd6c-8e02f39c4d52:sandbox-bugbash-v2:repo-crud",
+          "windowId": "e961b799-3862-4c05-a997-c29f5bca67eb",
+          "artifactId": "f3903e9c-979a-4166-b2ad-978ca3c7616e"
+        }
+      },
+      "matchingGuidance": {
+        "relatedReference": {
+          "id": "gitea-milestone-close-reopen-drops-search",
+          "distinction": "The milestone reference covers status actions dropping a searched/sorted milestone view. This entry covers saving an edit from the repository Labels list and losing its selected sort; the handlers and feature differ."
+        },
+        "scope": "Covers repository Labels list sort loss after Edit → Save, including rename, description-only and unchanged-value saves. The edit succeeds and issue counts remain correct. Organization label creation and other list actions are separately reported variants; do not assume they are required for this reference."
+      },
+      "reviewEvidence": {
+        "basis": "Explicit user acceptance as related coverage at the proposed severity 3. Claude recommended acceptance at severity 3; Codex independently accepted but scored the observed ordering reset severity 1. The human-approved severity is retained.",
+        "userAccepted": true,
+        "sourceRevision": "99053ce4fa2b45f1bca5837418c0c57f793ca824",
+        "severityReason": "User accepted severity 3 for losing selected list state after Save, following the existing milestone view-state precedent. Codex rated the same observed impact severity 1; label editing and issue counts remain correct.",
+        "analysis": [
+          "Both reviewers reproduced repeatedly on fresh repository labels with different issue counts. Reload and Edit → Cancel preserved sorting; selecting Most issues again restored the correct order.",
+          "The label dialog builds its form action from a path-only current-page link. UpdateLabel saves the edit, then redirects to the bare Labels URL without sorting context; the next list request defaults to alphabetical order.",
+          "Claude also browser-checked organization-label and New/Delete variants. Codex tested repository New/Delete, other sort choices, contributor access and mobile width. Those extra triggers are not necessary to reproduce this entry.",
+          "Latest source retains the query-free redirect, but latest runtime was not tested. Post-edit sort retention is an inferred UI consistency contract supported by controls and accepted precedent."
+        ],
+        "sourceReferences": [
+          "https://github.com/go-gitea/gitea/blob/99053ce4fa2b45f1bca5837418c0c57f793ca824/templates/repo/issue/labels/label_edit_modal.tmpl#L2",
+          "https://github.com/go-gitea/gitea/blob/99053ce4fa2b45f1bca5837418c0c57f793ca824/web_src/js/features/comp/LabelEdit.ts#L63-L73",
+          "https://github.com/go-gitea/gitea/blob/99053ce4fa2b45f1bca5837418c0c57f793ca824/routers/web/repo/issue_label.go#L129-L152",
+          "https://github.com/go-gitea/gitea/blob/99053ce4fa2b45f1bca5837418c0c57f793ca824/models/issues/label.go#L393-L408",
+          "https://github.com/go-gitea/gitea/blob/965d7522e0b3d323ea2da6615e7d4b39684d16e5/routers/web/repo/issue_label.go#L137-L162"
+        ],
+        "limitations": [
+          "No explicit maintainer requirement for retaining the post-edit sort was established.",
+          "Reviewers agree on acceptance but disagree on severity: Claude 3, Codex 1. User accepted the proposed 3.",
+          "Latest runtime was not tested."
+        ]
+      }
     }
   ]
 }

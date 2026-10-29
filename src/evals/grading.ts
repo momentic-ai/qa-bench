@@ -41,6 +41,16 @@ const RUNNERS: Record<Agent, BenchmarkAgent> = {
   mo: moRunner,
   "codex-playwright-mcp": codexRunner,
   "claude-playwright-mcp": claudeRunner,
+  "codex-agent-browser": {
+    ...codexRunner,
+    name: "codex-agent-browser",
+    reportDirectory: "codex-agent-browser",
+  },
+  "claude-agent-browser": {
+    ...claudeRunner,
+    name: "claude-agent-browser",
+    reportDirectory: "claude-agent-browser",
+  },
 };
 
 export async function gradeFixture(

@@ -24,6 +24,8 @@ export async function runFullAppEval(options: FullAppOptions): Promise<void> {
         mo: moAgent,
         "codex-playwright-mcp": codexAgent(options.browser),
         "claude-playwright-mcp": claudeAgent(options.browser),
+        "codex-agent-browser": codexAgent(options.browser, "agent-browser"),
+        "claude-agent-browser": claudeAgent(options.browser, "agent-browser"),
       }[agent],
       options,
       runId,

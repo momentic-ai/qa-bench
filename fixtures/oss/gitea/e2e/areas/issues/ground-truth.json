@@ -767,6 +767,285 @@
           "distinction": "Same cause (due-date updates never reindex the issue), but that entry is changing an existing due date; this entry is due dates first set on new issues, which sort as if they had none."
         }
       }
+    },
+    {
+      "id": "gitea-repo-issues-assigned-to-you-search-omits-issue",
+      "name": "Repository Issues 'Assigned to you' with a search hides a matching assigned issue",
+      "summary": "On a repository's Issues list, choosing Type → Assigned to you while a text search is active shows No results, even though an issue assigned to you matches the search. The search index doesn't store current assignees.",
+      "expected": "An issue assigned to you that matches the search stays listed when the repository Issues list is filtered to Assigned to you.",
+      "actual": "With a search matching an issue assigned to the signed-in user, choosing Assigned to you showed No results with 0 Open and 0 Closed. Without the search, or with All issues and the same search, the issue was listed.",
+      "reproSteps": [
+        "In a repository, create an issue and assign it to yourself.",
+        "On the repository's Issues list, search for a word from its title and confirm it's listed.",
+        "Choose Type → Assigned to you.",
+        "Check whether the issue is still listed."
+      ],
+      "severity": 3,
+      "matchingGuidance": {
+        "relatedReference": {
+          "name": "Repository issue search with an Assignee filter omits a matching assigned issue",
+          "distinction": "Same cause (the search index doesn't store current assignees) on the same page, but that entry is the Assignee dropdown; this entry is the Type → Assigned to you control."
+        }
+      }
+    },
+    {
+      "id": "gitea-stale-comment-editor-deletes-new-attachment",
+      "name": "Saving a stale comment editor deletes attachments added in another tab",
+      "summary": "If an attachment is added to a comment and saved in one tab, then a comment editor opened earlier in another tab is saved (for example after removing an original attachment, or with only a text change), the newer attachment is deleted from the comment and from storage without any warning. Text-only conflicts are detected, but attachment-only changes don't update the comment's version.",
+      "expected": "Saving a comment editor that's out of date warns that the comment changed, as it does for text changes, and doesn't delete attachments it never showed.",
+      "actual": "After tab A added and saved a file to a comment, saving the stale editor in tab B left the comment with none of the newer attachments, showed no warning, and the newer file's download link returned 404.",
+      "reproSteps": [
+        "Post a comment with one attachment, then open its Edit form in two tabs.",
+        "In tab A, add a second file and save.",
+        "In tab B, remove the original attachment (or change only the text) and save.",
+        "Reload and check the comment's attachments and the second file's download link."
+      ],
+      "severity": 3
+    },
+    {
+      "id": "gitea-reenabling-issues-resets-issue-settings",
+      "name": "Re-enabling the issue tracker silently turns time tracking and dependencies back on",
+      "summary": "Turning a repository's issue tracker off and back on in Settings doesn't restore its previous options: Enable Time Tracking and Enable Dependencies come back checked even if they were saved unchecked. The settings page greys these options out, rather than hiding them, while the feature is off, which tells the user they'll be kept and simply inactive; saving actually deletes them.",
+      "expected": "Re-enabling the issue tracker keeps the previously saved time tracking and dependency settings, as the greyed-out options shown while the tracker is disabled suggest.",
+      "actual": "With Enable Time Tracking and Enable Dependencies saved unchecked, disabling the issue tracker and saving, then re-enabling it and saving without touching the options, left both options checked. The Time Tracker appeared on issues again.",
+      "reproSteps": [
+        "In a repository's Settings > Advanced Settings, uncheck Enable Time Tracking and Enable Dependencies For Issues and Pull Requests, and save.",
+        "Uncheck Enable Repository Issue Tracker (the issue options are greyed out, not removed) and save.",
+        "Check Enable Repository Issue Tracker again and save without changing the issue options.",
+        "Reload Settings and check the time tracking and dependency options."
+      ],
+      "severity": 3,
+      "matchingGuidance": {
+        "relatedReference": {
+          "name": "Re-enabling pull requests silently turns on branch deletion and changes merge defaults",
+          "distinction": "Same cause (saving with the feature off deletes its settings while the page only greys them out), but that entry is the pull request merge settings; this entry is the issue tracker's time tracking and dependency options."
+        }
+      }
+    },
+    {
+      "id": "gitea-dependency-timeline-leaks-private-issue",
+      "name": "Dependency timeline events reveal a private issue's title to users who can't access it",
+      "summary": "When an issue in a repository is linked as depending on (or blocking) an issue in a private repository, the issue's timeline shows the private repository's name and the private issue's title to every reader, including users with no access to the private repository. The sidebar on the same page correctly hides the dependency, and the API timeline also returns the private issue.",
+      "expected": "Readers who can't access the private repository don't see its name or the private issue's title in the timeline, as the sidebar already hides the dependency from them.",
+      "actual": "Viewing the public issue as a user without access to the private repository, the sidebar said \"You do not have permission to read 1 dependency\", but the timeline's \"added a new dependency\" event showed the private repository name and issue title, linking to a 404. The API timeline returned the private issue, including its body.",
+      "reproSteps": [
+        "As a user with access to both, create an issue in a private repository and an issue in a public repository.",
+        "On the public issue, add the private issue as a dependency.",
+        "Sign in as a user who can read the public repository but not the private one, and open the public issue.",
+        "Compare the sidebar's Dependencies section with the dependency event in the timeline."
+      ],
+      "severity": 3
+    },
+    {
+      "id": "gitea-running-timer-unstoppable-after-time-tracking-disabled",
+      "name": "A running timer can't be stopped after time tracking is disabled for its repository",
+      "summary": "If time tracking is disabled in a repository's settings while a user's timer is running on one of its issues, the header still shows the active timer, but Stop and Discard fail with \"Network error SyntaxError: … 'Not found.' is not valid JSON\", and the timer can never be stopped.",
+      "expected": "After time tracking is disabled, a running timer can still be stopped or discarded, or it's stopped automatically, with no raw error.",
+      "actual": "The active timer stayed in the header. Clicking Stop Timer (or Discard) showed a red network error that \"Not found.\" isn't valid JSON, and the timer kept running.",
+      "reproSteps": [
+        "In a repository with time tracking enabled, start a timer on an issue.",
+        "In the repository's settings, disable time tracking and save.",
+        "Open the active timer from the header and click Stop Timer.",
+        "Check the message and whether the timer stopped."
+      ],
+      "severity": 3
+    },
+    {
+      "id": "gitea-stale-time-log-delete-500",
+      "name": "Deleting an already-deleted time log from a stale tab shows a server error",
+      "summary": "If a time log on an issue is deleted in one tab, clicking delete on the same log in another tab that hasn't been reloaded shows a red \"server error: 500\" instead of saying the entry no longer exists.",
+      "expected": "Deleting a time log that was already deleted shows that it no longer exists, or simply refreshes the list, without a server error.",
+      "actual": "The second deletion showed a red \"server error: 500\" banner and the stale tab kept showing the deleted log and old total.",
+      "reproSteps": [
+        "Add a manual time entry to an issue.",
+        "Open the issue in two tabs.",
+        "Delete the time entry in the first tab.",
+        "Without reloading, delete the same entry in the second tab."
+      ],
+      "severity": 3
+    },
+    {
+      "id": "gitea-issue-body-edit-duplicates-image-thumbnail",
+      "name": "Saving an inline issue edit adds a duplicate thumbnail for an embedded image",
+      "summary": "When an issue body (or comment) already embeds one of its attached images, saving an inline edit adds a second thumbnail of that image below the attachment list until the page is reloaded.",
+      "expected": "After saving an inline edit, an image that's already shown in the body isn't repeated below the attachments, as on a full page load.",
+      "actual": "After saving the edit, a second small copy of the image appeared below the attachment rows; reloading the page removed it.",
+      "reproSteps": [
+        "Create an issue with an image attachment and embed that image in the body using its link.",
+        "Use the body's menu > Edit and click Save without other changes.",
+        "Look below the attachment list, then reload and compare."
+      ],
+      "severity": 1
+    },
+    {
+      "id": "gitea-empty-inline-issue-title-no-validation-feedback",
+      "name": "Saving an empty issue title closes the editor without validation feedback",
+      "severity": 1,
+      "owningArea": "gitea/issues",
+      "summary": "Clearing an existing issue title and clicking Save closes the editor and restores the saved title without explaining that the empty value was not saved.",
+      "expected": "An empty or whitespace-only title edit shows visible validation feedback so the user can correct it. Keeping the existing required title is valid; silently ignoring the attempted edit is the defect.",
+      "actual": "Save sends no title update request, reloads the page and restores the previous title without a toast, inline message or browser validation warning. A valid nonempty replacement saves and records a title-change event.",
+      "reproSteps": [
+        "Create a disposable issue with a nonempty title in a writable repository.",
+        "Open the issue and click Edit beside its title.",
+        "Clear the title completely and click Save.",
+        "Observe that the editor closes and the original title returns without validation feedback.",
+        "As a control, enter a valid nonempty replacement and save; confirm the heading changes."
+      ],
+      "sourceReport": {
+        "sessionId": "618c98cb-51c1-5897-9f68-369bcd12e205",
+        "webUrl": "https://app.momentic.ai/mo/sessions/618c98cb-51c1-5897-9f68-369bcd12e205?tab=bug%3AEmpty%20title%20edit%20exits%20without%20validation%20feedback",
+        "recording": {
+          "startedAt": 1793224438098,
+          "finishedAt": 1793224467500,
+          "agentId": "618c98cb-51c1-5897-9f68-369bcd12e205:sandbox-bugbash-v2:create-edit",
+          "windowId": "b88af789-f93b-4c7d-821d-925725ad6a35",
+          "artifactId": "06189c71-8451-405b-9b08-0983b42e579f"
+        }
+      },
+      "matchingGuidance": {
+        "scope": "Covers missing validation feedback after Save of an empty or whitespace-only inline issue title. Do not require an empty title to be saved, and do not describe the preserved original title as lost data.",
+        "distinction": "Cancel followed by reopening a stale title draft and WIP-prefix removal failing to leave draft have separate triggers."
+      },
+      "reviewEvidence": {
+        "basis": "Explicit user approval after reviewing the report, independent Codex and Claude recommendations, and coordinator-checked source. Both agents recommended rejection; the user overrode their contract judgment because missing visible feedback counts as a bug.",
+        "userAccepted": true,
+        "sourceRevision": "99053ce4fa2b45f1bca5837418c0c57f793ca824",
+        "severityReason": "Severity 1: missing validation feedback; valid title changes work and the saved original remains intact.",
+        "analysis": [
+          "Claude reproduced empty-title Save twice on fresh issues, tested whitespace input, and confirmed a valid nonempty rename saves with a timeline event.",
+          "Codex reviewed source and stopped at its bug bar without independent browser reproduction.",
+          "The inline input is not required; the client skips empty updates then reloads. The server also treats an empty title as a no-op. These guards explain the behavior but do not establish that silent feedback is acceptable.",
+          "Latest inspected source retains the nonempty guard; latest runtime was not tested."
+        ],
+        "sourceReferences": [
+          "https://github.com/go-gitea/gitea/blob/99053ce4fa2b45f1bca5837418c0c57f793ca824/templates/repo/issue/view_title.tmpl#L29-L40",
+          "https://github.com/go-gitea/gitea/blob/99053ce4fa2b45f1bca5837418c0c57f793ca824/web_src/js/features/repo-issue.ts#L469-L490",
+          "https://github.com/go-gitea/gitea/blob/99053ce4fa2b45f1bca5837418c0c57f793ca824/routers/web/repo/issue.go#L292-L295",
+          "https://github.com/go-gitea/gitea/blob/965d7522e0b3d323ea2da6615e7d4b39684d16e5/web_src/js/features/repo-issue.ts#L410-L431"
+        ],
+        "limitations": [
+          "No maintainer statement establishing the intended validation feedback was found.",
+          "Pull-request title behavior and other roles were not independently browser-tested."
+        ]
+      }
+    },
+    {
+      "id": "gitea-comment-after-deletion-raw-json-error",
+      "name": "Commenting on a deleted issue shows a raw JSON SyntaxError",
+      "severity": 1,
+      "owningArea": "gitea/issues",
+      "summary": "Submitting a comment from an issue tab left open before deletion shows an internal JSON parsing exception mislabeled as a network error rather than explaining that the issue no longer exists.",
+      "expected": "Reject a comment on a deleted issue with readable feedback explaining that the issue is unavailable, preserving the draft.",
+      "actual": "The server returns HTTP 404 with plain text Not found. The frontend parses it as JSON and displays a red Network error SyntaxError banner. The stale issue and comment draft remain visible; no comment is saved, and the Issues link still works.",
+      "reproSteps": [
+        "Create a disposable issue in a writable repository and open it in two tabs.",
+        "In the second tab, enter a comment without submitting it.",
+        "In the first tab, delete the issue and confirm it is gone.",
+        "Return to the stale second tab and click Comment.",
+        "Observe the raw JSON SyntaxError instead of a readable missing-issue explanation.",
+        "As a control, submit a comment on a live disposable issue and confirm it succeeds."
+      ],
+      "sourceReport": {
+        "sessionId": "ca104d0f-f1a6-52e9-8514-ed22cc9348a0",
+        "webUrl": "https://app.momentic.ai/mo/sessions/ca104d0f-f1a6-52e9-8514-ed22cc9348a0?tab=bug%3ACommenting%20on%20a%20deleted%20issue%20displays%20a%20JSON%20parsing%20error",
+        "recording": {
+          "startedAt": 1793214978460,
+          "finishedAt": 1793215045174,
+          "agentId": "ca104d0f-f1a6-52e9-8514-ed22cc9348a0:sandbox-bugbash-v2:time-tracking",
+          "windowId": "887babba-9c16-4495-ba7d-e7d24656d02a",
+          "artifactId": "fe913991-eac8-42ec-953d-809fe5bedd80"
+        }
+      },
+      "matchingGuidance": {
+        "relatedReference": {
+          "id": "gitea-comment-after-lock-raw-json-error",
+          "distinction": "The existing reference covers a stale comment after the issue is locked. This entry covers a stale comment after the issue is deleted; both expose a parsing error in the shared comment form error handler."
+        },
+        "scope": "Covers the raw error feedback after submitting Comment or Close with Comment on an already-deleted issue. Rejection and retained draft are expected; no lost draft, persisted comment, issue restoration or navigation dead end is claimed. Add Time on a deleted issue is a separate unverified entry point."
+      },
+      "reviewEvidence": {
+        "basis": "Explicit user approval as a related entry after both subscription-authenticated reviewers independently reproduced the comment failure and recommended acceptance at severity 1; coordinator checked the shared parser and missing-issue source path.",
+        "userAccepted": true,
+        "sourceRevision": "99053ce4fa2b45f1bca5837418c0c57f793ca824",
+        "severityReason": "Severity 1: incorrect technical error feedback; comment rejection, draft preservation and navigation work.",
+        "analysis": [
+          "Codex reproduced on two fresh owner issues and a separate contributor session, with passing live-comment controls and a mobile variation.",
+          "Claude reproduced on three fresh issues using Comment, Close with Comment and a separate contributor session; a live-comment control succeeded.",
+          "The comment form uses the shared fetch-action handler, which unconditionally parses non-JSON 4xx responses as JSON and labels the parsing exception a Network error. The deleted issue lookup produces a plain-text 404.",
+          "Latest source checks Content-Type before parsing. Its missing-issue lookup also changed to ServerError; the exact latest response and runtime behavior were not tested."
+        ],
+        "sourceReferences": [
+          "https://github.com/go-gitea/gitea/blob/99053ce4fa2b45f1bca5837418c0c57f793ca824/templates/repo/issue/view_content.tmpl#L82",
+          "https://github.com/go-gitea/gitea/blob/99053ce4fa2b45f1bca5837418c0c57f793ca824/web_src/js/features/common-fetch-action.ts#L25-L56",
+          "https://github.com/go-gitea/gitea/blob/99053ce4fa2b45f1bca5837418c0c57f793ca824/routers/web/repo/issue.go#L184-L188",
+          "https://github.com/go-gitea/gitea/blob/99053ce4fa2b45f1bca5837418c0c57f793ca824/services/context/context_response.go#L129-L149",
+          "https://github.com/go-gitea/gitea/blob/965d7522e0b3d323ea2da6615e7d4b39684d16e5/web_src/js/modules/fetch-action.ts#L122-L137"
+        ],
+        "limitations": [
+          "Latest runtime and a specific upstream fixing commit were not verified.",
+          "The related Add Time report was not independently reproduced and is excluded from this entry."
+        ]
+      }
+    },
+    {
+      "id": "gitea-repo-issues-any-assignee-search-omits-issue",
+      "name": "Repository issue search with Assigned to anybody hides matching assigned issues",
+      "severity": 3,
+      "owningArea": "gitea/issues",
+      "summary": "Combining a matching text search with Assignee → Assigned to anybody on a repository Issues list hides assigned issues and shows zero Open and Closed counts. Bulk assignment succeeds; the search index uses an unpopulated legacy assignee field.",
+      "expected": "Matching issues with at least one assignee remain listed when text search is combined with Assigned to anybody.",
+      "actual": "The search alone lists the assigned issue, and Assigned to anybody without search lists it. Combining the two shows No results and zero counts despite the assignment remaining visible on the issue. The failure persists after reload and also affects assignments made from the issue sidebar.",
+      "reproSteps": [
+        "Create two disposable issues sharing a unique searchable title prefix, with no milestone.",
+        "Assign one issue to a contributor, using its sidebar or the list bulk-assignment action.",
+        "Search for their shared title prefix on the repository Issues list and confirm both issues appear.",
+        "Choose Assignee → Assigned to anybody and observe the assigned issue disappears, with No results and zero Open/Closed counts.",
+        "Remove the text search while retaining Assigned to anybody and confirm the assigned issue appears."
+      ],
+      "sourceReport": {
+        "sessionId": "ca104d0f-f1a6-52e9-8514-ed22cc9348a0",
+        "webUrl": "https://app.momentic.ai/mo/sessions/ca104d0f-f1a6-52e9-8514-ed22cc9348a0?tab=bug%3AAssigned%20to%20anybody%20filter%20hides%20an%20assigned%20issue",
+        "recording": {
+          "startedAt": 1793215281419,
+          "finishedAt": 1793215301206,
+          "agentId": "ca104d0f-f1a6-52e9-8514-ed22cc9348a0:sandbox-bugbash-v2:bulk",
+          "windowId": "b3bf52c7-1267-4448-8f65-e8af38595ac0",
+          "artifactId": "63582293-ecd9-4401-a94f-488b20feecf8"
+        }
+      },
+      "matchingGuidance": {
+        "relatedReference": {
+          "id": "mo-12m-gitea-issues-6",
+          "distinction": "The existing entry covers selecting a specific named user in the repository Assignee dropdown. This entry covers its Assigned to anybody option. Type → Assigned to you and organization/global dashboards have separate related references."
+        },
+        "scope": "Require a matching text search together with Assigned to anybody. Assignment itself succeeds, and filtering without a keyword works. Do not infer that bulk assignment failed or that every dashboard/API variant was browser-tested."
+      },
+      "reviewEvidence": {
+        "basis": "User explicitly approved related severity-3 coverage. Codex and Claude independently reproduced on fresh issues and both recommended acceptance at severity 3. Coordinator verified the index conversion, filtering code and upstream fix.",
+        "userAccepted": true,
+        "sourceRevision": "99053ce4fa2b45f1bca5837418c0c57f793ca824",
+        "severityReason": "Severity 3: supported search/filter combinations return incorrect empty results and counts. No assignment data loss was observed.",
+        "analysis": [
+          "Both reviewers reproduced on two fresh issue sets with bulk and sidebar assignments, and confirmed search-only and filter-only controls work. Codex additionally checked a separate contributor session and desktop/mobile widths.",
+          "The indexer reads Issue.AssigneeID, a nonpersisted legacy field, rather than the loaded Assignees collection. Non-DB index backends therefore filter against the wrong assignee data.",
+          "The normal database assignment filter queries issue_assignees directly, explaining why filtering without text search works.",
+          "Upstream commit a4781dde89ee9cc2e5af73a2c4d2f4d32cda0aee explicitly fixes specific, any-assignee and no-assignee filters by indexing actual assignee IDs. Its patch and rationale were verified through the upstream commit API."
+        ],
+        "sourceReferences": [
+          "https://github.com/go-gitea/gitea/blob/99053ce4fa2b45f1bca5837418c0c57f793ca824/modules/indexer/issues/util.go#L100-L125",
+          "https://github.com/go-gitea/gitea/blob/99053ce4fa2b45f1bca5837418c0c57f793ca824/models/issues/issue.go#L89-L91",
+          "https://github.com/go-gitea/gitea/blob/99053ce4fa2b45f1bca5837418c0c57f793ca824/models/issues/assignees.go#L28-L50",
+          "https://github.com/go-gitea/gitea/blob/99053ce4fa2b45f1bca5837418c0c57f793ca824/modules/indexer/issues/bleve/bleve.go#L257-L264",
+          "https://github.com/go-gitea/gitea/blob/99053ce4fa2b45f1bca5837418c0c57f793ca824/models/issues/issue_search.go#L374-L383",
+          "https://github.com/go-gitea/gitea/commit/a4781dde89ee9cc2e5af73a2c4d2f4d32cda0aee"
+        ],
+        "limitations": [
+          "Latest runtime was not tested.",
+          "The exact deployed non-DB search backend was not independently established; the defective conversion is shared by the inspected non-DB backends.",
+          "Additional shared API, pull-request and milestone entry points are excluded from this entry unless independently reported."
+        ]
+      }
     }
   ]
 }
