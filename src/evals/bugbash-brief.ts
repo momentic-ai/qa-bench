@@ -67,11 +67,11 @@ Report only verified bugs. If you verify no bugs, report no bugs.
 
 ${SHARED_QA_OBLIGATIONS}
 
-${CONCURRENCY_GUIDANCE}
-
 ${EVIDENCE_RESTRICTIONS}
 
-${timeLimitMs ? `The evaluation has a ${timeLimitMs / 60_000}-minute elapsed time limit.\n\n` : ""}${fixtureAuthentication(fixture)}${browserTool ? `\n\nUse ${browserTool}.` : ""}`;
+${timeLimitMs ? `The evaluation has a ${timeLimitMs / 60_000}-minute elapsed time limit.\n\n` : ""}${fixtureAuthentication(fixture)}
+
+${CONCURRENCY_GUIDANCE}${browserTool ? `\n\nUse ${browserTool}.` : ""}`;
 }
 
 export function fixtureAccounts(fixture: Fixture): FixtureAccount[] {
