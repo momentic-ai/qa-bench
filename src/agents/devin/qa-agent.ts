@@ -10,7 +10,7 @@ import {
 } from "../../evals/agent";
 import { writeJson } from "../../evals/json-file";
 import { ReportSchema } from "../../evals/reports";
-import { DevinQaClient } from "./qa-client";
+import { DevinApiError, DevinQaClient } from "./qa-client";
 import {
   fixtureHostnames,
   prepareSecurityProfile,
@@ -55,7 +55,8 @@ export class DevinQaAgent implements EvalAgent {
   private session: z.infer<typeof SessionSchema> | undefined;
   private readonly client: DevinQaClient;
   private report: z.infer<typeof ReportSchema> | undefined;
-  private terminated = false;
+  private stopping = false;
+  private termination: Promise<void> | undefined;
   private launch: Promise<void> | undefined;
 
   constructor(
@@ -140,7 +141,7 @@ Before testing, initialize provide_structured_output with empty bugs, areasExplo
   }
 
   async send(message: string, signal: AbortSignal) {
-    if (!this.session || this.terminated)
+    if (!this.session || this.stopping)
       throw new Error("Devin QA session is not active.");
     await this.client.request(
       `sessions/${encodeURIComponent(this.session.session_id)}/messages`,
@@ -153,7 +154,7 @@ Before testing, initialize provide_structured_output with empty bugs, areasExplo
   }
 
   private async observe(signal: AbortSignal) {
-    while (!this.terminated) {
+    while (!this.stopping) {
       signal.throwIfAborted();
       await this.refresh(signal);
       if (
@@ -202,15 +203,39 @@ Before testing, initialize provide_structured_output with empty bugs, areasExplo
   }
 
   async terminate() {
+    const termination = this.termination ?? this.stopSession();
+    this.termination = termination;
+    try {
+      await termination;
+    } catch (error) {
+      if (this.termination === termination) this.termination = undefined;
+      throw error;
+    }
+  }
+
+  private async stopSession() {
     // A cutoff during launch must still reap the session once its ID arrives.
     await this.launch?.catch(() => undefined);
-    if (!this.session || this.terminated) return;
-    this.terminated = true;
-    // Stop first, even if exporting the last report fails. Do not resume this disposable VM.
-    await this.client.request(
-      `sessions/${encodeURIComponent(this.session.session_id)}`,
-      { method: "DELETE" },
-    );
+    if (!this.session) return;
+    this.stopping = true;
+    // DELETE is replay-safe; retry transient failures without resuming paid work.
+    for (let attempt = 0; ; attempt++) {
+      try {
+        await this.client.request(
+          `sessions/${encodeURIComponent(this.session.session_id)}`,
+          { method: "DELETE" },
+        );
+        break;
+      } catch (error) {
+        const transient =
+          error instanceof TypeError ||
+          (error instanceof DOMException && error.name === "TimeoutError") ||
+          (error instanceof DevinApiError &&
+            (error.status === 429 || error.status >= 500));
+        if (!transient || attempt === 2) throw error;
+        await delay(1000 * (attempt + 1));
+      }
+    }
     const stopped = AbortSignal.timeout(120_000);
     while (true) {
       await this.refresh(stopped);

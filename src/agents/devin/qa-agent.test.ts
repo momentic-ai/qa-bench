@@ -8,10 +8,10 @@ import { z } from "zod";
 import { basicBugbashBrief } from "../../evals/basic-brief";
 import { Fixture } from "../../evals/types";
 import { DevinQaAgent } from "./qa-agent";
-import { DevinQaClient } from "./qa-client";
+import { DevinApiError, DevinQaClient } from "./qa-client";
 import { profileRequest } from "./qa-security";
 
-it("waits for nullable launch metadata and asynchronous shutdown, preserving the original task and report", async () => {
+it("handles nullable launch metadata, retryable cleanup failures and asynchronous shutdown", async () => {
   const directory = await mkdtemp(path.join(os.tmpdir(), "devin-lifecycle-"));
   const url = new URL("https://3000-test.e2b.app");
   const report = {
@@ -33,6 +33,7 @@ it("waits for nullable launch metadata and asynchronous shutdown, preserving the
     reads = 0;
     stopReads = 0;
     deletes = 0;
+    failures = 3;
 
     constructor() {
       super("organization", "test-token");
@@ -64,6 +65,7 @@ it("waits for nullable launch metadata and asynchronous shutdown, preserving the
       assert.equal(endpoint, "sessions/session");
       if (options.method === "DELETE") {
         this.deletes++;
+        if (this.failures-- > 0) throw new DevinApiError(503, endpoint);
         return session;
       }
       if (this.deletes)
@@ -111,13 +113,18 @@ it("waits for nullable launch metadata and asynchronous shutdown, preserving the
       () => Date.now() + 1_800_000,
     );
     await execution.completion;
+    await assert.rejects(
+      agent.terminate(),
+      (error) => error instanceof DevinApiError && error.status === 503,
+    );
+    assert.equal(client.deletes, 3);
     await agent.terminate();
     assert.deepEqual(await agent.collectResults(signal), {
       bugCount: 0,
       costUsd: null,
       sessionId: "session",
     });
-    assert.equal(client.deletes, 1);
+    assert.equal(client.deletes, 4);
     assert.equal(client.stopReads, 2);
     assert.match(client.prompt, /Use Devin native browser/);
     assert.doesNotMatch(client.prompt, /Playwright MCP/);
