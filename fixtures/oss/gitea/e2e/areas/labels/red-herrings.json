@@ -1,0 +1,279 @@
+[
+  {
+    "id": "scrollable-content-mistaken-for-missing-data",
+    "explanation": "Content outside the initially visible portion of a scrollable menu, panel or narrow input is assumed absent, incorrect or unusable. In the reviewed cases scrolling or copying reveals the complete value and the control works. This does not cover essential content that remains inaccessible through normal supported interaction.",
+    "verificationGuidance": [
+      "Inspect the full scroll container and input value, including content above or beyond the initial viewport.",
+      "Use normal scrolling, text navigation or copying to verify the complete value and the selectable control.",
+      "Retest the actual task after revealing the content; preserve a claim if normal access still fails."
+    ],
+    "instances": [
+      {
+        "source": "known-invalid.json",
+        "index": 0,
+        "report": {
+          "id": "gitea-label-template-dropdown-mobile-scroll",
+          "name": "Label template dropdown partially obscures Advanced option text behind the selection control",
+          "summary": "The report claims the empty Labels page's label-set dropdown renders the Advanced option underneath the selection control on mobile, leaving only its trailing text visible.",
+          "expected": "The reporter expects both label sets to be fully visible when the dropdown opens.",
+          "actual": "At phone width the menu opens showing only the end of the Advanced option above the selected Default option.",
+          "reproSteps": [
+            "Open the Labels page of an organization or repository that has no labels, at a 390px-wide viewport.",
+            "Open the label-set dropdown and observe only the end of the Advanced option is visible at the top."
+          ],
+          "reason": "Intended dropdown behavior, not overlap: on mobile the menu is a short scrollable box (Fomantic caps its height at small widths) that opens scrolled to the selected Default option. Advanced sits above the visible area, scrolling up shows it in full, and it can be selected. Both options are fully visible on desktop."
+        }
+      }
+    ]
+  },
+  {
+    "id": "dependent-setting-expected-without-prerequisite",
+    "explanation": "Expecting a dependent option to remain enabled after the final saved value deliberately removes its prerequisite. For example, exclusivity limited to scoped labels need not survive a final unscoped name; losing it while the final name still satisfies the prerequisite is a separate case.",
+    "verificationGuidance": [
+      "Check the prerequisite against the final saved value, not only a transient editing state.",
+      "Test a final valid dependent configuration separately from a final value that intentionally disables the option."
+    ],
+    "instances": [
+      {
+        "source": "known-invalid.json",
+        "index": 1,
+        "report": {
+          "id": "gitea-exclusive-cleared-when-renamed-unscoped",
+          "name": "Renaming an exclusive label to a name without a scope clears Exclusive (repository labels)",
+          "summary": "The report claims that renaming an exclusive label such as 'x/y' to a plain name such as 'z' wrongly removes its Exclusive setting. This entry is a repository's Labels page.",
+          "expected": "The reporter expects the label to stay exclusive after being renamed to 'z'.",
+          "actual": "After renaming 'x/y' to 'z' and saving, the label is no longer exclusive and the Exclusive checkbox is disabled.",
+          "reproSteps": [
+            "On a repository's Labels page: edit an exclusive label named 'x/y'.",
+            "Replace the whole name with 'z' and save.",
+            "Reopen the label and observe Exclusive is unchecked."
+          ],
+          "reason": "Intended: only scoped labels (names with a 'scope/' prefix) can be exclusive, so the dialog disables and clears Exclusive for an unscoped name. The defect is only when the final name is scoped again and Exclusive isn't restored, which is a separate entry.",
+          "matchingGuidance": {
+            "scope": "Repository Labels page only. Only reports where the label's final saved name has no scope. Reports where the final name is scoped but Exclusive was still lost belong to the accepted gitea-exclusive-label-lost-when-scope-retyped.",
+            "relatedReference": {
+              "id": "gitea-org-exclusive-cleared-when-renamed-unscoped",
+              "distinction": "Same intended clearing of Exclusive for an unscoped name on an organization's Settings > Labels; this entry is a repository's Labels page."
+            }
+          }
+        }
+      },
+      {
+        "source": "known-invalid.json",
+        "index": 2,
+        "report": {
+          "id": "gitea-org-exclusive-cleared-when-renamed-unscoped",
+          "name": "Renaming an exclusive label to a name without a scope clears Exclusive (organization labels)",
+          "summary": "The report claims that renaming an exclusive label such as 'x/y' to a plain name such as 'z' wrongly removes its Exclusive setting. This entry is an organization's Settings > Labels.",
+          "expected": "The reporter expects the label to stay exclusive after being renamed to 'z'.",
+          "actual": "After renaming 'x/y' to 'z' and saving, the label is no longer exclusive and the Exclusive checkbox is disabled.",
+          "reproSteps": [
+            "On an organization's Settings > Labels: edit an exclusive label named 'x/y'.",
+            "Replace the whole name with 'z' and save.",
+            "Reopen the label and observe Exclusive is unchecked."
+          ],
+          "reason": "Intended: only scoped labels (names with a 'scope/' prefix) can be exclusive, so the dialog disables and clears Exclusive for an unscoped name. The defect is only when the final name is scoped again and Exclusive isn't restored, which is a separate entry.",
+          "matchingGuidance": {
+            "scope": "Organization Settings > Labels only. Only reports where the label's final saved name has no scope. Reports where the final name is scoped but Exclusive was still lost belong to the accepted gitea-org-exclusive-label-lost-when-scope-retyped.",
+            "relatedReference": {
+              "id": "gitea-exclusive-cleared-when-renamed-unscoped",
+              "distinction": "Same intended clearing of Exclusive for an unscoped name on a repository's Labels page; this entry is an organization's Settings > Labels."
+            }
+          }
+        }
+      }
+    ]
+  },
+  {
+    "id": "aggregated-history-mistaken-for-deleted-events",
+    "explanation": "Inferring lost audit history from a timeline that intentionally combines closely spaced changes and omits changes that cancel out. A condensed web summary is not evidence that the underlying add and remove records were deleted.",
+    "verificationGuidance": [
+      "Compare stored or API events with the rendered summary and check its grouping window.",
+      "Repeat with actions separated beyond that window; distinguish archive, removal from an item, and deletion of the underlying entity."
+    ],
+    "instances": [
+      {
+        "source": "known-invalid.json",
+        "index": 3,
+        "report": {
+          "id": "gitea-label-deselect-archive-hides-issue-label-history",
+          "name": "Label added and removed events disappear from an issue timeline after deselecting and archiving the label",
+          "summary": "The report says that after a label is added to an issue, deselected in the Labels sidebar and then archived, the earlier 'added' event disappears from the issue timeline and no add or remove event for that label remains.",
+          "expected": "The reported expectation is that the issue timeline keeps the label's 'added' and 'removed' events while the label still exists, even after it is archived.",
+          "actual": "After adding the label, deselecting it, archiving it and reopening the issue, the timeline showed no event for that label.",
+          "reproSteps": [
+            "Create a label and an issue.",
+            "Add the label to the issue with the Labels sidebar.",
+            "Within about a minute, deselect the label in the Labels sidebar.",
+            "Archive the label, reopen the issue and look for its added and removed events in the timeline."
+          ],
+          "reason": "Intended: nothing is deleted. Both events are stored and still listed by the API timeline. The web timeline deliberately merges one person's label changes made within 60 seconds and drops an add that is cancelled by a later remove, so a quick add then deselect shows nothing (unit-tested in TestCombineLabelComments). When the deselect comes more than 60 seconds after the add, the timeline shows both events, and archiving the label afterwards keeps them. Deleting a label also deletes its timeline events, by design."
+        }
+      },
+      {
+        "source": "known-invalid.json",
+        "index": 4,
+        "report": {
+          "id": "gitea-pr-clear-labels-hides-recent-label-event",
+          "name": "Clear labels on a pull request deletes a label's added event from its timeline without recording its removal",
+          "summary": "The report says that after a label is added to a pull request and then removed with Clear labels, the earlier 'added' event disappears from the pull request timeline and no removal event appears.",
+          "expected": "The reported expectation is that the pull request timeline keeps the label's 'added' event and shows a 'removed' event.",
+          "actual": "After adding a fresh label to a pull request and then clearing its labels, neither an 'added' nor a 'removed' event for that label was shown in the timeline.",
+          "reproSteps": [
+            "Open a pull request and add a label with the Labels picker.",
+            "Within about a minute, open the Labels picker again and click Clear labels.",
+            "Look for the label's added and removed events in the pull request timeline."
+          ],
+          "reason": "Intended: nothing is deleted. Pull requests use the same issue timeline as issues. Both events are stored and still listed by the API timeline. The web timeline deliberately merges one person's label changes made within 60 seconds and drops an add that is cancelled by a later remove, so an add followed quickly by Clear labels shows nothing (unit-tested in TestCombineLabelComments). Changes more than 60 seconds apart show both events."
+        }
+      },
+      {
+        "source": "known-invalid.json",
+        "index": 10,
+        "report": {
+          "id": "gitea-pr-label-quick-remove-merges-timeline",
+          "name": "Removing a pull request label rewrites its addition history",
+          "summary": "The report says that after adding two labels to a pull request and then removing the first, the timeline's earlier 'added' entry changes to show only the second label and no removal event appears.",
+          "expected": "The reported expectation is that the timeline keeps the original addition of both labels and shows a separate removal entry.",
+          "actual": "When the add, add and remove happen within a minute by the same user, the timeline shows one combined entry 'added <second label>'. All three events are stored and returned by the API, and when the removal comes more than a minute later the timeline shows separate added and removed entries.",
+          "reproSteps": [
+            "Open a pull request and add two labels, one after the other.",
+            "Within a minute, remove the first label.",
+            "Check the timeline entries, then repeat with the removal more than a minute after the additions."
+          ],
+          "reason": "Intended display merging, not lost history. The issue view combines label events by the same user less than 60 seconds apart into one timeline line (combineLabelComments in routers/web/repo/issue_view.go), so an add followed quickly by a remove cancels out in the summary. Every add and remove event is still stored and returned by the API, and events further apart are shown separately. Same reasoning as the rejected 'Clear labels' timeline reports."
+        }
+      }
+    ]
+  },
+  {
+    "id": "test-instrumentation-error-attributed-to-product",
+    "explanation": "Attributing a JavaScript error to the preceding user action when the recorded stack instead identifies test instrumentation mutating or cloning custom elements in a way the application does not. An error observed during a run is not automatically a user-reachable product defect.",
+    "verificationGuidance": [
+      "Trace the error stack to the initiating call and separate application event handlers from serializer or inspection code.",
+      "Repeat the ordinary interaction without the instrumenting operation and verify whether a visible product failure remains."
+    ],
+    "instances": [
+      {
+        "source": "known-invalid.json",
+        "index": 5,
+        "report": {
+          "id": "gitea-label-color-picker-hue-error-banner",
+          "name": "Changing the label color picker's hue shows a JavaScript error banner",
+          "summary": "The report says that clicking the hue strip in the label color picker shows a JavaScript error banner: Cannot read properties of null (reading 'toLowerCase').",
+          "expected": "The reported expectation is that changing the hue updates the label color without any error.",
+          "actual": "Clicking the hue strip on a label's Edit color picker updated the color normally, with no page error and no error banner.",
+          "reproSteps": [
+            "Open a repository's Labels page and click Edit on a label.",
+            "Click a different part of the color picker's hue strip.",
+            "Check for a JavaScript error banner."
+          ],
+          "reason": "Caused by the testing tool, not Gitea. The error is thrown inside the color picker library when its color attribute is set to null. Gitea only ever sets that attribute to the input's string value. The stack trace shows the call coming from the test agent's page serializer rewriting element attributes, not from a user interaction. Ordinary clicks, drags, keyboard input, swatches and typed values never show the error."
+        }
+      },
+      {
+        "source": "known-invalid.json",
+        "index": 9,
+        "report": {
+          "id": "gitea-label-color-picker-cancel-error-banner",
+          "name": "Canceling a label dialog with the color picker open shows a JavaScript error",
+          "summary": "The report says that choosing a color in the label dialog's color picker and clicking Cancel while the picker is still open shows a JavaScript error banner: Cannot read properties of null (reading '0') from the color picker script.",
+          "expected": "The reported expectation is that canceling the label dialog closes it without any error.",
+          "actual": "The error banner appeared after Cancel during the test session. The recorded stack shows the color picker's attribute callback being run by the testing tool's page serializer, not by Gitea or by the Cancel click.",
+          "reproSteps": [
+            "Open a repository's Labels page and click New Label.",
+            "Click the color input to open the color picker and choose a color, leaving the picker open.",
+            "Click Cancel.",
+            "Check for a JavaScript error banner."
+          ],
+          "reason": "Caused by the testing tool, not Gitea. The error is thrown inside the color picker library when its color attribute becomes null. Gitea only ever sets that attribute to the input's string value. The recorded stack shows the call coming from the test agent's page serializer stripping attributes from a cloned copy of the picker, which runs the picker's own attribute callback in the page. Canceling the dialog in an ordinary browser does not show the error.",
+          "matchingGuidance": {
+            "scope": "Any report of a color picker JavaScript error banner (for example reading '0' or 'toLowerCase' of null) in a label dialog, whatever action preceded it. The related gitea-label-color-picker-hue-error-banner rejection covers the hue-strip trigger; both come from the testing tool."
+          }
+        }
+      }
+    ]
+  },
+  {
+    "id": "unsubmitted-draft-mistaken-for-save-loss",
+    "explanation": "An edited local value is assumed saved without establishing that the supported commit action ran. Enter, synthetic blur and an open editor do not universally mean the rename or form was submitted; reload restoring the old value does not prove a completed save was lost.",
+    "verificationGuidance": [
+      "Use the actual supported commit gesture for this editor and verify its completion or persistence acknowledgement.",
+      "Compare trusted outside-click, Enter, Tab or explicit Save controls as applicable; do not assume a programmatic event is equivalent.",
+      "Reopen or reread the same object after the confirmed commit before claiming saved-value loss."
+    ],
+    "instances": [
+      {
+        "source": "known-invalid.json",
+        "index": 6,
+        "report": {
+          "id": "gitea-label-create-enter-not-persisted",
+          "name": "Creating a label with Enter does not persist after refresh",
+          "summary": "The report says that pressing Enter in the New Label dialog reloads the page without saving, so the label is missing from the list and after a refresh.",
+          "expected": "The reported expectation is that pressing Enter in the New Label dialog creates and persists the label.",
+          "actual": "Pressing Enter in the Name, Color or Description field didn't reload the page or send any request; the dialog stayed open with every value intact. Clicking Save on the same draft created a label that was still listed after a refresh.",
+          "reproSteps": [
+            "Open a repository's Labels page and click New Label.",
+            "Fill in the name and color, then press Enter in one of the fields.",
+            "Refresh the page and check whether the label is listed."
+          ],
+          "reason": "Not a bug: Enter isn't a save shortcut in the label dialog, and it doesn't reload the page. The dialog's Save and Cancel buttons sit outside its form, and the form is submitted only when Save is clicked, so Enter does nothing and nothing promises otherwise. The label was missing after refresh only because the draft was never saved; Save creates and persists it."
+        }
+      }
+    ]
+  },
+  {
+    "id": "count-label-assumed-to-promise-destination-state",
+    "explanation": "Assuming that a link displaying an open-item count must force its destination into an open-only state. The count can be accurate while the destination deliberately falls back to showing closed items when there are no open items.",
+    "verificationGuidance": [
+      "Check whether the count is correct independently of the destination list policy.",
+      "Inspect the destination URL and selected states, and compare labels with and without open items before claiming a broken filter."
+    ],
+    "instances": [
+      {
+        "source": "known-invalid.json",
+        "index": 7,
+        "report": {
+          "id": "gitea-label-open-count-link-shows-closed",
+          "name": "Open label count links include closed issues",
+          "summary": "The report says that on a repository's Labels page, a label showing '0 open issues/pull requests' links to an issue list that shows its closed issues.",
+          "expected": "The reported expectation is that the open count link lists only open issues, or none when the count is 0.",
+          "actual": "For a label whose only issue is closed, the count reads 0 open issues/pull requests, and its link opens the issue list filtered by that label, which shows the closed issue (0 Open, 1 Closed). Labels with any open issue link to an open-only list.",
+          "reproSteps": [
+            "Create a label, apply it to one issue, and close that issue.",
+            "On the repository's Labels page, click the label's open issues count.",
+            "Check whether the resulting list shows the closed issue."
+          ],
+          "reason": "Intended: the count link opens the issue list filtered by the label without a state, and Gitea deliberately shows all states when there are no open issues but some closed ones (upstream #12200, \"Default to showing closed Issues/PR list when there are only closed issues/PRs\"). The link text labels the count, not the destination's state."
+        }
+      }
+    ]
+  },
+  {
+    "id": "single-item-policy-assumed-for-bulk-toggle",
+    "explanation": "Assuming a bulk add/remove toggle must apply the same suggestion visibility policy as a single-item assignment picker. An archived option can intentionally remain in a bulk menu so existing assignments can be removed.",
+    "verificationGuidance": [
+      "Check whether the bulk menu is an add/remove toggle and whether retained options are marked as archived.",
+      "Compare supported bulk behavior with single-item suggestions rather than inferring that both surfaces share the same policy."
+    ],
+    "instances": [
+      {
+        "source": "known-invalid.json",
+        "index": 8,
+        "report": {
+          "id": "gitea-bulk-label-menu-assigns-archived-labels",
+          "name": "Bulk label actions assign archived organization labels",
+          "summary": "The report says that the issue list's bulk Label menu still offers archived organization labels and lets them be applied to selected issues, although the issue sidebar hides archived labels.",
+          "expected": "The reported expectation is that archived labels can't be assigned from the bulk Label menu, as in the issue sidebar.",
+          "actual": "The bulk Label menu listed the archived organization label with an Archived badge, and choosing it added the label to the selected issues.",
+          "reproSteps": [
+            "Archive an organization label used by the organization's repositories.",
+            "On a repository's Issues list, select one or more issues and open the bulk Label menu.",
+            "Choose the archived label and check whether it's applied."
+          ],
+          "reason": "Intended: the bulk Label menu is a single add/remove toggle, so archived labels have to stay listed (marked Archived) for them to be removed from issues in bulk, and upstream supports archived labels there. Hiding archived labels applies to suggestions when assigning labels to a single issue, not to the bulk menu."
+        }
+      }
+    ]
+  }
+]
