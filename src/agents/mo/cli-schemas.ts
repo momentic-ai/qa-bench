@@ -32,7 +32,6 @@ export type MoStatus = z.infer<typeof MoStatusSchema>;
 
 export const MoReadSchema = z.object({
   pendingInput: z.object({ id: z.string() }).nullish(),
-  pendingQuestions: z.array(z.object({ id: z.string() })).optional(),
 });
 
 export function isMoSessionReportReady(status: MoStatus): boolean {

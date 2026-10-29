@@ -96,29 +96,17 @@ export class MoAgent implements EvalAgent {
             ),
           ),
         );
-        const questions =
-          read.pendingQuestions ??
-          (read.pendingInput ? [read.pendingInput] : []);
-        if (questions.length > 0) {
-          for (const { id } of questions) {
-            if (answered.has(id)) continue;
+        const inputId = read.pendingInput?.id;
+        if (inputId) {
+          if (!answered.has(inputId)) {
             const message =
               this.finalizationMessage ??
               "No additional information is available beyond the supplied evaluation brief and setup.";
             await this.mo(
-              [
-                "send",
-                "--session-id",
-                sessionId,
-                "--question-id",
-                id,
-                "--wait",
-                "0",
-                message,
-              ],
+              ["send", "--session-id", sessionId, "--wait", "0", message],
               signal,
             );
-            answered.add(id);
+            answered.add(inputId);
           }
           await setTimeout(5000, undefined, { signal });
           continue;
