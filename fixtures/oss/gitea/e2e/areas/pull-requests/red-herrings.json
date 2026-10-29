@@ -1,0 +1,247 @@
+[
+  {
+    "id": "history-restored-draft-mistaken-for-applied-query",
+    "explanation": "Treating a browser-restored, unapplied search draft after Back as proof of an incorrect active query when the URL and results correctly restore the previous submission. Human review rejects this draft-only mismatch; later actions that silently apply it or wrong results are outside that rejection.",
+    "verificationGuidance": [
+      "Compare visible input, URL and actual results, then test Forward and an ordinary explicit submission.",
+      "Check later sorting or filtering separately; do not use this rejection for a stale draft that is unexpectedly applied."
+    ],
+    "instances": [
+      {
+        "source": "known-invalid.json",
+        "index": 0,
+        "report": {
+          "id": "gitea-pass2-007",
+          "name": "Browser Back leaves stale pull-request search text while restoring unfiltered results",
+          "summary": "Browser Back restores the unfiltered pull-request results and /pulls URL but leaves the submitted query visible in the search field, making the displayed search state inconsistent with the results.",
+          "expected": "After returning to the prior /pulls dashboard state, the search field is empty and the unfiltered list is shown.",
+          "actual": "After submitting “Update README.md” and using browser Back, the URL returned to /pulls and the unfiltered list returned, but the search field still displayed “Update README.md.” This remained visible after waiting six seconds.",
+          "reproSteps": [
+            "Sign in as eval and open the global Pull Requests dashboard at /pulls with an empty search field and visible unfiltered results.",
+            "Type Update README.md into the search field and submit it. Confirm that the URL contains q=Update+README.md and the displayed results match the submitted search.",
+            "Use browser Back. Observe the unfiltered /pulls URL and results while the field retains the draft typed before submission.",
+            "For controls, use Forward to restore the applied search; then Back followed by Sort > Oldest. Confirm that sorting does not apply the retained search draft."
+          ],
+          "reason": "User rejected this as an inconsequential search-field display mismatch. Browser Back restores the draft that existed before explicit submission; the URL and results correctly restore the unfiltered list. Live controls confirmed that Forward restores the applied search, a matching search returns the correct PR, and sorting does not silently reapply the draft. Do not classify this reported draft retention alone as a product bug.",
+          "matchingGuidance": {
+            "scope": "Reject this retained, unapplied search draft after Back. Do not generalize to incorrect results, active filters hidden from users, or stale filters unexpectedly applied by a later action. No explicit maintainer endorsement of every history/input mismatch is claimed."
+          }
+        }
+      }
+    ]
+  },
+  {
+    "id": "interaction-target-or-gesture-mismatch",
+    "explanation": "An intended action is blamed for a failure even though the recorded input did not activate that action: it reached another element, used an incomplete gesture or editing mode, or simulated a different keyboard shortcut. A tool timeout, surrounding-cell click or value entered into a popup does not establish failure of the intended application control.",
+    "verificationGuidance": [
+      "Confirm the actual event target, focus, editing mode and completed gesture from the rendered UI or recording.",
+      "Repeat using the precise anchor, input, drag threshold or real keyboard shortcut; check key and modifier details for simulated events.",
+      "Verify the intended control actually ran before attributing navigation failure or value loss to it."
+    ],
+    "instances": [
+      {
+        "source": "known-invalid.json",
+        "index": 1,
+        "report": {
+          "id": "gitea-pr-file-menu-pointer-activation",
+          "name": "Files Changed menu blocks pointer activation of View File and Edit File",
+          "summary": "Reject the reported pointer-only failure of the file-header View File and Edit File menu in an open rename-only PR and a merged added-file PR. The exact-condition recheck successfully followed these links.",
+          "expected": "Visible View File and Edit File menu links should open the corresponding file or editor through normal pointer activation.",
+          "actual": "On an open rename-only PR with review notes.md and zero changed content lines, pointer View File twice and Edit File twice opened the correct rendered destinations; keyboard View also worked. On a merged added-file PR, pointer View File worked twice, including after reload and reopening the menu.",
+          "reproSteps": [
+            "Sign in as eval on the pinned fixture and use a desktop viewport of1280×900. Create a disposable repository with README.md.",
+            "Through the UI, create an editable branch and rename README.md to review notes.md without changing content. Create a PR and confirm Files Changed shows one file, zero additions and zero deletions.",
+            "Open the far-right file-header ellipsis beside Viewed. Pointer-click View File and confirm the renamed file renders at the PR head commit. Return/reload/reopen and repeat; also verify Edit File opens its editor.",
+            "Create another PR adding merged notes.md, merge it through the UI, and open Files Changed. Open the same file-header menu and pointer-click View File; confirm the added file renders. Reload/reopen and repeat."
+          ],
+          "reason": "Explicit user rejection after watching the exact-condition Mo recheck. Both named setups were recreated, actual pointer clicks reached the correct rendered destinations, and reload/reopen retries worked. The original tool timeout/intercepted-click reports did not establish an independently visible product failure.",
+          "matchingGuidance": {
+            "scope": "Reject this reported pointer activation failure for the exact tested conditions. Do not generalize to every PR menu/navigation problem or a separately demonstrated incorrect destination."
+          }
+        }
+      }
+    ]
+  },
+  {
+    "id": "redundant-filter-choice-mistaken-for-missing-option",
+    "explanation": "Reporting an omitted filter option as missing functionality when its scope is already represented by All. A team-repository filter need not list teams that include every repository, and it does not necessarily filter by the team membership of item authors.",
+    "verificationGuidance": [
+      "Read what the filter scopes and inspect whether the omitted option is equivalent to All.",
+      "Create a limited-scope option and verify it appears and actually narrows results; do not generalize to missing limited-scope options."
+    ],
+    "instances": [
+      {
+        "source": "known-invalid.json",
+        "index": 2,
+        "report": {
+          "id": "gitea-pass2-008",
+          "name": "Organization PR dashboard team filter omits an existing team with repository access",
+          "summary": "An organization team configured for All repositories is absent from the organization PR dashboard’s team-repository filter, which offers All instead.",
+          "expected": "The reported expectation is that an existing team with repository access must appear in the team filter, including when it is configured for All repositories.",
+          "actual": "The recorded team exists, includes eval as a member and has All repositories access, but the organization PR dashboard’s team-repository menu offers only All.",
+          "reproSteps": [
+            "Sign in as eval, an administrator, and create a disposable organization with two repositories. Create one open pull request in each repository.",
+            "Create a team with All repositories access and Pull Requests Read. Join the team as eval and confirm its saved All repositories setting.",
+            "Open the organization Pull Requests dashboard and its Teams menu, labelled Filter by team repositories. Observe All and the omission of the all-repositories team.",
+            "For a control, create a second team with Specific repositories access and Pull Requests Read. Add only one of two organization repositories, each containing an open PR, and join as eval.",
+            "Open the organization PR dashboard again. Confirm the specific-repository team appears; selecting it retains the assigned-repository PR and excludes the other repository’s PR. Returning to All restores both."
+          ],
+          "reason": "User-approved rejection after source review and a live specific-repository control. The template explicitly omits teams with IncludesAllRepositories=true; this filter scopes repositories, not team-member authorship. The recorded All repositories team matches that excluded case. A limited team appears and filters its assigned repository’s PR correctly.",
+          "matchingGuidance": {
+            "scope": "Reject the reported omission of an All repositories team. Do not generalize this label to missing specific-repository teams or other membership and permission failures."
+          }
+        }
+      }
+    ]
+  },
+  {
+    "id": "compact-summary-mistaken-for-complete-stored-value",
+    "explanation": "A concise badge, selection count or shortened secondary label is assumed to serialize the complete configured value or identity. In the reviewed cases the full amount, bounds or identifying value remains available in primary controls or details and the correct object or predicate is used. Summary brevity alone does not establish lost data.",
+    "verificationGuidance": [
+      "Open the full configuration and compare the actual saved value, selected identity or applied predicate.",
+      "Determine whether the label describes type, count or a secondary display rather than the full value.",
+      "Keep incorrect selection, inaccessible essential identity or an explicitly promised missing summary separate."
+    ],
+    "instances": [
+      {
+        "source": "known-invalid.json",
+        "index": 3,
+        "report": {
+          "id": "gitea-compare-header-shortens-long-branch-name",
+          "name": "Fork comparison commit header truncates a long head branch name",
+          "summary": "On a New Pull Request comparison from a fork, the commit-list header shows the head branch shortened to its first 10 characters (for example forks-draf for forks-draft/path), while the branch selectors show the full name.",
+          "expected": "The reported expectation is that the comparison commit header shows the full head branch name.",
+          "actual": "With head branch alex:forks-draft/path, the selectors show the full name but the commit-list header reads main … forks-draf. Any branch name longer than 10 characters is shortened the same way, slash or not.",
+          "reproSteps": [
+            "From a fork, push a branch whose name is longer than 10 characters, such as forks-draft/path.",
+            "Open New Pull Request comparing the base repository's main with that fork branch.",
+            "Compare the branch shown in the 'pull from' selector with the name in the commits header on the right."
+          ],
+          "reason": "User-rejected after reviewing the Mo reproduction and a screenshot. The full branch name stays visible in the branch selectors directly above, so the shortened label in the commit-list header is not treated as a product bug for this eval.",
+          "matchingGuidance": {
+            "scope": "Reject reports that the comparison commit header shortens a long head branch name while the selectors show it in full. Do not generalize to comparisons that use the wrong branch or commits."
+          }
+        }
+      }
+    ]
+  },
+  {
+    "id": "exact-editor-input-not-verified-before-renderer-claim",
+    "explanation": "Inferring a Markdown renderer failure from the intended text rather than the exact editor source. Removed emphasis markers, automatically inserted task prefixes, or a missing blank separator can produce the observed rendering correctly. A recreated input artifact is not proof of the historical keystrokes.",
+    "verificationGuidance": [
+      "Capture the literal source immediately before Preview or Save, including automatic prefixes and whitespace.",
+      "Compare exact literal input with normal typing controls and expected Markdown semantics; do not reject a renderer failure demonstrated on valid exact input."
+    ],
+    "instances": [
+      {
+        "source": "known-invalid.json",
+        "index": 4,
+        "report": {
+          "id": "gitea-pr-completed-task-rendering-input-artifact",
+          "name": "Completed PR checklist item renders unchecked with a literal task marker",
+          "owningArea": "gitea/pull-requests",
+          "summary": "The report claims a valid completed Markdown task renders unchecked with a literal [x] in both Preview and the saved pull-request body.",
+          "expected": "A valid - [x] task renders as a checked checkbox without a literal task marker in its label.",
+          "actual": "The exact reported two-line Markdown rendered correctly on fresh pull requests in Preview and after save/reload. The reported appearance was recreated only with different text: automatic list continuation inserted an unchecked prefix before a second full task marker, yielding - [ ] - [x] Document verification. That input correctly renders an unchecked item containing literal marker text.",
+          "reproSteps": [
+            "On a fresh pull request, enter the exact body - [ ] Confirm captain followed by a newline and - [x] Document verification, ensuring the editor contains exactly those two lines.",
+            "Preview, save and reload; confirm Document verification is checked with no literal [x].",
+            "Separately, type the first unchecked item, press Enter, then type a complete - [x] Document verification marker after the automatically inserted prefix.",
+            "Inspect the actual body: its second line is - [ ] - [x] Document verification. Preview renders that different input as an unchecked task with literal text."
+          ],
+          "reason": "User rejected the claimed renderer failure after both Codex and Claude recommended rejection. Exact valid Markdown passes. Task-list continuation on Enter is explicitly implemented and tested; appending a second complete marker changes the input and does not establish a rendering defect. The original Mo raw body and input history were not available, so the recreated input artifact is an explanation of equivalent appearance, not a proven reconstruction of the historical run.",
+          "matchingGuidance": {
+            "scope": "Reject this claimed valid-task rendering failure when the saved input actually contains an auto-continued unchecked prefix followed by another task marker, or when the exact reported input renders correctly. Do not generalize to a verified renderer failure on exact valid Markdown, disabled task toggles after editing, or mobile checkbox styling defects."
+          },
+          "sourceReport": {
+            "sessionId": "6ce002be-3cfe-59d9-8341-5a690003119b",
+            "webUrl": "https://app.momentic.ai/mo/sessions/6ce002be-3cfe-59d9-8341-5a690003119b?tab=bug%3ACompleted%20checklist%20item%20renders%20unchecked%20in%20pull%20request%20body",
+            "recording": {
+              "startedAt": 1793220853664,
+              "finishedAt": 1793220884000,
+              "agentId": "6ce002be-3cfe-59d9-8341-5a690003119b:sandbox-bugbash-v2:create",
+              "windowId": "33eb9e2a-10a6-4f3b-9f98-498564fd4bb4",
+              "artifactId": "e0ea4064-e3dc-4cb4-8a9a-71b1b2e0de98"
+            }
+          },
+          "reviewedBy": "hnhaefliger",
+          "reviewedAt": "2026-10-28T23:50:08.711690+00:00",
+          "reviewEvidence": {
+            "basis": "Explicit user rejection after both subscription-authenticated reviewers independently checked valid literal input and automatic-continuation controls.",
+            "userRejected": true,
+            "sourceRevision": "99053ce4fa2b45f1bca5837418c0c57f793ca824",
+            "analysis": [
+              "Codex checked exact input on two fresh PRs in Preview and saved/refreshed bodies, plus unchecked, uppercase-X, blank-line, legacy-editor and mobile controls.",
+              "Claude checked typed-with-Enter and exact-input variants in a fresh PR and comments, confirming that the stored doubled marker explains the recreated appearance.",
+              "Coordinator read the renderer and task continuation source and evaluated the existing continuation helper, confirming that Enter appends an unchecked task prefix."
+            ],
+            "sourceReferences": [
+              "https://github.com/go-gitea/gitea/blob/99053ce4fa2b45f1bca5837418c0c57f793ca824/web_src/js/features/comp/EditorMarkdown.ts#L127-L176",
+              "https://github.com/go-gitea/gitea/blob/99053ce4fa2b45f1bca5837418c0c57f793ca824/web_src/js/features/comp/EditorMarkdown.test.ts#L199-L202",
+              "https://github.com/go-gitea/gitea/blob/99053ce4fa2b45f1bca5837418c0c57f793ca824/modules/markup/markdown/markdown_test.go#L213-L215",
+              "https://github.com/go-gitea/gitea/blob/99053ce4fa2b45f1bca5837418c0c57f793ca824/modules/markup/markdown/transform_list.go#L17-L35"
+            ],
+            "limitations": [
+              "The original Mo raw body and input history were not independently verified.",
+              "Latest runtime was not tested."
+            ]
+          }
+        }
+      }
+    ]
+  },
+  {
+    "id": "configuration-dependent-feature-assumed-enabled",
+    "explanation": "Inferring a search defect from a feature label without checking the instance configuration that controls the expected behavior. A Fuzzy search mode can have typo tolerance deliberately disabled by default; that result alone does not establish a broken enabled capability.",
+    "verificationGuidance": [
+      "Check the pinned configuration and documented defaults for the search engine.",
+      "Compare exact and misspelled terms and, when relevant, verify behavior with the capability explicitly enabled."
+    ],
+    "instances": [
+      {
+        "source": "known-invalid.json",
+        "index": 5,
+        "report": {
+          "id": "gitea-pr-fuzzy-search-no-typo-tolerance",
+          "name": "Global pull request fuzzy search misses a one-character omission",
+          "summary": "The report says that on the global Pull Requests page, Fuzzy search for a term with one character missing (CrosUser for CrossUser) finds nothing.",
+          "expected": "The reported expectation is that Fuzzy search tolerates a one-character typo and finds the pull request.",
+          "actual": "Fuzzy search for CrosUser showed No results with 0 Open and 0 Closed, while CrossUser found the pull request.",
+          "reproSteps": [
+            "Create a pull request whose title contains a distinctive word.",
+            "On the global Pull Requests page, choose Fuzzy search and search for that word with one character missing.",
+            "Check the results."
+          ],
+          "reason": "Intended: typo tolerance in issue and pull request search is off by default (TYPE_BLEVE_MAX_FUZZINESS defaults to 0, documented in app.example.ini), so Fuzzy mode doesn't match misspellings unless an administrator enables it. Same reasoning as the rejected issues Fuzzy search entry; this entry is the pull requests page."
+        }
+      }
+    ]
+  },
+  {
+    "id": "stale-page-assumed-to-override-current-validity",
+    "explanation": "Expecting an operation offered on a stale page to succeed after another action has invalidated its prerequisite. Correctly refusing to merge a now-closed pull request is distinct from failing to refresh the stale page after that refusal.",
+    "verificationGuidance": [
+      "Verify the object’s current persisted status before evaluating whether the action should be allowed.",
+      "Separate correct server refusal from stale feedback or controls following the refusal."
+    ],
+    "instances": [
+      {
+        "source": "known-invalid.json",
+        "index": 6,
+        "report": {
+          "id": "gitea-stale-merge-of-closed-pr-refused",
+          "name": "Merging a pull request that was closed in another tab doesn't merge it",
+          "summary": "The report says that clicking merge on a pull request page opened before the pull request was closed elsewhere doesn't merge the pull request.",
+          "expected": "The reported expectation is that confirming the merge merges the pull request.",
+          "actual": "The merge was refused with \"The pull request has been closed.\" and the pull request stayed closed and unmerged.",
+          "reproSteps": [
+            "Open a pull request's merge confirmation in one tab.",
+            "Close the pull request in another tab.",
+            "Confirm the merge in the first tab."
+          ],
+          "reason": "Intended: a closed pull request can't be merged, so refusing the merge with \"The pull request has been closed.\" is correct. The page not updating to Closed afterwards is a separate accepted entry (\"After a merge is refused because the pull request was closed, the page still shows it as open\")."
+        }
+      }
+    ]
+  }
+]
