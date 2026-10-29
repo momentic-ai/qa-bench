@@ -14,18 +14,42 @@
     },
     {
       "id": "gitea-exclusive-cleared-when-renamed-unscoped",
-      "name": "Renaming an exclusive label to a name without a scope clears Exclusive",
-      "summary": "The report claims that renaming an exclusive label such as 'x/y' to a plain name such as 'z' wrongly removes its Exclusive setting.",
+      "name": "Renaming an exclusive label to a name without a scope clears Exclusive (repository labels)",
+      "summary": "The report claims that renaming an exclusive label such as 'x/y' to a plain name such as 'z' wrongly removes its Exclusive setting. This entry is a repository's Labels page.",
       "expected": "The reporter expects the label to stay exclusive after being renamed to 'z'.",
       "actual": "After renaming 'x/y' to 'z' and saving, the label is no longer exclusive and the Exclusive checkbox is disabled.",
       "reproSteps": [
-        "Edit an exclusive label named 'x/y'.",
+        "On a repository's Labels page: edit an exclusive label named 'x/y'.",
         "Replace the whole name with 'z' and save.",
         "Reopen the label and observe Exclusive is unchecked."
       ],
       "reason": "Intended: only scoped labels (names with a 'scope/' prefix) can be exclusive, so the dialog disables and clears Exclusive for an unscoped name. The defect is only when the final name is scoped again and Exclusive isn't restored, which is a separate entry.",
       "matchingGuidance": {
-        "scope": "Only reports where the label's final saved name has no scope. Reports where the final name is scoped but Exclusive was still lost belong to 'Exclusive isn't restored when an edited label name gets its scope back'."
+        "scope": "Repository Labels page only. Only reports where the label's final saved name has no scope. Reports where the final name is scoped but Exclusive was still lost belong to the accepted gitea-exclusive-label-lost-when-scope-retyped.",
+        "relatedReference": {
+          "id": "gitea-org-exclusive-cleared-when-renamed-unscoped",
+          "distinction": "Same intended clearing of Exclusive for an unscoped name on an organization's Settings > Labels; this entry is a repository's Labels page."
+        }
+      }
+    },
+    {
+      "id": "gitea-org-exclusive-cleared-when-renamed-unscoped",
+      "name": "Renaming an exclusive label to a name without a scope clears Exclusive (organization labels)",
+      "summary": "The report claims that renaming an exclusive label such as 'x/y' to a plain name such as 'z' wrongly removes its Exclusive setting. This entry is an organization's Settings > Labels.",
+      "expected": "The reporter expects the label to stay exclusive after being renamed to 'z'.",
+      "actual": "After renaming 'x/y' to 'z' and saving, the label is no longer exclusive and the Exclusive checkbox is disabled.",
+      "reproSteps": [
+        "On an organization's Settings > Labels: edit an exclusive label named 'x/y'.",
+        "Replace the whole name with 'z' and save.",
+        "Reopen the label and observe Exclusive is unchecked."
+      ],
+      "reason": "Intended: only scoped labels (names with a 'scope/' prefix) can be exclusive, so the dialog disables and clears Exclusive for an unscoped name. The defect is only when the final name is scoped again and Exclusive isn't restored, which is a separate entry.",
+      "matchingGuidance": {
+        "scope": "Organization Settings > Labels only. Only reports where the label's final saved name has no scope. Reports where the final name is scoped but Exclusive was still lost belong to the accepted gitea-org-exclusive-label-lost-when-scope-retyped.",
+        "relatedReference": {
+          "id": "gitea-exclusive-cleared-when-renamed-unscoped",
+          "distinction": "Same intended clearing of Exclusive for an unscoped name on a repository's Labels page; this entry is an organization's Settings > Labels."
+        }
       }
     },
     {
@@ -123,6 +147,19 @@
       "matchingGuidance": {
         "scope": "Any report of a color picker JavaScript error banner (for example reading '0' or 'toLowerCase' of null) in a label dialog, whatever action preceded it. The related gitea-label-color-picker-hue-error-banner rejection covers the hue-strip trigger; both come from the testing tool."
       }
+    },
+    {
+      "id": "gitea-pr-label-quick-remove-merges-timeline",
+      "name": "Removing a pull request label rewrites its addition history",
+      "summary": "The report says that after adding two labels to a pull request and then removing the first, the timeline's earlier 'added' entry changes to show only the second label and no removal event appears.",
+      "expected": "The reported expectation is that the timeline keeps the original addition of both labels and shows a separate removal entry.",
+      "actual": "When the add, add and remove happen within a minute by the same user, the timeline shows one combined entry 'added <second label>'. All three events are stored and returned by the API, and when the removal comes more than a minute later the timeline shows separate added and removed entries.",
+      "reproSteps": [
+        "Open a pull request and add two labels, one after the other.",
+        "Within a minute, remove the first label.",
+        "Check the timeline entries, then repeat with the removal more than a minute after the additions."
+      ],
+      "reason": "Intended display merging, not lost history. The issue view combines label events by the same user less than 60 seconds apart into one timeline line (combineLabelComments in routers/web/repo/issue_view.go), so an add followed quickly by a remove cancels out in the summary. Every add and remove event is still stored and returned by the API, and events further apart are shown separately. Same reasoning as the rejected 'Clear labels' timeline reports."
     }
   ]
 }

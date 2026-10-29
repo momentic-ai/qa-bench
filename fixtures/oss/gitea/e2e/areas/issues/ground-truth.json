@@ -1184,6 +1184,143 @@
         }
       },
       "sourceCause": "Setting or changing an issue's due date (UpdateIssueDeadline in models/issues/issue_update.go) only updates the database and adds a timeline comment; it never notifies the issue indexer, and services/indexer/notify.go has no due-date hook (it reindexes on comments, title, content, status, assignees, milestones and labels). When a keyword is entered, the issue list sorts by the indexer's copy of the deadline (DeadlineUnix, captured in modules/indexer/issues/util.go when the issue is indexed), so the sort uses the date from the last reindex: 0 for a date set after the issue was first indexed, or the old date after a change. Whether it reproduces depends on timing: a date set before the issue's first index job runs is picked up correctly. Any later reindexing change, such as posting a comment, fixes the order. Unchanged at latest upstream."
+    },
+    {
+      "id": "gitea-org-issues-active-ownership-entry-drops-assignee",
+      "name": "Reselecting the active In your repositories entry drops the organization Issues Assignee filter",
+      "summary": "On an organization's Issues page, with an Assignee filter applied, clicking the already-selected 'In your repositories' sidebar entry removes the assignee from the URL, so unassigned issues reappear. The sort order is kept.",
+      "expected": "Clicking the sidebar entry that is already selected keeps the Assignee filter, so only issues assigned to that user stay listed.",
+      "actual": "With Assignee set to one user (one issue listed) and Oldest sorting, clicking the active 'In your repositories' entry reloaded without the assignee parameter and listed all three open issues, including the two unassigned ones.",
+      "reproSteps": [
+        "Open an organization's Issues page with several open issues, only one assigned to a given user.",
+        "Choose that user in the Assignee filter, so only their issue is listed, and choose Sort > Oldest.",
+        "Click the already-active 'In your repositories' entry in the sidebar.",
+        "Check whether the Assignee filter is still applied in the URL and results."
+      ],
+      "matchingGuidance": {
+        "relatedReference": {
+          "id": "gitea-global-issues-ownership-link-drops-assignee-filter",
+          "distinction": "Same kind of ownership-link navigation dropping the Assignee filter. That entry is the global Issues page; this entry is an organization's Issues page and reselecting the already-active entry."
+        },
+        "scope": "Organization Issues: clicking the sidebar ownership entry (including the already-active one) drops an explicitly selected Assignee filter."
+      },
+      "owningArea": "gitea/issues",
+      "severity": 3
+    },
+    {
+      "id": "gitea-repo-issues-type-switch-retains-implicit-assignee",
+      "name": "Switching repository issue Type from Assigned to you back to All issues keeps the assignment restriction",
+      "summary": "On a repository's Issues list, choosing Type > Assigned to you and then Type > All issues still shows only issues assigned to you (with a search, the list stays empty), instead of returning to all matching issues.",
+      "expected": "Type > All issues lifts the restriction that Type > Assigned to you added, so the list returns to every issue matching the other filters and search.",
+      "actual": "After Type > Assigned to you followed by Type > All issues, the list stayed filtered to the user's assignments and showed '0 Open' and 'No results' for a search whose unassigned matches had been listed before.",
+      "reproSteps": [
+        "In a repository, create two open issues with a shared search term, one assigned to you and one unassigned.",
+        "Open the repository Issues list and search the shared term; both issues appear.",
+        "Choose Type > Assigned to you.",
+        "Choose Type > All issues and check whether the unassigned issue comes back."
+      ],
+      "matchingGuidance": {
+        "relatedReference": {
+          "id": "gitea-repo-pr-type-switch-retains-implicit-assignee",
+          "distinction": "Same implicit assignment carried over from a previous Type choice. That entry is the repository Pull Requests list; this entry is the repository Issues list."
+        },
+        "otherRelatedReference": {
+          "id": "gitea-pass2-005",
+          "distinction": "Same retained Assigned to you restriction on a milestone's issue list."
+        },
+        "scope": "Only the Type control: going from Type > Assigned to you to Type > All issues (or another Type) keeps the assignment restriction that the earlier Type choice added. This is not a toggle of an explicit filter. If the user also selected themselves in the Assignee filter, keeping that explicit Assignee filter after changing Type is expected and is not this bug."
+      },
+      "owningArea": "gitea/issues",
+      "severity": 3
+    },
+    {
+      "id": "gitea-org-issues-dashboard-ignores-team-issues-no-access",
+      "name": "Organization Issues dashboard shows issues from repositories where the team has Issues No Access",
+      "summary": "A team member whose team has Code Read but Issues No Access on a private organization repository can't open that repository's issues, but the organization (and team) Issues dashboards still list them with title, repository and number, author and Open count.",
+      "expected": "Issues from a repository where the user's team has Issues No Access are left out of the organization and team Issues dashboards and their counts, as they are from the user's personal Issues dashboard.",
+      "actual": "The organization Issues dashboard listed the private issue's title, repo#number and author and counted it as 1 Open. The repository had no Issues tab for the user, and opening the issue, including from the dashboard link, returned 404. Switching the team to Issues Read made the issue open normally.",
+      "reproSteps": [
+        "In an organization, create a private repository with an open issue.",
+        "Create a team for specific repositories with that repository, Code Read and Issues No Access, and add a member.",
+        "As that member, confirm the repository has no Issues tab and the issue URL returns 404.",
+        "As that member, open the organization's Issues dashboard and check whether the issue is listed and counted."
+      ],
+      "matchingGuidance": {
+        "scope": "Organization or team Issues dashboards listing issues (titles, numbers, authors or counts) from repositories where the user's team has Issues No Access. A distinct bug from issue trackers being disabled for a repository."
+      },
+      "owningArea": "gitea/issues",
+      "severity": 3,
+      "sourceCause": "The Issues dashboards choose which repositories to search with SearchRepositoryCondition (models/repo/repo_list.go), passing UnitType Issues (routers/web/user/home.go). That condition never enforces the Issues unit for the repositories it admits: the actor access check uses AccessibleRepositoryCondition(actor, unit.TypeInvalid), which ignores units, and in an organization context owner_id = organization admits every organization-owned repository, while UnitType is applied only to collaborative repositories the organization doesn't own. Issues are then loaded from the indexer with no per-issue permission check. So any repository the user can reach for some other unit passes, whether its issue tracker is disabled (the separate entry 'Issue dashboards list and count issues from repositories with the issue tracker disabled') or the user's team has Issues No Access (this entry). Both bugs come from this one missing unit check, but they are distinct triggers and are labeled as separate bugs."
+    },
+    {
+      "id": "gitea-remove-inaccessible-dependency-blank-page",
+      "name": "Removing a dependency on an issue you can't read opens a blank page and keeps the dependency",
+      "summary": "On an issue that depends on an issue the user can't read, the sidebar shows a lock and says the user can still remove the dependency. Confirming Remove opens a completely blank page, and the dependency is not removed.",
+      "expected": "Confirming Remove deletes the dependency and returns to the issue, as it does for dependencies the user can read.",
+      "actual": "After confirming Remove on the locked 'Depends on' dependency, the browser landed on the dependency delete URL showing an empty document with no message or controls. Reopening the issue showed the dependency still in place and no error.",
+      "reproSteps": [
+        "Make an issue in one repository depend on an issue in a private repository.",
+        "Sign in as a user who can write to the first repository but can't read the private one, and open the first issue.",
+        "In the sidebar, the dependency shows a lock with the tooltip that you can remove it; click its remove icon and confirm.",
+        "Check the page shown and whether the dependency was removed."
+      ],
+      "sourceCause": "Two defects combine. The issue sidebar template gives locked 'Depends on' rows data-modal-dependency-type=\"blocking\" (templates/repo/issue/sidebar/issue_dependencies.tmpl:94), while readable 'Depends on' rows use \"blockedBy\" (line 69). RemoveIssueDependency (models/issues/dependency.go) therefore deletes the reversed pair, which doesn't exist, and returns ErrDependencyNotExists. The RemoveDependency handler (routers/web/repo/issue_dependency.go:133-137) handles that error by setting a flash message and returning without a redirect or body, so the browser receives an empty 200 response and shows a blank page.",
+      "matchingGuidance": {
+        "scope": "Removing a locked (unreadable) dependency from an issue's sidebar leads to a blank page, or the dependency is not removed."
+      },
+      "owningArea": "gitea/issues",
+      "severity": 5
+    },
+    {
+      "id": "gitea-edit-deleted-comment-raw-json-error",
+      "name": "Saving an edit to a comment deleted in another tab shows a raw JSON SyntaxError",
+      "summary": "If a comment is deleted (for example from another tab) while its inline editor is open, clicking Save shows a technical error banner, 'Failed to save the content: SyntaxError: Unexpected token 'N', \"Not found.\" is not valid JSON', instead of explaining that the comment no longer exists. The editor closes and the old comment text is shown.",
+      "expected": "Saving an edit to a comment that no longer exists shows a readable message that the comment was deleted, as the editor does for a version conflict.",
+      "actual": "The server returned HTTP 404 with plain text 'Not found.', and the page showed the raw SyntaxError banner, hid the editor and displayed the stale comment card. Reopening Edit still contained the pending text.",
+      "reproSteps": [
+        "Open an issue with a comment you can edit, and open the same issue in a second tab.",
+        "In the first tab, click Edit on the comment and change its text without saving.",
+        "In the second tab, delete that comment.",
+        "In the first tab, click Save and read the error shown."
+      ],
+      "sourceCause": "saveAndRefresh in web_src/js/features/repo-issue-edit.ts calls response.json() before checking the response status and shows a readable errorMessage only for HTTP 400. UpdateCommentContent returns a plain-text 404 for a deleted comment, so JSON parsing throws and the catch block shows the raw exception.",
+      "matchingGuidance": {
+        "relatedReference": {
+          "id": "gitea-comment-after-deletion-raw-json-error",
+          "name": "Commenting on a deleted issue shows a raw JSON SyntaxError",
+          "distinction": "Same raw JSON SyntaxError from a plain-text 404. That entry is posting a new comment on a deleted issue; this entry is saving an inline edit to a comment that was deleted."
+        },
+        "scope": "Saving an inline comment (or description) edit after the comment was deleted elsewhere shows a raw JSON parsing error. Claims that the pending edit text is lost are not part of this bug: reopening Edit keeps it."
+      },
+      "owningArea": "gitea/issues",
+      "severity": 1
+    },
+    {
+      "id": "gitea-external-tracker-validation-discards-settings",
+      "name": "External issue tracker validation error discards the other entered tracker settings",
+      "summary": "In a repository's Settings > Advanced Settings, submitting the external issue tracker with an invalid URL shows the error, but the form reloads with Built-In issue tracker selected, the URL Format empty and no number style chosen, discarding everything the user entered.",
+      "expected": "After a validation error, the form keeps the entered tracker type, URL format and number style so only the rejected field needs fixing.",
+      "actual": "Choosing External Issue Tracker with an invalid tracker URL, a URL format and Alphanumeric showed 'The external issue tracker URL is not a valid URL.' The reloaded form showed Built-In selected, an empty URL Format and no style selected; nothing was saved. The same inputs with a valid URL saved and persisted.",
+      "reproSteps": [
+        "Open a repository's Settings and go to Advanced Settings.",
+        "Select External Issue Tracker, enter an invalid tracker URL, a URL format and choose Alphanumeric.",
+        "Click Update Settings.",
+        "Check the tracker type, URL format and number style shown with the error."
+      ],
+      "sourceCause": "handleSettingsPostAdvanced (routers/web/repo/setting/setting.go) handles an invalid tracker URL or URL format with a flash error and a redirect back to settings, throwing the submitted form away; the page is redrawn from the saved repository units only.",
+      "matchingGuidance": {
+        "relatedReference": {
+          "id": "gitea-repo-settings-invalid-name-discards-edits",
+          "distinction": "Same validation error discarding unsaved settings edits. That entry is the Basic Settings repository name; this entry is the Advanced Settings external issue tracker."
+        },
+        "otherRelatedReference": {
+          "id": "gitea-branch-rule-validation-discards-policy",
+          "distinction": "Same validation-wipes-the-draft pattern on the branch protection form."
+        },
+        "scope": "Advanced Settings external issue tracker (or URL format) validation errors resetting the entered tracker type, URL format or number style."
+      },
+      "owningArea": "gitea/issues",
+      "severity": 3
     }
   ]
 }
