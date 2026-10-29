@@ -794,6 +794,33 @@
         "Press the browser's Back button and compare the results with the search box."
       ],
       "severity": 1
+    },
+    {
+      "id": "gitea-zip-archive-immutable-link-points-to-tar-gz",
+      "name": "ZIP source download advertises a TAR.GZ permanent link",
+      "summary": "Downloading a release's source code as ZIP (or as a bundle) from the web returns a correct ZIP, but the response's Link rel=\"immutable\" header, which tells download tools the permanent URL for the same file, points to the .tar.gz archive. Following it returns a gzip tarball instead of the ZIP.",
+      "expected": "The immutable Link header on a ZIP download points to the permanent .zip URL for the same revision, which returns the same ZIP.",
+      "actual": "The ZIP download's Link header pointed to /api/v1/repos/<owner>/<repo>/archive/<sha>.tar.gz?rev=<sha>; requesting it returned a gzip TAR archive with different bytes. The TAR.GZ download's header and the API ZIP download's header were correct.",
+      "reproSteps": [
+        "On a repository's release or branch, download Source Code (ZIP) and inspect the response's Link header (rel=\"immutable\").",
+        "Request the URL from that header.",
+        "Compare the file format and bytes with the original ZIP download."
+      ],
+      "severity": 1
+    },
+    {
+      "id": "gitea-draft-release-exposed-to-readers-via-api",
+      "name": "Draft releases and their assets are readable by read-only users through the API",
+      "summary": "Draft releases are hidden from users without write access on the web (the release page returns 404 and the draft isn't listed), but a read-only collaborator can fetch the draft's title, notes and assets through the release-by-tag and release-by-id API endpoints, and download its attachments.",
+      "expected": "A user with only read permission gets 404 for a draft release on every endpoint, including the API and its attachment downloads, matching the web pages and release lists.",
+      "actual": "As a read-only collaborator, the draft's web page returned 404 and the release lists omitted it, but GET /api/v1/repos/<owner>/<repo>/releases/tags/<tag>, /releases/<id> and /releases/<id>/assets returned the full draft (draft: true) with its assets, and the attachment downloaded.",
+      "reproSteps": [
+        "As the owner, add a collaborator with Read permission.",
+        "As the owner, create a release with an attachment and save it as a draft.",
+        "As the read-only collaborator, open the draft's release page and confirm it returns 404.",
+        "As the same user, request the release by tag and by id through the API, then download its attachment."
+      ],
+      "severity": 3
     }
   ]
 }
