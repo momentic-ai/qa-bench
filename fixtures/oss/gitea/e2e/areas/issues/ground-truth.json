@@ -766,7 +766,8 @@
           "name": "Issue search sorted by due date keeps the old order after a due date is changed",
           "distinction": "Same cause (due-date updates never reindex the issue), but that entry is changing an existing due date; this entry is due dates first set on new issues, which sort as if they had none."
         }
-      }
+      },
+      "sourceCause": "Setting or changing an issue's due date (UpdateIssueDeadline in models/issues/issue_update.go) only updates the database and adds a timeline comment; it never notifies the issue indexer, and services/indexer/notify.go has no due-date hook (it reindexes on comments, title, content, status, assignees, milestones and labels). When a keyword is entered, the issue list sorts by the indexer's copy of the deadline (DeadlineUnix, captured in modules/indexer/issues/util.go when the issue is indexed), so the sort uses the date from the last reindex: 0 for a date set after the issue was first indexed, or the old date after a change. Whether it reproduces depends on timing: a date set before the issue's first index job runs is picked up correctly. Any later reindexing change, such as posting a comment, fixes the order. Unchanged at latest upstream."
     },
     {
       "id": "gitea-repo-issues-assigned-to-you-search-omits-issue",
@@ -1162,6 +1163,27 @@
       },
       "owningArea": "gitea/issues",
       "severity": 3
+    },
+    {
+      "id": "gitea-repo-issue-search-due-sort-ignores-new-due-dates",
+      "name": "Repository issue search sorted by due date ignores due dates set after an issue is created",
+      "summary": "On a repository's Issues list, searching and sorting by Farthest or Nearest due date ignores due dates set from the sidebar after the issues were created, so a nearer date can be listed ahead of a farther one. Setting a due date never updates the search index, so a keyword search sorts by the index's stale due date.",
+      "expected": "A repository issue search sorted by Farthest due date lists issues from the latest due date to the earliest, including dates set after the issues were created.",
+      "actual": "After setting due dates of December 10 and November 10 on two new issues from the sidebar, searching their shared title word on the repository Issues list and sorting by Farthest due date listed the November issue first.",
+      "reproSteps": [
+        "In a repository, create two issues with a shared title word.",
+        "After they're created, set their due dates from the sidebar, giving the first-created issue the later date.",
+        "On the repository's Issues list, search for the shared word and sort by Farthest due date.",
+        "Check whether the later due date is listed first."
+      ],
+      "severity": 3,
+      "matchingGuidance": {
+        "relatedReference": {
+          "name": "Issue search sorted by due date ignores due dates set after an issue is created",
+          "distinction": "Same cause (setting a due date never reindexes the issue), but that entry is the global Issues page; this entry is a repository's Issues list."
+        }
+      },
+      "sourceCause": "Setting or changing an issue's due date (UpdateIssueDeadline in models/issues/issue_update.go) only updates the database and adds a timeline comment; it never notifies the issue indexer, and services/indexer/notify.go has no due-date hook (it reindexes on comments, title, content, status, assignees, milestones and labels). When a keyword is entered, the issue list sorts by the indexer's copy of the deadline (DeadlineUnix, captured in modules/indexer/issues/util.go when the issue is indexed), so the sort uses the date from the last reindex: 0 for a date set after the issue was first indexed, or the old date after a change. Whether it reproduces depends on timing: a date set before the issue's first index job runs is picked up correctly. Any later reindexing change, such as posting a comment, fixes the order. Unchanged at latest upstream."
     }
   ]
 }
