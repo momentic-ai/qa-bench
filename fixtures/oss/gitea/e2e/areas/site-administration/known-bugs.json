@@ -4,7 +4,7 @@
   "logicalBugs": [
     {
       "id": "gitea-intellij-default-display-name",
-      "explanation": "Default editor name has incorrect capitalization.",
+      "explanation": "The site configuration list labels IntelliJ IDEA as “Intellij IDEA.”",
       "rootCause": {
         "explanation": "DefaultOpenWithEditorApps hardcodes Intellij IDEA.",
         "sourceReferences": [
@@ -41,7 +41,7 @@
     },
     {
       "id": "gitea-archive-cron-label-punctuation",
-      "explanation": "Archive cleanup description has duplicate punctuation.",
+      "explanation": "The archive cleanup task ends with “etc..” in the Cron Tasks list.",
       "rootCause": {
         "explanation": "The English locale literal ends etc..",
         "sourceReferences": [
@@ -78,7 +78,7 @@
     },
     {
       "id": "gitea-repository-alphabetical-owner-first",
-      "explanation": "Repository alphabetical sorting orders owner/name rather than repository names.",
+      "explanation": "Site Administration > Repositories sorted Alphabetically groups repositories by owner before comparing their repository names. An organization’s alphabetically earlier repository can therefore appear after a user’s later-named repositories.",
       "rootCause": {
         "explanation": "The alpha repository ordering sorts owner_name before lower_name, grouping repositories by owner even when inventory presents a name sort.",
         "sourceReferences": [
@@ -116,7 +116,7 @@
     },
     {
       "id": "gitea-open-with-parser-skips-invalid-lines",
-      "explanation": "Malformed editor override entries disappear without feedback.",
+      "explanation": "Submitting a nonempty Open with editor override without the required mapping delimiter silently clears the field without explaining that the entry was discarded.",
       "rootCause": {
         "explanation": "marshalOpenWithApps continues past lines without = or nonempty name/URL and returns successful JSON rather than a validation error.",
         "sourceReferences": [
@@ -156,7 +156,7 @@
     },
     {
       "id": "gitea-admin-monitor-mobile-overflow",
-      "explanation": "The monitor toolbar cannot shrink or wrap to phone width.",
+      "explanation": "Open Site Administration Stacktrace/Monitor at 390px. The diagnosis-report controls overlap the Stacktrace tab, and the resulting wide document permits horizontal scrolling that moves process controls offscreen.",
       "rootCause": {
         "explanation": "trace_tabs places the compact tab menu and diagnosis form on one flex row without responsive wrapping; intrinsic widths force overlap and widen the document.",
         "sourceReferences": [
@@ -173,12 +173,17 @@
       "reproductionPaths": [
         {
           "id": "gitea-admin-monitor-mobile-overflow-site-administration-path-1",
-          "explanation": "At 390×844, the Stacktrace page permits whole-document horizontal scrolling that shifts the process card and controls offscreen.",
+          "explanation": "Open Site Administration Stacktrace/Monitor at 390px. The diagnosis-report controls overlap the Stacktrace tab, and the resulting wide document permits horizontal scrolling that moves process controls offscreen.",
           "sourceBugs": [
             {
               "index": 4,
               "id": "gitea-novel-009",
               "name": "Stacktrace page overflows mobile viewport"
+            },
+            {
+              "index": 5,
+              "id": "mo-60m-gitea-15",
+              "name": "At mobile width, the diagnosis-report button overlaps and obscures the Stacktrace tab label"
             }
           ],
           "expected": "Horizontal scrolling for long stack text should remain within its content area and leave the process card and page controls in place.",
@@ -200,6 +205,15 @@
                   "distinction": "The existing reference concerns the diagnosis button covering the Stacktrace tab label. This reference concerns stack content causing whole-document horizontal displacement; toolbar overlap alone is not treated as its evidence."
                 }
               }
+            },
+            {
+              "sourceBugIndex": 5,
+              "guidance": {
+                "acceptanceScope": "Accepted as a valid reference by user instruction; source prerequisites and remaining evidence gaps are retained below.",
+                "prerequisites": [
+                  "390px content width below tab strip plus diagnosis form intrinsic widths."
+                ]
+              }
             }
           ],
           "sourceConstraints": [
@@ -213,40 +227,7 @@
                   }
                 }
               }
-            }
-          ]
-        },
-        {
-          "id": "gitea-admin-monitor-mobile-overflow-site-administration-path-2",
-          "explanation": "At mobile width, the diagnosis-report button overlaps and obscures the Stacktrace tab label",
-          "sourceBugs": [
-            {
-              "index": 5,
-              "id": "mo-60m-gitea-15",
-              "name": "At mobile width, the diagnosis-report button overlaps and obscures the Stacktrace tab label"
-            }
-          ],
-          "expected": "The Stacktrace tab and Download diagnosis report button are separately laid out so the button does not obscure the tab label or its click target at this viewport.",
-          "actual": "At 390 × 844, the Download diagnosis report button covers the right side of the Stacktrace tab, leaving its label partially hidden. The exposed part of the tab remains clickable.",
-          "reproSteps": [
-            "/-/admin/monitor/stacktrace",
-            "Read-only browser exploration only. Do not change authentication details or sign out; do not create, start, stop, or modify running jobs or global data. Do not inspect application source, benchmarks, ground truth, or prior evaluation reports, and do not treat coverage metadata or failed/untested jobs as bugs.",
-            "Start with the authorized administrator session and navigate to /-/admin/monitor/stacktrace at a 390 × 844 CSS-pixel viewport.",
-            "Observe the toolbar above the goroutine count. The Download diagnosis report button overlaps the Stacktrace tab."
-          ],
-          "severity": 1,
-          "matchingGuidance": [
-            {
-              "sourceBugIndex": 5,
-              "guidance": {
-                "acceptanceScope": "Accepted as a valid reference by user instruction; source prerequisites and remaining evidence gaps are retained below.",
-                "prerequisites": [
-                  "390px content width below tab strip plus diagnosis form intrinsic widths."
-                ]
-              }
-            }
-          ],
-          "sourceConstraints": [
+            },
             {
               "sourceBugIndex": 5,
               "constraints": {
@@ -258,13 +239,96 @@
                 }
               }
             }
+          ],
+          "sourceReproductions": [
+            {
+              "id": "gitea-admin-monitor-mobile-overflow-site-administration-path-1",
+              "explanation": "At 390×844, the Stacktrace page permits whole-document horizontal scrolling that shifts the process card and controls offscreen.",
+              "expected": "Horizontal scrolling for long stack text should remain within its content area and leave the process card and page controls in place.",
+              "actual": "A normal horizontal scroll from the page margin outside the stack content shifts the process card and Download diagnosis report control left and exposes blank space. The document already overflows before expanding ProcessStacktraces.func2; expansion is part of the observed flow, not an established cause.",
+              "reproSteps": [
+                "Sign in as a site administrator in the current Gitea fixture and set a desktop browser viewport to 390×844 CSS pixels.",
+                "Use Site Administration → Monitoring → Trace → Stacktrace.",
+                "Locate the monitoring request process and expand code.gitea.io/gitea/modules/process.(*Manager).ProcessStacktraces.func2.",
+                "From the page margin outside the card/code content, perform a normal horizontal scroll to the right, approximately 350 CSS pixels.",
+                "Observe the process card and diagnosis controls shifting left and blank space appearing on the right. The overflow is already present before the expansion."
+              ],
+              "severity": 1,
+              "matchingGuidance": [
+                {
+                  "sourceBugIndex": 4,
+                  "guidance": {
+                    "relatedReference": {
+                      "id": "mo-60m-gitea-15",
+                      "distinction": "The existing reference concerns the diagnosis button covering the Stacktrace tab label. This reference concerns stack content causing whole-document horizontal displacement; toolbar overlap alone is not treated as its evidence."
+                    }
+                  }
+                }
+              ],
+              "sourceConstraints": [
+                {
+                  "sourceBugIndex": 4,
+                  "constraints": {
+                    "matchingGuidance": {
+                      "relatedReference": {
+                        "id": "mo-60m-gitea-15",
+                        "distinction": "The existing reference concerns the diagnosis button covering the Stacktrace tab label. This reference concerns stack content causing whole-document horizontal displacement; toolbar overlap alone is not treated as its evidence."
+                      }
+                    }
+                  }
+                }
+              ],
+              "sourceBugIndices": [
+                4
+              ]
+            },
+            {
+              "id": "gitea-admin-monitor-mobile-overflow-site-administration-path-2",
+              "explanation": "At mobile width, the diagnosis-report button overlaps and obscures the Stacktrace tab label",
+              "expected": "The Stacktrace tab and Download diagnosis report button are separately laid out so the button does not obscure the tab label or its click target at this viewport.",
+              "actual": "At 390 × 844, the Download diagnosis report button covers the right side of the Stacktrace tab, leaving its label partially hidden. The exposed part of the tab remains clickable.",
+              "reproSteps": [
+                "/-/admin/monitor/stacktrace",
+                "Read-only browser exploration only. Do not change authentication details or sign out; do not create, start, stop, or modify running jobs or global data. Do not inspect application source, benchmarks, ground truth, or prior evaluation reports, and do not treat coverage metadata or failed/untested jobs as bugs.",
+                "Start with the authorized administrator session and navigate to /-/admin/monitor/stacktrace at a 390 × 844 CSS-pixel viewport.",
+                "Observe the toolbar above the goroutine count. The Download diagnosis report button overlaps the Stacktrace tab."
+              ],
+              "severity": 1,
+              "matchingGuidance": [
+                {
+                  "sourceBugIndex": 5,
+                  "guidance": {
+                    "acceptanceScope": "Accepted as a valid reference by user instruction; source prerequisites and remaining evidence gaps are retained below.",
+                    "prerequisites": [
+                      "390px content width below tab strip plus diagnosis form intrinsic widths."
+                    ]
+                  }
+                }
+              ],
+              "sourceConstraints": [
+                {
+                  "sourceBugIndex": 5,
+                  "constraints": {
+                    "matchingGuidance": {
+                      "acceptanceScope": "Accepted as a valid reference by user instruction; source prerequisites and remaining evidence gaps are retained below.",
+                      "prerequisites": [
+                        "390px content width below tab strip plus diagnosis form intrinsic widths."
+                      ]
+                    }
+                  }
+                }
+              ],
+              "sourceBugIndices": [
+                5
+              ]
+            }
           ]
         }
       ]
     },
     {
       "id": "gitea-admin-inventory-heading-actions-overlap",
-      "explanation": "Inventory action buttons overlap totals on narrow screens.",
+      "explanation": "At 390px, Site Administration inventory action buttons cover their headings’ totals. New Organization, Create User Account and Unadopted Repositories can overlap the corresponding \"Total: N\" text rather than stacking beside/below it.",
       "rootCause": {
         "explanation": "Admin list templates place a floated ui right action beside the heading without reserving responsive width or stacking it, so the heading and action paint over one another.",
         "sourceReferences": [
@@ -347,7 +411,7 @@
     },
     {
       "id": "gitea-admin-delete-repository-loses-filter",
-      "explanation": "Deleting an admin inventory repository drops active search filters.",
+      "explanation": "After an administrator deletes the sole repository matching an inventory search and Public filter, the redirect drops both query parameters, clears the search, and displays unrelated repositories instead of the now-empty filtered results.",
       "rootCause": {
         "explanation": "DeleteRepository reconstructs the redirect using only page and sort, omitting q, private and the other filter parameters.",
         "sourceReferences": [
@@ -386,7 +450,7 @@
     },
     {
       "id": "gitea-admin-delete-repository-unclamped-page",
-      "explanation": "Deleting the final row strands the inventory on an invalid page.",
+      "explanation": "When an administrator deletes the only repository on the last page of Site Administration → Repositories, the redirect returns to that now out-of-range page, which shows the total count but \"No results found.\" and no pagination controls.",
       "rootCause": {
         "explanation": "Deletion preserves the requested page; the subsequent list queries its offset before pagination can adjust it, leaving an empty page after the last row is deleted.",
         "sourceReferences": [
@@ -426,7 +490,7 @@
     },
     {
       "id": "gitea-organization-follow-button-mobile-width",
-      "explanation": "Organization Follow text wraps inside an undersized control.",
+      "explanation": "Below 768px on an organization’s profile, the Follow button is squeezed beside the organization name and its label breaks mid-word (“Fol”/“low”; “Unfollow” across three lines).",
       "rootCause": {
         "explanation": "The organization name and action group share a header row within a flex column; the following control lacks its own minimum width/nowrap sizing when the header consumes phone width.",
         "sourceReferences": [
@@ -464,7 +528,7 @@
     },
     {
       "id": "gitea-organization-empty-email-ignored",
-      "explanation": "Organization contact email cannot be cleared.",
+      "explanation": "In organization settings, emptying the Contact Email field and clicking Update Settings shows 'Organization settings have been updated.', but the old address is kept in the form and the organization header.",
       "rootCause": {
         "explanation": "SettingsPost calls ReplacePrimaryEmailAddress only for nonempty Email and omits an update when it is cleared.",
         "sourceReferences": [
@@ -502,7 +566,7 @@
     },
     {
       "id": "gitea-admin-repository-limit-unvalidated-int",
-      "explanation": "Invalid or missing admin repository limits silently become zero.",
+      "explanation": "In Site Administration > Edit User, a blank or invalid/out-of-range Maximum Number of Repositories reports a successful save but replaces the previous limit with 0. That zero can block repository creation instead of rejecting the input or using the documented -1 default.",
       "rootCause": {
         "explanation": "EditUserForm uses a plain int field without a required or lexical/range validator; failed/empty binding produces zero, and the handler persists form.MaxRepoCreation as an explicit update.",
         "sourceReferences": [
@@ -559,7 +623,7 @@
     },
     {
       "id": "gitea-organization-settings-validation-loses-draft",
-      "explanation": "Rejected organization settings replace pending fields and checkbox state.",
+      "explanation": "Submitting organization settings with a name already taken or reserved shows a rename error but replaces other pending text/settings with saved values. It can also uncheck Repository admin can add and remove access for teams, so correcting the name and saving silently disables that previously enabled option.",
       "rootCause": {
         "explanation": "The rejection path renders tplSettingsOptions while its inputs read the persisted organization. RepoAdminChangeTeamAccess is populated by GET but not the error path, so the checkbox also loses its value.",
         "sourceReferences": [
@@ -640,7 +704,7 @@
     },
     {
       "id": "gitea-queue-negative-cap-silently-clamped",
-      "explanation": "Queue cap values below -1 are silently rewritten.",
+      "explanation": "In Site Administration > Monitoring > Queues, entering a maximum worker count below -1 (such as -2) reports Settings Updated and stores -1 instead. The form gives no validation message or sign that the entered value was rejected or changed.",
       "rootCause": {
         "explanation": "UpdateQueue explicitly converts maxNumber < -1 to -1 and still flashes settings changed.",
         "sourceReferences": [
@@ -678,7 +742,7 @@
     },
     {
       "id": "gitea-diagnosis-ignores-cancellation",
-      "explanation": "Diagnosis generation continues after process cancellation.",
+      "explanation": "In Site Administration > Monitor, confirming Cancel on a running diagnosis report process reports success, but the process keeps running for its full duration and the browser still downloads the report afterwards. The diagnosis handler waits out its full time without checking for cancellation.",
       "rootCause": {
         "explanation": "The handler sleeps for the sampling duration without selecting on the process context cancellation, then completes the response.",
         "sourceReferences": [
@@ -716,7 +780,7 @@
     },
     {
       "id": "gitea-admin-search-omits-sort",
-      "explanation": "Admin search/filter submissions omit the current sort.",
+      "explanation": "On Site Administration User Accounts, Organizations and User Emails, choosing a sort and then submitting a search/filter drops that sort. The results return in the page’s default ordering rather than narrowing the selected order.",
       "rootCause": {
         "explanation": "User, organization and email search forms do not carry the current sort as a hidden input. Sort buttons contribute a value only when clicked, so other submissions drop it.",
         "sourceReferences": [
@@ -864,7 +928,7 @@
     },
     {
       "id": "gitea-repository-search-history-form-state",
-      "explanation": "History restoration leaves visible search fields stale.",
+      "explanation": "Browser Back can restore earlier repository results/URL while leaving later search or filter controls in place. On Explore, changing Sort after Back can silently reapply an undone Public/private filter; in admin repository inventory, the search box can keep the later unmatched query above the earlier results.",
       "rootCause": {
         "explanation": "The change handler builds navigation from FormData of the restored form without synchronizing controls from the current URL on pageshow/popstate. Browser history can restore results independently of control values.",
         "sourceReferences": [
@@ -946,7 +1010,7 @@
     },
     {
       "id": "gitea-admin-user-search-history-form-state",
-      "explanation": "History restoration leaves user search fields stale.",
+      "explanation": "After searching mo-order- then missing-order-qa and navigating Back, the table returns the previous mo-order- results while the search input displays missing-order-qa.",
       "rootCause": {
         "explanation": "The server-rendered user search input has browser-restorable value state with no URL synchronization on history restoration, so later input can appear above earlier results.",
         "sourceReferences": [
@@ -1021,7 +1085,7 @@
     },
     {
       "id": "gitea-queue-nonpositive-cap-keeps-worker",
-      "explanation": "Zero queue cap still allows a worker.",
+      "explanation": "In Site Administration > Monitor > Queues, setting a queue's Max Number of Workers to 0 (or -1) is accepted with \"Settings Updated\", but the queue still starts a worker when work arrives, and nothing explains that 0 doesn't stop it. The setting looks like it caps workers at zero but has no such effect.",
       "rootCause": {
         "explanation": "The workergroup start condition explicitly permits noWorker && workerMaxNum <= 0; the admin numeric setting does not communicate these special semantics.",
         "sourceReferences": [
@@ -1084,7 +1148,7 @@
     },
     {
       "id": "gitea-organization-repository-limit-unvalidated-int",
-      "explanation": "Blank organization repository limits become zero.",
+      "explanation": "In an organization's settings, clearing Maximum Number of Repositories and saving stores a limit of 0, which blocks the organization from creating repositories, instead of falling back to the default (-1, use the global limit) when the field is unset.",
       "rootCause": {
         "explanation": "UpdateOrgSettingForm represents MaxRepoCreation as a plain int; blank binding is zero and SettingsPost persists it rather than interpreting missing input as the default.",
         "sourceReferences": [
@@ -1122,7 +1186,7 @@
     },
     {
       "id": "gitea-monitor-modal-document-overflow",
-      "explanation": "Process confirmation can be centered outside the mobile viewport.",
+      "explanation": "After opening Cancel process at desktop width and resizing to 390 pixels, the dialog moves beyond the right and bottom edges. Dismissing with Escape and reopening at the mobile width still shows a clipped dialog with Confirm outside the viewport.",
       "rootCause": {
         "explanation": "The stacktrace layout can exceed viewport width and the generic modal is opened through link-action using document/dimmer geometry rather than constraining this overflowing monitor layout.",
         "sourceReferences": [
