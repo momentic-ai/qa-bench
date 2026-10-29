@@ -1270,6 +1270,30 @@
       },
       "owningArea": "gitea/issues",
       "severity": 5
+    },
+    {
+      "id": "gitea-edit-deleted-comment-raw-json-error",
+      "name": "Saving an edit to a comment deleted in another tab shows a raw JSON SyntaxError",
+      "summary": "If a comment is deleted (for example from another tab) while its inline editor is open, clicking Save shows a technical error banner, 'Failed to save the content: SyntaxError: Unexpected token 'N', \"Not found.\" is not valid JSON', instead of explaining that the comment no longer exists. The editor closes and the old comment text is shown.",
+      "expected": "Saving an edit to a comment that no longer exists shows a readable message that the comment was deleted, as the editor does for a version conflict.",
+      "actual": "The server returned HTTP 404 with plain text 'Not found.', and the page showed the raw SyntaxError banner, hid the editor and displayed the stale comment card. Reopening Edit still contained the pending text.",
+      "reproSteps": [
+        "Open an issue with a comment you can edit, and open the same issue in a second tab.",
+        "In the first tab, click Edit on the comment and change its text without saving.",
+        "In the second tab, delete that comment.",
+        "In the first tab, click Save and read the error shown."
+      ],
+      "sourceCause": "saveAndRefresh in web_src/js/features/repo-issue-edit.ts calls response.json() before checking the response status and shows a readable errorMessage only for HTTP 400. UpdateCommentContent returns a plain-text 404 for a deleted comment, so JSON parsing throws and the catch block shows the raw exception.",
+      "matchingGuidance": {
+        "relatedReference": {
+          "id": "gitea-comment-after-deletion-raw-json-error",
+          "name": "Commenting on a deleted issue shows a raw JSON SyntaxError",
+          "distinction": "Same raw JSON SyntaxError from a plain-text 404. That entry is posting a new comment on a deleted issue; this entry is saving an inline edit to a comment that was deleted."
+        },
+        "scope": "Saving an inline comment (or description) edit after the comment was deleted elsewhere shows a raw JSON parsing error. Claims that the pending edit text is lost are not part of this bug: reopening Edit keeps it."
+      },
+      "owningArea": "gitea/issues",
+      "severity": 1
     }
   ]
 }
