@@ -236,6 +236,37 @@
         "scope": "Only reports that a pinned notification updated by a new comment opens or highlights an earlier comment instead of the new one. Do not match pinned notifications that disappear, become unreachable at page boundaries, change read state, or affect other notifications."
       },
       "severity": 1
+    },
+    {
+      "id": "gitea-subscriptions-page-redirect-discards-filters",
+      "name": "Subscriptions pagination redirect discards active filters",
+      "summary": "The redirect for a page beyond the end of Subscriptions keeps only the page number and discards the state, type and sorting filters.",
+      "expected": "Redirect to the last valid page of the same filtered and sorted list.",
+      "actual": "The redirected list resets to All states, All types and Newest sorting.",
+      "reproSteps": [
+        "Open Subscriptions with state, type and non-default sorting filters applied.",
+        "Request a page beyond the filtered list’s last page, as with a stale pagination URL.",
+        "Inspect the redirect URL, active controls and results."
+      ],
+      "severity": 3,
+      "owningArea": "gitea/notifications",
+      "sourceCause": "The out-of-range pagination redirect constructs /notifications/subscriptions?page=N without preserving request parameters."
+    },
+    {
+      "id": "gitea-subscriptions-watch-query-uses-wrong-id",
+      "name": "Subscriptions omits issues from normally watched repositories",
+      "summary": "Issues and pull requests from normally watched repositories are missing from Subscriptions despite an active subscription; unwatching and re-watching can make previously listed items disappear.",
+      "expected": "Issues and pull requests subscribed to through a watched repository appear in Subscriptions.",
+      "actual": "After re-watching a repository, items by other users disappear unless the current user independently authored, commented on or subscribed to them.",
+      "reproSteps": [
+        "Watch a repository containing issues or pull requests by another user.",
+        "Verify an item indicates an active subscription.",
+        "Open Subscriptions and look for the item.",
+        "For a previously listed watched repository, unwatch and re-watch it, then compare the list."
+      ],
+      "severity": 3,
+      "owningArea": "gitea/notifications",
+      "sourceCause": "The subscriber query compares issue.repo_id to the watch table’s id rather than repo_id."
     }
   ]
 }
