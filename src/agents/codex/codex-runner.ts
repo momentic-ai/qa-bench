@@ -24,6 +24,7 @@ type CodexSetup = {
   mcpServers: Record<string, unknown>;
   env?: Record<string, string>;
   sandbox?: "workspace-write";
+  subagents?: boolean;
 };
 
 export abstract class CodexRunner implements EvalAgent {
@@ -86,7 +87,12 @@ export abstract class CodexRunner implements EvalAgent {
     this.server = new CodexAppServer(
       this.command,
       env,
-      async (_threadId, tool, args) => {
+      async (threadId, tool, args) => {
+        if (threadId !== this.threadId) {
+          throw new Error(
+            "Send your findings to the parent; only the root agent accepts eval results.",
+          );
+        }
         await this.store.handleTool(tool, args);
       },
     );
@@ -107,6 +113,11 @@ export abstract class CodexRunner implements EvalAgent {
               ? { sandbox_workspace_write: { network_access: true } }
               : {}),
             mcp_servers: setup.mcpServers,
+            agents: {
+              enabled: setup.subagents,
+              default_subagent_model: "gpt-6.1-sol",
+              default_subagent_reasoning_effort: "medium",
+            },
           },
         },
         signal,

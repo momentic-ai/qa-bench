@@ -15,15 +15,18 @@ export type Agent = z.infer<typeof AgentSchema>;
 export const AGENTS = AgentSchema.options;
 const count = z.number().int().nonnegative();
 
-// Spec §7: precision is TRUE / (TRUE + FALSE); duplicates and unresolved findings are reported separately.
+// Precision judges every adjudicated report, including duplicates of known hits and known invalid findings; recall credits each reference once.
 export function metrics(
   knownHits: number,
   knownInvalid: number,
   groundTruth: number,
+  duplicateKnownHits = 0,
+  duplicateKnownInvalid = 0,
 ) {
-  const adjudicated = knownHits + knownInvalid;
+  const correct = knownHits + duplicateKnownHits;
+  const adjudicated = correct + knownInvalid + duplicateKnownInvalid;
   return {
-    precision: adjudicated === 0 ? null : knownHits / adjudicated,
+    precision: adjudicated === 0 ? null : correct / adjudicated,
     recall: groundTruth === 0 ? 0 : knownHits / groundTruth,
   };
 }
@@ -74,6 +77,8 @@ export const ScoreSchema = z
     outside_area_ground_truth_sha256: z.string().default(""),
     outside_area_known_invalid_sha256: z.string().default(""),
     duplicates: count,
+    duplicate_known_hits: count,
+    duplicate_known_invalid: count,
     known_invalid: count,
     known_misses: count,
     precision: z.number().min(0).max(1).nullable(),
@@ -98,6 +103,8 @@ export const ScoreSchema = z
       score.known_hits,
       score.known_invalid,
       score.ground_truth,
+      score.duplicate_known_hits,
+      score.duplicate_known_invalid,
     );
     const ratesPerMinute = throughput(
       score.bugs,
@@ -123,6 +130,9 @@ export const ScoreSchema = z
     if (score.flags > score.bugs) return false;
     if (score.known_hits > score.ground_truth) return false;
     if (score.known_misses !== score.known_invalid) return false;
+    const adjudicatedDuplicates =
+      score.duplicate_known_hits + score.duplicate_known_invalid;
+    if (adjudicatedDuplicates > score.duplicates) return false;
     const severityCount =
       score.severity_1 + score.severity_3 + score.severity_5;
     if (severityCount !== score.known_hits) return false;
@@ -280,6 +290,10 @@ export function totalScores(scores: Score[], agent: Agent): Score {
       outside_area_duplicates:
         sum.outside_area_duplicates + score.outside_area_duplicates,
       duplicates: sum.duplicates + score.duplicates,
+      duplicate_known_hits:
+        sum.duplicate_known_hits + score.duplicate_known_hits,
+      duplicate_known_invalid:
+        sum.duplicate_known_invalid + score.duplicate_known_invalid,
       known_invalid: sum.known_invalid + score.known_invalid,
       known_misses: sum.known_misses + score.known_misses,
       severity_1: sum.severity_1 + score.severity_1,
@@ -309,6 +323,8 @@ export function totalScores(scores: Score[], agent: Agent): Score {
       outside_area_known_invalid: 0,
       outside_area_duplicates: 0,
       duplicates: 0,
+      duplicate_known_hits: 0,
+      duplicate_known_invalid: 0,
       known_invalid: 0,
       known_misses: 0,
       severity_1: 0,
@@ -343,6 +359,12 @@ export function totalScores(scores: Score[], agent: Agent): Score {
     review_path: "",
     cost_usd: costUsd,
     ...throughput(total.bugs, total.known_hits, total.duration_seconds),
-    ...metrics(total.known_hits, total.known_invalid, total.ground_truth),
+    ...metrics(
+      total.known_hits,
+      total.known_invalid,
+      total.ground_truth,
+      total.duplicate_known_hits,
+      total.duplicate_known_invalid,
+    ),
   });
 }

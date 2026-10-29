@@ -103,6 +103,12 @@ export function scoreAssessment(
   const severitySum = knownHits.reduce((sum, hit) => sum + hit.severity, 0);
   // Known misses are submitted claims matching reviewed negatives; unfound positives affect recall only.
   const knownMisses = assessment.invalidMatches.length;
+  const matchedFindings = new Set(
+    assessment.matches.map((match) => match.findingIndex),
+  );
+  const rejectedFindings = new Set(
+    assessment.invalidMatches.map((match) => match.findingIndex),
+  );
   return {
     knownHits,
     assessment: {
@@ -134,6 +140,12 @@ export function scoreAssessment(
     scores: {
       known_hits: knownHits.length,
       known_misses: knownMisses,
+      duplicate_known_hits: assessment.duplicates.filter((duplicate) =>
+        matchedFindings.has(duplicate.canonicalFindingIndex),
+      ).length,
+      duplicate_known_invalid: assessment.duplicates.filter((duplicate) =>
+        rejectedFindings.has(duplicate.canonicalFindingIndex),
+      ).length,
       severity_1: knownHits.filter((hit) => hit.severity === 1).length,
       severity_3: knownHits.filter((hit) => hit.severity === 3).length,
       severity_5: knownHits.filter((hit) => hit.severity === 5).length,

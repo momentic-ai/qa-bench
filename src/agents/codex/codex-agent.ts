@@ -53,7 +53,10 @@ export class CodexAgent extends CodexRunner {
         sandbox: "workspace-write" as const,
       };
     }
-    return { mcpServers: await this.prepareBrowserMcp() };
+    return {
+      mcpServers: await this.prepareBrowserMcp(),
+      subagents: !this.localBrowser,
+    };
   }
 
   protected async collectBrowserCost() {
@@ -122,6 +125,7 @@ export class CodexAgent extends CodexRunner {
         tool_timeout_sec: 120,
         default_tools_approval_mode: "approve",
         required: true,
+        disabled_tools: ["browser_run_code_unsafe"],
       },
     };
   }
@@ -135,7 +139,12 @@ export function codexAgent(
     name: `codex-${browserTool}`,
     reportSubdirectory: `codex-${browserTool}`,
     concurrency: browser === "local" ? 2 : Infinity,
-    config: { browser },
+    config: {
+      browser,
+      ...(browserTool === "playwright-mcp"
+        ? { subagents: browser !== "local" }
+        : {}),
+    },
     async validateEnvironment() {
       if (!process.env.OPENAI_API_KEY)
         throw new Error("OPENAI_API_KEY is required.");
