@@ -140,11 +140,11 @@
     },
     {
       "id": "metabase-data-modeling-057",
-      "name": "Clearing a field description in Data Reference and saving restores the old description",
+      "name": "Clearing a saved Data Reference field text (description, caveats, or why it's interesting) restores the old text",
       "severity": 3,
       "summary": "Clearing a field description in Data Reference and saving restores the old description.",
-      "expected": "Saving an empty optional description removes the old description and shows the empty-description placeholder.",
-      "actual": "Details still displays 'QA metadata persistence: customer feedback body.' after Save. The multimodal assertion confirmed the old Description remains rather than 'No description yet'.",
+      "expected": "Saving an emptied optional field text (description, caveats, or 'Why this field is interesting') removes the old text and shows the empty placeholder.",
+      "actual": "After clearing the text and saving, Details still shows the previous text, e.g. 'QA metadata persistence: customer feedback body.' instead of 'No description yet'.",
       "reproSteps": [
         "As the authenticated admin, use Data → Databases → Learn about our data → Sample Database → Tables → Feedback → Fields → Body.",
         "Ensure the field has a nonempty description; in this check it was set via Table Metadata to 'QA metadata persistence: customer feedback body.'. The table and field were temporarily renamed Feedback QA Metadata and Feedback text QA.",
@@ -169,11 +169,11 @@
     },
     {
       "id": "metabase-data-modeling-150",
-      "name": "Renaming a restored model displays a permission error",
+      "name": "Editing a restored model or metric from its open page fails because it still points at Trash",
       "severity": 3,
       "summary": "Renaming a restored model displays a permission error.",
-      "expected": "The model is successfully renamed and remains accessible with its data displayed.",
-      "actual": "After renaming the model in the header, the view is replaced with a permission screen displaying a key icon and 'Sorry, you don’t have permission to see that.'",
+      "expected": "After restoring from the trash banner, renaming, converting or duplicating the model or metric works without a reload.",
+      "actual": "The open page still sends the Trash collection: renaming or 'Turn back to saved question' shows 'Sorry, you don't have permission to see that', and Duplicate stays disabled with valid inputs. Reloading fixes it.",
       "reproSteps": [
         "Sign in as a member (maya@example.test). Create a model from Products, then a metric that counts it.",
         "Move the model to the trash, open the metric and follow its source link. Confirm the model-in-trash banner.",
@@ -645,9 +645,9 @@
     },
     {
       "id": "metabase-data-modeling-179",
-      "name": "Duplicate glossary term silently discards the new definition",
+      "name": "A failed glossary save (duplicate or over-255-character term) silently discards the edit",
       "severity": 3,
-      "summary": "Duplicate glossary term silently discards the new definition.",
+      "summary": "When a glossary term create or edit fails on the server, for example a duplicate term or a term longer than 255 characters, the row briefly shows the new values and then silently reverts, with no error and the entered definition lost.",
       "expected": "Show duplicate-term validation and retain the entered draft so the user can choose another name.",
       "actual": "The editor closes without an error, the original entry remains unchanged, and reopening New term shows blank fields: the new draft definition is lost. The observed glossary POST returns 500 with a unique constraint failure.",
       "reproSteps": [
@@ -717,9 +717,9 @@
     },
     {
       "id": "metabase-data-modeling-303",
-      "name": "Metric formula preview retains previous aggregation's axis label after rerunning",
+      "name": "Metric editor results keep the saved column label after the aggregation or time grouping changes",
       "severity": 1,
-      "summary": "Metric formula preview retains previous aggregation's axis label after rerunning.",
+      "summary": "In the metric editor, rerunning after changing the aggregation (e.g. Cumulative count to Count) or the time grouping (e.g. Month to Year) keeps the saved column's label and type, such as an axis still reading 'Created At: Month' over yearly points.",
       "expected": "The completed preview updates the vertical axis label to match the new formula (Count).",
       "actual": "After changing the formula to Count of rows and re-running the preview, the values update to monthly counts under 100, but the vertical axis still reads 'Cumulative count'.",
       "reproSteps": [
@@ -829,11 +829,11 @@
     },
     {
       "id": "metabase-data-modeling-347",
-      "name": "Reference field pie-chart suggestion opens a bar chart instead",
+      "name": "Reference field pie-chart suggestion opens a different chart type instead",
       "severity": 3,
       "summary": "Reference field pie-chart suggestion opens a bar chart instead.",
-      "expected": "Clicking the pie-icon “Number of Release Requests grouped by Approved” suggestion should open a pie chart visualization.",
-      "actual": "Clicking the pie-icon suggestion opens “Count by Approved” rendered as a bar chart (false=3, true=3).",
+      "expected": "Clicking a pie-icon 'Number of … grouped by …' suggestion on a Data Reference field opens a pie chart.",
+      "actual": "The pie-icon suggestion opens the field's default chart instead: a bar chart for Approved (false=3, true=3), a line chart for Created At.",
       "reproSteps": [
         "Read-only reference navigation; no table/field metadata edits or chart-settings changes needed. Fixture already contains six release requests, three true and three false.",
         "Open Data reference databases with supplied authenticated access.",
@@ -1489,6 +1489,134 @@
         "Open Sample Database reference and select Orders.",
         "Open Questions about this table and scroll to Unique customers per month.",
         "Open the question and inspect the displayed period and grouping."
+      ]
+    },
+    {
+      "id": "metabase-data-modeling-b34",
+      "name": "Data Reference table detail header shows the internal schema ID (\"1:PUBLIC\") instead of the schema name",
+      "severity": 1,
+      "summary": "Data Reference table detail header shows the internal schema ID (\"1:PUBLIC\") instead of the schema name.",
+      "expected": "Show the plain schema name (\"PUBLIC\" / \"public\") to match the table list, or hide it, since each of these databases has only one schema.",
+      "actual": "On /reference/databases/2/tables/9 it reads \"2:public\" above \"Release Requests\".",
+      "reproSteps": [
+        "Sign in as eval@momentic.ai / momentic-eval-1.",
+        "Go to /reference/databases and click \"Sample Database\".",
+        "Click \"Tables in Sample Database\" and note that the schema group header reads \"PUBLIC\".",
+        "Click the \"Products\" table (/reference/databases/1/tables/3).",
+        "Observe that the small label above the \"Products\" heading reads \"1:PUBLIC\".",
+        "Optionally open /reference/databases/2/tables/9 and observe \"2:public\"."
+      ]
+    },
+    {
+      "id": "metabase-data-modeling-b28",
+      "name": "Model records with slash characters in their entity key open a missing-page error",
+      "severity": 3,
+      "summary": "Model records with slash characters in their entity key open a missing-page error.",
+      "expected": "The string entity key should be URL-encoded and the record's detail panel should open, showing the original key and title.",
+      "actual": "The app navigates to /model/<id>-<slug>/qa/a%20b# and renders 'We're a little lost... The page you asked for couldn't be found.' The slash remains a path separator and the key is mangled. Reproduced again from the saved model after a full page navigation.",
+      "reproSteps": [
+        "Sign in and open /browse/models → Create a new model → Use a native query. Select Release operations if a database is not selected.",
+        "Enter SELECT 'qa/a b?#' AS record_key, 'QA Special Record' AS title and run it with Ctrl+Enter.",
+        "Save the model as 'QA Special Keys Model'.",
+        "Open the model's three-dot menu → Edit metadata → Columns. Select record_key and set Column type to Entity Key. Select title and set Column type to Entity Name.",
+        "Open the model editor's Settings tab, choose List as the default view, and Save changes.",
+        "Reload the saved model and click QA Special Record in its list."
+      ]
+    },
+    {
+      "id": "metabase-data-modeling-b29",
+      "name": "Refreshing a model record with entity key 'query' opens the model editor",
+      "severity": 3,
+      "summary": "Refreshing a model record with entity key 'query' opens the model editor.",
+      "expected": "Refreshing the record URL should reopen the same record details.",
+      "actual": "After refresh, the app opens the model's Query/Columns/Settings editor, with Cancel and Save changes, instead of the record. Verified on a saved model with record_key='query': before refresh its dialog displayed 'QA Query Key' and 'record_key query'; after refresh the same /model/<id>-<slug>/query URL displayed the SQL model editor.",
+      "reproSteps": [
+        "Open /browse/models → Create a new model → Use a native query, using the Release operations database.",
+        "Run SELECT 'query' AS record_key, 'QA Query Key' AS title and save it as 'QA Reserved Key Model'.",
+        "Choose the model's three-dot menu → Edit metadata → Columns. Set record_key's Column type to Entity Key, and title's Column type to Entity Name.",
+        "In the model editor's Settings tab, select List and Save changes.",
+        "Click QA Query Key in the model list. Confirm its record details appear and the browser URL ends with /model/<model-id>-qa-reserved-key-model/query.",
+        "Refresh the browser at that URL."
+      ]
+    },
+    {
+      "id": "metabase-data-modeling-b30",
+      "name": "Opening a model record with numeric entity key 0 leaves the URL at the model list",
+      "severity": 3,
+      "summary": "Opening a model record with numeric entity key 0 leaves the URL at the model list.",
+      "expected": "The zero record should have its own URL ending in /0, and refreshing should preserve the selected record, as it does for other keys.",
+      "actual": "QA Zero Record opens with record_key 0, but the URL remains /model/<id>-<slug>. Next row changes the URL to /model/<id>-<slug>/-1, and Previous row returns to the bare model URL while displaying key 0. Refresh closes the record and loads the list. The full-page control correctly exposes /model/<id>-<slug>/detail/0, demonstrating that 0 is a valid record key. Repeated through direct list clicks and next/previous navigation.",
+      "reproSteps": [
+        "Open /browse/models → Create a new model → Use a native query, using Release operations.",
+        "Run SELECT 0 AS record_key, 'QA Zero Record' AS title UNION ALL SELECT -1 AS record_key, 'QA Negative Record' AS title and save as 'QA Zero Key Model'.",
+        "Open the model's three-dot menu → Edit metadata → Columns. Set record_key to Entity Key and title to Entity Name.",
+        "In the editor's Settings tab, select List and Save changes.",
+        "Click QA Zero Record and inspect the address bar. Click Next row, then Previous row, and compare the URLs.",
+        "Refresh while QA Zero Record is open."
+      ]
+    },
+    {
+      "id": "metabase-data-modeling-601",
+      "name": "Records from a trashed model remain in normal search results",
+      "severity": 3,
+      "summary": "Records from a trashed model remain in normal search results.",
+      "expected": "Normal search should exclude records belonging to trashed models. They should only appear when searching trash, if supported.",
+      "actual": "After enabling Title record search on a Products model and trashing that model, searching Rustic Paper Wallet still returns its indexed record. This persists after full page reload with Search items in trash unchecked.",
+      "reproSteps": [
+        "Sign in as eval@momentic.ai and open /browse/models → Create a new model.",
+        "Choose the query builder and Sample Database → Products. Run the model and save it with a unique name such as QA Searchable Products.",
+        "On the saved model, open the three-dot menu → Edit metadata, then Columns. Select the Title column by clicking its name.",
+        "Turn on “Surface individual records in search by matching against this column” and Save changes.",
+        "Use global Search for Rustic Paper Wallet; wait until a record in the new model appears, confirming indexing is ready.",
+        "Return to the model and use its three-dot menu → Move to trash, then confirm.",
+        "Search Rustic Paper Wallet again and open View and filter all results. Keep Search items in trash off, and reload the search page.",
+        "Observe that the record still appears. Open it to see the model's trash banner."
+      ]
+    },
+    {
+      "id": "metabase-data-modeling-609",
+      "name": "Searching models and metrics by date uses the server's GMT day, so recent items fall on the wrong day",
+      "severity": 3,
+      "summary": "Search's Creation date and Last edit date filters for models and metrics resolve dates on the server's GMT clock, so items created or edited in the evening in a timezone behind UTC are filtered as the next day.",
+      "expected": "A date filter on the search page includes an item edited or created minutes ago under Today, and Before/On a date matches the day the user sees.",
+      "actual": "After 00:00 GMT (for example after 5 PM in PT), an item edited minutes earlier disappears from Last edit: Today, and items created that local day disappear from Creation date: Before tomorrow.",
+      "reproSteps": [
+        "Do this in a timezone behind UTC, after 00:00 GMT (for example after 5 PM Pacific).",
+        "Create a metric with a unique name (for example by duplicating Number of Orders), then make and save an edit to it.",
+        "Search its unique name, open View and filter all results, and select content type Metric.",
+        "Set Creation date to Fixed date range > On today's date as shown in the picker; the metric appears.",
+        "Open Last edit date, select Current then Day. Observe no results instead of the metric edited minutes ago."
+      ]
+    },
+    {
+      "id": "metabase-data-modeling-b64",
+      "name": "Saving model metadata adds hidden FK display columns, so the Info panel field count goes up",
+      "severity": 1,
+      "summary": "Saving model metadata adds hidden FK display columns, so the Info panel field count goes up.",
+      "expected": "Editing one column's display name should leave the model's columns unchanged. The Info panel should keep showing '9 fields' (ID, User ID, Product ID, Subtotal, Tax, Total, Discount, Created At, Quantity).",
+      "actual": "After saving, the Info panel shows '11 fields', which now include 'User → User ID' and 'Product → Product ID'. GET /api/card/:id result_metadata now has 11 entries, the extra ones being NAME (display 'User ID') and TITLE (display 'Product ID'). The table view still shows only 9 columns. The same thing happened to the example model 'Orders + People', which went from 12 to 14 fields.",
+      "reproSteps": [
+        "Sign in as eval@momentic.ai",
+        "Create a model on Sample Database > Orders (no joins or changes). Its Info > Overview shows '9 fields'",
+        "Open the model's ... menu > Edit metadata (Columns tab)",
+        "Click the Subtotal column and change Display name to 'Subtotal X', then click Save changes",
+        "Open the Info (i) panel > Overview",
+        "It now says '11 fields' and lists 'User → User ID' and 'Product → Product ID'"
+      ]
+    },
+    {
+      "id": "metabase-data-modeling-b68",
+      "name": "Model basic Update action silently sets untouched boolean fields to false",
+      "severity": 3,
+      "summary": "Model basic Update action silently sets untouched boolean fields to false.",
+      "expected": "Only the fields the user edits are updated; untouched optional fields (including booleans) keep their existing values.",
+      "actual": "Invoice ID 2 had EXPECTED_INVOICE = true. After running Update with only ID=2 and Plan='QAPlan2', the row became EXPECTED_INVOICE = false. Request body: {\"parameters\":{\"date_received\":null,\"plan\":\"QAPlan2\",\"expected_invoice\":false,\"payment\":null,\"account_id\":null,\"id\":2}}. Rows 1 and 2 now show false while every other invoice shows true.",
+      "reproSteps": [
+        "Make sure actions are enabled for Sample Database",
+        "Create a model on the Invoices table (e.g. 'QA Products Model'), open /model/<id>/detail/actions and click 'Create basic actions'",
+        "Check invoice ID 2: Expected Invoice = true",
+        "From the model's Actions, run Update with ID 2 and Plan QAPlan2, leaving Expected Invoice untouched.",
+        "Open the model's data: invoice 2 now shows Expected Invoice = false"
       ]
     }
   ]

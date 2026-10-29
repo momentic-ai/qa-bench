@@ -67,6 +67,83 @@
       "matchingGuidance": {
         "scope": "Reject reports that the comparison commit header shortens a long head branch name while the selectors show it in full. Do not generalize to comparisons that use the wrong branch or commits."
       }
+    },
+    {
+      "id": "gitea-pr-completed-task-rendering-input-artifact",
+      "name": "Completed PR checklist item renders unchecked with a literal task marker",
+      "owningArea": "gitea/pull-requests",
+      "summary": "The report claims a valid completed Markdown task renders unchecked with a literal [x] in both Preview and the saved pull-request body.",
+      "expected": "A valid - [x] task renders as a checked checkbox without a literal task marker in its label.",
+      "actual": "The exact reported two-line Markdown rendered correctly on fresh pull requests in Preview and after save/reload. The reported appearance was recreated only with different text: automatic list continuation inserted an unchecked prefix before a second full task marker, yielding - [ ] - [x] Document verification. That input correctly renders an unchecked item containing literal marker text.",
+      "reproSteps": [
+        "On a fresh pull request, enter the exact body - [ ] Confirm captain followed by a newline and - [x] Document verification, ensuring the editor contains exactly those two lines.",
+        "Preview, save and reload; confirm Document verification is checked with no literal [x].",
+        "Separately, type the first unchecked item, press Enter, then type a complete - [x] Document verification marker after the automatically inserted prefix.",
+        "Inspect the actual body: its second line is - [ ] - [x] Document verification. Preview renders that different input as an unchecked task with literal text."
+      ],
+      "reason": "User rejected the claimed renderer failure after both Codex and Claude recommended rejection. Exact valid Markdown passes. Task-list continuation on Enter is explicitly implemented and tested; appending a second complete marker changes the input and does not establish a rendering defect. The original Mo raw body and input history were not available, so the recreated input artifact is an explanation of equivalent appearance, not a proven reconstruction of the historical run.",
+      "matchingGuidance": {
+        "scope": "Reject this claimed valid-task rendering failure when the saved input actually contains an auto-continued unchecked prefix followed by another task marker, or when the exact reported input renders correctly. Do not generalize to a verified renderer failure on exact valid Markdown, disabled task toggles after editing, or mobile checkbox styling defects."
+      },
+      "sourceReport": {
+        "sessionId": "6ce002be-3cfe-59d9-8341-5a690003119b",
+        "webUrl": "https://app.momentic.ai/mo/sessions/6ce002be-3cfe-59d9-8341-5a690003119b?tab=bug%3ACompleted%20checklist%20item%20renders%20unchecked%20in%20pull%20request%20body",
+        "recording": {
+          "startedAt": 1793220853664,
+          "finishedAt": 1793220884000,
+          "agentId": "6ce002be-3cfe-59d9-8341-5a690003119b:sandbox-bugbash-v2:create",
+          "windowId": "33eb9e2a-10a6-4f3b-9f98-498564fd4bb4",
+          "artifactId": "e0ea4064-e3dc-4cb4-8a9a-71b1b2e0de98"
+        }
+      },
+      "reviewedBy": "hnhaefliger",
+      "reviewedAt": "2026-10-28T23:50:08.711690+00:00",
+      "reviewEvidence": {
+        "basis": "Explicit user rejection after both subscription-authenticated reviewers independently checked valid literal input and automatic-continuation controls.",
+        "userRejected": true,
+        "sourceRevision": "99053ce4fa2b45f1bca5837418c0c57f793ca824",
+        "analysis": [
+          "Codex checked exact input on two fresh PRs in Preview and saved/refreshed bodies, plus unchecked, uppercase-X, blank-line, legacy-editor and mobile controls.",
+          "Claude checked typed-with-Enter and exact-input variants in a fresh PR and comments, confirming that the stored doubled marker explains the recreated appearance.",
+          "Coordinator read the renderer and task continuation source and evaluated the existing continuation helper, confirming that Enter appends an unchecked task prefix."
+        ],
+        "sourceReferences": [
+          "https://github.com/go-gitea/gitea/blob/99053ce4fa2b45f1bca5837418c0c57f793ca824/web_src/js/features/comp/EditorMarkdown.ts#L127-L176",
+          "https://github.com/go-gitea/gitea/blob/99053ce4fa2b45f1bca5837418c0c57f793ca824/web_src/js/features/comp/EditorMarkdown.test.ts#L199-L202",
+          "https://github.com/go-gitea/gitea/blob/99053ce4fa2b45f1bca5837418c0c57f793ca824/modules/markup/markdown/markdown_test.go#L213-L215",
+          "https://github.com/go-gitea/gitea/blob/99053ce4fa2b45f1bca5837418c0c57f793ca824/modules/markup/markdown/transform_list.go#L17-L35"
+        ],
+        "limitations": [
+          "The original Mo raw body and input history were not independently verified.",
+          "Latest runtime was not tested."
+        ]
+      }
+    },
+    {
+      "id": "gitea-pr-fuzzy-search-no-typo-tolerance",
+      "name": "Global pull request fuzzy search misses a one-character omission",
+      "summary": "The report says that on the global Pull Requests page, Fuzzy search for a term with one character missing (CrosUser for CrossUser) finds nothing.",
+      "expected": "The reported expectation is that Fuzzy search tolerates a one-character typo and finds the pull request.",
+      "actual": "Fuzzy search for CrosUser showed No results with 0 Open and 0 Closed, while CrossUser found the pull request.",
+      "reproSteps": [
+        "Create a pull request whose title contains a distinctive word.",
+        "On the global Pull Requests page, choose Fuzzy search and search for that word with one character missing.",
+        "Check the results."
+      ],
+      "reason": "Intended: typo tolerance in issue and pull request search is off by default (TYPE_BLEVE_MAX_FUZZINESS defaults to 0, documented in app.example.ini), so Fuzzy mode doesn't match misspellings unless an administrator enables it. Same reasoning as the rejected issues Fuzzy search entry; this entry is the pull requests page."
+    },
+    {
+      "id": "gitea-stale-merge-of-closed-pr-refused",
+      "name": "Merging a pull request that was closed in another tab doesn't merge it",
+      "summary": "The report says that clicking merge on a pull request page opened before the pull request was closed elsewhere doesn't merge the pull request.",
+      "expected": "The reported expectation is that confirming the merge merges the pull request.",
+      "actual": "The merge was refused with \"The pull request has been closed.\" and the pull request stayed closed and unmerged.",
+      "reproSteps": [
+        "Open a pull request's merge confirmation in one tab.",
+        "Close the pull request in another tab.",
+        "Confirm the merge in the first tab."
+      ],
+      "reason": "Intended: a closed pull request can't be merged, so refusing the merge with \"The pull request has been closed.\" is correct. The page not updating to Closed afterwards is a separate accepted entry (\"After a merge is refused because the pull request was closed, the page still shows it as open\")."
     }
   ]
 }

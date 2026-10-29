@@ -183,6 +183,59 @@
           "distinction": "Same missing access check, but that entry is old notifications from before the removal still being shown; this entry is new activity after the removal still reaching the user's Notifications."
         }
       }
+    },
+    {
+      "id": "gitea-pinned-notification-hides-read-page-slot",
+      "name": "Pinned notifications make older read notifications inaccessible on the Read tab",
+      "summary": "The Notifications page's Read tab shows pinned rows in the same 20-row page as read rows, but pagination counts only read ones. Each pinned row takes a slot, so an equal number of the oldest read notifications fall off with no next page to reach them.",
+      "expected": "Every read notification is reachable from the Read tab's pagination, whether or not some notifications are pinned.",
+      "actual": "With 20 read notifications and 2 pinned, the Read tab showed 2 pinned and 18 read rows on one page with no pagination; the oldest read notifications couldn't be reached, and requesting page 2 returned page 1. If every notification is pinned, those beyond the first 20 can't be reached from either tab.",
+      "reproSteps": [
+        "Have another user create at least 20 issues in a repository you watch, then mark all notifications as read.",
+        "Pin one or two of the notifications.",
+        "Open the Notifications page's Read tab: count the read rows shown and check for a page 2.",
+        "Request the Read tab's page 2 directly and compare."
+      ],
+      "severity": 3,
+      "matchingGuidance": {
+        "relatedReference": {
+          "name": "Pinned notifications make later notifications inaccessible at the page boundary",
+          "distinction": "Same cause (page count excludes pinned rows), but that entry is the Unread tab; this entry is the Read tab, plus the all-pinned case where extra pins are unreachable from both tabs."
+        }
+      }
+    },
+    {
+      "id": "gitea-watching-unwatch-last-page-strands-empty",
+      "name": "Unwatching the only repository on the last Watching page leaves an empty page with no pagination",
+      "summary": "On Notifications > Watching, unwatching the only repository on the last page and coming back to that page shows \"No matching results found.\" with no pagination, even though earlier pages still list watched repositories. Unlike Subscriptions, the Watching page never redirects an out-of-range page to the last valid one.",
+      "expected": "After the last page empties, the Watching page shows the last page that still has results, or at least keeps pagination so earlier pages can be reached.",
+      "actual": "Returning to page 2 after unwatching its only repository showed \"No matching results found.\" and no pagination, while page 1 still listed 15 watched repositories.",
+      "reproSteps": [
+        "Watch at least 16 repositories, so Notifications > Watching has a second page with one repository (optionally filtered by a search that matches all of them).",
+        "Open page 2 and unwatch its only repository.",
+        "Go back to or reload Watching page 2.",
+        "Check the message shown and whether pagination is still available."
+      ],
+      "severity": 3
+    },
+    {
+      "id": "gitea-notification-pinned-update-keeps-earlier-comment",
+      "name": "Updated pinned notification still opens the earlier comment instead of the new one",
+      "summary": "After a user reads an issue notification and pins it, a new comment on the issue moves the pinned notification to the top with a new time, but opening it still scrolls to and highlights the earlier comment the user already read instead of the new comment.",
+      "expected": "Opening the updated pinned notification leads to the new comment that updated it, the first comment the user has not seen.",
+      "actual": "The pinned notification's time updated, but opening it went to the earlier, already-read comment and highlighted it, with the new comment below. Gitea only moves a notification's target comment forward when the notification is Read, and a pinned notification is never Read.",
+      "reproSteps": [
+        "As one user, create a public repository and an issue.",
+        "As a second user, subscribe to the issue without watching the repository.",
+        "As the owner, post a comment on the issue.",
+        "As the second user, open the notification to read the comment, then pin it from the Read tab.",
+        "As the owner, post a second comment.",
+        "As the second user, open the pinned notification from Notifications and check which comment it opens and highlights."
+      ],
+      "matchingGuidance": {
+        "scope": "Only reports that a pinned notification updated by a new comment opens or highlights an earlier comment instead of the new one. Do not match pinned notifications that disappear, become unreachable at page boundaries, change read state, or affect other notifications."
+      },
+      "severity": 1
     }
   ]
 }

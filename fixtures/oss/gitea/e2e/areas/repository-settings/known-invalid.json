@@ -114,6 +114,33 @@
         "Open the Code page and read the description in the sidebar."
       ],
       "reason": "Intended: repository descriptions are rendered as restricted HTML, so tags outside a small allowed list are removed from the display, and '<test>' is treated as an unknown tag (the description sanitizer and its unit test assert this). The saved description is unchanged, as the Settings form shows, and the same text without angle brackets displays in full."
+    },
+    {
+      "id": "gitea-team-packages-no-access-page-reachable",
+      "name": "Packages page remains accessible with team Packages set to No Access",
+      "summary": "The report says that an organization member whose team has Packages set to No Access can still open a repository's Packages page by URL, and list and download its packages, even though the Packages tab is hidden.",
+      "expected": "The reported expectation is that a team with Packages set to No Access can't open or download from the repository's Packages page, like Projects and Releases set to No Access return 404.",
+      "actual": "As a member of a team with Packages set to No Access, the Packages tab was hidden, but the repository's /packages URL loaded and listed linked packages, which could be opened and downloaded. Non-members got 404.",
+      "reproSteps": [
+        "In an organization, give a team access to a private repository with Packages set to No Access.",
+        "As a member of that team, open the repository and confirm the Packages tab is hidden.",
+        "Open the repository's /packages URL directly."
+      ],
+      "reason": "Intended: packages belong to the owner (organization), not to a repository unit, and any organization member has at least read access to them. Upstream deliberately removed enforcement of a team's Packages No Access setting (go-gitea/gitea#25707), restoring \"if a user has read access for an owner, they can read packages\"; the team setting only hides the tab. Same reasoning as the rejected \"Disabled repository Packages page stays accessible\" (gitea-novel-013)."
+    },
+    {
+      "id": "gitea-removed-team-reviewer-approval-still-counts",
+      "name": "Removed reviewer-team member's approval still permits merge",
+      "summary": "The report says that after the only approving reviewer is removed from the branch protection's allowlisted reviewer team, their earlier approval still counts and the pull request can be merged.",
+      "expected": "The reported expectation is that removing the approver from the allowlisted team withdraws their approval's effect, so the pull request isn't mergeable.",
+      "actual": "After the approving user was removed from the Reviewers team (0 members), the pull request still showed as ready and merged using that earlier approval.",
+      "reproSteps": [
+        "Protect a branch to require one approval from a specific team.",
+        "Have a team member approve a pull request.",
+        "Remove that user from the team.",
+        "Check whether the pull request can still be merged."
+      ],
+      "reason": "Intended per the existing ruling: an approval is checked against the allowlist when it's given, and later allowlist or team changes don't retroactively remove it. Same reasoning as the rejected 'Restricting the approval allowlist doesn't stop earlier approvals from counting'; this entry is the reviewer being removed from the team."
     }
   ]
 }

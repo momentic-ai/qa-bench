@@ -584,9 +584,9 @@
     },
     {
       "id": "metabase-admin-091",
-      "name": "Empty adaptive cache minimum duration fails to save with no field guidance",
+      "name": "Empty adaptive cache field (minimum duration or multiplier) fails to save with no field guidance",
       "severity": 1,
-      "summary": "Empty adaptive cache minimum duration fails to save with no field guidance.",
+      "summary": "Clearing an Adaptive caching field such as the minimum query duration or the multiplier keeps Save changes enabled; saving fails with no field-level error.",
       "expected": "Saving with an empty Minimum query duration uses the default or shows an inline validation error.",
       "actual": "The Save changes button turns to Failed and then disables, Discard changes stays active, and no validation message appears on the field or page.",
       "reproSteps": [
@@ -1670,6 +1670,164 @@
         "Replace the name with Mo-QA- followed by 250 lowercase n characters (256 total).",
         "Replace description with QA-description- followed by 1010 lowercase d characters (1025 total).",
         "Enter a revision reason and click Save changes; wait for the settled editor."
+      ]
+    },
+    {
+      "id": "metabase-admin-b02",
+      "name": "After previewing a dashboard in the embed wizard, a newly saved question shows that dashboard's collection in its breadcrumb",
+      "severity": 3,
+      "summary": "After previewing a dashboard in the embed wizard, a newly saved question shows that dashboard's collection in its breadcrumb.",
+      "expected": "The new question's breadcrumb shows the collection it was saved to (e.g. Our analytics).",
+      "actual": "The breadcrumb shows the previewed dashboard's collection and links to it. Reloading shows the correct collection; the question was saved to the right place.",
+      "reproSteps": [
+        "Go to Admin settings › Embedding and click New embed.",
+        "Choose Dashboard, pick a dashboard stored in a collection (e.g. E-commerce Insights), and let its preview load on the right.",
+        "Close the wizard without reloading the page.",
+        "Click + New › SQL query, enter select 1, and save it to Our analytics.",
+        "Look at the breadcrumb above the question title: it shows the previewed dashboard's collection instead of Our analytics. Reload to see the correct collection."
+      ]
+    },
+    {
+      "id": "metabase-admin-b12",
+      "name": "Admin password reset leaves the user's existing sessions signed in",
+      "severity": 3,
+      "summary": "Admin password reset leaves the user's existing sessions signed in.",
+      "expected": "Resetting a user's password ends their existing sessions, as the reset-link flow does.",
+      "actual": "After the admin reset, the user's already-open session keeps working (e.g. /api/user/current and collections load) until it expires naturally.",
+      "reproSteps": [
+        "In a private window, sign in as maya@example.test / momentic-eval-1.",
+        "In a normal window, sign in as admin, open Admin settings › People, open Maya's … menu and choose Reset password, then confirm.",
+        "Back in Maya's private window, refresh the page: she is still signed in and can browse collections.",
+        "Sign out there and sign in with Maya's old password: it is now rejected, confirming the reset happened."
+      ]
+    },
+    {
+      "id": "metabase-admin-b01",
+      "name": "Adding an LDAP group mapping jumps to unrelated server validation",
+      "severity": 3,
+      "summary": "Adding an LDAP group mapping jumps to unrelated server validation.",
+      "expected": "Add the mapping row and keep the user at Group schema to choose its groups. Validate the server configuration when Save and enable is clicked.",
+      "actual": "The page jumps to LDAP host and shows the browser validation bubble “Please fill out this field.” Scrolling back reveals that the mapping row was added despite the unrelated error.",
+      "reproSteps": [
+        "As an admin, open Settings and expand Authentication, then choose LDAP.",
+        "Scroll to Group schema and click New mapping.",
+        "Enter a fresh valid distinguished name, such as cn=REL-AUTH-DRAFT,ou=groups,dc=example,dc=org, and click Add."
+      ]
+    },
+    {
+      "id": "metabase-admin-b03",
+      "name": "Embedding initial text values replace apostrophes with HTML entities",
+      "severity": 1,
+      "summary": "Embedding initial text values replace apostrophes with HTML entities.",
+      "expected": "The preview displays 'Initial & <safe> \"double\" 'single'' matching the entered parameter value.",
+      "actual": "The preview displays 'Initial & <safe> \"double\" &#39;single&#39;', showing literal &#39; entity strings instead of apostrophes.",
+      "reproSteps": [
+        "As administrator create a fresh SQL question on Sample Database with SELECT {{message}} AS message, Text variable message and default hello embedding. Save in your personal collection with a unique name.",
+        "Open Admin > Embedding > New embed > Chart and select that question. Continue to configuration.",
+        "Set Message from Disabled to Editable.",
+        "In the sidebar's Set initial values for parameters Message input, enter Initial & <safe> \"double\" 'single' and press Enter.",
+        "Inspect the large rendered question result in the preview."
+      ]
+    },
+    {
+      "id": "metabase-admin-b04",
+      "name": "Locked parameter preview remains in error after restoring a value",
+      "severity": 3,
+      "summary": "Locked parameter preview remains in error after restoring a value.",
+      "expected": "The corrected nonempty locked value replaces the error and renders Recovered embed message.",
+      "actual": "",
+      "reproSteps": [
+        "Create a disposable SQL question on Sample Database: SELECT {{message}} AS message. Configure message as Text with default hello embedding; save it to the admin personal collection.",
+        "Open Admin > Embedding, enable Guest embeds if necessary, and start New embed > Chart. Select the new question and advance to its configuration.",
+        "Set Message to Locked, enter a nonempty preview value and press Enter; verify the question renders it.",
+        "Clear Message under Previewing locked parameters and press Enter. Observe the missing-value JWT error.",
+        "Enter Recovered embed message in the same field and press Enter. Wait for the preview."
+      ]
+    },
+    {
+      "id": "metabase-admin-b51",
+      "name": "PostgreSQL connection-string prefill joins query options with the wrong delimiter",
+      "severity": 3,
+      "summary": "PostgreSQL connection-string prefill joins query options with the wrong delimiter.",
+      "expected": "The connection-string parser should retain PostgreSQL's '&' query parameter separators so a valid JDBC URL produces a working connection configuration.",
+      "actual": "The first save fails: 'Metabase tried, but couldn’t connect' and 'connectTimeout parameter value must be an integer but was: 1;socketTimeout=1'. Changing only the delimiter back to '&' allows saving successfully and returns to a Connected database.",
+      "reproSteps": [
+        "Open Admin > Databases > Release operations QA > Edit connection details (/admin/databases/2/edit).",
+        "Paste jdbc:postgresql://db:5432/release_operations?connectTimeout=1&socketTimeout=1 into Connection string (optional), then press Tab. Existing fixture username/password remain populated.",
+        "Expand advanced options if needed. Observe Additional JDBC connection string options becomes connectTimeout=1;socketTimeout=1.",
+        "Click Save changes.",
+        "Replace that options field with connectTimeout=1&socketTimeout=1 and save again."
+      ]
+    },
+    {
+      "id": "metabase-admin-b49",
+      "name": "Table Metadata field formatting shows 'Where to display the unit of currency' for non-currency number fields",
+      "severity": 1,
+      "summary": "Table Metadata field formatting shows 'Where to display the unit of currency' for non-currency number fields.",
+      "expected": "Currency placement only appears when Style is Currency, like 'Unit of currency' and 'Currency label style'.",
+      "actual": "For Orders → Quantity (integer, type/Quantity, Style = Normal) and Release Requests → Amount (Style = Normal), the formatting section shows 'Where to display the unit of currency' with both options. Switching Style to Currency adds the other currency options; switching back to Normal hides them but leaves this one.",
+      "reproSteps": [
+        "Sign in as admin and open /admin/datamodel/database/1/schema/1:PUBLIC/table/2/field/2 (Sample Database → Orders → Quantity)",
+        "Look at the formatting settings: Style is 'Normal'",
+        "'Where to display the unit of currency' (In the column heading / In every table cell) is shown even though nothing is a currency",
+        "Set Style to Currency: 'Unit of currency' and 'Currency label style' appear. Set Style back to Normal: those disappear but the currency placement option stays"
+      ]
+    },
+    {
+      "id": "metabase-admin-604",
+      "name": "French log duration units use unrelated meanings for seconds and minutes",
+      "severity": 1,
+      "summary": "In French, the log duration unit menu translates Minutes as “Procès-verbal” and Seconds as “Deuxième”.",
+      "expected": "Elapsed time options are labeled Secondes, Minutes, Heures and Jours in French.",
+      "actual": "The dropdown displays Deuxième, Procès-verbal, Heures and Jours; the selected default unit is Procès-verbal.",
+      "reproSteps": [
+        "Set the interface language to French (Account settings > Language), then open Admin > Tools.",
+        "Open Journaux, then Personnaliser les niveaux de journalisation.",
+        "Open the Unité dropdown for the reset duration."
+      ]
+    },
+    {
+      "id": "metabase-admin-603",
+      "name": "Segment can save a filter on itself; reopened editor loses row count silently",
+      "severity": 3,
+      "summary": "Segment can save a filter on itself; reopened editor loses row count silently.",
+      "expected": "The editor should block a segment from filtering on itself and say why. If the setup is allowed, it should keep showing a working row count.",
+      "actual": "Save works and the list shows \"...Total is greater than 1000000 and MO-Segments-Text\". Reopening the segment shows both filter pills, no row count next to Preview, and no error or validation feedback anywhere on the page.",
+      "reproSteps": [
+        "As an admin, open /admin/datamodel/segments",
+        "Open the Orders segment MO-Segments-Text (filter: Total < 0 OR Total > 1000000) at /admin/datamodel/segment/2. It shows '1 rows'.",
+        "Click the Add filters (+) button and choose MO-Segments-Text (the same segment) from the Orders list.",
+        "Type a reason for changes and click Save changes. You return to the list, which shows both filters.",
+        "Click MO-Segments-Text to reopen it. Both pills are shown, but the row count is gone and no error appears."
+      ]
+    },
+    {
+      "id": "metabase-admin-b55",
+      "name": "Reactivation does not restore Administrators membership",
+      "severity": 3,
+      "summary": "Reactivation does not restore Administrators membership.",
+      "expected": "The user returns with Admin membership, matching the prior persisted membership and the reactivation confirmation promise.",
+      "actual": "The user returns with Default instead of Admin.",
+      "reproSteps": [
+        "As admin create a distinct PeopleQA-prefixed user with a unique example.test email, add them to the Administrators group, and dismiss success.",
+        "Open the user's ellipsis menu > Deactivate user and confirm.",
+        "Select Deactivated and open the user's reactivate icon.",
+        "Read the confirmation that the user will be placed back into the groups they were in before deactivation, then press Reactivate.",
+        "Inspect the reactivated user's Groups cell."
+      ]
+    },
+    {
+      "id": "metabase-admin-b57",
+      "name": "Whitespace-only revision reason silently prevents saving segment edits",
+      "severity": 1,
+      "summary": "Whitespace-only revision reason silently prevents saving segment edits.",
+      "expected": "A blank revision reason should show validation feedback or keep Save disabled.",
+      "actual": "Save is enabled but leaves the editor open.",
+      "reproSteps": [
+        "As Admin create an exclusive SegmentQA segment on Sample Database Orders with description and custom expression [Total] > 100 AND [Quantity] > 1.",
+        "Reopen it and update the expression to [Total] > 100 OR [Quantity] > 1.",
+        "Enter exactly three spaces in Reason for changes.",
+        "Click Save changes and inspect the settled page."
       ]
     }
   ]

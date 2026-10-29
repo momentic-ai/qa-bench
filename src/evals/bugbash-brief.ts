@@ -44,14 +44,18 @@ export const SHARED_QA_OBLIGATIONS = `Report each bug with expected and actual b
 
 Protect shared state: give parallel work separate data where practical, and do not modify data another active agent is using. After checking a change's downstream effects, restore shared data you modified so others can keep testing it.`;
 
+export const CONCURRENCY_GUIDANCE =
+  "Maximize testing value and bug-finding efficiency. Concurrency should be utilized maximally as long as budget and relatively distinct areas, features, or flows remain, so that there is not too much concurrent modification.";
+
 export function bugbashBrief(
   url: URL,
   timeLimitMs: number | undefined,
   fixture: Fixture,
+  browserTool?: "Playwright MCP" | "agent-browser",
 ) {
   let evaluationContext =
     "This is a long-duration evaluation of your ability to find true bugs.";
-  if (!timeLimitMs || timeLimitMs > 30 * 60_000) {
+  if (timeLimitMs !== undefined && timeLimitMs > 30 * 60_000) {
     evaluationContext +=
       "\nExplore product areas end to end with the depth and breadth of a multi-hour test session.";
   }
@@ -67,9 +71,11 @@ Report only verified bugs. If you verify no bugs, report no bugs.
 
 ${SHARED_QA_OBLIGATIONS}
 
+${CONCURRENCY_GUIDANCE}
+
 ${EVIDENCE_RESTRICTIONS}
 
-${timeLimitMs ? `The evaluation has a ${timeLimitMs / 60_000}-minute elapsed time limit.\n\n` : ""}${fixtureAuthentication(fixture)}`;
+${timeLimitMs ? `The evaluation has a ${timeLimitMs / 60_000}-minute elapsed time limit.\n\n` : ""}${fixtureAuthentication(fixture)}${browserTool ? `\n\nUse ${browserTool}.` : ""}`;
 }
 
 export function fixtureAccounts(fixture: Fixture): FixtureAccount[] {

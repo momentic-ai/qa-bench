@@ -23,10 +23,6 @@ import {
   isMoSessionReportReady,
 } from "./cli-schemas";
 
-// User-provided comparison guidance (spec §5) for Mo's eval input only; Codex chooses its own allocation.
-export const MO_CONCURRENCY_GUIDANCE =
-  "Maximize testing value and bug-finding efficiency. Concurrency should be utilized maximally as long as budget and relatively distinct areas, features, or flows remain, so that there is not too much concurrent modification.";
-
 const SessionSchema = z.object({ sessionId: z.string().min(1) });
 
 export class MoAgent implements EvalAgent {
@@ -46,11 +42,8 @@ export class MoAgent implements EvalAgent {
     onReady?: () => number,
   ) {
     const { timeLimitMs } = this.context;
-    const brief = `${message}
-
-${MO_CONCURRENCY_GUIDANCE}`;
     onReady?.();
-    const startArgs = ["start", brief];
+    const startArgs = ["start", message];
     if (timeLimitMs) {
       const minutes = Math.ceil(timeLimitMs / 60_000);
       startArgs.push(
@@ -58,6 +51,7 @@ ${MO_CONCURRENCY_GUIDANCE}`;
         String(Math.max(MIN_MO_SESSION_TIME_BUDGET_MINUTES, minutes)),
       );
     }
+    if (this.context.effort) startArgs.push("--effort", this.context.effort);
     if (this.context.maxConcurrentSubAgents !== undefined) {
       startArgs.push(
         "--max-concurrency",

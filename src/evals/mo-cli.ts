@@ -1,5 +1,7 @@
 import { runCommand } from "./command";
 
+const MO_CLI_VERSION = "0.27.0";
+
 export function runMoCommand(
   args: string[],
   options: { signal?: AbortSignal; timeoutMs?: number },
@@ -9,10 +11,9 @@ export function runMoCommand(
 
 export async function validateMoCli() {
   const version = await runMoCommand(["--version"], { timeoutMs: 10_000 });
-  const match = /^(\d+)\.(\d+)\.(\d+)$/.exec(version);
-  if (!match || (Number(match[1]) === 0 && Number(match[2]) < 24)) {
+  if (version !== MO_CLI_VERSION) {
     throw new Error(
-      `Mo evals require QA CLI >=0.24.0; found ${version}. Run qa upgrade, or set MO_EVAL_CLI to a supported executable.`,
+      `Mo evals require QA CLI ${MO_CLI_VERSION}; found ${version}. Set MO_EVAL_CLI to a ${MO_CLI_VERSION} executable.`,
     );
   }
 }

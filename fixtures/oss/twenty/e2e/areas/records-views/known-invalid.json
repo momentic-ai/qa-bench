@@ -192,20 +192,6 @@
       "reason": "The reported inverted selection did not reproduce. Both independent judges repeatedly selected all four filtered companies and unchecked Microsoft; Microsoft became unchecked while the other three remained selected with count 3. Fresh views, saved and unsaved filters, the reported hidden-column/reload setup, different widths and input variations passed. The historical observation has no established cause and is not proven impossible; adjacent selection-clearing behavior does not validate this specific inversion claim."
     },
     {
-      "id": "records-views-N34",
-      "name": "Returning from a record resets Kanban scroll position",
-      "summary": "Returning through a record breadcrumb remounts the Kanban board at the top-left, losing its previous browsing position.",
-      "expected": "The reported expectation is to return near the opened card, retaining the board browsing position. Whether the fixture version still requires this behavior is uncertain.",
-      "actual": "Independent judges reproduced a vertical and horizontal reset while the By Status view remained selected. Side-panel closure preserves position, and the Table breadcrumb restores its opened row. The Kanban restoration implementation had been removed in a native-scrolling migration.",
-      "reproSteps": [
-        "Sign in to the seeded Apple workspace and open Tasks > By Status.",
-        "Scroll down the Kanban board about 1,200 pixels and note a visible card. At a narrow viewport, also scroll horizontally to another column.",
-        "Open a task in its full record page, then return using the Tasks breadcrumb.",
-        "Observe that By Status remains selected but the board returns to the top-left."
-      ],
-      "reason": "Scroll restoration was removed during the native-scrolling migration. Historical evidence supports preserving position, but we cannot establish that this remained required behavior in the fixture version. Treat this as an ambiguous feature regression rather than a confirmed bug. The observed vertical reset is real; its absence from the implementation alone does not prove it is intended. Horizontal preservation has still weaker contract evidence."
-    },
-    {
       "id": "records-views-N39",
       "name": "Opportunities stage headers disappear after grouping changes and reload",
       "summary": "A report claimed that Opportunities Kanban stage headers disappear after changing grouping and refreshing.",
@@ -354,6 +340,70 @@
           "Visual auditing used sampled frames with denser checks around decisive actions; no newer-runtime claim is made."
         ]
       }
+    },
+    {
+      "name": "Record card checkboxes do not select records in Calendar or Kanban",
+      "summary": "The checkboxes shown on record cards are nonfunctional. Clicking them does not check the box or select the record. Reproduced in Tasks/Companies Month calendars and a People Kanban grouped by Company; table selection works.",
+      "expected": "A card's checkbox should toggle to checked and select that record, exposing the selected-record count and applicable actions.",
+      "actual": "Checkboxes remain aria-checked=false after successful pointer clicks and Space, and no selected-record count/action state appears. Repeated clicks on People Kanban cards and Tasks Month calendar cards have no effect; Companies calendar checkboxes also failed. Table checkboxes correctly select records.",
+      "reproSteps": [
+        "In Tasks create a Calendar view with Date field Due Date.",
+        "Use Month view for October 2026 and hover a Prepare meeting agenda card on October 30.",
+        "Click its checkbox; repeat or focus it and press Space.",
+        "Alternatively create a People Kanban view, add Google and Microsoft company groups, and click the checkbox on Mark Young's card.",
+        "Compare with selecting a row in Table view."
+      ],
+      "id": "native-twenty-u09",
+      "owningArea": "twenty/records-views",
+      "reviewEvidence": {
+        "basis": "Explicit reviewer decision U09. Fresh Calendar, Tasks Kanban and People Kanban controls select successfully.",
+        "userAccepted": false,
+        "sourceRevision": "35c645064f72bc4e3180a2c6c506cbbfee170007"
+      },
+      "reason": "Fresh Calendar, Tasks Kanban and People Kanban controls select successfully."
+    },
+    {
+      "name": "Date filter 'Is after or equal' / 'Is before' compares against the current time of day instead of the start of the selected day",
+      "summary": "On Opportunities, filtering Close date 'Is after or equal' Nov 21, 2026 leaves out the opportunities that close on Nov 21. 'Is before' Nov 21 includes them. The filter sent to the server is closeDate gte/lt '2026-11-21T20:14:35.016Z', which is the selected date plus the current time of day. It should be the start of Nov 21 in the user's timezone (2026-11-21T08:00:00Z). The 'Is' operand correctly uses a whole-day range.",
+      "expected": "'Is after or equal Nov 21' should include every record whose close date falls on or after Nov 21 (114 records, including the 2 that close Nov 21 at 10:49 AM). 'Is before Nov 21' should return only records before Nov 21 (36).",
+      "actual": "'Is after or equal Nov 21' returns 112 and leaves out both Nov 21 opportunities (Enterprise iPad Deployment, Apple TV+ Enterprise License). 'Is before Nov 21' returns 38 and includes them. GraphQL filter: {closeDate:{gte:'2026-11-21T20:14:35.016Z'}} / {closeDate:{lt:'2026-11-21T20:14:35.016Z'}}.",
+      "reproSteps": [
+        "Sign in as tim@apple.dev and open /objects/opportunities (All Opportunities table view)",
+        "Filter > Close date, set operand 'Is', and pick Nov 21, 2026: 2 records (Close date Nov 21, 2026 10:49 AM)",
+        "Change the operand to 'Is after or equal': count is 112, and the two Nov 21 records are missing",
+        "Change the operand to 'Is before': count is 38, and the two Nov 21 records are included",
+        "Compare: the API returns 114 for closeDate >= start of Nov 21 (PST) and 36 for < start of Nov 21"
+      ],
+      "id": "native-twenty-u12",
+      "owningArea": "twenty/records-views",
+      "reviewEvidence": {
+        "basis": "Explicit reviewer decision U12. Editable time is visible in the chip; selecting midnight gives expected results.",
+        "userAccepted": false,
+        "sourceRevision": "35c645064f72bc4e3180a2c6c506cbbfee170007"
+      },
+      "reason": "Editable time is visible in the chip; selecting midnight gives expected results."
+    },
+    {
+      "name": "Refreshing during saved-view creation leaves a permanently incomplete view",
+      "summary": "An immediate refresh after Create new view saves only the view itself, losing its copied filters and fields. The view remains blank when reopened.",
+      "expected": "Creation should save a complete view with its filters and fields, or roll back an interrupted creation. Reloading should not leave a permanent unusable saved view.",
+      "actual": "The named Table view persists but has zero visible fields and no copied filter, producing a blank record area and unfiltered total. A normal creation allowed to complete retains fields and filters.",
+      "reproSteps": [
+        "Open a People table, apply a filter and select Save as new view.",
+        "Enter a unique name and click Create new view. Immediately refresh before creation finishes.",
+        "Reopen the partial copy and observe missing fields or filters. A creation allowed to complete retains its fields and filters."
+      ],
+      "id": "agent-browser-reviewed-interrupted-view",
+      "owningArea": "twenty/records-views",
+      "reviewEvidence": {
+        "basis": "Explicit reviewer decision on this agent-browser report. No fresh independent verification is claimed.",
+        "userAccepted": false,
+        "sourceRevision": "35c645064f72bc4e3180a2c6c506cbbfee170007"
+      },
+      "matchingGuidance": {
+        "distinction": "Reviewer rejected the interrupted-creation claim; exclude completed view-creation failures."
+      },
+      "reason": "Explicitly rejected by the reviewer as reported: a deliberately interrupted multi-request creation flow is not an accepted bug for this benchmark. This does not reject a failure after completed view creation."
     }
   ]
 }

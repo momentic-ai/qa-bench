@@ -608,6 +608,265 @@
           "distinction": "Same draft-edit title error page, but that entry is the draft buttons disappearing so Update Release publishes; this entry is pending attachment renames and removals being discarded."
         }
       }
+    },
+    {
+      "id": "gitea-release-attachment-whitespace-name-saved",
+      "name": "Renaming a release attachment to whitespace saves a nameless download",
+      "summary": "When editing a release, an attachment's name can be replaced with only spaces. Update Release accepts it, and the release's Downloads list then shows a row with an icon and size but no file name.",
+      "expected": "A whitespace-only attachment name is rejected, or the attachment keeps a visible name, so the download can be identified.",
+      "actual": "Update Release saved the attachment with a whitespace-only name. After a refresh, the Downloads list showed a row with only the file icon and size, and no visible name.",
+      "reproSteps": [
+        "Create a release with an uploaded attachment.",
+        "Edit the release and replace the attachment's name with a few spaces.",
+        "Click Update Release.",
+        "Open the release and check the attachment's row under Downloads."
+      ],
+      "severity": 3
+    },
+    {
+      "id": "gitea-release-heading-toolbar-inserts-at-caret",
+      "name": "Release notes heading button inserts the heading marker at the caret instead of the line start",
+      "summary": "In the release notes editor, clicking a heading toolbar button (H1–H3) with the text cursor at the end of a line, and nothing selected, inserts the # marker at the cursor instead of at the start of the line, so the line doesn't become a heading. With the line selected, the button works.",
+      "expected": "Clicking a heading button with only a cursor on a line turns that line into a heading by adding the marker at the start of the line, as it does when the line is selected.",
+      "actual": "With the cursor at the end of 'QA heading toolbar', clicking H1 produced 'QA heading toolbar# ', which renders as a plain paragraph; the malformed text is kept when the release is saved. Selecting the whole line first and clicking H1 produced '# QA heading toolbar' and a heading.",
+      "reproSteps": [
+        "Open New Release (or edit a release) and type a line of text in the notes.",
+        "Leave the cursor at the end of the line without selecting anything, and click the H1 toolbar button.",
+        "Check where the # marker was inserted and how Preview renders the line.",
+        "Select the whole line and click H1 again to compare."
+      ],
+      "severity": 1,
+      "matchingGuidance": {
+        "relatedReference": {
+          "name": "Wiki editor heading button appends ## after the text instead of making a heading",
+          "distinction": "Same shared editor toolbar and cursor-only trigger, but that entry is the wiki editor; this entry is the release notes editor."
+        }
+      }
+    },
+    {
+      "id": "gitea-stale-release-editor-overwrites-notes",
+      "name": "Saving a stale release editor silently overwrites newer release notes",
+      "summary": "If a release's edit form was opened before someone else saved changes, saving it (even after changing only the title) restores the older notes and pre-release setting without any warning, discarding the newer edits.",
+      "expected": "Saving an out-of-date release edit form warns that the release changed, or keeps the newer notes it didn't touch.",
+      "actual": "After tab B saved new notes, saving tab A's stale form with only a title change left the release with the original notes; the newer notes were lost with no warning.",
+      "reproSteps": [
+        "Create a release with some notes.",
+        "Open its edit form in two tabs.",
+        "In the second tab, change the notes and click Update Release.",
+        "In the first tab, without reloading, change only the title and click Update Release.",
+        "Check the release's title and notes."
+      ],
+      "severity": 3
+    },
+    {
+      "id": "gitea-tag-detail-long-name-pushes-content-offscreen",
+      "name": "Long tag names push tag-detail metadata and downloads offscreen",
+      "severity": 1,
+      "owningArea": "gitea/releases",
+      "summary": "A successfully created 255-character slash-containing tag opens a detail page with an unwrapped name extending past the right edge, pushing downloads and tag metadata outside the desktop viewport.",
+      "expected": "Tag identity, commit metadata and downloads remain usable within the normal desktop layout, with long names wrapping or constrained.",
+      "actual": "At 1920x1080 the name runs off the right edge and the visible page beneath it is blank. Whole-page assertion confirms Downloads exists but is offscreen to the right with the rest of the detail content.",
+      "reproSteps": [
+        "Open New Release in a disposable repository.",
+        "Enter a fresh valid 255-character tag containing a slash and a long unbroken final component. Leave release title and content empty, and choose Create Tag Only.",
+        "Open Tags and click the newly created tag name at a 1920×1080 viewport.",
+        "Observe the unwrapped tag name and metadata/downloads pushed beyond the right edge."
+      ],
+      "sourceReport": {
+        "sessionId": "ebebc70f-a5fd-5c3d-b4c0-a88b1a15efa4",
+        "webUrl": "https://app.momentic.ai/mo/sessions/ebebc70f-a5fd-5c3d-b4c0-a88b1a15efa4?tab=bug%3ALong%20tag%20names%20push%20tag%20detail%20content%20offscreen",
+        "recording": {
+          "startedAt": 1793215783080,
+          "finishedAt": 1793215810103,
+          "agentId": "ebebc70f-a5fd-5c3d-b4c0-a88b1a15efa4:sandbox-bugbash-v2:tag-targets",
+          "windowId": "5aa97397-c03b-4e98-9705-9463a2c9442c",
+          "artifactId": "54c48556-166c-4656-96cc-63c9e9c2624d"
+        }
+      },
+      "matchingGuidance": {
+        "relatedReference": {
+          "id": "gitea-releases-list-long-tag-pushes-release-offscreen",
+          "distinction": "The existing entry covers a published release on the Releases list. This entry covers opening a successfully created tag-only item on its tag-detail page. The shared release template produces similar overflow at a different entry point."
+        },
+        "scope": "Require successful tag creation followed by layout overflow on tag details. Creation errors for unsupported tag components have separate coverage."
+      },
+      "reviewEvidence": {
+        "basis": "Explicit user acceptance as a related severity-1 entry based on the Mo report and shared-template source check. Independent reviewers were pending at approval.",
+        "userAccepted": true,
+        "sourceRevision": "99053ce4fa2b45f1bca5837418c0c57f793ca824",
+        "severityReason": "Reported layout overflow hides tag metadata and downloads; no creation failure or saved-data loss is claimed.",
+        "analysis": [
+          "The original Mo report describes a successfully created slash-containing tag and tag-detail content pushed offscreen at desktop width.",
+          "SingleRelease loads the requested tag and renders the same release-list template used by the existing long-tag overflow reference.",
+          "The user approved separate related coverage for the tag-detail entry point."
+        ],
+        "sourceReferences": [
+          "https://github.com/go-gitea/gitea/blob/99053ce4fa2b45f1bca5837418c0c57f793ca824/routers/web/repo/release.go#L273-L310",
+          "https://github.com/go-gitea/gitea/blob/99053ce4fa2b45f1bca5837418c0c57f793ca824/templates/repo/release/list.tmpl"
+        ],
+        "limitations": [
+          "Independent browser review results were pending at user approval.",
+          "Exact tag length and layout measurements are reported by Mo, not independently confirmed at approval.",
+          "Latest runtime was not tested."
+        ]
+      }
+    },
+    {
+      "id": "gitea-release-wrapping-title-clips-draft-badge",
+      "name": "Long release titles clip the Draft badge at tablet width",
+      "severity": 1,
+      "owningArea": "gitea/releases",
+      "summary": "At 768 CSS pixels, saving a draft with a wrapping title leaves its yellow status badge clipped to “Dra” at the card's right edge.",
+      "expected": "Wrapping titles should leave the complete Draft status badge readable.",
+      "actual": "Title wraps onto two lines, while the yellow Draft badge is clipped to “Dra”. A vision check confirmed clipping.",
+      "reproSteps": [
+        "Sign in with release write access and open a repository’s Releases page at 768×1000 CSS pixels.",
+        "Create a new release with a fresh short tag, release notes, and title “responsive-768 tablet release with a longer descriptive title for wrapping”.",
+        "Click Save Draft.",
+        "Inspect the release card: the title wraps but the yellow Draft badge is clipped at the right edge."
+      ],
+      "sourceReport": {
+        "sessionId": "9dc35ef4-a2e1-5ca2-a87a-aae3271bc0ea",
+        "webUrl": "https://app.momentic.ai/mo/sessions/9dc35ef4-a2e1-5ca2-a87a-aae3271bc0ea?tab=bug%3ALong%20release%20titles%20clip%20the%20Draft%20badge%20at%20tablet%20width",
+        "recording": {
+          "startedAt": 1793215382500,
+          "finishedAt": 1793215410000,
+          "agentId": "9dc35ef4-a2e1-5ca2-a87a-aae3271bc0ea:sandbox-bugbash-v2:responsive",
+          "windowId": "1938e901-f762-4002-ae97-4b797add2a2e",
+          "artifactId": "937e0812-130b-4a37-aa7f-7a73ab3c43b8"
+        }
+      },
+      "matchingGuidance": {
+        "scope": "Covers the Draft status badge being clipped beside a wrapping release title at tablet width. Long tag-name overflow on Releases lists and tag details has separate coverage."
+      },
+      "reviewEvidence": {
+        "basis": "Explicit user acceptance at severity 1 based on the Mo report. Codex and Claude independent reviews were running without final verdicts at approval.",
+        "userAccepted": true,
+        "sourceRevision": "99053ce4fa2b45f1bca5837418c0c57f793ca824",
+        "severityReason": "The release status badge is partially unreadable; no release-state change or saved-data loss is claimed.",
+        "analysis": [
+          "Mo reported the Draft badge clipped to “Dra” after saving a long descriptive title at 768 CSS pixels.",
+          "This reference is limited to the reported visual status-badge defect. Independent review results were pending at approval."
+        ],
+        "sourceReferences": [],
+        "limitations": [
+          "Independent browser confirmation and source-cause review were pending at approval.",
+          "No saved-data loss reported.",
+          "Latest runtime was not tested."
+        ]
+      }
+    },
+    {
+      "id": "gitea-release-draft-existing-tag-target-main",
+      "name": "A release draft for an existing tag shows main as its target instead of the tag's branch",
+      "summary": "If a tag was created on a non-default branch and a release draft is then created for that existing tag, the saved draft shows the target as main instead of the tag's branch. The draft's Compare also uses main, which can wrongly say the branches are equal.",
+      "expected": "A release draft for an existing tag keeps the tag's real target, both on the edit page and in comparisons.",
+      "actual": "A tag created from docs/release-owners, used for a new release draft, reopened as \"<tag> @ main\"; publishing it showed \"-1 commits to main since this release\".",
+      "reproSteps": [
+        "Create a tag from a non-default branch using Create Tag Only.",
+        "Start a New Release, type that existing tag name, and save it as a draft.",
+        "Reopen the draft and check the target shown next to the tag."
+      ],
+      "severity": 3
+    },
+    {
+      "id": "gitea-release-editor-bold-shortcut-ignored",
+      "name": "Release notes editor ignores its advertised Ctrl-B bold shortcut",
+      "summary": "In the release notes enhanced editor, the Bold button's tooltip says \"Bold (Ctrl-B)\", but pressing Ctrl+B on selected text does nothing; clicking the Bold button works.",
+      "expected": "Pressing Ctrl+B on selected text makes it bold, as the tooltip says.",
+      "actual": "Pressing Ctrl+B on selected text left it unchanged and Preview showed plain text; clicking the Bold button on the same selection added ** and Preview showed bold.",
+      "reproSteps": [
+        "Open New Release (or Edit Release) and switch the notes to the enhanced editor if needed.",
+        "Type some text, select it and press Ctrl+B.",
+        "Check the text and Preview, then compare with clicking the Bold button."
+      ],
+      "severity": 1
+    },
+    {
+      "id": "gitea-tag-search-back-shows-empty-box",
+      "name": "Going back after clearing the tag search shows filtered results with an empty search box",
+      "summary": "On a repository's Tags page, after searching, clearing the search box and submitting, pressing the browser's Back button shows the earlier filtered results again but leaves the search box empty, so the page doesn't show what it's filtered by.",
+      "expected": "After going back to a filtered tag list, the search box shows the active query.",
+      "actual": "Back restored the filtered tag results, but the search box showed only the 'Search tags...' placeholder.",
+      "reproSteps": [
+        "On a repository's Tags page, search for a term that filters the list.",
+        "Clear the search box (for example with ×) and submit.",
+        "Press the browser's Back button and compare the results with the search box."
+      ],
+      "severity": 1
+    },
+    {
+      "id": "gitea-zip-archive-immutable-link-points-to-tar-gz",
+      "name": "ZIP source download advertises a TAR.GZ permanent link",
+      "summary": "Downloading a release's source code as ZIP (or as a bundle) from the web returns a correct ZIP, but the response's Link rel=\"immutable\" header, which tells download tools the permanent URL for the same file, points to the .tar.gz archive. Following it returns a gzip tarball instead of the ZIP.",
+      "expected": "The immutable Link header on a ZIP download points to the permanent .zip URL for the same revision, which returns the same ZIP.",
+      "actual": "The ZIP download's Link header pointed to /api/v1/repos/<owner>/<repo>/archive/<sha>.tar.gz?rev=<sha>; requesting it returned a gzip TAR archive with different bytes. The TAR.GZ download's header and the API ZIP download's header were correct.",
+      "reproSteps": [
+        "On a repository's release or branch, download Source Code (ZIP) and inspect the response's Link header (rel=\"immutable\").",
+        "Request the URL from that header.",
+        "Compare the file format and bytes with the original ZIP download."
+      ],
+      "severity": 1
+    },
+    {
+      "id": "gitea-draft-release-exposed-to-readers-via-api",
+      "name": "Draft releases and their assets are readable by read-only users through the API",
+      "summary": "Draft releases are hidden from users without write access on the web (the release page returns 404 and the draft isn't listed), but a read-only collaborator can fetch the draft's title, notes and assets through the release-by-tag and release-by-id API endpoints, and download its attachments.",
+      "expected": "A user with only read permission gets 404 for a draft release on every endpoint, including the API and its attachment downloads, matching the web pages and release lists.",
+      "actual": "As a read-only collaborator, the draft's web page returned 404 and the release lists omitted it, but GET /api/v1/repos/<owner>/<repo>/releases/tags/<tag>, /releases/<id> and /releases/<id>/assets returned the full draft (draft: true) with its assets, and the attachment downloaded.",
+      "reproSteps": [
+        "As the owner, add a collaborator with Read permission.",
+        "As the owner, create a release with an attachment and save it as a draft.",
+        "As the read-only collaborator, open the draft's release page and confirm it returns 404.",
+        "As the same user, request the release by tag and by id through the API, then download its attachment."
+      ],
+      "severity": 3
+    },
+    {
+      "id": "gitea-releases-page-past-end-empty-no-pager",
+      "name": "A releases page past the last page shows an empty list with no pagination",
+      "summary": "Opening a Releases (or Tags) list page number beyond the last page, for example going back to page 2 after its only release was deleted, shows the release count but no releases and no pagination controls, so there's no way from the list to reach the pages that do have releases. Gitea queries the requested page without moving it to the last page, and hides the pager when only one page exists.",
+      "expected": "A releases page past the end shows the last page that has releases, or at least keeps pagination so the earlier pages can be reached.",
+      "actual": "After the only release on page 2 of 11 was deleted, going back to ?page=2 and refreshing showed \"10 Releases\" with no release entries and no pagination controls.",
+      "reproSteps": [
+        "Create 11 releases so the Releases list has two pages, and open page 2.",
+        "Delete the only release on page 2.",
+        "Go back to the page 2 URL (for example with the browser's Back button) and refresh.",
+        "Check whether any releases or pagination controls are shown."
+      ],
+      "severity": 1
+    },
+    {
+      "id": "gitea-release-heading-buttons-stack-prefixes",
+      "name": "Changing heading levels with the toolbar stacks Markdown prefixes",
+      "summary": "In the release notes editor, selecting text and clicking H1, then H2, then H3 adds another heading prefix each time instead of changing the level, so the text becomes '# ## ### Heading' and Preview shows a level-one heading containing literal '## ###'.",
+      "expected": "Clicking a different heading button on an existing heading changes its level, leaving a single prefix such as '### Heading'.",
+      "actual": "After H1, H2 and H3 on the same selected text, Preview showed a level-one heading reading '## ### Heading toolbar'.",
+      "reproSteps": [
+        "Open New Release, type a line of text in the notes and select it.",
+        "Click H1, then H2, then H3 without changing the selection.",
+        "Open Preview and check the heading."
+      ],
+      "severity": 1,
+      "matchingGuidance": {
+        "relatedReference": {
+          "name": "Release notes heading button inserts the heading marker at the caret instead of the line start",
+          "distinction": "Same release notes heading toolbar, but that entry is the marker landing at the cursor when nothing is selected; this entry is repeated heading clicks stacking prefixes on a selected line."
+        }
+      }
+    },
+    {
+      "id": "gitea-release-legacy-toolbar-mobile-column",
+      "name": "Release notes legacy editor toolbar becomes a tall single column on mobile",
+      "summary": "At phone widths, switching the release notes to the legacy editor lays out each toolbar button on its own full-width row, so the toolbar stretches roughly a screen tall before the notes field.",
+      "expected": "At mobile widths, the legacy editor's toolbar buttons wrap compactly so the notes field stays close to the top.",
+      "actual": "At 390 pixels wide, each toolbar button took a separate full-width row, about 975 pixels of toolbar above the notes.",
+      "reproSteps": [
+        "Open New Release at a phone width (about 390 pixels).",
+        "Switch the notes editor to the legacy editor.",
+        "Scroll through the toolbar to reach the notes field."
+      ],
+      "severity": 1
     }
   ]
 }
