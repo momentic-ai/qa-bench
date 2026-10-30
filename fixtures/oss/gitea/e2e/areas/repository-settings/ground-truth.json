@@ -701,6 +701,111 @@
           "distinction": "Same page and the same lost-admin trigger. That entry is the role dropdown showing a new role after a refused change; this entry is the Remove button closing its dialog with no error."
         }
       }
+    },
+    {
+      "id": "gitea-novel-013",
+      "name": "Disabled repository Packages page stays accessible",
+      "summary": "After the repository Packages unit is disabled, the Packages tab disappears but the repository's /packages URL still opens the Packages page, unlike other disabled tabs, which return 404.",
+      "expected": "After the repository Packages unit is disabled and settings are saved, the repository Packages page should be unavailable through direct URL access as well as absent from navigation.",
+      "actual": "The settings save succeeded and the Packages navigation item disappeared, but directly opening /eval/cu-packages-20260316-1537/packages loaded the Packages page with the visible empty state “There are no packages yet.”",
+      "reproSteps": [
+        "At desktop viewport 1440×1000, use the supplied saved authentication state to sign in as the admin account; do not include or expose its saved-state path.",
+        "Open /repo/create and create a public repository owned by eval named cu-packages-20260316-1537, leaving unrelated settings at their defaults.",
+        "Open the new repository's Settings > Repository page, scroll to Advanced Settings, uncheck “Enable Repository Packages Registry,” and submit using the Update Settings button at the end of the Advanced Settings form.",
+        "Confirm the success notice and that Packages is absent from the repository navigation.",
+        "Navigate directly to /eval/cu-packages-20260316-1537/packages and observe the loaded Packages page and its empty-state message. Do not create or inspect package contents."
+      ],
+      "severity": 1,
+      "sourceCause": "The repository /packages route (routers/web/web.go) only requires repository access (context.RepoAssignment) and never checks the Packages unit or the user's Packages permission, unlike other repository tabs whose routes return 404 without that permission. Upstream removed per-unit package permission enforcement in go-gitea/gitea#25707, so the setting only hides the tab.",
+      "matchingGuidance": {
+        "relatedReference": {
+          "id": "gitea-team-packages-no-access-page-reachable",
+          "distinction": "Same unchecked /packages route. This entry is the repository's Packages unit being disabled; the related entry is a team with Packages set to No Access."
+        }
+      }
+    },
+    {
+      "id": "gitea-team-packages-no-access-page-reachable",
+      "name": "Packages page remains accessible with team Packages set to No Access",
+      "summary": "An organization member whose team has Packages set to No Access doesn't see the Packages tab, but can open the repository's /packages URL directly and list, open and download its packages, while Projects and Releases set to No Access return 404.",
+      "expected": "A team with Packages set to No Access can't open or download from the repository's Packages page, as other tabs set to No Access return 404.",
+      "actual": "As a member of a team with Packages set to No Access, the Packages tab was hidden, but the repository's /packages URL loaded and listed linked packages, which could be opened and downloaded. Non-members got 404.",
+      "reproSteps": [
+        "In an organization, give a team access to a private repository with Packages set to No Access.",
+        "As a member of that team, open the repository and confirm the Packages tab is hidden.",
+        "Open the repository's /packages URL directly."
+      ],
+      "severity": 3,
+      "sourceCause": "The repository /packages route (routers/web/web.go) only requires repository access (context.RepoAssignment) and never checks the Packages unit or the user's Packages permission, unlike other repository tabs whose routes return 404 without that permission. Upstream removed per-unit package permission enforcement in go-gitea/gitea#25707, so the setting only hides the tab.",
+      "matchingGuidance": {
+        "relatedReference": {
+          "id": "gitea-novel-013",
+          "distinction": "Same unchecked /packages route. This entry is a team with Packages set to No Access, where packages can still be listed and downloaded; the related entry is the repository's Packages unit being disabled."
+        }
+      }
+    },
+    {
+      "id": "gitea-private-repo-packages-not-set-page-reachable",
+      "name": "Packages page stays reachable on a private repository when Public Access for Packages is Not set",
+      "summary": "On a private repository whose Public Access gives Code to everyone signed in but leaves Packages Not set, a signed-in non-member doesn't see the Packages tab but can still open the repository's /packages URL, unlike other tabs left Not set, which return 404.",
+      "expected": "With Packages not granted, opening the repository's /packages URL returns 404 like other tabs the user has no access to.",
+      "actual": "After Packages was reset to Not set (with Code Everyone Read) and the repository made private, alex, who has no repository membership, saw no Packages tab but opening /packages showed the repository header and 'There are no packages yet.'",
+      "reproSteps": [
+        "In a repository's Public Access settings, give signed-in users Read on Code and leave Packages Not set.",
+        "Make the repository private.",
+        "As a signed-in user with no repository membership, confirm the Packages tab is hidden.",
+        "Open the repository's /packages URL directly and observe the Packages page."
+      ],
+      "severity": 1,
+      "sourceCause": "The repository /packages route (routers/web/web.go) only requires repository access (context.RepoAssignment) and never checks the Packages unit or the user's Packages permission, unlike other repository tabs whose routes return 404 without that permission. Upstream removed per-unit package permission enforcement in go-gitea/gitea#25707, so the setting only hides the tab.",
+      "matchingGuidance": {
+        "relatedReference": {
+          "id": "gitea-novel-013",
+          "distinction": "Same unchecked /packages route. This entry is Public Access leaving Packages Not set on a private repository; the related entry is the repository's Packages unit being disabled."
+        }
+      }
+    },
+    {
+      "id": "gitea-generated-repo-without-git-content-upload-404",
+      "name": "Upload File in a repository generated without Git Content opens a 404",
+      "summary": "A repository generated from a template with Git Content unchecked shows the empty-repository Quick Guide, but its Upload File button opens /<repo>/_upload// and 404 Not Found, because the new repository has no default branch.",
+      "expected": "Upload File opens the upload form so the first files can be added.",
+      "actual": "After generating a repository from an initialized template with Topics and Branch Protection selected and Git Content unchecked, clicking Upload File in the Quick Guide opened /<owner>/<repo>/_upload// and showed 404 Not Found. A repository generated with Git Content, and a normal empty repository, open the upload form on main.",
+      "reproSteps": [
+        "Create a template repository with an initial commit.",
+        "Use it to create a new repository with Git Content unchecked (selecting other items such as Topics or Branch Protection).",
+        "On the new repository's Quick Guide, click Upload File.",
+        "Observe the /_upload// URL and the 404 page."
+      ],
+      "severity": 3,
+      "sourceCause": "routers/web/repo/repo.go builds GenerateRepoOptions without DefaultBranch, and the only fallback to the template's branch is inside GenerateGitContent, so with Git Content unchecked the repository is saved with a blank default branch and the Quick Guide's upload link has an empty branch segment.",
+      "matchingGuidance": {
+        "relatedReference": {
+          "id": "codex-30m-gitea-0",
+          "distinction": "Same blank default branch after generating without Git Content. That entry is the repository's broken initialization, including New File and the checkout and push commands; this entry is the Quick Guide's Upload File button opening a 404."
+        }
+      }
+    },
+    {
+      "id": "gitea-generated-from-empty-template-blank-branch",
+      "name": "Generating a repository from an empty template leaves its Quick Guide commands without a branch name",
+      "summary": "Generating a repository from a template that has no commits, with Git Content checked, saves the new repository with a blank default branch, so its Quick Guide shows 'git checkout -b ' and 'git push -u origin ' with no branch name, and New File and Upload File open 404 pages.",
+      "expected": "The generated repository gets a default branch such as main, and the Quick Guide's commands and links use it.",
+      "actual": "After generating a repository from an uninitialized template with only Git Content checked, the Quick Guide showed 'git checkout -b ' and 'git push -u origin ' with no branch, the API reported an empty default_branch, and New File and Upload File opened /_new// and /_upload// with 404. A normal empty repository, and generating from a template with commits, both use main.",
+      "reproSteps": [
+        "Create a repository marked as a template without initializing it.",
+        "Create a new repository from that template with Git Content checked.",
+        "Open the new repository and read the Quick Guide's checkout and push commands.",
+        "Observe the missing branch name (and that New File and Upload File open 404 pages)."
+      ],
+      "severity": 3,
+      "sourceCause": "routers/web/repo/repo.go doesn't pass DefaultBranch, and services/repository/template.go only runs GenerateGitContent (which holds the fallback to the template's default branch) when Git Content is checked and the template isn't empty, so an empty template skips the fallback.",
+      "matchingGuidance": {
+        "relatedReference": {
+          "id": "codex-30m-gitea-0",
+          "distinction": "Same skipped default-branch fallback (template.go only generates Git content when Git Content is checked and the template has commits). That entry is Git Content unchecked on a template with commits; this entry is Git Content checked on an empty template."
+        }
+      }
     }
   ]
 }
