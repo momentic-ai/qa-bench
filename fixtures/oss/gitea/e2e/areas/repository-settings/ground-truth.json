@@ -574,6 +574,46 @@
         "As the writer, edit and commit that file directly to the branch."
       ],
       "severity": 3
+    },
+    {
+      "id": "gitea-archived-repo-stale-merge-json-error",
+      "name": "Confirming a stale merge after the repository is archived shows a raw JSON error",
+      "summary": "If a repository is archived while a pull request page is open, confirming the merge from that page shows a red \"Network error SyntaxError: Unexpected token 'N', \\\"Not found.\\\" is not valid JSON\" instead of saying the repository is archived and read-only.",
+      "expected": "Confirming a merge in a repository that has since been archived shows a clear message that the repository is archived and read-only.",
+      "actual": "Clicking the merge button and confirming showed the red network SyntaxError banner about \"Not found.\" not being valid JSON. The merge form stayed open and nothing mentioned the archive. Merging the same way without archiving succeeds, and reloading the archived pull request hides the merge box.",
+      "reproSteps": [
+        "Open a mergeable pull request in a repository you can merge in.",
+        "In another tab, archive the repository.",
+        "Back in the first tab, choose a merge style, confirm the merge and read the message."
+      ],
+      "severity": 1,
+      "sourceCause": "routers/web/web.go runs context.RepoMustNotBeArchived() before MergePullRequest on POST /pulls/{index}/merge; it answers with a plain-text 404 \"Not found.\", which web_src/js/features/common-fetch-action.ts parses as JSON and reports as a network SyntaxError.",
+      "matchingGuidance": {
+        "relatedReference": {
+          "id": "gitea-archived-repo-stale-issue-form-json-error",
+          "distinction": "Same archived-repository guard and JSON parse error, but on a different form. That entry is the New Issue or comment form; this entry is the pull request merge confirmation."
+        }
+      }
+    },
+    {
+      "id": "gitea-archived-repo-stale-pull-request-form-json-error",
+      "name": "Submitting a stale pull request form after the repository is archived shows a raw JSON error",
+      "summary": "If a repository is archived while a compare page's New Pull Request form is open, clicking Create Pull Request shows a red \"Network error SyntaxError: Unexpected token 'N', \\\"Not found.\\\" is not valid JSON\" instead of saying the repository is archived and read-only.",
+      "expected": "Submitting a new pull request in a repository that has since been archived shows a clear message that the repository is archived and read-only.",
+      "actual": "Clicking Create Pull Request showed the red network SyntaxError banner about \"Not found.\" not being valid JSON; the form kept its title and description and nothing mentioned the archive. The same form creates the pull request when the repository isn't archived, and reloading the compare page after archiving hides New Pull Request.",
+      "reproSteps": [
+        "Push a branch with a change and open its compare page, then click New Pull Request and fill in the form.",
+        "In another tab, archive the repository.",
+        "Back in the first tab, click Create Pull Request and read the message."
+      ],
+      "severity": 1,
+      "sourceCause": "routers/web/web.go runs context.RepoMustNotBeArchived() before CompareAndPullRequestPost on POST /compare/*; it answers with a plain-text 404 \"Not found.\", which web_src/js/features/common-fetch-action.ts parses as JSON and reports as a network SyntaxError.",
+      "matchingGuidance": {
+        "relatedReference": {
+          "id": "gitea-archived-repo-stale-issue-form-json-error",
+          "distinction": "Same archived-repository guard and JSON parse error, but on a different form. That entry is the New Issue or comment form; this entry is the Create Pull Request form on the compare page."
+        }
+      }
     }
   ]
 }
