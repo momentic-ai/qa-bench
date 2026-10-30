@@ -12,10 +12,8 @@ its own E2B sandbox. Areas live in [`fixtures/oss`](fixtures/oss).
 
 ## Results
 
-Per-area results are in [`results/2026-10-30.csv`](results/2026-10-30.csv). This
-summary adds up per-area means across 20 product areas. It shows an average pass,
-not a single real one. Mo's medium effort has a 30-minute budget and high effort
-has 60.
+Per-area results are in [`results/2026-10-30.csv`](results/2026-10-30.csv). Mo's
+medium effort has a 30-minute budget and high effort has 60.
 
 | Configuration                           | Areas   | Correct, 30 min | Correct, 60 min | Recall, 60 min | Precision, 60 min | Score, 60 min | Cost per correct, 60 min |
 | --------------------------------------- | ------- | --------------- | --------------- | -------------- | ----------------- | ------------- | ------------------------ |
@@ -29,8 +27,6 @@ has 60.
 | Devin                                   | 20      | 16.0            | 27.0            | 2.2%           | 84.4%             | 65.0          | $3.89                    |
 | Claude Code, Sonnet 5.5, Playwright MCP | 20      | 5.3             | 7.7             | 0.6%           | 88.5%             | 15.3          | $1.46                    |
 | Claude Code, Sonnet 5.5, agent-browser  | 20      | 9.0             | 6.3             | 0.5%           | 79.3%             | 12.7          | $1.24                    |
-
-Totals for a configuration with fewer than 20 areas cover the areas it ran.
 
 ## Run it
 
@@ -159,7 +155,7 @@ In the results CSV, each row is the mean over an agent's runs of one area.
 Precision, Recall and cost per correct are calculated from those means. Totals
 sum the rows and recalculate the ratios from the sums.
 
-Costs are rough, and they aren't measured the same way:
+Costs:
 
 - Codex is token usage at list prices, plus estimated Browserbase time.
 - Claude Code is the cost reported by the Agent SDK, plus estimated Browserbase
