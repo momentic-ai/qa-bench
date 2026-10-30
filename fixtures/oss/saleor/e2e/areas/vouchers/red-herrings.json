@@ -523,6 +523,24 @@
           ],
           "reason": "Works as intended: a minimum order value of 0 means no minimum, so the requirement shows as off after saving."
         }
+      },
+      {
+        "source": "known-invalid.json",
+        "index": 26,
+        "report": {
+          "id": "saleor-vouchers-b29",
+          "name": "Saving zero item minimum silently removes the requirement",
+          "summary": "Saving zero item minimum silently removes the requirement.",
+          "expected": "The displayed minimum-one-item validation prevents saving 0, retaining the invalid input for correction and the previous saved configuration.",
+          "actual": "Save removes the quantity input and disables both minimum modes; this persists after reload. A whole-page assertion confirmed no validation error remained and Save was disabled.",
+          "reproSteps": [
+            "Assign Channel-PLN and Channel-USD; set both percentage discounts to 10%. Enable minimal order value with 100.25 PLN and 25.50 USD and save.",
+            "Open Requirements; set PLN minimum to 0 and save, then reload.",
+            "Switch to Minimum quantity of items, enter 0 and blur. Observe “Enter at least 1 item.”",
+            "Click Save, allow the update to settle, and reload the voucher's Requirements."
+          ],
+          "reason": "Works as intended: the field says to enter at least 1 item; a minimum of 0 means no minimum requirement, as with vouchers-b08."
+        }
       }
     ]
   },
@@ -639,6 +657,177 @@
             "Observe unchanged voucher codes table and feedback."
           ],
           "reason": "Cannot reproduce on human review."
+        }
+      },
+      {
+        "source": "known-invalid.json",
+        "index": 30,
+        "report": {
+          "id": "saleor-vouchers-b42",
+          "name": "Saved percentage differs from the displayed input",
+          "summary": "Saved percentage differs from the displayed input.",
+          "expected": "The saved percentage should equal the displayed 12%.",
+          "actual": "The refreshed Channel-USD input shows 11%, not the displayed 12% that was saved.",
+          "reproSteps": [
+            "At 1440 × 900, open Vouchers as the authenticated admin and create a fresh private QA-RESP voucher with one manual code, Channel-USD availability, Entire order percentage 10, and a matching name. Save.",
+            "Resize to 768 × 900 and scroll to Percentage for Channel-USD.",
+            "Replace 10 with 12. In the observed run the keyboard entry displayed 112; replace that entire value with 12 and verify it displays 12.",
+            "Scroll to the bottom and click Save. Observe the Voucher updated confirmation.",
+            "Refresh, wait for the voucher to load, and scroll to the Channel-USD percentage."
+          ],
+          "reason": "Cannot reproduce on human review."
+        }
+      },
+      {
+        "source": "known-invalid.json",
+        "index": 31,
+        "report": {
+          "id": "saleor-vouchers-b44",
+          "name": "Cleared monetary requirement stays marked unsaved after successful save and reload",
+          "summary": "Cleared monetary requirement stays marked unsaved after successful save and reload.",
+          "expected": "After successfully saving the voucher with a cleared minimum order value, the unsaved changes state should clear and the Save button should disable (or, if a blank value is disallowed, display a validation error rather than a success notification).",
+          "actual": "A “Voucher updated” notification appears, yet “Unsaved changes: Channels” remains in the footer and the Save button stays enabled.",
+          "reproSteps": [
+            "Create a fresh QA-REQ Free shipping voucher with unique code and Channel-USD assigned.",
+            "Enable Minimal order value and enter 20.25 USD. Save.",
+            "Clear the USD value, blur, click Save and wait at least 3 seconds.",
+            "Observe Voucher updated and Unsaved changes: Channels together.",
+            "Reload and open Requirements without editing."
+          ],
+          "reason": "Cannot reproduce on human review."
+        }
+      },
+      {
+        "source": "known-invalid.json",
+        "index": 32,
+        "report": {
+          "id": "saleor-vouchers-b50",
+          "name": "Changing voucher scope loses the percentage edit on save",
+          "summary": "Changing voucher scope loses the percentage edit on save.",
+          "expected": "Channel-PLN percentage input should accept the entered value (5%) and persist it after save and reload.",
+          "actual": "Channel-PLN percentage immediately reverts to 75% upon typing and remains 75% after saving and reloading.",
+          "reproSteps": [
+            "As admin open Percentage order discount.",
+            "Set PLN percentage to 7.5, save, then change scope to Products and save.",
+            "Change scope to Entire order, enter 5 in Channel-PLN percentage, then Save.",
+            "Reload and inspect Discount."
+          ],
+          "reason": "Cannot reproduce on human review."
+        }
+      }
+    ]
+  },
+  {
+    "id": "programmatic-invalid-state-assumed-ui-reachable",
+    "explanation": "Reporting an invalid input state as a user-interface reproduction when the ordinary field blocks both typing and pasting that state and it can only be injected programmatically. The rejection is about the claimed UI path, not proof that every backend or validation boundary is correct.",
+    "verificationGuidance": [
+      "Recreate the value through ordinary keyboard and paste interactions without setting DOM or component state directly.",
+      "Record what the field actually accepts before Save; label programmatic or API-only controls separately from a supported UI reproduction."
+    ],
+    "instances": [
+      {
+        "source": "known-invalid.json",
+        "index": 27,
+        "report": {
+          "id": "saleor-vouchers-b19",
+          "name": "Failed quantity save hides requirement inputs and turns toggles off",
+          "summary": "Failed quantity save hides requirement inputs and turns toggles off.",
+          "expected": "Saving should be rejected with a visible field validation error while retaining the enabled control and entered value so the user can correct it.",
+          "actual": "A “Couldn't save voucher” toast directs the user to check highlighted fields, but both minimum requirement toggles turn off and the quantity input field disappears, leaving no highlighted field visible to correct.",
+          "reproSteps": [
+            "Create fresh DISC-prefixed voucher with unique manual code, Channel-USD and Free shipping, then Save.",
+            "Enable Minimal order value, enter 2 USD and Save successfully.",
+            "Enable Minimum quantity of items and enter -1.",
+            "Save and inspect the requirements section."
+          ],
+          "reason": "Cannot reproduce through the UI: the minimum-quantity field blocks typing or pasting a minus sign, so a negative quantity can only be set programmatically."
+        }
+      }
+    ]
+  },
+  {
+    "id": "nonexistent-local-time-assumed-valid",
+    "explanation": "Expecting a civil time inside a daylight-saving clock gap to round-trip as a valid local time. That wall-clock time does not occur in the selected timezone, so the reviewed normalization into the next valid hour does not establish loss of an existing instant.",
+    "verificationGuidance": [
+      "Check the timezone transition for the exact date and local hour.",
+      "Compare valid times on either side of the gap and distinguish nonexistent local input from supported times that shift unexpectedly."
+    ],
+    "instances": [
+      {
+        "source": "known-invalid.json",
+        "index": 28,
+        "report": {
+          "id": "saleor-vouchers-b38",
+          "name": "Saving a daylight-saving schedule silently changes the start hour",
+          "summary": "Saving a daylight-saving schedule silently changes the start hour.",
+          "expected": "If the entered local time cannot occur due to daylight saving, explain and reject it or request correction rather than silently saving a different hour.",
+          "actual": "Start Hour changes from 02:30 AM to 03:30 AM after Save and remains 03:30 AM after reload. Default multimodal assertion confirmed no warning or validation message anywhere explaining the change.",
+          "reproSteps": [
+            "Browser timezone America/Los_Angeles, desktop 1920x1080. Original observation used an already saved own fixture; verification should create a fresh fixture as described.",
+            "Open Vouchers as the supplied admin and click Create voucher.",
+            "Create a fresh uniquely named TIME-prefixed voucher. Add a unique manual code, assign Channel-USD using Availability Manage, and enter a 10% entire-order discount.",
+            "Set Start Date to March 14, 2027 and Start Hour to 02:30 AM. Enable Set end date and set End Date March 14, 2027, End Hour 04:00 AM. Verify entered fields before saving.",
+            "Click Save and inspect Start Hour and feedback.",
+            "Reload the saved voucher and inspect Start Hour again."
+          ],
+          "reason": "Works as intended: 02:30 AM on March 14, 2027 does not exist in America/Los_Angeles (clocks jump from 2:00 to 3:00), so it resolves to 03:30 AM, the same instant."
+        }
+      }
+    ]
+  },
+  {
+    "id": "intended-behavior-rejection-without-recorded-rationale",
+    "explanation": "The reviewer labels the reported expectation as intended behavior but records no supporting rationale. These instances are an explicit holding group: the narrow rejection is known, while the specific model reasoning error, source semantics and general product policy are not established.",
+    "verificationGuidance": [
+      "Preserve the exact rejected claim and human decision without inventing a causal explanation.",
+      "Do not use this holding group to dismiss a similar new report without checking its own trigger, contract and evidence.",
+      "Recover the missing review rationale before assigning the instance to a more specific reasoning-error pattern."
+    ],
+    "instances": [
+      {
+        "source": "known-invalid.json",
+        "index": 29,
+        "report": {
+          "id": "saleor-vouchers-b41",
+          "name": "Negative fixed discount silently becomes positive",
+          "summary": "Negative fixed discount silently becomes positive.",
+          "expected": "Reject a negative discount with understandable validation rather than silently converting it to a positive discount.",
+          "actual": "The saved and refreshed voucher shows 1.00 PLN. USD also shows 12.34 after entering 12.345. A whole-page multimodal assertion confirmed no error or rounding warning appeared.",
+          "reproSteps": [
+            "As vouchers admin, create a fresh QA-DISCOUNT voucher with a unique manual code and PLN/USD availability; save valid percentage values.",
+            "Open Discount and switch to Fixed amount.",
+            "Enter -1 for Channel-PLN and 12.345 for Channel-USD.",
+            "Save, refresh, and reopen Discount."
+          ],
+          "reason": "Works as intended per human review."
+        }
+      }
+    ]
+  },
+  {
+    "id": "optional-name-fallback-mistaken-for-lost-identity",
+    "explanation": "Assuming an optional internal name must become a visible identifier or trigger validation when left blank or whitespace-only. A reviewed fallback such as the code count can identify the row’s setup without promising to expose the actual code in that cell.",
+    "verificationGuidance": [
+      "Check whether the name is required and what the list deliberately displays for unnamed objects.",
+      "Separate an accepted blank-name fallback from an incorrect count, missing saved required name or inaccessible record."
+    ],
+    "instances": [
+      {
+        "source": "known-invalid.json",
+        "index": 33,
+        "report": {
+          "id": "saleor-vouchers-b18",
+          "name": "Whitespace voucher name leaves an unidentified list row",
+          "summary": "Whitespace voucher name leaves an unidentified list row.",
+          "expected": "A whitespace-only name should be treated as unnamed and show an identifying fallback (such as its code), or be rejected with validation rather than producing an unidentified list row.",
+          "actual": "Save succeeds. After refresh and Back, the voucher row's Name cell shows only “1 code”; neither the voucher name nor its code is displayed.",
+          "reproSteps": [
+            "As authenticated admin, create a fresh voucher with unique NAME-prefixed code and NAME-prefixed name, one available channel and entire-order 10% discount; save.",
+            "Change Voucher Name to exactly three ordinary spaces and Save.",
+            "Verify Voucher updated appears, then refresh and use Back to return to All vouchers.",
+            "Inspect the voucher's Name cell."
+          ],
+          "reason": "Works as intended: voucher name is optional (internal staff name), so a whitespace-only name is treated as unnamed and the row falls back to the code count."
         }
       }
     ]
