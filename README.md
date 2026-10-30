@@ -12,7 +12,7 @@ its own E2B sandbox. Areas live in [`fixtures/oss`](fixtures/oss).
 
 ## Results
 
-Per-area results are in [`results/2026-10-30.csv`](results/2026-10-30.csv).
+Per-area results are in [`results/2026-10-30.csv`](results/2026-10-30.csv). The dataset is on [Hugging Face](https://huggingface.co/datasets/momentic/qa-bench).
 
 | Configuration                           | Areas   | Correct, 30 min | Correct, 60 min | Recall, 60 min | Precision, 60 min | Score, 60 min | Cost per correct, 60 min |
 | --------------------------------------- | ------- | --------------- | --------------- | -------------- | ----------------- | ------------- | ------------------------ |
