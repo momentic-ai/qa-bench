@@ -190,7 +190,3 @@ To add labels:
 ```bash
 pnpm eval --agent mo --fixtures saleor/areas/vouchers --grade-only
 ```
-
-## Contributing
-
-Run `pnpm lint`, `pnpm format:check` and `pnpm typecheck` before opening a PR.
