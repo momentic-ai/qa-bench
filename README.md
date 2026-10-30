@@ -76,15 +76,15 @@ Each run is graded when it finishes and saved to
 
 **Brief.** Every agent gets the same short brief from
 [`bugbash-brief.ts`](src/evals/bugbash-brief.ts): the app URL, test accounts, the
-area's scope and entry points, and the rules to report only verified bugs and not
-read benchmark files. Codex, Claude Code and Devin are also told which browser to
-use and how to save findings. Devin's prompt adds its
+area's scope and entry points, and the rule not to read benchmark files. Codex,
+Claude Code and Devin are also told which browser to use and how to save
+findings. Devin's prompt adds its
 [isolation rules](src/agents/devin/README.md).
 
-**Time.** `--minutes` sets a limit from 1 to 120, stated in the brief. Without
-it, the brief states no limit and the run stops at 2 hours. A minute before the
-stop, each agent is told to save its work. Durations exclude fixture setup and
-grading.
+**Time.** `--minutes` (1 to 120) or `--time-limit` (such as `30m`) sets a limit,
+stated in the brief. Without it, the brief states no limit and the run stops at
+2 hours. A minute before the stop, each agent is told to save its work. Durations
+exclude fixture setup and grading.
 
 **Mo's budget.** `--effort low|medium|high|max` sets Mo's budget. It applies only
 to Mo. Medium is 30 minutes and high is 60, compared with the other agents at
