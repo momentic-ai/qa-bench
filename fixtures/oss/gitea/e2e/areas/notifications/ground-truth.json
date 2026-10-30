@@ -318,6 +318,32 @@
           "Do not conflate with retained unapplied search input after Back or notifications after permission revocation."
         ]
       }
+    },
+    {
+      "id": "gitea-subscriptions-out-of-range-page-drops-filters",
+      "name": "Subscriptions out-of-range pagination drops state, type and sort filters",
+      "severity": 3,
+      "owningArea": "gitea/notifications",
+      "summary": "Requesting an out-of-range page of filtered subscriptions redirects to a page-only URL and resets the selected state, issue type and sorting.",
+      "expected": "Redirect to the last valid page of the same filtered and sorted subscription list.",
+      "actual": "A request with state=closed, issueType=issues, sort=oldest and page=5 redirects to /notifications/subscriptions?page=1 and shows the default unfiltered Newest list.",
+      "reproSteps": [
+        "Open Notifications > Subscriptions with enough subscribed issues or pull requests for pagination.",
+        "Select a state, issue type and sort order, then request a page beyond the filtered list's final page.",
+        "Observe that the redirect keeps only the page number and resets the selected filters and sorting."
+      ],
+      "reviewEvidence": {
+        "basis": "User-approved manual review of retained report and pinned source.",
+        "userAccepted": true,
+        "sourceRevision": "99053ce4fa2b45f1bca5837418c0c57f793ca824",
+        "severityReason": "The selected filters and sort are discarded and different results are displayed.",
+        "analysis": "NotificationSubscriptions uses filters for its count and row query but constructs its out-of-range redirect with only page, before AddParamFromRequest.",
+        "sourceReferences": [
+          "https://github.com/go-gitea/gitea/blob/99053ce4fa2b45f1bca5837418c0c57f793ca824/routers/web/user/notification.go#L250-L276",
+          "https://github.com/go-gitea/gitea/blob/99053ce4fa2b45f1bca5837418c0c57f793ca824/routers/web/user/notification.go#L328-L336"
+        ],
+        "limitations": "No fresh browser reproduction or independent judge verification in this manual review."
+      }
     }
   ]
 }
