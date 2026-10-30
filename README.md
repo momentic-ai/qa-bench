@@ -75,23 +75,31 @@ Each run is graded when it finishes and saved to
 
 ## Methodology
 
-**Brief.** Every agent gets the same short brief from
+### Brief
+
+Every agent gets the same short brief from
 [`bugbash-brief.ts`](src/evals/bugbash-brief.ts): the app URL, test accounts, the
 area's scope and entry points, and the rule not to read benchmark files. Codex,
 Claude Code and Devin are also told which browser to use and how to save
 findings. Devin's prompt adds its
 [isolation rules](src/agents/devin/README.md).
 
-**Time.** `--minutes` (1 to 120) or `--time-limit` (such as `30m`) sets a limit,
+### Time
+
+`--minutes` (1 to 120) or `--time-limit` (such as `30m`) sets a limit,
 stated in the brief. Without it, the brief states no limit and the run stops at
 2 hours. A minute before the stop, each agent is told to save its work. Durations
 exclude fixture setup and grading.
 
-**Mo's budget.** `--effort low|medium|high|max` sets Mo's budget. It applies only
+### Mo's budget
+
+`--effort low|medium|high|max` sets Mo's budget. It applies only
 to Mo. Medium is 30 minutes and high is 60, compared with the other agents at
 `--minutes 30` and `--minutes 60`.
 
-**Agents.** Versions are pinned in [`package.json`](package.json).
+### Agents
+
+Versions are pinned in [`package.json`](package.json).
 
 | Agent       | Model and reasoning effort   | Browser                         |
 | ----------- | ---------------------------- | ------------------------------- |
@@ -103,7 +111,7 @@ to Mo. Medium is 30 minutes and high is 60, compared with the other agents at
 Results also include Codex with `gpt-6.1-terra` and Claude Code with
 `claude-sonnet-5-5`. Models are set in the agent adapters.
 
-**Browsers and subagents.**
+### Browsers and subagents
 
 - `*-playwright-mcp` agents use Playwright MCP on Browserbase. The parent and
   each subagent get their own Browserbase browser.
@@ -111,15 +119,15 @@ Results also include Codex with `gpt-6.1-terra` and Claude Code with
   [agent-browser](https://www.npmjs.com/package/agent-browser) CLI and its
   bundled skill. Each run connects to one Browserbase browser, and the agent
   decides how to share it.
-- `--browser local` swaps Browserbase for headless Chromium on the host.
+- `--browser local` replaces Browserbase with headless Chromium on the host.
   Playwright MCP runs then have no subagents, and `merge` labels them separately.
 - Mo manages its own subagents, and `--max-concurrent-sub-agents` caps them.
   Devin runs in one session with no child sessions.
 
 ## Scoring
 
-A judge model (`gpt-6.1-sol`, high reasoning) reads each area's
-[labels](#labels) and sorts every finding. It first groups reports of the same
+A judge model (`gpt-6.1-sol`, high reasoning) compares each
+finding with the area's [labels](#labels). It first groups reports of the same
 failure, then classifies the best report in each group:
 
 | Result    | Meaning                                                                |
@@ -151,16 +159,16 @@ In the results CSV, each row is the mean over an agent's runs of one area.
 Precision, Recall and cost per correct are calculated from those means. Totals
 sum the rows and recalculate the ratios from the sums.
 
-Costs are directional:
+Costs are rough, and they aren't measured the same way:
 
 - Codex is token usage at list prices, plus estimated Browserbase time.
 - Claude Code is the cost reported by the Agent SDK, plus estimated Browserbase
   time.
 - Mo is its reported session spend.
-- The harness doesn't record Devin's cost, so its figures were calculated
+- Devin's cost isn't recorded by this repo. Its figures were calculated
   separately.
 
-None include E2B or grading.
+E2B and grading aren't included.
 
 `scores.csv` uses `known_hits`, `known_invalid`, `unverified` and `duplicates`
 for Correct, Incorrect, Unmatched and Dup. Its `precision` field also counts
