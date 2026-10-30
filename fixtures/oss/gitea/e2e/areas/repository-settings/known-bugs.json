@@ -240,7 +240,9 @@
       "description": "In Gitea, issue and pull request (a proposed code change) form actions can expose a raw JSON-parsing SyntaxError labelled Network error when the server rejects an unavailable or unauthorized action. Confirmed triggers include stale deleted/locked/archived comment or issue (a tracked work item) forms, deleted milestone (a named group of work items)/time-entry targets and rejected review actions; the UI does not explain the actual refusal.",
       "rootCause": "fetchActionDoRequest unconditionally calls resp.json() for HTTP 4xx and labels parsing exceptions Network error. Plain-text missing-issue/permission responses therefore expose SyntaxError rather than the rejection reason. Deleted comment inline edits use a separate parser and are kept separate.",
       "reproductionPaths": [
-        "In Gitea, if a repository is archived while a New Issue (or comment) form is open, submitting the form shows a red \"Network error SyntaxError: Unexpected token 'N', \\\"Not found.\\\" is not valid JSON\" instead of saying the repository is archived and read-only."
+        "In Gitea, if a repository is archived while a New Issue (or comment) form is open, submitting the form shows a red \"Network error SyntaxError: Unexpected token 'N', \\\"Not found.\\\" is not valid JSON\" instead of saying the repository is archived and read-only.",
+        "Open a mergeable pull request, which proposes changes to a repository, and leave its Merge control visible. Archive the repository from another tab, then submit Merge from the stale page. Instead of explaining that an archived repository is read-only, Gitea shows a raw Network error SyntaxError saying Not found. is not valid JSON. The merge is refused.",
+        "Open the comparison page’s Create Pull Request form and prepare a proposed change. Archive the repository in another tab, then submit the still-open form. The request is refused, but the page reports a raw Network error SyntaxError about Not found. not being valid JSON rather than explaining the archived, read-only state."
       ]
     },
     {
@@ -265,6 +267,30 @@
       "rootCause": "The save path stores ProtectedFilePatterns without compiling them; getFilePatterns logs and skips invalid expressions, leaving no protection for the intended files.",
       "reproductionPaths": [
         "In Gitea, a branch protection rule's Protected file patterns field accepts an invalid glob such as '[' and reports success. The pattern is stored as entered, but when it's used the invalid pattern is skipped, so the protected files are no longer protected, with no warning to the repository owner. Tag protection rejects the same invalid pattern when it's saved."
+      ]
+    },
+    {
+      "id": "gitea-org-leaving-deletes-direct-collaborator-access",
+      "description": "In Gitea, an organization can grant repository access through a team or directly through Settings > Collaborators. A user with a direct Write grant on a public organization repository loses that write access when removed from their last organization team, or otherwise removed from the organization, even though Collaborators still lists Write. Editing the listed role does not restore access. Private repositories and users who remain in another organization team retain the expected direct access.",
+      "rootCause": "Removing a member from their last team first recalculates repository access, including direct collaborator grants, then removes the user from the organization. The organization-removal cleanup deletes effective access records for public organization repositories without recreating them from the surviving direct collaborator grants. Subsequent collaborator-role changes only update existing effective access records, so they cannot repair the missing record.",
+      "reproductionPaths": [
+        "Create a public organization repository and give a user Write access both through an organization team and directly as a repository collaborator. Remove that user from their last team in the organization, so their organization membership ends. Collaborators still shows Write, but the user loses write controls such as New Release and file editing; direct creation attempts are refused. Keeping the user in a second organization team or testing a private repository avoids this loss."
+      ]
+    },
+    {
+      "id": "gitea-empty-repository-home-unusable-unit-redirect",
+      "description": "In Gitea, a repository with no commits can still have working Wiki, Projects and Packages sections. If Code and Issues are disabled, opening the repository’s home link instead redirects to Pull Requests, which shows 404 because that section requires commits. Disabling Pull Requests can make the same redirect choose Releases and show another 404. This concerns ordinary links to an empty repository’s home selecting an unusable section; a repository with commits can use the same sections normally.",
+      "rootCause": "The repository home handler chooses the highest-priority readable enabled section when Code is unavailable, without checking whether that section supports an empty repository. Pull Requests and Releases are guarded by a separate nonempty-repository check, so the selected redirect is rejected even when other readable sections would work.",
+      "reproductionPaths": [
+        "Create a repository without initializing it, leaving it with no commits. Disable Code and Issues in repository settings while leaving Wiki, Projects and Packages enabled. Open the repository from its name in a repository list, header or search result: it redirects to /pulls and shows 404. With Pull Requests disabled as well, it can redirect to /releases and show the same failure; the enabled Wiki, Projects and Packages addresses open normally."
+      ]
+    },
+    {
+      "id": "gitea-legacy-delete-action-http-failure-silent",
+      "description": "In Gitea’s repository Settings > Collaborators, a user who loses administrator access while the page is open can still click Remove on another collaborator. Confirming closes the dialog with no error, but the collaborator remains because the server refused the removal. The lost permission may result from lowering the user’s own role or another administrator changing it. The defect is the missing failure message; the server correctly prevents the unauthorized deletion.",
+      "rootCause": "The collaborator Remove button uses the legacy delete-button handler, which waits for the request but only handles successful HTTP responses. When the administrator permission guard returns an error response, the handler has no error branch, so the confirmation dialog closes without reporting the refusal. This is separate from the role-dropdown handler’s optimistic label update.",
+      "reproductionPaths": [
+        "As a repository administrator who is not its owner, open Settings > Collaborators. Lower your own role to Read without reloading, or have another administrator remove your administrator permission. Click Remove beside a different collaborator and confirm. The dialog closes without an error while the collaborator remains; the same action before losing administrator access removes them and shows a success message."
       ]
     }
   ]
