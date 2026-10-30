@@ -1828,6 +1828,94 @@
         "Create another question using the saved filtered question as its data source; summarize Count and save. It displays 51.",
         "Open the saved Count question's Editor, add Category under Pick a column to group by, and click Visualize."
       ]
+    },
+    {
+      "id": "metabase-querying-b35",
+      "name": "Replacing the joined table on a saved-question source attaches the new join to the left key",
+      "severity": 3,
+      "summary": "Replacing the joined table on a saved-question source attaches the new join to the left key.",
+      "expected": "The left key and left-side source label identify the saved question, matching the selected field shown in its picker.",
+      "actual": "The join row reads Orders joined to Orders and its condition reads Orders ID = Orders Product ID. Opening the left key instead shows ID selected under QA-joins-20261028-no-fields, the actual saved source.",
+      "reproSteps": [
+        "Create a fresh saved question named QA-joins-products-copy from Sample Database Products (all original columns).",
+        "Start a new notebook using that saved question as its source.",
+        "Add Products as a left join and manually choose source ID and Products ID.",
+        "Click the joined Products name (not its column dropdown) and replace it with Orders.",
+        "Inspect the condition, then open its left ID key."
+      ]
+    },
+    {
+      "id": "metabase-querying-b58",
+      "name": "Multi-value Default filter widget value field shows only first selected label",
+      "severity": 1,
+      "summary": "Multi-value Default filter widget value field shows only first selected label.",
+      "expected": "The Default filter widget value field should show both configured defaults, or a count such as \"2 selections\".",
+      "actual": "The field shows only \"Gizmo label\" and gives no sign that a second value is selected. The query uses both defaults (URL ?category=Gizmo&category=Widget) and shows rows for Gizmo 51 and Widget 54.",
+      "reproSteps": [
+        "Enter: SELECT CATEGORY, COUNT(*) AS PRODUCT_COUNT FROM PRODUCTS WHERE 1=1 [[AND CATEGORY IN ({{category}})]] GROUP BY CATEGORY ORDER BY CATEGORY",
+        "In the variable sidebar, leave Variable type as Text, then select Dropdown list and Multiple values.",
+        "Click Edit next to Dropdown list, choose Custom list, enter 'Gizmo, Gizmo label' and 'Widget, Widget label' on separate lines, and click Done.",
+        "Open Default filter widget value, check Gizmo label and Widget label, and click Add filter.",
+        "Click Run. Result: the Default filter widget value field shows only 'Gizmo label', while the results show Gizmo 51 and Widget 54."
+      ]
+    },
+    {
+      "id": "metabase-querying-b24",
+      "name": "Contains backslash misses a label containing a backslash",
+      "severity": 3,
+      "summary": "Contains backslash misses a label containing a backslash.",
+      "expected": "The row whose LABEL contains the backslash remains visible.",
+      "actual": "No results! is displayed. A whole-page multimodal assertion confirmed no result rows for LABEL contains a single backslash.",
+      "reproSteps": [
+        "Create a new SQL question on Sample Database using SELECT 1 AS ID, 'QA_Filter%\\literal' AS LABEL UNION ALL SELECT 2, 'Alpha'. Run and verify ID 1 displays a literal backslash in LABEL.",
+        "Save under a fresh QA-FILTER-prefixed name and choose Explore results.",
+        "Add LABEL filter, keep Contains, enter a single backslash and apply."
+      ]
+    },
+    {
+      "id": "metabase-querying-b47",
+      "name": "Unmatched right self join row displays a person and product",
+      "severity": 3,
+      "summary": "Unmatched right self join row displays a person and product.",
+      "expected": "Because no base Order ID is less than 1, the unmatched row for joined Order 1 should have all base-side fields empty.",
+      "actual": "Base ID, Subtotal, Tax and Total are empty, but base User ID shows Hudson Borer and Product ID shows Awesome Concrete Shoes. A multimodal whole-page assertion confirmed this inconsistent row.",
+      "reproSteps": [
+        "As Harbor Admin create New > Question > Sample Database > Orders, using a fresh QA-joinsedge-prefixed question.",
+        "Join Orders to itself and select Right outer join.",
+        "Set join condition base Orders ID < joined Orders ID.",
+        "Visualize and inspect the first row, whose joined Orders ID is 1."
+      ]
+    },
+    {
+      "id": "metabase-querying-b79",
+      "name": "Notebook hides the filter on a later-stage custom column",
+      "severity": 3,
+      "summary": "Notebook hides the filter on a later-stage custom column.",
+      "expected": "The notebook displays the active filter on the later-stage custom column and allows inspecting or editing it.",
+      "actual": "The notebook displays the later-stage custom column stage, but no filter step or condition appears anywhere in the notebook.",
+      "reproSteps": [
+        "Create an own Orders question with a custom column coalesce([Discount], 0), then summarize its sum.",
+        "Add a custom-column stage after Summarize, named QA-COL Later Ratio, with coalesce([Sum of the discount custom column] / 0, 99), and Visualize.",
+        "Use Filter > Summaries > QA-COL Later Ratio and apply Between 98 and 100. The result is one row with 99; changing the upper bound to 98 produces No results, and restoring 100 returns the row.",
+        "Save the question, refresh, and expand the filter-count badge to see the saved between-98-and-100 condition.",
+        "Open Editor and inspect all notebook stages."
+      ]
+    },
+    {
+      "id": "metabase-querying-b82",
+      "name": "Reselecting the same saved-question source clears all notebook stages",
+      "severity": 3,
+      "summary": "Reselecting the same saved-question source clears all notebook stages.",
+      "expected": "Reselecting the already-selected source should leave the existing query stages unchanged rather than discard them.",
+      "actual": "The notebook resets to Data only. A whole-page multimodal assertion confirmed both summaries and both filters are absent; Filter/Summarize are now only add-stage controls.",
+      "reproSteps": [
+        "Sign in as admin. New > Question > Orders. Save it as 'B82 source'.",
+        "New > Question > pick the saved question 'B82 source'.",
+        "Summarize: Count of rows, by Quantity. Visualize, then save as 'B82 test'.",
+        "Open 'B82 test' and click the Editor (notebook) icon.",
+        "In the Data step, click 'B82 source' to open the data picker and choose 'B82 source' again.",
+        "Observe: the Summarize step is gone; only the Data step remains."
+      ]
     }
   ]
 }

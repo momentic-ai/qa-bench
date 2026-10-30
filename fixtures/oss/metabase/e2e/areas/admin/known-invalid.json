@@ -720,21 +720,6 @@
       "reason": "Cannot reproduce on human review."
     },
     {
-      "id": "metabase-admin-b07",
-      "name": "MongoDB SSH form shows an integer port assertion error",
-      "summary": "",
-      "expected": "The default ports should be usable, or the form should identify a required port value with actionable validation.",
-      "actual": "The connection alert reads “Assert failed: (integer? port)” rather than a usable connection or validation message.",
-      "reproSteps": [
-        "Open Add database as admin, select MongoDB and set a display name.",
-        "Choose Use a connection string and enter mongodb://qa-connection.invalid:27017/qa_mongo?connectTimeoutMS=1000&serverSelectionTimeoutMS=1000.",
-        "Enable SSH tunnel, use qa-ssh.invalid, username qa_ssh, Password authentication and dummy password qa_dummy_password; leave SSH port at displayed 22.",
-        "Switch to Fill out host, port and database name.",
-        "Enter Host qa-connection.invalid and Database name qa_mongo, leave MongoDB Port at displayed 27017 and click Save."
-      ],
-      "reason": "Works as intended: Port is a required field, and the placeholder 27017 is only a hint, not a value. Saving with it empty is missing required input, so the form shows an error; entering the port fixes it."
-    },
-    {
       "id": "metabase-admin-b08",
       "name": "Model cache log opens to an error",
       "summary": "Model cache log opens to an error.",
@@ -866,8 +851,8 @@
     },
     {
       "id": "metabase-admin-602",
-      "name": "Changing Price semantic type alters unrelated display names",
-      "summary": "Changing Price semantic type alters unrelated display names.",
+      "name": "Editing table metadata turns unrelated field and table names into raw database names",
+      "summary": "After a metadata edit (such as changing a semantic type or renaming a field), unrelated tables and fields show raw names like PRODUCTS, PRODUCT_ID or CREATED_AT.",
       "expected": "Changing one field's semantic type should leave the table name and other fields' display names unchanged.",
       "actual": "The Currency selection succeeds, but the table heading becomes PRODUCTS and unrelated field labels become EAN, TITLE, CATEGORY, VENDOR, RATING and CREATED_AT; sidebar still says Products.",
       "reproSteps": [
@@ -992,6 +977,49 @@
         "Click the child collection shown in Jordan’s sidebar."
       ],
       "reason": "Cannot reproduce on human review."
+    },
+    {
+      "id": "metabase-admin-b76",
+      "name": "Replacing a connection URL retains the previous nondefault port",
+      "summary": "Replacing a connection URL retains the previous nondefault port.",
+      "expected": "The replacement PostgreSQL URL without an explicit port uses default port 5432, rather than a stale port from a different URL.",
+      "actual": "Host updates to second.example.com and Database name to second_database, but Port remains 6543.",
+      "reproSteps": [
+        "As Admin open Databases > Add database; leave PostgreSQL selected to create a fresh unsaved form.",
+        "Enter postgresql://qa_user:examplePass@database.example.com:6543/qa_database in Connection string; blur it and observe Port 6543.",
+        "Replace the entire string with postgresql://qa_user:examplePass@second.example.com/second_database and blur.",
+        "Inspect Host, Database name and Port."
+      ],
+      "reason": "Works as intended per human review."
+    },
+    {
+      "id": "metabase-admin-b80",
+      "name": "Model refresh interval ignores the selected schedule",
+      "summary": "Model refresh interval ignores the selected schedule.",
+      "expected": "The selected 24-hour interval should replace 6 hours and be saved, or an error should explain why it could not be applied.",
+      "actual": "The menu closes and the interval remains 6 hours. A whole-page multimodal assertion confirmed no explanatory error appears.",
+      "reproSteps": [
+        "As Admin, open Performance > Model persistence.",
+        "Enable persistence if disabled, and confirm Refresh models every shows 6 hours.",
+        "Open the refresh interval menu and choose 24 hours.",
+        "Inspect the settled refresh interval."
+      ],
+      "reason": "Cannot reproduce on human review."
+    },
+    {
+      "id": "metabase-admin-b85",
+      "name": "Two segments can form a circular dependency that breaks row counts",
+      "summary": "Two segments can form a circular dependency that breaks row counts.",
+      "expected": "Saving a circular dependency should be prevented with clear validation so both segments remain usable.",
+      "actual": "Saving D succeeds without rejecting the cycle. E still opens with its D filter, but its formerly displayed 464-row count is absent. A whole-page AI assertion confirmed no numeric row count is displayed.",
+      "reproSteps": [
+        "In Admin > Table Metadata > Segments create a fresh uniquely named D segment on Sample Database > Accounts, with description and Active Subscription is true; save.",
+        "Create a fresh E segment on the same table, with description and D as its only filter; save.",
+        "Open E and verify its count (observed 464 rows), then return to the list.",
+        "Edit D, add E as another filter, enter a change reason, and Save changes.",
+        "The list now shows D referencing E and E referencing D. Open E again."
+      ],
+      "reason": "Works as intended: segments can reference each other, and a cycle breaks the dependent segment's count, as in admin-337."
     }
   ]
 }
