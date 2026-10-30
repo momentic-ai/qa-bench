@@ -8,8 +8,7 @@ import {
 import { parseRunIds } from "../../evals/report-files";
 import { REPORTS_DIRECTORY } from "../../evals/scores";
 
-// Agents are not given a time limit; this hard timeout only stops runaway runs.
-export const TIMEOUT_MS = 120 * 60_000;
+export const DEFAULT_TIME_LIMIT_MS = 120 * 60_000;
 
 export type FullAppOptions = {
   agent?: string;
@@ -18,6 +17,7 @@ export type FullAppOptions = {
   fixtures?: string;
   concurrency?: number;
   maxConcurrentSubAgents?: number;
+  timeLimitMs?: number;
   effort?: MoEffort;
   outputDirectory: string;
   browser: Browser;
@@ -38,7 +38,8 @@ export function parseFullAppOptions(args: string[]): FullAppOptions {
     },
     strict: true,
   });
-  const { concurrency, outputDirectory } = parseExecutionOptions(values);
+  const { concurrency, timeLimitMs, outputDirectory } =
+    parseExecutionOptions(values);
   let maxConcurrentSubAgents: number | undefined;
   if (values["max-concurrent-sub-agents"] !== undefined) {
     maxConcurrentSubAgents = Number(values["max-concurrent-sub-agents"]);
@@ -74,6 +75,7 @@ export function parseFullAppOptions(args: string[]): FullAppOptions {
     fixtures: values.fixtures,
     concurrency,
     maxConcurrentSubAgents,
+    timeLimitMs,
     effort,
     outputDirectory: outputDirectory ?? REPORTS_DIRECTORY,
     gradeOnly: values["grade-only"],
@@ -86,8 +88,15 @@ function parseBrowser(
   browser: string | undefined,
 ): Browser {
   if (browser === undefined) return "browserbase";
-  if (agent !== "codex" && agent !== "claude")
-    throw new Error("--browser applies only to --agent codex or claude.");
+  if (
+    ![
+      "codex-playwright-mcp",
+      "claude-playwright-mcp",
+      "codex-agent-browser",
+      "claude-agent-browser",
+    ].includes(agent ?? "")
+  )
+    throw new Error("--browser applies only to Codex and Claude agents.");
   if (browser !== "browserbase" && browser !== "local")
     throw new Error("--browser must be browserbase or local.");
   return browser;

@@ -56,16 +56,19 @@
     },
     {
       "id": "metabase-admin-012",
-      "name": "Map tile server URL accepts and saves not-a-url",
-      "summary": "Map tile server URL accepts and saves not-a-url.",
-      "expected": "A value that is not a URL is rejected with a validation message.",
-      "actual": "not-a-url saves with Changes saved and persists after reload; pin maps then show no basemap.",
+      "name": "Map tile server URL accepts and saves a malformed or incomplete URL",
+      "summary": "Map tile server URL accepts and saves a value that is not a complete URL, such as not-a-url or https://.",
+      "expected": "A value that is not a complete URL is rejected with a validation message.",
+      "actual": "not-a-url or a scheme-only https:// saves with Changes saved and persists after reload; pin maps then show no basemap.",
       "reproSteps": [
         "As an admin, open Admin > Settings > Maps.",
         "Replace Map tile server URL with not-a-url and move focus away.",
         "Observe Changes saved and reload."
       ],
-      "reason": "Works as intended: the setting has no validation, and the docs allow a relative path as well as an http(s) URL, so not-a-url is a legal value. A well-formed but unreachable URL breaks the map the same way."
+      "reason": "Works as intended: the setting has no validation, and the docs allow a relative path as well as an http(s) URL, so not-a-url is a legal value and https:// saves the same way. A well-formed but unreachable URL breaks the map the same way.",
+      "matchingGuidance": {
+        "claimScope": "Credit any report that Map tile server URL saves a malformed or incomplete value without validation, including not-a-url and a scheme-only https://."
+      }
     },
     {
       "id": "metabase-admin-090",
@@ -720,21 +723,6 @@
       "reason": "Cannot reproduce on human review."
     },
     {
-      "id": "metabase-admin-b07",
-      "name": "MongoDB SSH form shows an integer port assertion error",
-      "summary": "",
-      "expected": "The default ports should be usable, or the form should identify a required port value with actionable validation.",
-      "actual": "The connection alert reads “Assert failed: (integer? port)” rather than a usable connection or validation message.",
-      "reproSteps": [
-        "Open Add database as admin, select MongoDB and set a display name.",
-        "Choose Use a connection string and enter mongodb://qa-connection.invalid:27017/qa_mongo?connectTimeoutMS=1000&serverSelectionTimeoutMS=1000.",
-        "Enable SSH tunnel, use qa-ssh.invalid, username qa_ssh, Password authentication and dummy password qa_dummy_password; leave SSH port at displayed 22.",
-        "Switch to Fill out host, port and database name.",
-        "Enter Host qa-connection.invalid and Database name qa_mongo, leave MongoDB Port at displayed 27017 and click Save."
-      ],
-      "reason": "Works as intended: Port is a required field, and the placeholder 27017 is only a hint, not a value. Saving with it empty is missing required input, so the form shows an error; entering the port fixes it."
-    },
-    {
       "id": "metabase-admin-b08",
       "name": "Model cache log opens to an error",
       "summary": "Model cache log opens to an error.",
@@ -866,8 +854,8 @@
     },
     {
       "id": "metabase-admin-602",
-      "name": "Changing Price semantic type alters unrelated display names",
-      "summary": "Changing Price semantic type alters unrelated display names.",
+      "name": "Editing table metadata turns unrelated field and table names into raw database names",
+      "summary": "After a metadata edit (such as changing a semantic type or renaming a field), unrelated tables and fields show raw names like PRODUCTS, PRODUCT_ID or CREATED_AT.",
       "expected": "Changing one field's semantic type should leave the table name and other fields' display names unchanged.",
       "actual": "The Currency selection succeeds, but the table heading becomes PRODUCTS and unrelated field labels become EAN, TITLE, CATEGORY, VENDOR, RATING and CREATED_AT; sidebar still says Products.",
       "reproSteps": [
@@ -934,6 +922,226 @@
         "Observe Success then reload and inspect Domain."
       ],
       "reason": "Works as intended: the Google sign-in domain is a plain admin-entered value with no documented format; saving it as typed is not broken behavior."
+    },
+    {
+      "id": "metabase-admin-615",
+      "name": "Editable Date Range replaces embedding preview with an error",
+      "summary": "Editable Date Range replaces embedding preview with an error.",
+      "expected": "The dashboard preview updates to show the editable Date Range filter while continuing to display the dashboard cards",
+      "actual": "The dashboard preview clears and displays a red error icon in the center of the dark preview area",
+      "reproSteps": [
+        "As the supplied admin, open Embedding and select New embed.",
+        "If guest embedding is disabled, choose Agree and enable. Keep Dashboard selected and click Next.",
+        "Select Dark appearance, then open the Date Range Disabled menu and choose Editable."
+      ],
+      "reason": "Cannot reproduce on human review."
+    },
+    {
+      "id": "metabase-admin-620",
+      "name": "Clearing either field of a saved webhook API key erases both",
+      "summary": "Clearing either field of a saved webhook API key erases both.",
+      "expected": "Reject a missing header key or preserve the unchanged Value; do not silently erase it.",
+      "actual": "Save succeeds and both Key and Value reopen empty, although only Key was cleared. The readback AI assertion confirmed both fields are empty.",
+      "reproSteps": [
+        "Create a disposable webhook with name, description and valid-format URL.",
+        "Select API Key authentication, Header, Key X-QA-Edge and Value edge-value; save.",
+        "Reopen and confirm both fields persisted.",
+        "Clear only Key, save and reopen."
+      ],
+      "reason": "Works as intended: an API key needs both its key and its value to be valid, so clearing either field drops the whole credential."
+    },
+    {
+      "id": "metabase-admin-637",
+      "name": "Adding a member replaces group detail with an error",
+      "summary": "Adding a member replaces group detail with an error.",
+      "expected": "The selected user is added to the group and the group detail view displays the updated member list and count.",
+      "actual": "The group detail view is replaced by an error screen displaying \"An error occurred\".",
+      "reproSteps": [
+        "As Admin, create a fresh disposable person through Invite someone with first name QA People, last name Explorer and a unique example.test email; keep default membership.",
+        "Create a fresh disposable group with name mo-people-Équipe-20261028 (use a unique suffix if needed).",
+        "Open that group from the Groups list and confirm its empty member detail.",
+        "Click Add members, search for the disposable person's name and select it.",
+        "Click Add beside the selected person."
+      ],
+      "reason": "Cannot reproduce on human review."
+    },
+    {
+      "id": "metabase-admin-639",
+      "name": "Accessible child collection errors when parent access is denied",
+      "summary": "Accessible child collection errors when parent access is denied.",
+      "expected": "The child collection loads and displays its contents and curation controls.",
+      "actual": "The main content area displays “An error occurred” while the collection remains selected in the sidebar.",
+      "reproSteps": [
+        "As primary admin, create a fresh disposable parent collection in Our analytics, then create a child inside it.",
+        "In Admin > Permissions > Collections, verify All Users has Curate on both collections.",
+        "On only the parent collection, change All Users to No access and Save changes > Yes. Leave child All Users access as Curate.",
+        "Start a separate verified Jordan member session (not in a custom group granting parent access).",
+        "Open the parent: it correctly says “Sorry, you don’t have permission to see that.”",
+        "Click the child collection shown in Jordan’s sidebar."
+      ],
+      "reason": "Cannot reproduce on human review."
+    },
+    {
+      "id": "metabase-admin-b76",
+      "name": "Replacing a connection URL retains the previous nondefault port",
+      "summary": "Replacing a connection URL retains the previous nondefault port.",
+      "expected": "The replacement PostgreSQL URL without an explicit port uses default port 5432, rather than a stale port from a different URL.",
+      "actual": "Host updates to second.example.com and Database name to second_database, but Port remains 6543.",
+      "reproSteps": [
+        "As Admin open Databases > Add database; leave PostgreSQL selected to create a fresh unsaved form.",
+        "Enter postgresql://qa_user:examplePass@database.example.com:6543/qa_database in Connection string; blur it and observe Port 6543.",
+        "Replace the entire string with postgresql://qa_user:examplePass@second.example.com/second_database and blur.",
+        "Inspect Host, Database name and Port."
+      ],
+      "reason": "Works as intended per human review."
+    },
+    {
+      "id": "metabase-admin-b80",
+      "name": "Model refresh interval ignores the selected schedule",
+      "summary": "Model refresh interval ignores the selected schedule.",
+      "expected": "The selected 24-hour interval should replace 6 hours and be saved, or an error should explain why it could not be applied.",
+      "actual": "The menu closes and the interval remains 6 hours. A whole-page multimodal assertion confirmed no explanatory error appears.",
+      "reproSteps": [
+        "As Admin, open Performance > Model persistence.",
+        "Enable persistence if disabled, and confirm Refresh models every shows 6 hours.",
+        "Open the refresh interval menu and choose 24 hours.",
+        "Inspect the settled refresh interval."
+      ],
+      "reason": "Cannot reproduce on human review."
+    },
+    {
+      "id": "metabase-admin-b85",
+      "name": "Two segments can form a circular dependency that breaks row counts",
+      "summary": "Two segments can form a circular dependency that breaks row counts.",
+      "expected": "Saving a circular dependency should be prevented with clear validation so both segments remain usable.",
+      "actual": "Saving D succeeds without rejecting the cycle. E still opens with its D filter, but its formerly displayed 464-row count is absent. A whole-page AI assertion confirmed no numeric row count is displayed.",
+      "reproSteps": [
+        "In Admin > Table Metadata > Segments create a fresh uniquely named D segment on Sample Database > Accounts, with description and Active Subscription is true; save.",
+        "Create a fresh E segment on the same table, with description and D as its only filter; save.",
+        "Open E and verify its count (observed 464 rows), then return to the list.",
+        "Edit D, add E as another filter, enter a change reason, and Save changes.",
+        "The list now shows D referencing E and E referencing D. Open E again."
+      ],
+      "reason": "Works as intended: segments can reference each other, and a cycle breaks the dependent segment's count, as in admin-337."
+    },
+    {
+      "id": "metabase-admin-malformed-connection-port-keeps-previous",
+      "name": "Connection string with a non-numeric port keeps the previous port",
+      "summary": "Pasting a PostgreSQL connection string whose port is not a number updates the host and username but leaves the previous Port value, with no error.",
+      "expected": "A non-numeric port is rejected with a validation message, or the stale port is cleared.",
+      "actual": "Host and Username update from the new string, Port keeps the previous value 5433, and no error is shown.",
+      "reproSteps": [
+        "As admin, open Databases > Add database and choose PostgreSQL.",
+        "Paste postgresql://qa:pass@localhost:5433/dbqa into Connection string and blur. Port shows 5433.",
+        "Replace it with postgresql://qa:pass@localhost:notaport/dbqa and blur.",
+        "Inspect Host, Username and Port."
+      ],
+      "reason": "Works as intended per human review: the same port-retention behavior as metabase-admin-b76.",
+      "matchingGuidance": {
+        "relatedReference": {
+          "id": "metabase-admin-b76",
+          "distinction": "The related reference covers a replacement string with no port. This one covers a string with a non-numeric port."
+        }
+      }
+    },
+    {
+      "id": "metabase-admin-logo-link-unnamed",
+      "name": "Metabase admin logo link lacks an accessible name",
+      "summary": "Metabase admin logo link lacks an accessible name.",
+      "expected": "The admin navigation logo link exposes an accessible name identifying its destination.",
+      "actual": "The focusable /admin logo link has an empty accessible name; the retained audit flags link-name.",
+      "reproSteps": [
+        "Open Metabase administration.",
+        "Inspect the navigation logo link in the accessibility tree or run a link-name audit."
+      ],
+      "reviewEvidence": {
+        "basis": "User-requested correction after rereading the browser bug-reproducer requirements.",
+        "userAccepted": true,
+        "analysis": [
+          "Pure accessibility: tab order/skips, keyboard-only reachability, focus traps/escape, roles or names and implementation details alone are not benchmark product bugs unless supplied requirements or product documentation explicitly demand that behavior.",
+          "Prior acceptance used severity guidance without first checking reproducer eligibility."
+        ],
+        "limitations": [
+          "No new browser reproduction is claimed. The correction concerns benchmark eligibility, not whether the application meets general accessibility standards."
+        ]
+      },
+      "reason": "Excluded by the browser bug-reproducer pure-accessibility rule. This report establishes only keyboard/focus/accessibility semantics or a generic contrast threshold, without an explicit supplied product requirement or documented promise for that behavior. Ordinary pointer functionality or visible setting values are not alleged to fail. This negative reference is scoped to the reported accessibility-only claim; it does not cover independently demonstrated data loss, pointer failures, or an explicitly documented keyboard action."
+    },
+    {
+      "id": "reproducer-excluded-m02-metabase-admin",
+      "name": "Create user Groups selector is skipped by keyboard navigation",
+      "summary": "The Groups selector in Admin > People > Invite someone is clickable with a mouse but cannot receive keyboard focus. Tabbing from Email goes directly to Cancel, so a keyboard-only admin cannot assign a new user to a group.",
+      "expected": "Groups should be a keyboard-focusable control that opens with Enter or Space and allows group selection without a mouse.",
+      "actual": "Groups is absent from the tab order. Focus moves directly from Email to Cancel, leaving group assignment inaccessible to keyboard-only users.",
+      "reproSteps": [
+        "Open /admin/people and click Invite someone.",
+        "Fill First name Keyboard, Last name Tester, and Email qa-keyboard@example.test.",
+        "Press Shift+Tab to return to Email, then Tab again; the selector is skipped again."
+      ],
+      "reason": "Excluded by the browser bug-reproducer pure-accessibility rule. This report establishes only keyboard/focus/accessibility semantics or a generic contrast threshold, without an explicit supplied product requirement or documented promise for that behavior. Ordinary pointer functionality or visible setting values are not alleged to fail. This negative reference is scoped to the reported accessibility-only claim; it does not cover independently demonstrated data loss, pointer failures, or an explicitly documented keyboard action.",
+      "matchingGuidance": {
+        "distinction": "Match only this accessibility/keyboard/contrast claim. Independently observed pointer or saved-data failures, and explicitly promised keyboard shortcuts, are outside this negative reference."
+      }
+    },
+    {
+      "id": "reproducer-excluded-m08-metabase-admin",
+      "name": "Admin navigation text has insufficient contrast",
+      "summary": "Admin navigation labels are difficult to read for users with low vision. Repeated axe checks report 3.13:1 for inactive top navigation labels and 2.98:1 for the selected Groups sidebar label.",
+      "expected": "Normal-size navigation text should meet a minimum 4.5:1 contrast ratio.",
+      "actual": "Top navigation text is #c8c8eb on #6363c5 at 13.6px normal weight (3.13:1); selected Groups text is #468bc7 on #daebf9 at 14px normal weight (2.98:1).",
+      "reproSteps": [
+        "Sign in as eval@momentic.ai and open /admin/people/groups.",
+        "Observe the inactive top navigation links (Settings, Databases, Table Metadata, Permissions, Performance, Tools) and selected Groups sidebar label."
+      ],
+      "reason": "Excluded by the browser bug-reproducer pure-accessibility rule. This report establishes only keyboard/focus/accessibility semantics or a generic contrast threshold, without an explicit supplied product requirement or documented promise for that behavior. Ordinary pointer functionality or visible setting values are not alleged to fail. This negative reference is scoped to the reported accessibility-only claim; it does not cover independently demonstrated data loss, pointer failures, or an explicitly documented keyboard action.",
+      "matchingGuidance": {
+        "distinction": "Match only this accessibility/keyboard/contrast claim. Independently observed pointer or saved-data failures, and explicitly promised keyboard shortcuts, are outside this negative reference."
+      }
+    },
+    {
+      "id": "reproducer-excluded-m10-metabase-admin",
+      "name": "API keys cannot be edited or deleted using keyboard navigation",
+      "summary": "In Admin Settings → Authentication → API keys, existing-key edit and delete actions are clickable images excluded from the tab order. Keyboard users can reach Create API key but cannot reach any row actions, preventing editing or revoking an API key without a pointer.",
+      "expected": "Each API-key edit and delete control is a keyboard-focusable button with an accessible action name and can be activated with Enter/Space.",
+      "actual": "The pencil and trash controls appear as clickable images, never receive Tab focus, and are skipped when focus wraps from Create API key to the page's first navigation link. Reproduced twice; screenshots issue-002-before-tab.png and issue-002-after-tab.png capture the focus transition.",
+      "reproSteps": [
+        "Open Settings → Authentication → API keys with at least one API key (tested with QA keyboard test in QA Analysts).",
+        "Use keyboard navigation to focus Create API key.",
+        "Press Tab twice.",
+        "Observe focus leaves the page content and wraps to the Metabase logo link (/admin), skipping the pencil and trash actions.",
+        "Repeat from Create API key; the same actions are skipped. Clicking the icons with a pointer does open the respective dialogs."
+      ],
+      "reason": "Excluded by the browser bug-reproducer pure-accessibility rule. This report establishes only keyboard/focus/accessibility semantics or a generic contrast threshold, without an explicit supplied product requirement or documented promise for that behavior. Ordinary pointer functionality or visible setting values are not alleged to fail. This negative reference is scoped to the reported accessibility-only claim; it does not cover independently demonstrated data loss, pointer failures, or an explicitly documented keyboard action.",
+      "matchingGuidance": {
+        "distinction": "Match only this accessibility/keyboard/contrast claim. Independently observed pointer or saved-data failures, and explicitly promised keyboard shortcuts, are outside this negative reference."
+      }
+    },
+    {
+      "id": "reproducer-excluded-m11-metabase-admin",
+      "name": "Collection access selectors cannot be reached or opened with the keyboard",
+      "summary": "The editable Collection access cells are clickable divs without a keyboard focus target or button role. Tabbing from the Search for a group input skips every access selector and leaves the page; keyboard-only administrators cannot change collection permissions.",
+      "expected": "Each editable access selector should be exposed as a named button or combobox, reachable by Tab and operable with Enter/Space and arrow keys.",
+      "actual": "The access selectors are omitted from keyboard navigation and expose no button/combobox role. Changing collection permissions requires a pointing device.",
+      "reproSteps": [
+        "Open /admin/permissions/collections/root as an administrator (or select Collections > Our analytics)."
+      ],
+      "reason": "Excluded by the browser bug-reproducer pure-accessibility rule. This report establishes only keyboard/focus/accessibility semantics or a generic contrast threshold, without an explicit supplied product requirement or documented promise for that behavior. Ordinary pointer functionality or visible setting values are not alleged to fail. This negative reference is scoped to the reported accessibility-only claim; it does not cover independently demonstrated data loss, pointer failures, or an explicitly documented keyboard action.",
+      "matchingGuidance": {
+        "distinction": "Match only this accessibility/keyboard/contrast claim. Independently observed pointer or saved-data failures, and explicitly promised keyboard shortcuts, are outside this negative reference."
+      }
+    },
+    {
+      "id": "metabase-uploads-loading-bounded-wait-indefinite-claim",
+      "name": "Uploads settings allegedly stays loading forever",
+      "summary": "The report infers an indefinite Uploads settings hang from a bounded wait and reloads.",
+      "expected": "The report expects the uploads configuration form to appear during its observation window.",
+      "actual": "The supplied observations show Loading after about twenty seconds and reloads; no terminal failure or explicit maximum loading duration is established.",
+      "reproSteps": [
+        "Open administration Settings → Uploads.",
+        "Wait about twenty seconds and inspect the loading indicator.",
+        "Reload and compare the observed state."
+      ],
+      "reason": "Rejected by the reviewer as reported. A bounded loading observation does not establish an indefinite hang, and no explicit maximum duration is supplied. The reproducer baseline would otherwise leave this investigation blocked; the reviewer explicitly instructed rejection. This does not assert that the form was observed to finish loading or rule out a separately demonstrated terminal failure."
     }
   ]
 }

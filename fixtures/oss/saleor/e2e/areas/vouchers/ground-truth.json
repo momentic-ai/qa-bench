@@ -1,9 +1,9 @@
 {
   "bugs": [
     {
-      "name": "Assigning an eligible category or product crashes the voucher editor",
-      "summary": "Assigning an eligible category or product while creating a Products-scope voucher replaces the editor with an unexpected-error screen.",
-      "expected": "The selected category or product should be assigned and the voucher editor should remain usable.",
+      "name": "Assigning an eligible category, collection or product crashes the voucher editor",
+      "summary": "Assigning an eligible category, collection or product while creating a Products-scope voucher replaces the editor with an unexpected-error screen.",
+      "expected": "The selected category, collection or product should be assigned and the voucher editor should remain usable.",
       "actual": "Confirming an Accessories category or Monospace Tee product assignment displays “We’ve encountered an unexpected error” and the editor remains unusable.",
       "reproSteps": [
         "Use the signed-in Saleor admin session for admin@example.com (restored from the provided saved authenticated session; no interactive sign-in was needed).",
@@ -13,7 +13,10 @@
         "Select the existing seeded Accessories category and click “Assign (1 item).” Observe the unexpected-error screen at /discounts/vouchers/add; it remains visible after five seconds.",
         "Variant: in a new Products-scope voucher, open Eligible products > Products, select Monospace Tee, and click Assign (1 item); the same unexpected-error screen appears."
       ],
-      "severity": 5
+      "severity": 5,
+      "matchingGuidance": {
+        "claimScope": "Covers confirming any eligible-item assignment (category, collection, product or variant) on a new Products-scope voucher. Crashes from applying a filter inside the assignment dialog are separate references."
+      }
     },
     {
       "name": "Voucher setup checklist overcounts manually added codes",
@@ -612,8 +615,8 @@
     },
     {
       "id": "mo-12m-saleor-vouchers-2",
-      "name": "Saving a rejected zero minimum quantity shows a Voucher updated success toast",
-      "summary": "With Minimum quantity of items set to 0, Save keeps the Enter at least 1 item. error and the unsaved General settings indicator, yet shows a green Voucher updated toast.",
+      "name": "Saving a rejected minimum item quantity shows a Voucher updated success toast",
+      "summary": "When the minimum quantity of items is rejected, for example 0 or a value too large to store such as 2147483648, Save still shows a green Voucher updated toast while the error, a Try again button or the unsaved General settings indicator remains.",
       "expected": "Save should be blocked by the validation error, or the feedback should state that the change was not saved. No success notification should appear for a rejected requirement.",
       "actual": "A green Voucher updated toast appears for about five seconds while Enter at least 1 item. and Unsaved changes: General settings remain. The invalid quantity was the only pending change.",
       "reproSteps": [
@@ -623,7 +626,7 @@
       ],
       "severity": 3,
       "matchNotes": {
-        "scope": "Credit a success toast shown for a rejected minimum-quantity value while its error or unsaved state remains. Distinct from the zero total usage limit reference (a different control that saves and later displays the cap as disabled) and from false unsaved warnings after a genuinely successful save of disabled-field values."
+        "scope": "Credit a success toast shown for a rejected minimum-quantity value, whether too small (0) or too large (such as 2147483648), while its error, Try again state or unsaved state remains, including when the unsaved state persists after reload. Distinct from the zero total usage limit reference (a different control that saves and later displays the cap as disabled) and from false unsaved warnings after a genuinely successful save of disabled-field values."
       }
     },
     {
@@ -868,20 +871,6 @@
       ]
     },
     {
-      "id": "saleor-vouchers-b18",
-      "name": "Whitespace voucher name leaves an unidentified list row",
-      "severity": 1,
-      "summary": "Whitespace voucher name leaves an unidentified list row.",
-      "expected": "A whitespace-only name should be treated as unnamed and show an identifying fallback (such as its code), or be rejected with validation rather than producing an unidentified list row.",
-      "actual": "Save succeeds. After refresh and Back, the voucher row's Name cell shows only “1 code”; neither the voucher name nor its code is displayed.",
-      "reproSteps": [
-        "As authenticated admin, create a fresh voucher with unique NAME-prefixed code and NAME-prefixed name, one available channel and entire-order 10% discount; save.",
-        "Change Voucher Name to exactly three ordinary spaces and Save.",
-        "Verify Voucher updated appears, then refresh and use Back to return to All vouchers.",
-        "Inspect the voucher's Name cell."
-      ]
-    },
-    {
       "id": "saleor-vouchers-b21",
       "name": "Mobile pinned Name column leaves other voucher columns unreadable",
       "severity": 1,
@@ -893,6 +882,303 @@
         "Inspect a loaded voucher row with default columns.",
         "Optionally horizontally scroll the grid; Name remains pinned over almost all available width."
       ]
+    },
+    {
+      "id": "saleor-vouchers-001",
+      "name": "Redemptions card says 'Redeemable now' when the voucher can't be redeemed (no channels or no codes)",
+      "summary": "After removing all of a voucher's channels or deleting all its codes, the Redemptions card still says 'Redeemable now', while the same page's checklist says the voucher can't be redeemed.",
+      "expected": "Readiness should account for required voucher setup; a voucher with no channels should indicate that channels must be assigned.",
+      "actual": "After saving removal of all channels, Redemptions shows '1 code', '0 channels', '5 redemptions left' and 'Redeemable now.' The same page's checklist says 'Customers can’t redeem this voucher until the required steps are done.' Reproduced on two vouchers.",
+      "reproSteps": [
+        "Sign in as admin@example.com / admin. Create a voucher with an unused manual code, Channel-USD and valid percentage 10.",
+        "Enable total usage limit and set 5. Keep schedule currently active, then Save.",
+        "In Availability click Manage, deselect all channels, confirm 0 channels, and Save.",
+        "Observe the setup checklist warns customers cannot redeem, but Redemptions still says 'Redeemable now.' despite 0 channels."
+      ],
+      "severity": 1
+    },
+    {
+      "id": "saleor-vouchers-002",
+      "name": "Open voucher detail page keeps stale schedule status after start and end times pass",
+      "summary": "On an open voucher detail page, the header status, the Schedule card label and the channel dot do not change when the scheduled start or end time passes. After the start time it still said \"Scheduled · in 2 minutes\". After the end time it still said Active, with a green Channel-USD dot. Refreshing the page shows the correct phase each time.",
+      "expected": "While the page stays open, the header status, Schedule card label and channel indicator change from Scheduled to Active to Inactive/Ended as the start and end times pass, matching what a refresh shows.",
+      "actual": "Start was 02:49 and end was 02:51 EDT on Oct 28 2026. At 02:49:12 and again at 02:49:54 the page still showed \"Scheduled · in 2 minutes\", and the Schedule card still said Scheduled. A refresh at 02:50:05 showed Active. At 02:51:30, after the end time, the page still showed Active with a green Channel-USD dot. Refreshing then showed \"Inactive · 1 minute ago\", \"Ended\" and a grey channel dot.",
+      "reproSteps": [
+        "Sign in as the vouchers admin (saved session) with browser timezone America/New_York, then open /discounts/vouchers/add",
+        "Name: voucher-schedule-mo1. Add a manual code SCHEDMO1. Under Availability > Manage, assign Channel-USD. Set the Channel-USD percentage to 5.",
+        "Set Start Date to 10/28/2026 and Start Hour to 02:49 AM (about 3 minutes ahead). Check Set end date and set End Date to 10/28/2026 and End Hour to 02:51 AM. Click Save; the toast says 'Voucher created' and the header shows 'Scheduled · in 2 minutes'.",
+        "Leave the page open past 02:49. At 02:49:54 the header still shows 'Scheduled · in 2 minutes'.",
+        "Refresh at 02:50: the header shows Active and the Channel-USD dot is green.",
+        "Leave the page open past 02:51. At 02:51:30 it still shows Active with a green Channel-USD dot. Refreshing shows 'Inactive · 1 minute ago' and Ended."
+      ],
+      "severity": 1
+    },
+    {
+      "id": "saleor-vouchers-b17",
+      "name": "Product attribute filter crashes voucher editor",
+      "severity": 5,
+      "summary": "Product attribute filter crashes voucher editor.",
+      "expected": "The product picker displays matching products or an empty result.",
+      "actual": "The whole editor displays “We've encountered an unexpected error” with Dashboard and Refresh page buttons.",
+      "reproSteps": [
+        "Open own Products voucher ELIG-202607-Requirements and Assign products.",
+        "Open Filters; select Attribute, choose Color, operator in, and black.",
+        "Click Filter."
+      ],
+      "matchingGuidance": {
+        "relatedReference": {
+          "id": "saleor-vouchers-collection-publication-filter-crash",
+          "distinction": "This reference covers the product attribute filter. The related one covers the collection publication filter."
+        }
+      }
+    },
+    {
+      "id": "saleor-vouchers-b26",
+      "name": "Saving a negative percentage reports success but keeps the previous value",
+      "severity": 3,
+      "summary": "Saving a negative percentage reports success but keeps the previous value.",
+      "expected": "An invalid negative percentage should be rejected with validation, rather than a success notification; a reported successful save should match the reopened value.",
+      "actual": "The form reports Voucher updated with -0.01 displayed, while a fresh editor displays the previous value 100.",
+      "reproSteps": [
+        "As the admin, create a fresh DISC-QA voucher with a manual code and assign Channel-PLN and Channel-USD.",
+        "Select Entire order and Percentage, save PLN 100 and USD 15.",
+        "Change PLN to -0.01 and click Save. Observe Voucher updated.",
+        "Open the same voucher in a fresh tab and scroll to Discount. Observe PLN remains 100."
+      ]
+    },
+    {
+      "id": "saleor-vouchers-b28",
+      "name": "Incomplete end date silently removes voucher expiration",
+      "severity": 3,
+      "summary": "Incomplete end date silently removes voucher expiration.",
+      "expected": "An incomplete end date should show validation while Set end date is enabled, rather than silently removing the saved expiration.",
+      "actual": "Save reports Voucher updated; Set end date becomes unchecked and its fields disappear, although only one date segment was cleared.",
+      "reproSteps": [
+        "Save schedule start February 29 2028 23:59 and end March 1 2028 00:00.",
+        "Click End Date and press Backspace to clear its month segment, then Tab.",
+        "Save."
+      ]
+    },
+    {
+      "id": "saleor-vouchers-b30",
+      "name": "Spreadsheet column paste does not populate channel percentages",
+      "severity": 3,
+      "summary": "Spreadsheet column paste does not populate channel percentages.",
+      "expected": "As the visible instructions promise, fill Channel-PLN with 12.5 and Channel-USD with 22.75.",
+      "actual": "Channel-PLN stays 0 and Channel-USD stays 40. A whole-page assertion confirmed no error or paste-validation warning. Clipboard content was confirmed as 12.5 newline 22.75.",
+      "reproSteps": [
+        "Create a fresh QA-DISCOUNT-PASTE voucher with a unique manual code and assign Channel-PLN and Channel-USD.",
+        "Choose Entire order > Percentage, enter 0 for PLN and 40 for USD, then save.",
+        "Copy two spreadsheet cells in one column containing 12.5 and 22.75 (newline-separated plain text).",
+        "Select the Channel-PLN percentage field and paste using Ctrl+V.",
+        "Inspect both percentage fields."
+      ]
+    },
+    {
+      "id": "saleor-vouchers-b31",
+      "name": "Tablet eligibility rows overlap assignment counts with descriptions",
+      "severity": 3,
+      "summary": "Tablet eligibility rows overlap assignment counts with descriptions.",
+      "expected": "Description text and assignment counts should occupy separate readable areas.",
+      "actual": "In the Products row, “None assigned” overlaps the description text.",
+      "reproSteps": [
+        "Set viewport to 768px wide.",
+        "Create a fresh QA-ELIG voucher with unique manual code and Channel-USD at 15 percent, Products scope.",
+        "View Eligible products with no products assigned."
+      ]
+    },
+    {
+      "id": "saleor-vouchers-b32",
+      "name": "Ignore changes after browser Back leaves voucher edits unsaved on screen",
+      "severity": 3,
+      "summary": "Ignore changes after browser Back leaves voucher edits unsaved on screen.",
+      "expected": "Clicking 'Ignore changes' discards pending modifications and navigates back.",
+      "actual": "The dialog closes, but the user remains on the voucher form with the modified name 'SAVE-EDIT-0721-BrowserBack' and 'Unsaved changes: General settings' banner still visible.",
+      "reproSteps": [
+        "Sign in as vouchers admin and create an owned SAVE-prefixed voucher with a manual code and channel discount.",
+        "Open availability Manage, remove a channel and save; reopen Manage, readd that channel and fill its discount, save.",
+        "Rename to SAVE-EDIT-0721-Final and save from Codes section; reload.",
+        "Change name to SAVE-EDIT-0721-BrowserBack without saving.",
+        "Use browser Back, choose Keep editing, then browser Back again and choose Ignore changes."
+      ]
+    },
+    {
+      "id": "saleor-vouchers-b27",
+      "name": "Incomplete schedule date or time silently saves a default instead of rejecting it",
+      "severity": 3,
+      "summary": "Incomplete schedule date or time silently saves a default instead of rejecting it.",
+      "expected": "An incomplete explicitly edited start date should be rejected or clearly confirmed before replacing a future schedule with immediate activation.",
+      "actual": "The month placeholder remained blank before Save, but after save/reload Start Date became 10/28/2026 and Start Hour 01:49 PM; header, schedule and channels switched to Active.",
+      "reproSteps": [
+        "Create and save a CHAN-QA voucher with code, assigned channels and percentage values.",
+        "Set start February 29 2028 23:59 and end March 1 2028 00:00; save.",
+        "Click Start Date, press Backspace to clear the month segment, then Tab.",
+        "Save and reload the voucher."
+      ]
+    },
+    {
+      "id": "saleor-vouchers-b37",
+      "name": "Voucher section navigation highlights a section without bringing it into view on tablet",
+      "severity": 3,
+      "summary": "Voucher section navigation highlights a section without bringing it into view on tablet.",
+      "expected": "Clicking Eligible products in the section navigation should scroll the page to bring the Eligible products section into view.",
+      "actual": "The selection indicator moves to Eligible products, but the page does not scroll, leaving Details and Voucher codes in view.",
+      "reproSteps": [
+        "At 768 x 1024, start a fresh voucher as an authenticated administrator.",
+        "Enter a unique TAB-prefixed name and one manual code, assign Channel-USD and set a discount.",
+        "Choose Products scope; manually scroll to Eligible products and assign Accessories category.",
+        "Save the voucher and refresh to show Details at the top.",
+        "Click Eligible products in the left section navigation."
+      ]
+    },
+    {
+      "id": "saleor-vouchers-b40",
+      "name": "Whitespace bypasses manual code duplicate validation",
+      "severity": 3,
+      "summary": "Whitespace bypasses manual code duplicate validation.",
+      "expected": "The manual-code dialog rejects the whitespace-equivalent duplicate just as it rejects the exact duplicate, keeping the draft's code list valid for saving.",
+      "actual": "The padded duplicate is added as another draft row. Save fails with “Duplicated promo codes provided: QA-CODES-MANUAL-01” and “Couldn't create voucher”.",
+      "reproSteps": [
+        "As voucher administrator, create a fresh voucher named QA-CODES-Manual with a fresh QA-prefixed code via Add code > Manual code.",
+        "Try adding the identical code again: observe “Code already exists”.",
+        "Change the code to its lowercase variant and Confirm (accepted in this run).",
+        "Add another manual code consisting of two spaces, the original uppercase code, and two trailing spaces; Confirm.",
+        "Assign Channel-USD and set its percentage discount to 10.",
+        "Click Save."
+      ]
+    },
+    {
+      "id": "saleor-vouchers-b39",
+      "name": "Saving shipping voucher changes leaves the unsaved warning active",
+      "severity": 3,
+      "summary": "Saving shipping voucher changes leaves the unsaved warning active.",
+      "expected": "Saving changes should clear the unsaved changes warning in the action bar once the voucher is successfully updated.",
+      "actual": "The 'Voucher updated' toast appears, but 'Unsaved changes: General settings' remains visible in the action bar alongside the Save button.",
+      "reproSteps": [
+        "At 768 x 1024, create a fresh TAB-prefixed voucher with one code, Channel-USD and a valid discount; save.",
+        "Switch to Free shipping, assign North America countries, save and reopen.",
+        "Switch to Entire order, then back to Free shipping without saving the intermediate scope.",
+        "Open Assign countries, select all countries and Assign, then Save.",
+        "Open Assign countries again, deselect all and Assign, then Save."
+      ]
+    },
+    {
+      "id": "saleor-vouchers-b45",
+      "name": "Correcting a rejected discount causes a duplicate-code error",
+      "severity": 3,
+      "summary": "Correcting a rejected discount causes a duplicate-code error.",
+      "expected": "Correcting the invalid discount should allow the same draft voucher and unique code to be created.",
+      "actual": "Creation is blocked by “Promo code already exists: CREATE-QA-179318-B-CODE” despite the code only being added once in this fresh form. Create Voucher remains displayed.",
+      "reproSteps": [
+        "Open Create Voucher as voucher administrator and enter a unique CREATE-QA-* name.",
+        "Assign Channel-PLN and Channel-USD; use Entire order and Fixed amount.",
+        "Add a unique manual code (observed CREATE-QA-179318-B-CODE).",
+        "Enter 10.25 PLN and 0 USD; click Save. Observe USD required-field error and Couldn't create voucher.",
+        "Correct USD to 2.75 and click Save again."
+      ]
+    },
+    {
+      "id": "saleor-vouchers-b46",
+      "name": "Historical schedule date shifts to the previous day on save",
+      "severity": 3,
+      "summary": "Historical schedule date shifts to the previous day on save.",
+      "expected": "Either reject unsupported historical dates with validation or preserve the selected date and hour exactly.",
+      "actual": "Start date becomes December 31, 0098 and start hour becomes 11:59 PM. Whole-page multimodal check confirmed no warning or validation; changed values persisted after refresh.",
+      "reproSteps": [
+        "Open Big order discount in the authenticated fixture session in America/Los_Angeles timezone.",
+        "Set start February 29 2028 midnight and end March 1 2028 midnight; save.",
+        "Change Start Date to January 1, 0099 while keeping Start Hour 12:00 AM.",
+        "Click Save and read the resulting start date/hour.",
+        "Refresh and read the saved values again."
+      ]
+    },
+    {
+      "id": "saleor-vouchers-b47",
+      "name": "Duplicate code error remains after removing the invalid draft",
+      "severity": 3,
+      "summary": "Duplicate code error remains after removing the invalid draft.",
+      "expected": "Removing the invalid unsaved code should clear its error when the form returns to the valid saved state.",
+      "actual": "Draft row disappears and code count returns to 63 in the tested fixture; Save is disabled, yet Promo code already exists: MOCODES0721 remains displayed. Whole-page check confirmed the lingering error.",
+      "reproSteps": [
+        "Create a disposable voucher with saved manual code MOCODES0721, channel and discount.",
+        "Add manual code 'MOCODES0721 ' with trailing space and click Save.",
+        "Observe Promo code already exists: MOCODES0721.",
+        "Hover the duplicate draft row, click its trash icon and confirm Delete."
+      ]
+    },
+    {
+      "id": "saleor-vouchers-b48",
+      "name": "Started greater filter includes voucher that started one minute earlier",
+      "severity": 3,
+      "summary": "Started greater filter includes voucher that started one minute earlier.",
+      "expected": "The voucher starting at 12:00 is excluded because it is earlier than 12:01.",
+      "actual": "MO-LIST-BOUNDARY-1028 remains listed as Active with 10% off.",
+      "reproSteps": [
+        "Create a uniquely named voucher with shared code, available channel and 10% entire-order discount.",
+        "Set start October 20 2026 12:00 and end October 30 2026 12:00; save and refresh to verify.",
+        "Search its unique name in Vouchers.",
+        "Apply Started greater than October 20 2026 12:01."
+      ]
+    },
+    {
+      "id": "saleor-vouchers-b49",
+      "name": "Deleting a dirty voucher prompts to keep editing after deletion succeeds",
+      "severity": 3,
+      "summary": "Deleting a dirty voucher prompts to keep editing after deletion succeeds.",
+      "expected": "Deleting the voucher redirects to the voucher list without prompting about unsaved changes.",
+      "actual": "A “Voucher deleted” notification appears, but a “Leave without saving changes?” dialog is displayed with “Keep editing” and “Ignore changes”, remaining on the voucher page.",
+      "reproSteps": [
+        "As administrator, create a fresh EDIT-prefixed voucher with a unique code, Channel-USD and valid entire-order percentage discount; save.",
+        "Change the voucher's internal name without saving.",
+        "Open More actions > Delete voucher and confirm Delete."
+      ]
+    },
+    {
+      "id": "saleor-vouchers-b35",
+      "name": "Saving a deleted voucher misleadingly asks to correct unhighlighted fields",
+      "severity": 3,
+      "summary": "Saving a deleted voucher misleadingly asks to correct unhighlighted fields.",
+      "expected": "Explain that this voucher was deleted and cannot be saved, or navigate away, rather than directing the user to check nonexistent field errors.",
+      "actual": "The editor remains open with the unsaved voucher name. Clicking Save displays 'Couldn't save voucher' with the message 'Check the highlighted fields and try again' and turns the button into 'Try again', despite no fields being highlighted or having validation errors.",
+      "reproSteps": [
+        "Create a new EDIT-prefixed voucher with a unique code, Channel-USD, and a valid 10% entire-order discount; save it.",
+        "Change its internal name without saving.",
+        "Open More actions > Delete voucher and confirm Delete.",
+        "In the subsequent Leave without saving changes dialog choose Keep editing, then click Back in the remaining Delete Voucher dialog.",
+        "Click Save in the stale voucher editor."
+      ]
+    },
+    {
+      "id": "saleor-vouchers-b34",
+      "name": "Incomplete voucher end time silently saves as midnight",
+      "severity": 3,
+      "summary": "Incomplete voucher end time silently saves as midnight.",
+      "expected": "An incomplete enabled end time is rejected with validation feedback, retaining the prior expiry until a valid time is provided.",
+      "actual": "Save succeeds and End Hour becomes 12:00 AM on 11/11/2026. Reload preserves midnight. A whole-page assertion confirmed the enabled end date and absence of a validation error.",
+      "reproSteps": [
+        "Open SCH-Create schedule validation, with start 11/10/2026 6:30 PM and enabled end 11/11/2026 6:30 PM.",
+        "Focus End Hour, move to the hour segment and delete it, leaving --:30 PM; blur the field.",
+        "Save the voucher, then reload."
+      ]
+    },
+    {
+      "id": "saleor-vouchers-collection-publication-filter-crash",
+      "name": "Collection publication filter crashes voucher editor",
+      "summary": "In the voucher Assign collections dialog, filtering by Is published = Yes with a channel replaces the whole editor with an error page.",
+      "expected": "The dialog shows matching collections or an empty result.",
+      "actual": "The whole editor shows “We've encountered an unexpected error” with a Refresh page button.",
+      "reproSteps": [
+        "Open your own Products voucher and click Assign in Collections.",
+        "Open Filters, add Is published, choose Yes and pick Channel-PLN in the Channel row.",
+        "Click Filter."
+      ],
+      "severity": 5,
+      "matchingGuidance": {
+        "relatedReference": {
+          "id": "saleor-vouchers-b17",
+          "distinction": "The related reference covers the product attribute filter. This one covers the collection publication filter."
+        }
+      }
     }
   ]
 }

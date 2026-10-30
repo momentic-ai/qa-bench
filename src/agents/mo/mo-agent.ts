@@ -28,7 +28,7 @@ export class MoAgent implements EvalAgent {
   readonly preparesEnvironment = true;
   private sessionId: string | undefined;
   private completed = false;
-  private wrapUpMessage: string | undefined;
+  private finalizationMessage: string | undefined;
   private execution = new AbortController();
   private pending: Promise<unknown>[] = [];
 
@@ -41,7 +41,6 @@ export class MoAgent implements EvalAgent {
     onReady?: () => number,
   ) {
     onReady?.();
-    // Mo uses its effort preset budget.
     const startArgs = ["start", message];
     if (this.context.effort) startArgs.push("--effort", this.context.effort);
     if (this.context.maxConcurrentSubAgents !== undefined) {
@@ -111,7 +110,7 @@ export class MoAgent implements EvalAgent {
         if (inputId) {
           if (!answered.has(inputId)) {
             const message =
-              this.wrapUpMessage ??
+              this.finalizationMessage ??
               "No additional information is available beyond the supplied evaluation brief and setup.";
             await this.mo(
               ["send", "--session-id", sessionId, "--wait", "0", message],
@@ -150,7 +149,7 @@ export class MoAgent implements EvalAgent {
   }
 
   async send(message: string, signal: AbortSignal) {
-    this.wrapUpMessage = message;
+    this.finalizationMessage = message;
     const delivery = this.mo(
       ["send", "--session-id", this.requireSessionId(), "--wait", "0", message],
       AbortSignal.any([signal, this.execution.signal]),

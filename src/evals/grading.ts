@@ -6,6 +6,7 @@ import { z } from "zod";
 
 import { claudeRunner } from "../agents/claude/runner";
 import { codexRunner } from "../agents/codex/runner";
+import { devinQaRunner } from "../agents/devin/qa-reader";
 import { moRunner } from "../agents/mo/runner";
 import { partitionAreaAssessment } from "./area-assessment";
 import {
@@ -39,6 +40,7 @@ import { BenchmarkAgent, Fixture } from "./types";
 const root = path.resolve(import.meta.dirname, "../..");
 const RUNNERS: Record<Agent, BenchmarkAgent> = {
   mo: moRunner,
+  "devin-qa": devinQaRunner,
   "codex-playwright-mcp": codexRunner,
   "claude-playwright-mcp": claudeRunner,
   "codex-agent-browser": {
@@ -267,6 +269,7 @@ export async function gradeFixture(
     cost_usd: report.costUsd,
     cost_complete: report.costComplete,
     partial: duration.partial ?? false,
+    time_limit_ms: duration.timeLimitMs ?? null,
   });
   await writeScores(path.join(directory, "scores.csv"), [score]);
   process.stdout.write(

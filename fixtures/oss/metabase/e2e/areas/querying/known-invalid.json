@@ -16,8 +16,8 @@
     },
     {
       "id": "metabase-querying-153",
-      "name": "Entering row limit 0 silently runs the previous limit 5 and resets the input",
-      "summary": "Entering row limit 0 silently runs the previous limit 5 and resets the input.",
+      "name": "Entering 0, clearing, or entering an invalid row limit keeps the previous limit",
+      "summary": "Typing 0 or an invalid value into the notebook Row limit, or clearing it, keeps running the previous limit, and reopening the editor shows the old value.",
       "expected": "Reject an invalid row limit with clear validation before running, rather than silently executing the previous limit.",
       "actual": "The field displayed 0 before running, but Visualize returned five rows and reopening Editor showed 5. A whole-page multimodal assertion confirmed no warning, validation error or notification explained the rejection/reset.",
       "reproSteps": [
@@ -26,7 +26,13 @@
         "Reopen Editor, replace row limit 5 with 0 and blur the field.",
         "Click Visualize, then reopen Editor."
       ],
-      "reason": "Works as intended: the row limit deliberately ignores values below 1, as Metabase's own tests assert."
+      "reason": "Works as intended: the row limit deliberately ignores values below 1, as Metabase's own tests assert.",
+      "matchingGuidance": {
+        "relatedReference": {
+          "id": "metabase-querying-cleared-row-limit-returns-after-save",
+          "distinction": "This reference covers the previous limit still applying when the query runs. The related one covers a cleared limit returning after the question is saved and refreshed."
+        }
+      }
     },
     {
       "id": "metabase-querying-154",
@@ -311,7 +317,13 @@
         "Reopen Day filter, replace date with 02/29/2023 and leave the date input.",
         "Click Update filter and run the query."
       ],
-      "reason": "Works as intended per human review."
+      "reason": "Works as intended per human review.",
+      "matchingGuidance": {
+        "relatedReference": {
+          "id": "metabase-querying-notebook-date-range-impossible-date",
+          "distinction": "This reference covers a native SQL Date parameter. The related one covers a notebook fixed date range filter."
+        }
+      }
     },
     {
       "id": "metabase-querying-453",
@@ -417,8 +429,8 @@
     },
     {
       "id": "metabase-querying-495",
-      "name": "Changing a custom column's type bypasses validation of dependent expressions",
-      "summary": "Changing a custom column's type bypasses validation of dependent expressions.",
+      "name": "Changing a custom column's type bypasses validation of dependent expressions and filters",
+      "summary": "Changing a custom column's type keeps dependent expressions and filters that no longer fit it, such as a text Contains filter on a column changed to a number, and the query fails when run.",
       "expected": "Editing the upstream expression should revalidate dependent expressions and identify the incompatible dependency before allowing the question to remain apparently valid, consistent with validation when entering the same dependent expression.",
       "actual": "Changing Upstream amount from [Total] * 2 to the string literal \"text\" is accepted while Downstream amount = [Upstream amount] / 2 is retained. Preview fails with 'Data conversion error converting \"text\"'. Opening the downstream editor initially enables Update; retyping the identical formula shows 'Types are incompatible.' and disables Update. The broken query can be saved and fails again after reload.",
       "reproSteps": [
@@ -430,7 +442,10 @@
         "Open Downstream amount. Observe that Update is initially enabled. Replace the formula with the identical [Upstream amount] / 2, and observe 'Types are incompatible.' with Update disabled.",
         "Cancel editing and optionally save the question. Reload and run it to confirm that the invalid dependent expression persists and the query still fails."
       ],
-      "reason": "Works as intended: the user made an incompatible change to the upstream column and the query then fails with a clear error. It can be fixed by editing the downstream formula, unlike a column that silently disappears (querying-496)."
+      "reason": "Works as intended: the user made an incompatible change to the upstream column and the query then fails with a clear error. It can be fixed by editing the downstream formula or editing or removing the incompatible filter, unlike a column that silently disappears (querying-496).",
+      "matchingGuidance": {
+        "claimScope": "Covers both dependent custom-column formulas and filters on the changed column that become incompatible with its new type and fail at run time with an error. A column that silently disappears is querying-496."
+      }
     },
     {
       "id": "metabase-querying-546",
@@ -618,6 +633,107 @@
         "Press Ctrl+Shift+Z. Observe the earlier Products/category query instead of SELECT 102 AS n;."
       ],
       "reason": "Cannot reproduce on human review: a real Ctrl+Shift+Z redoes the edit; the report came from a synthetic lowercase key event."
+    },
+    {
+      "id": "metabase-querying-607",
+      "name": "Products Title column header does not open query actions",
+      "summary": "Products Title column header does not open query actions.",
+      "expected": "Clicking the Title header should open the column action menu, including sorting and filtering, as adjacent Products columns do.",
+      "actual": "Clicking either the Title columnheader or its parent button opens no menu or dialog. Category immediately beside it opens the normal menu with sorting, Filter by this column, Distribution, and Distinct values. The Title header remains inert with all default columns or with only Title, Title+Price, or Title+Price+ID selected.",
+      "reproSteps": [
+        "Sign in and choose New > Question > Sample Database > Products.",
+        "Click Visualize, leaving the default selected columns.",
+        "Click the Title column header. Observe that nothing opens.",
+        "Click the adjacent Category column header. Observe the normal column actions menu, confirming header actions are available in this question."
+      ],
+      "reason": "Cannot reproduce on human review: the report clicked the column area, not the header button, which opens the menu."
+    },
+    {
+      "id": "metabase-querying-b81",
+      "name": "Field Filter mapping picker ignores the first click",
+      "summary": "Field Filter mapping picker ignores the first click.",
+      "expected": "The first click should open the Sample Database table/field picker.",
+      "actual": "After the first click there is no dialog and no table options, even after waiting; the second click opens a dialog listing Accounts, Analytic Events, Feedback, Invoices, Orders, People, Products, and Reviews. Verified with Playwright DOM observations: first click dialogs=0/options=[]; second click dialogs=1 with all eight tables.",
+      "reproSteps": [
+        "Choose New → SQL query with Sample Database selected.",
+        "Enter SELECT * FROM PRODUCTS WHERE {{category}}.",
+        "In Variables and parameters, change Variable type from Text to Field Filter.",
+        "Click Select... under Field to map to once, then wait.",
+        "Observe no picker opens; click Select... a second time."
+      ],
+      "reason": "Cannot reproduce on human review: switching to Field Filter opens the table list right away; clicking the box toggles it closed."
+    },
+    {
+      "id": "metabase-querying-notebook-date-range-impossible-date",
+      "name": "Notebook fixed date range silently rolls an impossible date into the next month",
+      "summary": "Typing an impossible date such as 02/30/2028 into a notebook fixed date range changes it to March 1, 2028 on blur, with no validation error.",
+      "expected": "An impossible calendar date is rejected with validation rather than silently used as a different day.",
+      "actual": "On leaving the input, 02/30/2028 changes to March 1, 2028, and Update filter applies it.",
+      "reproSteps": [
+        "Open a Sample Database Orders notebook query and add a Created At fixed date range.",
+        "Set both endpoints to February 11, 2028 and apply.",
+        "Reopen the filter, replace Start date with 02/30/2028 and blur the field.",
+        "Observe the start changes to March 1, 2028."
+      ],
+      "reason": "Works as intended per human review: the same calendar rollover as metabase-querying-402.",
+      "matchingGuidance": {
+        "relatedReference": {
+          "id": "metabase-querying-402",
+          "distinction": "The related reference covers a native SQL Date parameter. This one covers a notebook fixed date range filter."
+        }
+      }
+    },
+    {
+      "id": "metabase-querying-cleared-row-limit-returns-after-save",
+      "name": "Cleared row limit returns after saving the question and refreshing",
+      "summary": "Clearing Row limit and saving the question does not remove the limit; after refresh the Row limit field shows a previous value.",
+      "expected": "Saving a question with an empty Row limit removes the limit.",
+      "actual": "The editor shows an empty Row limit before saving, but after refresh it shows the previous value.",
+      "reproSteps": [
+        "Create and save a Sample Database Orders notebook question with a row limit.",
+        "Reopen Editor, clear Row limit and blur the field.",
+        "Save, replacing the original question.",
+        "Refresh the notebook and inspect Row limit."
+      ],
+      "reason": "Works as intended: the same deliberate row limit handling as metabase-querying-153.",
+      "matchingGuidance": {
+        "relatedReference": {
+          "id": "metabase-querying-153",
+          "distinction": "The related reference covers the previous limit still applying when the query runs. This one covers a cleared limit returning after the question is saved and refreshed."
+        }
+      }
+    },
+    {
+      "id": "metabase-querying-b104",
+      "name": "Replacing SQL text loses unchanged parameter default",
+      "summary": "Replacing SQL text loses unchanged parameter default.",
+      "expected": "Keeping the same variable while adding a selected column preserves its saved default Product ID 2, or clearly warns that variable settings will be reset.",
+      "actual": "Product ID is blank on refresh and fresh navigation; result shows IDs 1, 2, 3. A default MULTIMODAL AI assertion confirmed the blank control and three-row result.",
+      "reproSteps": [
+        "Question 48 was primary-authored and explicitly released for member editing. The edit replaced the entire SQL text, not a character-level insertion; variable recreation during replacement is a possible contributing condition.",
+        "Create a shared Sample Database SQL question: SELECT id, title FROM products WHERE id <= 3 [[AND id = {{product_id}}]] ORDER BY id; configure Product ID default 2 and save.",
+        "As Maya, reopen the shared question and verify default Product ID 2 returns Small Marble Shoes.",
+        "Open editor, select all SQL and replace it with SELECT id, title, category FROM products WHERE id <= 3 [[AND id = {{product_id}}]] ORDER BY id;",
+        "Run, save replacing original, then refresh and reopen without URL parameters."
+      ],
+      "reason": "Works as intended: replacing the SQL removes the variable before it is retyped, and a removed variable loses its settings."
+    },
+    {
+      "id": "reproducer-excluded-m24-metabase-querying",
+      "name": "Join type menu ignores Escape and arrow-key navigation",
+      "summary": "The query builder's join type menu opens from the keyboard but does not respond to Escape or Arrow Down. Focus remains on 'Change join type'; the menu remains open. Reproduced using mouse and keyboard opening on multiple Orders→Products queries. Evidence: dogfood-output/screenshots/issue-003-step-1.png, issue-003-step-2.png, and issue-003-focus.json.",
+      "expected": "Escape closes the join type menu and arrow keys navigate its menu items after opening it with the keyboard.",
+      "actual": "Escape does not dismiss the menu, arrow keys do not navigate its options, and focus remains on the trigger while the popup stays open.",
+      "reproSteps": [
+        "Create a Sample Database Orders question and join Products, or open saved question /question/42-qa-joined-custom-summary/notebook.",
+        "Focus the Change join type button and press Enter; Left outer join, Right outer join, and Inner join appear.",
+        "Press Escape; the menu stays open.",
+        "Press Arrow Down; focus stays on Change join type instead of moving into the menu options. Pressing Tab moves to the Products button behind the menu."
+      ],
+      "reason": "Excluded by the browser bug-reproducer pure-accessibility rule. This report establishes only keyboard/focus/accessibility semantics or a generic contrast threshold, without an explicit supplied product requirement or documented promise for that behavior. Ordinary pointer functionality or visible setting values are not alleged to fail. This negative reference is scoped to the reported accessibility-only claim; it does not cover independently demonstrated data loss, pointer failures, or an explicitly documented keyboard action.",
+      "matchingGuidance": {
+        "distinction": "Match only this accessibility/keyboard/contrast claim. Independently observed pointer or saved-data failures, and explicitly promised keyboard shortcuts, are outside this negative reference."
+      }
     }
   ]
 }

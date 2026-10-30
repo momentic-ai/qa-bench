@@ -7,6 +7,8 @@ export type AgentContext = {
   agentName?: string;
   fixture: Fixture;
   targetUrl?: URL;
+  /** Set only when --time-limit or --minutes is passed. */
+  timeLimitMs?: number;
   maxConcurrentSubAgents?: number;
   effort?: MoEffort;
   reportDirectory: string;
@@ -51,7 +53,10 @@ export type EvalAgentDefinition = {
   concurrency: number;
   /** Run settings recorded once in duration.json; merge labels and separates runs by them. */
   config?: Record<string, string | boolean>;
-  validateEnvironment(fixtures?: Fixture[]): void | Promise<void>;
+  validateEnvironment(
+    timeLimitMs: number,
+    fixtures?: Fixture[],
+  ): void | Promise<void>;
   create(
     context: AgentContext,
     signal: AbortSignal,

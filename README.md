@@ -3,13 +3,13 @@
 Runs QA agents against seeded open-source apps and grades their bug reports
 against labeled ground truth.
 
-Agents: `mo` (through the `qa` CLI), `codex-playwright-mcp` and `claude-playwright-mcp`. Each fixture runs in
+Agents: `mo` (through the `qa` CLI), `codex-playwright-mcp`, `claude-playwright-mcp` and `devin-qa`. Each fixture runs in
 its own E2B sandbox. Codex and Claude drive a browser through Playwright MCP:
 Browserbase by default, or a headless Chromium on the eval host with
 `--browser local`. The run records its browser in `duration.json`, and `merge`
 labels those rows, e.g. `codex-playwright-mcp (local browser)`.
 
-All three agents can use subagents. Mo runs its own subagents on Momentic's
+Mo, Codex and Claude can use subagents. Mo runs its own subagents on Momentic's
 service. Codex uses its multi-agent mode, and each Codex subagent starts its own
 Playwright MCP server with its own Browserbase browser. Claude Code uses its
 subagent tool; Claude shares one MCP connection across agents, so a loopback
@@ -18,6 +18,10 @@ For both, only the parent can save findings. With `--browser local`, Codex and
 Claude run single-agent, since one local browser can't be shared. The run
 records `subagents` in `duration.json`, and `merge` labels runs without them,
 e.g. `claude-playwright-mcp (no subagents)`.
+
+`devin-qa` uses Devin's default configuration and hosted browser, with VM
+network restrictions and instructions against outside research. Built-in
+retrieval relies on prompt compliance. See [Devin QA setup](src/agents/devin/README.md).
 
 ## Setup
 
@@ -38,6 +42,7 @@ Environment:
 | `BROWSERBASE_API_KEY` | `codex-playwright-mcp`, `claude-playwright-mcp` (not with `--browser local`) |
 | `ANTHROPIC_API_KEY` | `claude-playwright-mcp` |
 | `MOMENTIC_API_KEY` | `mo` (or sign in with `qa`) |
+| `DEVIN_ORGANIZATION_ID`, `DEVIN_TOKEN` | `devin-qa` session and security-profile access |
 
 `mo` runs on Momentic's hosted service and needs a Momentic account. Install
 the CLI with `npm install -g qa@0.27.0` and sign in, or set
@@ -64,14 +69,12 @@ pnpm merge --fixtures gitea
 areas of an app (`gitea/areas`), or `oss-areas`. A whole-app run is graded
 against the union of its area references.
 
-Runs stop after 2 hours if the agent hasn't finished. Agents aren't told this
-limit up front; 15 minutes before it, every agent gets one wrap-up message.
+Runs stop after 2h unless `--time-limit` or `--minutes` sets another limit. A
+limit you set appears in every agent's brief. Mo's own budget comes from
+`--effort`.
 
 Reports go to `reports/<agent>/<fixture>/<run-id>/`. Each run writes
 `scores.csv`, `grading.json` and a `review.md` queue of unmatched findings.
-
-Runs stop after 2 hours if the agent hasn't finished. Agents aren't told this
-limit up front; 15 minutes before it, every agent gets one wrap-up message.
 
 Every agent gets the same brief, built in `src/evals/bugbash-brief.ts`: the app
 URL, test accounts, the area's scope and entry points, and the reporting rules.

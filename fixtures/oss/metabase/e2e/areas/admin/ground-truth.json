@@ -382,9 +382,9 @@
       "id": "metabase-admin-001",
       "name": "Failed custom map save closes the editor and discards the draft",
       "severity": 3,
-      "summary": "Failed custom map save closes the editor and discards the draft.",
+      "summary": "A custom map save that the server rejects, for example a bad URL or a name of only spaces, closes the editor and discards the draft.",
       "expected": "Reject the invalid URL while retaining the editor and entered map configuration so the URL can be corrected.",
-      "actual": "Save a custom map with a URL the server rejects. The error toast shows, the editor closes, and reopening shows a blank draft. Editing an existing map loses unsaved edits too. Valid URL saves (control).",
+      "actual": "Save a custom map with a URL the server rejects, or with a name of only spaces (which enables Save). The error toast shows, the editor closes, and reopening shows a blank draft. Editing an existing map loses unsaved edits too. Valid URL saves (control).",
       "reproSteps": [
         "Use any reachable valid GeoJSON URL with polygon features and code/name properties. A test file is available in sandbox /tmp/MapQA-regions.geojson; get a fresh hosted download URL if needed.",
         "As Admin, open Settings > Maps > Add a map.",
@@ -466,7 +466,10 @@
         "Replace URL with an empty FeatureCollection and Refresh; error says does not contain features.",
         "Replace URL with polygon GeoJSON whose properties are null and Refresh; error says feature is missing properties.",
         "Open the region identifier selector."
-      ]
+      ],
+      "matchingGuidance": {
+        "claimScope": "Credit any report that, after a valid GeoJSON load, a replacement URL that does not load can still be saved, and the saved map then fails to load or shows invalid GeoJSON on reopening. Credit it with or without clicking Refresh, and whether or not the report mentions the old preview or properties. A rejected save that closes the editor is metabase-admin-001."
+      }
     },
     {
       "id": "metabase-admin-014",
@@ -1829,6 +1832,138 @@
         "Enter exactly three spaces in Reason for changes.",
         "Click Save changes and inspect the settled page."
       ]
+    },
+    {
+      "id": "metabase-admin-645",
+      "name": "Duplicate webhook rename shows database error under URL",
+      "severity": 1,
+      "summary": "Duplicate webhook rename shows database error under URL.",
+      "expected": "Reject duplicate name with understandable name-field feedback, as the new-destination form does ('Channel with that name already exists').",
+      "actual": "Webhook URL is highlighted invalid and displays 'Unique index or primary key violation' plus PUBLIC.CHANNEL(NAME...) and the UPDATE SQL statement; name has no corresponding error.",
+      "reproSteps": [
+        "Use fresh reserved-domain disposable destinations and delete them after review; no external deliveries.",
+        "As Admin eval@momentic.ai, create fresh destination Communications duplicate QA with description First QA destination, URL https://first.qa.invalid/alerts and None authentication.",
+        "Create another destination Communications second QA with description Second QA destination, URL https://second.qa.invalid/alerts and None authentication.",
+        "Open Communications second QA, change its name to Communications duplicate QA and Save changes."
+      ]
+    },
+    {
+      "id": "metabase-admin-646",
+      "name": "Saving a deleted group's draft displays a raw SQL constraint error",
+      "severity": 1,
+      "summary": "Saving a deleted group's draft displays a raw SQL constraint error.",
+      "expected": "The draft is rejected with an understandable explanation that its group no longer exists or the editor is out of date, rather than exposing database internals.",
+      "actual": "Dialog says 'There was an error saving' followed by 'Referential integrity constraint violation', FK_DATA_PERMISSIONS_PERMISSIONS_GROUP, and an INSERT INTO DATA_PERMISSIONS SQL statement.",
+      "reproSteps": [
+        "As Admin, create a fresh empty group with a unique name in People > Groups.",
+        "Open Permissions > Data, select that group and keep the editor in tab A.",
+        "Change Release operations from Query builder and native to Query builder only, confirm Revoke access, but don't save.",
+        "In tab B open People > Groups, use that group's menu > Remove Group and confirm Remove group.",
+        "Return to tab A, click Save changes and confirm Yes.",
+        "Inspect the error dialog."
+      ]
+    },
+    {
+      "id": "metabase-admin-647",
+      "name": "Deleted collection permission draft shows a Java null error on save",
+      "severity": 1,
+      "summary": "Deleted collection permission draft shows a Java null error on save.",
+      "expected": "An understandable deleted-collection or out-of-date message rejects the obsolete draft.",
+      "actual": "The saving error dialog displays 'Cannot invoke \"java.lang.CharSequence.length()\" because \"this.text\" is null'.",
+      "reproSteps": [
+        "As Admin create a fresh empty group and a fresh empty top-level collection.",
+        "Open Admin Permissions > Collections, select that collection, grant the disposable group Curate, save and confirm.",
+        "In tab A change that group's collection access from Curate to View and leave unsaved.",
+        "In tab B open the collection, use its menu > Move to trash and confirm.",
+        "Open Trash, use that collection's menu > Delete permanently and confirm.",
+        "Return to tab A and click Save changes then Yes."
+      ]
+    },
+    {
+      "id": "metabase-admin-b77",
+      "name": "Published dashboard missing from embedded dashboards list",
+      "severity": 3,
+      "summary": "Published dashboard missing from embedded dashboards list.",
+      "expected": "The newly published dashboard appears in the list under Embedded dashboards.",
+      "actual": "Embedded dashboards displays “No dashboards have been embedded yet.”",
+      "reproSteps": [
+        "As admin open Embedding with guest embeds initially disabled.",
+        "Click New embed, Agree and enable, Next.",
+        "Browse dashboards and select E-commerce Insights from Examples; click Next.",
+        "Click Get code then Publish; observe published confirmation and embed code.",
+        "Click Done and inspect Published embeds."
+      ],
+      "matchingGuidance": {
+        "relatedReference": {
+          "id": "metabase-admin-unpublished-dashboard-stays-listed",
+          "distinction": "This reference covers a newly published dashboard missing from Published embeds. The related one covers an unpublished dashboard that stays listed."
+        }
+      }
+    },
+    {
+      "id": "metabase-admin-b83",
+      "name": "Currency name label resets to symbol after refresh",
+      "severity": 3,
+      "summary": "Currency name label resets to symbol after refresh.",
+      "expected": "The saved Name (US dollars) label style remains selected after refresh.",
+      "actual": "Symbol ($) is selected after refresh instead of the saved Name (US dollars).",
+      "reproSteps": [
+        "Open Admin Settings > Localization with the primary Admin session.",
+        "Select Name (US dollars) under Currency label style.",
+        "Observe Name selected and Changes saved notification.",
+        "Refresh, wait for settings to load, and scroll to Currency."
+      ]
+    },
+    {
+      "id": "metabase-admin-b07",
+      "name": "MongoDB SSH form shows an integer port assertion error",
+      "summary": "",
+      "expected": "The default ports should be usable, or the form should identify a required port value with actionable validation.",
+      "actual": "The connection alert reads “Assert failed: (integer? port)” rather than a usable connection or validation message.",
+      "reproSteps": [
+        "Open Add database as admin, select MongoDB and set a display name.",
+        "Choose Use a connection string and enter mongodb://qa-connection.invalid:27017/qa_mongo?connectTimeoutMS=1000&serverSelectionTimeoutMS=1000.",
+        "Enable SSH tunnel, use qa-ssh.invalid, username qa_ssh, Password authentication and dummy password qa_dummy_password; leave SSH port at displayed 22.",
+        "Switch to Fill out host, port and database name.",
+        "Enter Host qa-connection.invalid and Database name qa_mongo, leave MongoDB Port at displayed 27017 and click Save."
+      ],
+      "severity": 3
+    },
+    {
+      "id": "metabase-admin-unpublished-dashboard-stays-listed",
+      "name": "Unpublished dashboard stays in the Published embeds list",
+      "summary": "Unpublishing a dashboard in the Admin Embedding wizard says it is no longer published, but after closing the wizard the dashboard is still listed under Published embeds.",
+      "expected": "An unpublished dashboard disappears from the Published embeds list after the wizard closes.",
+      "actual": "The wizard shows that publication is required, but Embedded dashboards still lists the dashboard.",
+      "reproSteps": [
+        "As admin, create a dashboard with a saved question card.",
+        "Open Admin > Embedding and enable guest embeds if needed.",
+        "Use New embed > Dashboard, select the dashboard, then Next, Publish, Get code and Done. Refresh and confirm it is listed.",
+        "Open New embed again, select the same dashboard, click Next, then Unpublish.",
+        "Close the wizard and inspect Published embeds > Embedded dashboards."
+      ],
+      "severity": 3,
+      "matchingGuidance": {
+        "relatedReference": {
+          "id": "metabase-admin-b77",
+          "distinction": "The related reference covers a newly published dashboard missing from the list. This one covers an unpublished dashboard that stays listed."
+        }
+      }
+    },
+    {
+      "id": "metabase-group-delete-retains-api-keys",
+      "name": "Deleting a group retains its API keys despite promising deletion",
+      "summary": "The group-deletion confirmation promises to delete associated API keys, but the keys remain active under All Users after deletion.",
+      "expected": "Deleting the group removes its associated API keys as promised.",
+      "actual": "After group deletion and reload, the key remains listed under All Users and still authenticates; explicitly revoking the key stops authentication.",
+      "reproSteps": [
+        "Create a group and an API key assigned to that group.",
+        "Delete the group using the confirmation that says the group and API key will be removed.",
+        "Reload the API-key settings and check whether the key remains.",
+        "Check authentication with that key before and after deletion, then compare with explicit key revocation."
+      ],
+      "severity": 3,
+      "owningArea": "metabase/admin"
     }
   ]
 }

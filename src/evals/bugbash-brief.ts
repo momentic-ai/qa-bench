@@ -2,8 +2,9 @@ import { Fixture, FixtureAccount } from "./types";
 
 export function bugbashBrief(
   url: URL,
+  timeLimitMs: number | undefined,
   fixture: Fixture,
-  browserTool?: "Playwright MCP" | "agent-browser",
+  browserTool?: "Playwright MCP" | "agent-browser" | "Devin native browser",
 ) {
   const sections = [
     `Find bugs in this app: ${url.href}`,
@@ -28,6 +29,7 @@ ${area.entryPoints.map((entry) => `- ${entry.path}: ${entry.directions}`).join("
     "Report only bugs you have verified, with expected and actual behavior and steps to reproduce.",
     "Do not read benchmark files, ground truth, or previous eval reports.",
   );
+  if (timeLimitMs) sections.push(`You have ${timeLimitMs / 60_000} minutes.`);
   if (browserTool) sections.push(`Use ${browserTool}.`);
   return sections.join("\n\n");
 }

@@ -118,9 +118,9 @@
     },
     {
       "id": "metabase-querying-160",
-      "name": "Category \"Does not contain %\" returns no Products instead of all rows without a percent sign",
+      "name": "\"Does not contain\" a wildcard character (% or _) returns no Products instead of all rows without it",
       "severity": 3,
-      "summary": "Category \"Does not contain %\" returns no Products instead of all rows without a percent sign.",
+      "summary": "A Products \"Does not contain\" filter on a text field such as Category or Title, given a literal % or _, returns no rows even though the values do not contain that character.",
       "expected": "The filter pill reads \"Category does not contain %\", so all 200 Products should be returned, because no category contains a literal \"%\".",
       "actual": "Visualize shows \"No results!\" and \"Showing 0 rows\".",
       "reproSteps": [
@@ -129,7 +129,10 @@
         "Click Add filters to narrow your answer > Category, change the operator to Does not contain, type %, and leave Case sensitive unchecked",
         "Click Add filter, then Visualize",
         "Observe No results! / Showing 0 rows"
-      ]
+      ],
+      "matchingGuidance": {
+        "claimScope": "Credit any \"Does not contain\" filter given a literal % or _ on any Products text field that wrongly returns zero or too few rows. Contains filters that wrongly match rows are separate references."
+      }
     },
     {
       "id": "metabase-querying-162",
@@ -1744,9 +1747,9 @@
     },
     {
       "id": "metabase-querying-b37",
-      "name": "Previous-hour filter returns timestamps outside its previewed range",
+      "name": "Previous relative-date filter returns timestamps beyond its previewed range",
       "severity": 1,
-      "summary": "Previous-hour filter returns timestamps outside its previewed range.",
+      "summary": "A Previous relative-date filter returns rows dated after the end of the range its preview shows. Seen with Previous 24 hours, and with Previous 30 days starting one month ago.",
       "expected": "The returned timestamps fall inside the range shown by the filter preview.",
       "actual": "The 11-row result includes multiple timestamps later than the preview's October28 2:59PM endpoint.",
       "reproSteps": [
@@ -1754,7 +1757,10 @@
         "Add Created At → Relative date range → Previous; set interval 24 and unit hours. Leave Include this hour off and no Starting from offset.",
         "Observe preview: Oct 27, 3:00 PM – Oct 28, 2026, 2:59 PM (on observed application date/time).",
         "Apply and Visualize. Inspect Created At values such as order1490 at October28 7:20PM and order6570 at6:56PM."
-      ]
+      ],
+      "matchingGuidance": {
+        "claimScope": "Credit any Previous relative-date filter, in any unit and with or without a Starting from offset, that returns rows later than the previewed end. A filter that leaves out rows from the final previewed day is a different bug. A Previous N days filter whose preview names one calendar day while the applied query uses the next day, because the browser and report timezones differ, is codex-60m-metabase-2, not this reference."
+      }
     },
     {
       "id": "metabase-querying-b38",
@@ -1828,6 +1834,146 @@
         "Create another question using the saved filtered question as its data source; summarize Count and save. It displays 51.",
         "Open the saved Count question's Editor, add Category under Pick a column to group by, and click Visualize."
       ]
+    },
+    {
+      "id": "metabase-querying-b35",
+      "name": "Replacing the joined table on a saved-question source attaches the new join to the left key",
+      "severity": 3,
+      "summary": "Replacing the joined table on a saved-question source attaches the new join to the left key.",
+      "expected": "The left key and left-side source label identify the saved question, matching the selected field shown in its picker.",
+      "actual": "The join row reads Orders joined to Orders and its condition reads Orders ID = Orders Product ID. Opening the left key instead shows ID selected under QA-joins-20261028-no-fields, the actual saved source.",
+      "reproSteps": [
+        "Create a fresh saved question named QA-joins-products-copy from Sample Database Products (all original columns).",
+        "Start a new notebook using that saved question as its source.",
+        "Add Products as a left join and manually choose source ID and Products ID.",
+        "Click the joined Products name (not its column dropdown) and replace it with Orders.",
+        "Inspect the condition, then open its left ID key."
+      ],
+      "matchingGuidance": {
+        "relatedReference": {
+          "id": "metabase-querying-replaced-join-blank-columns",
+          "distinction": "This reference covers the wrong join labels after replacing the joined table. The related one covers the blank joined columns when the query runs."
+        }
+      }
+    },
+    {
+      "id": "metabase-querying-b58",
+      "name": "Multi-value Default filter widget value field shows only first selected label",
+      "severity": 1,
+      "summary": "Multi-value Default filter widget value field shows only first selected label.",
+      "expected": "The Default filter widget value field should show both configured defaults, or a count such as \"2 selections\".",
+      "actual": "The field shows only \"Gizmo label\" and gives no sign that a second value is selected. The query uses both defaults (URL ?category=Gizmo&category=Widget) and shows rows for Gizmo 51 and Widget 54.",
+      "reproSteps": [
+        "Enter: SELECT CATEGORY, COUNT(*) AS PRODUCT_COUNT FROM PRODUCTS WHERE 1=1 [[AND CATEGORY IN ({{category}})]] GROUP BY CATEGORY ORDER BY CATEGORY",
+        "In the variable sidebar, leave Variable type as Text, then select Dropdown list and Multiple values.",
+        "Click Edit next to Dropdown list, choose Custom list, enter 'Gizmo, Gizmo label' and 'Widget, Widget label' on separate lines, and click Done.",
+        "Open Default filter widget value, check Gizmo label and Widget label, and click Add filter.",
+        "Click Run. Result: the Default filter widget value field shows only 'Gizmo label', while the results show Gizmo 51 and Widget 54."
+      ]
+    },
+    {
+      "id": "metabase-querying-b24",
+      "name": "Contains backslash misses a label containing a backslash",
+      "severity": 3,
+      "summary": "Contains backslash misses a label containing a backslash.",
+      "expected": "The row whose LABEL contains the backslash remains visible.",
+      "actual": "No results! is displayed. A whole-page multimodal assertion confirmed no result rows for LABEL contains a single backslash.",
+      "reproSteps": [
+        "Create a new SQL question on Sample Database using SELECT 1 AS ID, 'QA_Filter%\\literal' AS LABEL UNION ALL SELECT 2, 'Alpha'. Run and verify ID 1 displays a literal backslash in LABEL.",
+        "Save under a fresh QA-FILTER-prefixed name and choose Explore results.",
+        "Add LABEL filter, keep Contains, enter a single backslash and apply."
+      ]
+    },
+    {
+      "id": "metabase-querying-b47",
+      "name": "Unmatched right self join row displays a person and product",
+      "severity": 3,
+      "summary": "Unmatched right self join row displays a person and product.",
+      "expected": "Because no base Order ID is less than 1, the unmatched row for joined Order 1 should have all base-side fields empty.",
+      "actual": "Base ID, Subtotal, Tax and Total are empty, but base User ID shows Hudson Borer and Product ID shows Awesome Concrete Shoes. A multimodal whole-page assertion confirmed this inconsistent row.",
+      "reproSteps": [
+        "As Harbor Admin create New > Question > Sample Database > Orders, using a fresh QA-joinsedge-prefixed question.",
+        "Join Orders to itself and select Right outer join.",
+        "Set join condition base Orders ID < joined Orders ID.",
+        "Visualize and inspect the first row, whose joined Orders ID is 1."
+      ]
+    },
+    {
+      "id": "metabase-querying-b79",
+      "name": "Notebook hides the filter on a later-stage custom column",
+      "severity": 3,
+      "summary": "Notebook hides the filter on a later-stage custom column.",
+      "expected": "The notebook displays the active filter on the later-stage custom column and allows inspecting or editing it.",
+      "actual": "The notebook displays the later-stage custom column stage, but no filter step or condition appears anywhere in the notebook.",
+      "reproSteps": [
+        "Create an own Orders question with a custom column coalesce([Discount], 0), then summarize its sum.",
+        "Add a custom-column stage after Summarize, named QA-COL Later Ratio, with coalesce([Sum of the discount custom column] / 0, 99), and Visualize.",
+        "Use Filter > Summaries > QA-COL Later Ratio and apply Between 98 and 100. The result is one row with 99; changing the upper bound to 98 produces No results, and restoring 100 returns the row.",
+        "Save the question, refresh, and expand the filter-count badge to see the saved between-98-and-100 condition.",
+        "Open Editor and inspect all notebook stages."
+      ]
+    },
+    {
+      "id": "metabase-querying-b82",
+      "name": "Reselecting the same saved-question source clears all notebook stages",
+      "severity": 3,
+      "summary": "Reselecting the same saved-question source clears all notebook stages.",
+      "expected": "Reselecting the already-selected source should leave the existing query stages unchanged rather than discard them.",
+      "actual": "The notebook resets to Data only. A whole-page multimodal assertion confirmed both summaries and both filters are absent; Filter/Summarize are now only add-stage controls.",
+      "reproSteps": [
+        "Sign in as admin. New > Question > Orders. Save it as 'B82 source'.",
+        "New > Question > pick the saved question 'B82 source'.",
+        "Summarize: Count of rows, by Quantity. Visualize, then save as 'B82 test'.",
+        "Open 'B82 test' and click the Editor (notebook) icon.",
+        "In the Data step, click 'B82 source' to open the data picker and choose 'B82 source' again.",
+        "Observe: the Summarize step is gone; only the Data step remains."
+      ]
+    },
+    {
+      "id": "metabase-querying-replaced-join-blank-columns",
+      "name": "After replacing the joined table on a saved-question source, joined columns come back blank",
+      "summary": "After replacing the joined table on a saved-question source, running the query returns the source rows with every joined column blank.",
+      "expected": "The join returns matching rows from the new joined table.",
+      "actual": "The query returns only the source rows, and all joined Orders columns are blank.",
+      "reproSteps": [
+        "Start a notebook from a saved question built on Products.",
+        "Add Products as a left join on source ID = Products ID.",
+        "Replace the joined Products with Orders using the table-name picker.",
+        "Run the query and inspect the joined Orders columns."
+      ],
+      "severity": 3,
+      "matchingGuidance": {
+        "relatedReference": {
+          "id": "metabase-querying-b35",
+          "distinction": "The related reference covers the wrong join labels. This one covers the blank joined columns in the results."
+        }
+      }
+    },
+    {
+      "id": "metabase-single-number-variable-expands-comma-values",
+      "name": "Single-value SQL Number variable expands comma input into multiple expressions",
+      "severity": 3,
+      "summary": "A Number variable configured for A single value accepts comma-separated input and substitutes multiple SQL expressions, silently changing the query result.",
+      "expected": "A single-value Number variable accepts one numeric value or rejects invalid input; it does not expand a comma-containing input into multiple SQL expressions.",
+      "actual": "For SELECT {{amount}} * 2 AS doubled, input 1000 returns 2,000 while 1,000 returns 1. The query preview shows SELECT 1, 0 * 2 AS doubled while A single value remains selected.",
+      "reproSteps": [
+        "Create a native SQL question against Sample Database with SELECT {{amount}} * 2 AS doubled.",
+        "Configure amount as Number with Input box and A single value.",
+        "Run with 1000 and observe 2,000.",
+        "Replace the input with 1,000, run again, and inspect the result and query preview."
+      ],
+      "owningArea": "metabase/querying",
+      "reviewEvidence": {
+        "basis": "User-approved review of saved native browser evidence and source.",
+        "userAccepted": true,
+        "analysis": [
+          "Saved native tool output at lines 1144 and 1152 confirms A single value remains checked: 1000 returns 2,000, whereas 1,000 returns 1. Saved query-preview screenshot shows SELECT 1, 0 * 2 AS doubled. Contract comes from the visible single-value setting; approximate public Metabase source is not treated as exact build proof."
+        ],
+        "limitations": [
+          "Saved native evidence and source review; no fresh browser reproduction or independent judge run.",
+          "The exact deployed Metabase source revision is not publicly available; approximate public source is not represented as proof of that build. The visible single-value setting and retained native readbacks establish the reviewed behavior."
+        ]
+      }
     }
   ]
 }

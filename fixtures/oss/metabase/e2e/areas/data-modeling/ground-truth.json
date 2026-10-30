@@ -393,10 +393,10 @@
     },
     {
       "id": "metabase-data-modeling-228",
-      "name": "Description-only model edit produces History claiming pin-position and metadata edits",
+      "name": "Description-only model or metric edit produces History claiming pin-position changes",
       "severity": 1,
-      "summary": "Description-only model edit produces History claiming pin-position and metadata edits.",
-      "expected": "History should accurately describe the description-only change, not claim unrelated pin-position changes.",
+      "summary": "Editing only a model's or metric's description records History text such as 'changed pin position and changed the description', though no pin action was performed.",
+      "expected": "History should accurately describe the description-only change, not claim unrelated pin-position or metadata changes.",
       "actual": "History attributes the edit correctly to 'You' but says 'edited the metadata, changed pin position and changed the description.' Only the description was edited in this coordinated flow.",
       "reproSteps": [
         "As Harbor Admin, open a shared notebook model created by another user (for example one Maya created).",
@@ -610,7 +610,13 @@
         "Open an own saved metric.",
         "Open the detail menu and choose Duplicate.",
         "Clear the Name field to reveal its placeholder."
-      ]
+      ],
+      "matchingGuidance": {
+        "relatedReference": {
+          "id": "metabase-data-modeling-model-duplicate-dashboard-placeholder",
+          "distinction": "This reference covers metrics. The related one covers models."
+        }
+      }
     },
     {
       "id": "metabase-data-modeling-244",
@@ -645,9 +651,9 @@
     },
     {
       "id": "metabase-data-modeling-179",
-      "name": "A failed glossary save (duplicate or over-255-character term) silently discards the edit",
+      "name": "A failed duplicate glossary term save silently discards the draft",
       "severity": 3,
-      "summary": "When a glossary term create or edit fails on the server, for example a duplicate term or a term longer than 255 characters, the row briefly shows the new values and then silently reverts, with no error and the entered definition lost.",
+      "summary": "When creating a glossary term that duplicates an existing term, the save fails on the server, the editor closes with no error, and the entered definition is lost.",
       "expected": "Show duplicate-term validation and retain the entered draft so the user can choose another name.",
       "actual": "The editor closes without an error, the original entry remains unchanged, and reopening New term shows blank fields: the new draft definition is lost. The observed glossary POST returns 500 with a unique constraint failure.",
       "reproSteps": [
@@ -655,7 +661,13 @@
         "Click New term, enter QA duplicate term with definition Original definition, and Save.",
         "Click New term again, enter the identical term QA duplicate term and a different definition New draft definition, then Save.",
         "Inspect the glossary and reopen New term."
-      ]
+      ],
+      "matchingGuidance": {
+        "relatedReference": {
+          "id": "metabase-data-modeling-glossary-long-term-edit-reverts",
+          "distinction": "This reference covers creating a duplicate term. The related one covers editing a term past the 255-character limit."
+        }
+      }
     },
     {
       "id": "metabase-data-modeling-294",
@@ -816,9 +828,9 @@
     },
     {
       "id": "metabase-data-modeling-346",
-      "name": "User ID field X-ray generates geographic charts that require manual chart configuration",
+      "name": "Field X-ray generates charts that require manual axis configuration",
       "severity": 3,
-      "summary": "User ID field X-ray generates geographic charts that require manual chart configuration.",
+      "summary": "Opening an X-ray for a field (for example User ID or ID) generates cards such as maps or 'ID by Region' that show 'Which fields do you want to use for the X and Y axes?' instead of a chart.",
       "expected": "The automatically generated section labeled 'How the User ID fields is distributed geographically' renders its geographic charts without requiring chart settings changes.",
       "actual": "Both generated geographic cards (Sum of User ID by User → State and Average of User ID by User → State) display warning icons and 'Please select region and metric columns in the chart settings.' Other summary cards render data.",
       "reproSteps": [
@@ -1031,7 +1043,13 @@
         "Open Trash, choose Delete permanently in its row menu, and confirm.",
         "Verify its Trash row disappears, including after refresh.",
         "Search the model name using top search, open Search everything, and enable Search items in trash."
-      ]
+      ],
+      "matchingGuidance": {
+        "relatedReference": {
+          "id": "metabase-data-modeling-deleted-metric-in-trash-search",
+          "distinction": "This reference covers models. The related one covers metrics."
+        }
+      }
     },
     {
       "id": "metabase-data-modeling-401",
@@ -1577,7 +1595,7 @@
       "id": "metabase-data-modeling-609",
       "name": "Searching models and metrics by date uses the server's GMT day, so recent items fall on the wrong day",
       "severity": 3,
-      "summary": "Search's Creation date and Last edit date filters for models and metrics resolve dates on the server's GMT clock, so items created or edited in the evening in a timezone behind UTC are filtered as the next day.",
+      "summary": "Search's Creation date and Last edit date filters for models and metrics resolve dates on the server's GMT clock, so items created or edited in the evening in a timezone behind UTC are filtered as the next day. Reports may show only the symptom: Last edit date: Today leaves out a model or metric that was created or edited today, even one never edited since it was created, while Creation date: Today or its displayed date shows today.",
       "expected": "A date filter on the search page includes an item edited or created minutes ago under Today, and Before/On a date matches the day the user sees.",
       "actual": "After 00:00 GMT (for example after 5 PM in PT), an item edited minutes earlier disappears from Last edit: Today, and items created that local day disappear from Creation date: Before tomorrow.",
       "reproSteps": [
@@ -1586,7 +1604,10 @@
         "Search its unique name, open View and filter all results, and select content type Metric.",
         "Set Creation date to Fixed date range > On today's date as shown in the picker; the metric appears.",
         "Open Last edit date, select Current then Day. Observe no results instead of the metric edited minutes ago."
-      ]
+      ],
+      "matchingGuidance": {
+        "claimScope": "Credit any report that Last edit date: Today (or Current day) leaves out a model or metric whose creation or last edit is today, including seeded items never edited since creation, while Creation date or the item's displayed date shows today. The report does not need a fresh edit, the time of day, or the GMT cause."
+      }
     },
     {
       "id": "metabase-data-modeling-b64",
@@ -1617,6 +1638,94 @@
         "Check invoice ID 2: Expected Invoice = true",
         "From the model's Actions, run Update with ID 2 and Plan QAPlan2, leaving Expected Invoice untouched.",
         "Open the model's data: invoice 2 now shows Expected Invoice = false"
+      ]
+    },
+    {
+      "id": "metabase-data-modeling-glossary-long-term-edit-reverts",
+      "name": "Editing a glossary term past 255 characters appears saved, then reverts",
+      "summary": "Editing an existing glossary term to a name longer than 255 characters shows the new name and definition as saved, but the server rejects it and a refresh restores the old values. No error is shown.",
+      "expected": "Show a length validation message and keep the unsaved input, or save the edit.",
+      "actual": "The row shows the long name and new definition after Save. After a refresh, both previous values are back.",
+      "reproSteps": [
+        "Open Data Reference > Glossary and create a term with a short name and definition.",
+        "Click the term to edit it.",
+        "Replace the name with a string longer than 255 characters and change the definition, then Save.",
+        "Observe the saved row, then refresh."
+      ],
+      "severity": 3,
+      "matchingGuidance": {
+        "relatedReference": {
+          "id": "metabase-data-modeling-179",
+          "distinction": "The related reference covers creating a duplicate term. This one covers editing a term past the 255-character limit."
+        }
+      }
+    },
+    {
+      "id": "metabase-data-modeling-deleted-metric-in-trash-search",
+      "name": "Permanently deleted metric remains in search when Search items in trash is enabled",
+      "summary": "A permanently deleted metric disappears from Trash, but trash-enabled search still returns it.",
+      "expected": "A permanently deleted metric is removed from searchable items, including Trash search.",
+      "actual": "The metric is gone from Trash and its URL is not found, but trash-enabled search still returns 1 result with its name, labeled Trash and 'Deleted 2 minutes ago by you'.",
+      "reproSteps": [
+        "Create a disposable metric in your personal collection with a unique name.",
+        "Move it to trash.",
+        "Open Trash, choose Delete permanently in its row menu, and confirm.",
+        "Search the metric name, open Search everything, and enable Search items in trash."
+      ],
+      "severity": 3,
+      "matchingGuidance": {
+        "relatedReference": {
+          "id": "metabase-data-modeling-400",
+          "distinction": "The related reference covers models. This one covers metrics."
+        }
+      }
+    },
+    {
+      "id": "metabase-data-modeling-model-duplicate-dashboard-placeholder",
+      "name": "Model duplication Name field asks for a dashboard name",
+      "summary": "Model duplication Name field asks for a dashboard name.",
+      "expected": "The Name placeholder refers to the model being duplicated, not a dashboard.",
+      "actual": "In the Duplicate model dialog, the Name placeholder reads “What is the name of your dashboard?”",
+      "reproSteps": [
+        "Open a model.",
+        "Open the top-right menu and choose Duplicate.",
+        "Clear the Name field to reveal its placeholder."
+      ],
+      "severity": 1,
+      "matchingGuidance": {
+        "relatedReference": {
+          "id": "metabase-data-modeling-227",
+          "distinction": "The related reference covers metrics. This one covers models."
+        }
+      }
+    },
+    {
+      "id": "metabase-data-modeling-b99",
+      "name": "Model rename history claims unrelated changes",
+      "severity": 3,
+      "summary": "Model rename history claims unrelated changes.",
+      "expected": "History accurately describes the title rename without claiming unrelated visualization or metadata edits.",
+      "actual": "History says 'changed the visualization settings, renamed it from \"QA Models Created 1029\" to \"QA Models Created 1029 Renamed\" and edited the metadata.' Only the title was edited.",
+      "reproSteps": [
+        "As Harbor Admin, create a model using notebook editor with People as the source and save under a unique QA name in Our analytics.",
+        "Reopen it from Models, click its header title, append Renamed, and press Enter.",
+        "Refresh and open More info > History."
+      ]
+    },
+    {
+      "id": "metabase-data-modeling-b100",
+      "name": "Duplicating pinned model takes position 1",
+      "severity": 3,
+      "summary": "Duplicating pinned model takes position 1.",
+      "expected": "A duplicate is created unpinned, or at least does not displace the original. The original's pin position stays the same, and its history does not show a pin change the user never made.",
+      "actual": "GET /api/collection/2/items?pinned_state=is_pinned returns Duplicate at position 1, Orders + People at 2, and the E-commerce Insights dashboard at 3. Later, adding a row limit to the original model and saving records 'modified the query, edited the metadata and changed pin position.' (collection_position 1 -> 2).",
+      "reproSteps": [
+        "Log in",
+        "Open model 'Orders + People' (/model/1-orders-people), which is pinned in Examples",
+        "Click '...' > Duplicate > Duplicate",
+        "Open the Examples collection (or GET /api/collection/2/items?pinned_state=is_pinned): the duplicate is pinned first and the original has moved to position 2",
+        "Open the original model > Edit query definition, add a Row limit of 500, and click Save changes",
+        "Open Info > History: the entry says '...and changed pin position.'"
       ]
     }
   ]

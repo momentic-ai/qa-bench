@@ -463,7 +463,7 @@
       "id": "metabase-dashboards-198",
       "name": "Valid upper-only Between filter reverses to lower-only after reload",
       "severity": 3,
-      "summary": "Valid upper-only Between filter reverses to lower-only after reload.",
+      "summary": "A Between filter with only an upper bound (for example when the lower bound was left blank or was invalid text like abc) changes after reload: the upper value moves into the lower field, so the filter becomes lower-only.",
       "expected": "Accepted upper-only range remains Amount <=240 after reload, retaining IDs 2 and 6.",
       "actual": "Reload changes results to IDs 2 and 4 (240 and 360), interpreting 240 as the lower bound instead. No invalid text was entered in this reproduction.",
       "reproSteps": [
@@ -471,7 +471,10 @@
         "Open Amount; leave first bound empty and enter 240 in second bound. Add filter is enabled; apply it.",
         "Observe Release requests IDs 2 and 6, amounts 240 and 150.",
         "Reload the dashboard and inspect the same card."
-      ]
+      ],
+      "matchingGuidance": {
+        "claimScope": "Credit any Between filter whose upper bound moves into the lower field after reload, whatever the reason the lower bound was empty, including invalid non-numeric input. Non-numeric input that clears a filter without the bound moving is a separate known-invalid reference."
+      }
     },
     {
       "id": "metabase-dashboards-171",
@@ -1391,6 +1394,21 @@
         "Set Date Range to Past 3 months and Product Category to Gizmo (equivalently open /dashboard/1?date_range=past3months&product_category=Gizmo).",
         "Edit the dashboard, hover Revenue per quarter, and open Show visualization options.",
         "On the Data tab, inspect the second comparison."
+      ]
+    },
+    {
+      "id": "metabase-dashboards-b97",
+      "name": "Duplicating tab disconnects question cards from inline filters",
+      "severity": 3,
+      "summary": "Duplicating tab disconnects question cards from inline filters.",
+      "expected": "Duplicating a tab should preserve the filter connections between its copied inline filter/heading and copied question cards, yielding the same filtered results as the source tab.",
+      "actual": "The copied heading retains inline_parameters and its text-tag mapping, but the copied question has parameter_mappings:[] (source retains its Product.Category mapping). The displayed filter and heading say Gizmo while the card shows the all-category total 67,863.4 instead of 15,576.4, including after reload.",
+      "reproSteps": [
+        "Create a dashboard with two tabs; on the second tab add a heading 'Selected {{category}}' and the existing question Revenue per quarter.",
+        "Add a Text or Category filter, connect it to the heading's category variable and the question's Product.Category field. Move the filter into the heading via Move filter, then save.",
+        "Select Gizmo and apply. The heading says Selected Gizmo and Revenue per quarter shows 15,576.4.",
+        "Edit, open the second tab's dropdown, choose Duplicate, then Save.",
+        "On the copied tab observe Selected Gizmo and the Gizmo filter, but Revenue per quarter shows 67,863.4. Reloading or selecting Widget does not fix the card. Existing reproduction: /dashboard/4?qa_category=Gizmo&tab=17."
       ]
     }
   ]
