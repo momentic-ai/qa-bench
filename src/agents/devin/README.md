@@ -23,7 +23,7 @@ ACU conversion. Profiles remain for audit and reuse.
 
 ## Observed bypass
 
-The [isolation probe](https://app.devin.ai/sessions/49cdc66639d64d38a038781adc4d1298)
+The isolation probe
 used a mandatory profile allowing only `example.com`, an empty external MCP
 allowlist, read-only Devin management tools and git, and no GitHub CLI token.
 It ran no benchmark fixture and was terminated after collecting its output.

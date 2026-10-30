@@ -48,7 +48,8 @@
         "relatedReference": "For the author self-review Re-request Review sidebar case, use codex-60m-gitea-5 instead."
       },
       "matchingGuidance": {
-        "relatedExistingReference": "codex-60m-gitea-5 covers the author’s Re-request Review sidebar workflow receiving an empty403 and the same shared parser/catch failure. This reference is scoped to Review-panel submission feedback; it does not claim a new underlying generic-parser defect."
+        "relatedExistingReference": "codex-60m-gitea-5 covers the author’s Re-request Review sidebar workflow receiving an empty403 and the same shared parser/catch failure. This reference is scoped to Review-panel submission feedback; it does not claim a new underlying generic-parser defect.",
+        "scope": "Any Review-panel submission (Comment, Approve or Request changes) whose server rejection is shown as 'Network error' with a JSON SyntaxError matches this entry, whatever caused the rejection: for example the HTTP 404 from the latest single-commit view, or submitting a review from a panel opened before the pull request was closed in another session."
       }
     },
     {
@@ -1293,6 +1294,69 @@
         "Click the source branch name in that pull request's row."
       ],
       "severity": 3
+    },
+    {
+      "id": "gitea-repo-reviewed-search-stale-index",
+      "name": "Repository Reviewed by you search omits an approved pull request",
+      "summary": "On a repository's Pull Requests list, Type 'Reviewed by you' with a matching keyword shows No results for a pull request the user just approved, because submitting a review doesn't refresh the reviewer data in the search index.",
+      "expected": "Reviewed by you with a matching keyword lists every pull request the user has reviewed.",
+      "actual": "After alex approved a fresh pull request and the approval persisted on reload, the repository list with Reviewed by you and a matching title keyword showed No results. Without the keyword the pull request is listed; after alex adds an ordinary comment (which reindexes it), the keyword search finds it.",
+      "reproSteps": [
+        "As one user, open a pull request in a repository and request a review from a second user.",
+        "As the reviewer, submit an Approve review from Files Changed and reload to confirm it persists.",
+        "As the reviewer, open the repository's Pull Requests list, choose Reviewed by you and confirm the pull request is listed.",
+        "Search for a keyword from its title and observe No results."
+      ],
+      "severity": 3,
+      "sourceCause": "Submitting a review notifies PullRequestReview, which services/indexer/notify.go doesn't handle, so the issue index keeps stale reviewed_ids. Keyword searches filter on that field (modules/indexer/issues/bleve/bleve.go) and routers/web/repo/issue_list.go limits the database query to the index's matches.",
+      "matchingGuidance": {
+        "relatedReference": {
+          "id": "gitea-global-reviewed-search-stale-index",
+          "distinction": "Same stale reviewer index. That entry is the global Pull Requests page; this entry is a repository's Pull Requests list."
+        }
+      }
+    },
+    {
+      "id": "gitea-global-pulls-state-switch-drops-author",
+      "name": "Global Pull Requests Open/Closed switch drops the selected Author filter",
+      "summary": "On the global Pull Requests page, choosing an Author and then clicking the Open or Closed tab drops the poster parameter, so the list shows pull requests by every author.",
+      "expected": "Switching between Open and Closed keeps the selected Author filter.",
+      "actual": "With alex selected as Author, the tabs read 0 Open and 2 Closed. Clicking Closed opened a URL without poster=alex and listed pull requests by eval and other users. Opening the URL with poster=alex&state=closed directly shows only alex's 2 closed pull requests, and the Sort links on the same page keep the filter.",
+      "reproSteps": [
+        "Open the global Pull Requests page (/pulls).",
+        "Choose a user in the Author filter.",
+        "Click the Closed (or Open) tab.",
+        "Observe that the URL loses the author and the list shows pull requests by other authors."
+      ],
+      "severity": 3,
+      "sourceCause": "templates/user/dashboard/issues.tmpl builds the Open/Closed links from $queryLink, which omits poster and assignee, while the Sort links and filter dropdowns use $queryLinkWithFilter.",
+      "matchingGuidance": {
+        "relatedReference": {
+          "id": "gitea-org-pulls-state-switch-drops-user-filters",
+          "distinction": "Same template and links. That entry is the organization Pull Requests page; this entry is the global /pulls page."
+        }
+      }
+    },
+    {
+      "id": "gitea-org-pulls-review-requested-search-stale-index",
+      "name": "Organization Pull Requests 'Review requested' search hides a pull request whose review was requested after it was created",
+      "summary": "On an organization's Pull Requests page, Review requested lists a pull request awaiting the user's review, but adding a matching search term shows No results. Requesting a review after a pull request is created doesn't update the search index, so keyword searches still think nobody was asked to review it.",
+      "expected": "Review requested with a matching search term lists every pull request awaiting the user's review.",
+      "actual": "As alex, the organization's Review requested list showed both fresh pull requests (count 2). Searching the title of the one whose review was requested after creation showed No results and a count of 0; searching the one created with alex as reviewer found it. After an ordinary comment on the first pull request, the same search found it.",
+      "reproSteps": [
+        "In an organization repository that a second user can read, open a pull request without reviewers.",
+        "Request a review from the second user on that pull request.",
+        "As the second user, open the organization's Pull Requests page and choose Review requested; the pull request is listed.",
+        "Search for a word from its title and observe No results."
+      ],
+      "severity": 3,
+      "sourceCause": "Requesting a review notifies PullRequestReviewRequest, which services/indexer/notify.go doesn't handle, so the issue index keeps stale review_requested_ids. With a keyword, routers/web/user/home.go lists results from the index (modules/indexer/issues/bleve/bleve.go filters review_requested_ids); without one it uses the database.",
+      "matchingGuidance": {
+        "relatedReference": {
+          "id": "gitea-global-requested-review-search-stale-index",
+          "distinction": "Same stale review-request index. That entry is the global Pull Requests page; this entry is an organization's Pull Requests page with a review requested directly from the user (team requests are a separate entry)."
+        }
+      }
     }
   ]
 }

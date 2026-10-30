@@ -867,6 +867,69 @@
         "Scroll through the toolbar to reach the notes field."
       ],
       "severity": 1
+    },
+    {
+      "id": "gitea-release-detail-prerelease-badge-clipped-mobile",
+      "name": "Pre-Release badge is clipped beside a wrapping title on the mobile release details page",
+      "summary": "At a 390×844 viewport, a single release's page (/releases/tag/<tag>) clips the Pre-Release status badge to \"Pre-Re\" when the release title wraps onto more than one line.",
+      "expected": "The release details page shows the full status badge text at narrow widths, wrapping the title if needed.",
+      "actual": "A Pre-Release titled \"Responsive mobile release with a longer readable title\" showed its orange badge as \"Pre-Re\" on its details page at 390×844. A short-title Pre-Release shows the full badge at the same width, and the long-title release shows it in full at 1024 and 1280 pixels.",
+      "reproSteps": [
+        "Publish a release marked as Pre-Release with a long title, such as \"Responsive mobile release with a longer readable title\".",
+        "Set the viewport to 390×844 CSS pixels.",
+        "Open the release's details page at /releases/tag/<tag>.",
+        "Observe that the Pre-Release badge beside the wrapped title is cut off."
+      ],
+      "severity": 1,
+      "sourceCause": "routers/web/repo/release.go SingleRelease renders the same repo/release/list template as the Releases list, so the details page inherits the list's shrinking status label in the title row.",
+      "matchingGuidance": {
+        "relatedReference": {
+          "name": "Pre-Release status badge text is clipped on the mobile Releases page",
+          "distinction": "Same badge clipping, but on a different page. That entry is the Releases list; this entry is a single release's details page at /releases/tag/<tag>."
+        }
+      }
+    },
+    {
+      "id": "gitea-tag-row-clips-release-details-link-mobile",
+      "name": "Mobile tag row clips the Release details link for a tag with a published release",
+      "summary": "At a 390×844 viewport, the Tags page row of a tag with a published release cuts its only action, Release details, down to \"Release de\". The visible part still opens the release.",
+      "expected": "The tag row's Release details action is fully readable at narrow widths.",
+      "actual": "For two freshly published releases, the Tags page row at 390×844 showed \"Release de\" at the right edge. Tapping the visible part opened the release. At 414 pixels and wider the full label shows.",
+      "reproSteps": [
+        "Publish a release on a new tag.",
+        "Set the viewport to 390×844 CSS pixels.",
+        "Open the repository's Tags page and search for the tag.",
+        "Observe that the row's Release details link is cut off."
+      ],
+      "severity": 1,
+      "sourceCause": "templates/repo/tag/list.tmpl renders tags in a \"ui very basic striped fixed table single line\" table, so the action cell can't wrap and clips its links at narrow widths.",
+      "matchingGuidance": {
+        "relatedReference": {
+          "id": "gitea-novel-008",
+          "distinction": "Same Tags page and fixed single-line table, but a different row. That entry is a tag without a release, where New Release is clipped and Delete Tag can't be reached; this entry is a tag with a published release, where Release details is clipped but still tappable."
+        }
+      }
+    },
+    {
+      "id": "gitea-draft-title-error-drops-draft-actions",
+      "name": "Title error while editing a draft release replaces Save Draft and Publish Release with Update Release",
+      "summary": "Editing a draft release and clicking Save Draft with an empty title shows the title error, but the re-rendered form no longer offers Save Draft or Publish Release; only Cancel, Delete Release and Update Release remain, so there is no explicit way to keep the release a draft.",
+      "expected": "After the validation error, the draft's Save Draft and Publish Release actions stay available.",
+      "actual": "After clearing a draft's title and clicking Save Draft, the error page offered only Cancel, Delete Release and Update Release. Opening the draft's edit page normally shows Save Draft and Publish Release.",
+      "reproSteps": [
+        "Create a release with Save Draft.",
+        "Reopen its edit form and clear the title.",
+        "Click Save Draft.",
+        "Observe that Save Draft and Publish Release are gone and only Update Release remains."
+      ],
+      "severity": 3,
+      "sourceCause": "routers/web/repo/release.go EditReleasePost re-renders the form on a validation error without setting IsDraft (or the release ID) in ctx.Data, unlike EditRelease, so the template shows the published release's actions.",
+      "matchingGuidance": {
+        "relatedReference": {
+          "id": "gitea-draft-title-error-publishes-draft",
+          "distinction": "Same missing draft state on the error page. This entry is the draft actions disappearing after the validation error; the related entry is clicking the remaining Update Release, which publishes the draft."
+        }
+      }
     }
   ]
 }

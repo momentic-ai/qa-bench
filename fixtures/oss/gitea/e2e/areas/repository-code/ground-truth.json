@@ -929,6 +929,106 @@
           "distinction": "Same filtered commit view, but that entry is the tree and header not showing the filter; this entry is clicking a missing file doing nothing."
         }
       }
+    },
+    {
+      "id": "gitea-empty-upload-shows-1kib-size",
+      "name": "An uploaded empty file is shown as 1.0 KiB after committing",
+      "summary": "Uploading a zero-byte file through Add File > Upload File shows '0 b' while staged, but after committing, the file's page shows '1.0 KiB' and View Raw instead of an empty file.",
+      "expected": "A committed empty upload is shown as 0 B and 'The file is empty.', as an empty file created with New File is.",
+      "actual": "A zero-byte file staged as '0 b' was shown as '1.0 KiB' with a View Raw link after the commit. Uploading a small non-empty file shows its real size, and an empty file made with New File shows '0 B' and 'The file is empty.'",
+      "reproSteps": [
+        "Open a repository branch and choose Add File > Upload File.",
+        "Select a zero-byte file and see that it is staged as 0 b.",
+        "Commit the upload.",
+        "Open the file and observe the 1.0 KiB size and View Raw link."
+      ],
+      "severity": 1,
+      "sourceCause": "routers/web/repo/editor.go reads the upload into a 1024-byte buffer and only shortens it when more than 0 bytes were read, so an empty upload is stored as 1024 NUL bytes, which the file page reports as 1.0 KiB.",
+      "matchingGuidance": {
+        "relatedReference": {
+          "id": "gitea-empty-upload-stores-nul-buffer",
+          "distinction": "Same cause. That entry requires showing the stored bytes are corrupted (for example by downloading 1024 NUL bytes); this entry is the wrong size shown on the file page without that check."
+        }
+      }
+    },
+    {
+      "id": "gitea-branch-delete-drops-search",
+      "name": "Deleting or restoring a branch from a searched Branches list clears the search",
+      "summary": "On the Branches page, deleting (or restoring) a branch while a search is applied succeeds but returns to /branches?page=N with an empty search box, showing unrelated branches instead of the filtered results.",
+      "expected": "After deleting or restoring a branch from search results, the Branches page keeps the search and shows the filtered list.",
+      "actual": "After searching Branches for a prefix and deleting one matching branch, the page returned with the search field empty and unfiltered branches listed. From page 2 of the results it landed on unfiltered page 2, showing different branches. Restore behaves the same. Deleting from an unfiltered page keeps that page correctly, and the search's own pagination keeps the query.",
+      "reproSteps": [
+        "Create a few branches with a shared prefix.",
+        "Open the repository's Branches page and search for the prefix.",
+        "Click Delete Branch on one result and confirm.",
+        "Observe the search box is empty and unrelated branches are listed."
+      ],
+      "severity": 3,
+      "sourceCause": "routers/web/repo/branch.go jsonRedirectBranches redirects delete and restore to /branches?page=<page> only, and the buttons in templates/repo/branch/list.tmpl pass page but not q, so the search query is dropped.",
+      "matchingGuidance": {
+        "relatedReference": {
+          "id": "gitea-milestone-delete-drops-search",
+          "distinction": "Same symptom of a delete action dropping the active search, but a different page and handler. That entry is the milestones list; this entry is the repository Branches page."
+        }
+      }
+    },
+    {
+      "id": "gitea-editor-cancel-after-rename-conflict-opens-other-file",
+      "name": "Cancel after a rename rejected for an existing file opens that other file",
+      "summary": "In the file editor, if a rename is rejected because a file already exists at the new path, the editor's Cancel links point at that existing file instead of the file being edited, so Cancel opens a different file with different contents.",
+      "expected": "Cancel abandons the rename and returns to the file that was being edited.",
+      "actual": "While editing qa-dir/first.txt, renaming it to qa-dir/sub/second.txt (an existing file) showed 'A file named \"qa-dir/sub/second.txt\" already exists in this repository.' Both Cancel links then pointed at qa-dir/sub/second.txt, and clicking either opened second.txt with its own contents. Typing the same new name and clicking Cancel without committing returns to first.txt.",
+      "reproSteps": [
+        "Create two files in a branch, for example a.txt and dir/b.txt.",
+        "Open a.txt, click Edit File and change its path to dir/b.txt.",
+        "Commit and see the 'already exists' error.",
+        "Click Cancel and observe that dir/b.txt opens instead of a.txt."
+      ],
+      "severity": 1,
+      "sourceCause": "routers/web/repo/editor.go editFilePost stores the submitted form.TreePath in ctx.Data[\"TreePath\"] before validation, and RenderWithErr re-renders the editor with it, so the Cancel links in templates/repo/editor/edit.tmpl and commit_form.tmpl are built from the rejected path.",
+      "matchingGuidance": {
+        "relatedReference": {
+          "id": "gitea-editor-cancel-after-rejected-move-404",
+          "distinction": "Same cause and Cancel link. That entry is a rejected path that doesn't exist, so Cancel opens a 404; this entry is a rejected path that is an existing file, so Cancel opens that other file."
+        }
+      }
+    },
+    {
+      "id": "gitea-file-history-removed-path-snapshot-404",
+      "name": "File history's 'View at this point in history' link opens a 404 on the commit that renamed or deleted the file",
+      "summary": "On a file's History page for its old path, the row for the commit that renamed (or deleted) the file offers 'View at this point in history', but the link points at the old path in that commit, where the file no longer exists, so it opens 404 Not Found.",
+      "expected": "The snapshot link opens a usable view, such as the renamed file at that commit, or isn't offered for a commit where the path no longer exists.",
+      "actual": "After creating, editing and then renaming a file, its old-path History listed the rename, edit and create commits. The rename row's 'View at this point in history' opened \"404 Not Found\" with \"Path <old name> doesn't exist in commit/<sha>\". The edit and create rows' snapshot links, the rename row's 'View changes' link and the new path's History rename row all work.",
+      "reproSteps": [
+        "Create a file in a branch, commit, edit it and commit again.",
+        "Rename the file and commit.",
+        "Open the History page for the file's original path.",
+        "Click 'View at this point in history' on the rename commit's row and observe the 404."
+      ],
+      "severity": 3,
+      "sourceCause": "templates/repo/commits_list.tmpl builds every row's snapshot link as /src/commit/<sha>/<FileTreePath>, and the history list (git rev-list <rev> -- <path>) includes the commit that removed the path, where the source view can only render NotFound.",
+      "matchingGuidance": {
+        "scope": "Reports that a file history row's snapshot link opens a 404 for the commit that renamed or deleted the file match this entry."
+      }
+    },
+    {
+      "id": "gitea-fork-compare-view-file-wrong-repo-404",
+      "name": "View File in an upstream comparison with a renamed fork opens a 404 under the upstream repository name",
+      "summary": "When a fork has a different name from its upstream repository, comparing the fork's branch against upstream lists the changed files, but each file's View File link combines the fork owner with the upstream repository's name, so it opens a repository that doesn't exist and shows 404 Not Found.",
+      "expected": "View File opens the file at the fork's commit in the fork repository.",
+      "actual": "For a fork named differently from upstream, the upstream comparison (two-dot or three-dot) showed the fork's new file, but View File opened /<fork owner>/<upstream name>/src/commit/<sha>/<file> and 404 Not Found. Deleted files' View File links fail the same way. The same file compared inside the fork opens correctly, and a fork that keeps the upstream name hides the problem.",
+      "reproSteps": [
+        "Fork a repository under a different name.",
+        "On a new branch in the fork, add a file and commit.",
+        "Compare that branch against the upstream repository's main branch (for example with the compare icon beside the branch selector).",
+        "Open the file's diff menu and click View File.",
+        "Observe the URL uses the upstream repository's name under the fork owner and shows 404."
+      ],
+      "severity": 3,
+      "sourceCause": "routers/web/repo/compare.go PrepareCompareDiff calls setCompareContext with ci.HeadUser.Name and repo.Name, where repo is the base (upstream) repository, instead of the head fork's own name, so SourcePath and BeforeSourcePath point at a nonexistent repository.",
+      "matchingGuidance": {
+        "scope": "Reports that View File (or another file link) in a fork-to-upstream comparison opens a 404 because the URL uses the wrong repository name match this entry."
+      }
     }
   ]
 }

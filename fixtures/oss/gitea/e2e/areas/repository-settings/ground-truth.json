@@ -574,6 +574,261 @@
         "As the writer, edit and commit that file directly to the branch."
       ],
       "severity": 3
+    },
+    {
+      "id": "gitea-archived-repo-stale-merge-json-error",
+      "name": "Confirming a stale merge after the repository is archived shows a raw JSON error",
+      "summary": "If a repository is archived while a pull request page is open, confirming the merge from that page shows a red \"Network error SyntaxError: Unexpected token 'N', \\\"Not found.\\\" is not valid JSON\" instead of saying the repository is archived and read-only.",
+      "expected": "Confirming a merge in a repository that has since been archived shows a clear message that the repository is archived and read-only.",
+      "actual": "Clicking the merge button and confirming showed the red network SyntaxError banner about \"Not found.\" not being valid JSON. The merge form stayed open and nothing mentioned the archive. Merging the same way without archiving succeeds, and reloading the archived pull request hides the merge box.",
+      "reproSteps": [
+        "Open a mergeable pull request in a repository you can merge in.",
+        "In another tab, archive the repository.",
+        "Back in the first tab, choose a merge style, confirm the merge and read the message."
+      ],
+      "severity": 1,
+      "sourceCause": "routers/web/web.go runs context.RepoMustNotBeArchived() before MergePullRequest on POST /pulls/{index}/merge; it answers with a plain-text 404 \"Not found.\", which web_src/js/features/common-fetch-action.ts parses as JSON and reports as a network SyntaxError.",
+      "matchingGuidance": {
+        "relatedReference": {
+          "id": "gitea-archived-repo-stale-issue-form-json-error",
+          "distinction": "Same archived-repository guard and JSON parse error, but on a different form. That entry is the New Issue or comment form; this entry is the pull request merge confirmation."
+        }
+      }
+    },
+    {
+      "id": "gitea-archived-repo-stale-pull-request-form-json-error",
+      "name": "Submitting a stale pull request form after the repository is archived shows a raw JSON error",
+      "summary": "If a repository is archived while a compare page's New Pull Request form is open, clicking Create Pull Request shows a red \"Network error SyntaxError: Unexpected token 'N', \\\"Not found.\\\" is not valid JSON\" instead of saying the repository is archived and read-only.",
+      "expected": "Submitting a new pull request in a repository that has since been archived shows a clear message that the repository is archived and read-only.",
+      "actual": "Clicking Create Pull Request showed the red network SyntaxError banner about \"Not found.\" not being valid JSON; the form kept its title and description and nothing mentioned the archive. The same form creates the pull request when the repository isn't archived, and reloading the compare page after archiving hides New Pull Request.",
+      "reproSteps": [
+        "Push a branch with a change and open its compare page, then click New Pull Request and fill in the form.",
+        "In another tab, archive the repository.",
+        "Back in the first tab, click Create Pull Request and read the message."
+      ],
+      "severity": 1,
+      "sourceCause": "routers/web/web.go runs context.RepoMustNotBeArchived() before CompareAndPullRequestPost on POST /compare/*; it answers with a plain-text 404 \"Not found.\", which web_src/js/features/common-fetch-action.ts parses as JSON and reports as a network SyntaxError.",
+      "matchingGuidance": {
+        "relatedReference": {
+          "id": "gitea-archived-repo-stale-issue-form-json-error",
+          "distinction": "Same archived-repository guard and JSON parse error, but on a different form. That entry is the New Issue or comment form; this entry is the Create Pull Request form on the compare page."
+        }
+      }
+    },
+    {
+      "id": "gitea-leaving-org-drops-direct-collaborator-write",
+      "name": "Direct Write collaborator loses write access on public organization repositories after leaving their last team",
+      "summary": "When a user who is also a direct Write collaborator on an organization's public repository is removed from their last team in that organization, they stop being an organization member and lose write access to the repository. The Collaborators page still lists them as Write, and changing their role there doesn't restore access.",
+      "expected": "A direct collaborator grant keeps applying after the user leaves the organization's teams, as it does for private repositories and for collaborators who were never organization members.",
+      "actual": "alex had team Write and a direct Write collaborator grant on a public and a private organization repository. After removing alex from the team, the public repository's Collaborators page still listed alex as Write, but alex had no New Release button, release creation returned 403 and editing a file returned 404. The private repository kept Write. Leaving alex in a second team of the organization kept Write on both repositories.",
+      "reproSteps": [
+        "In an organization, create a public repository and a team with Write access to it.",
+        "Add a user to that team, and also add the same user as a Write collaborator under the repository's Settings > Collaborators.",
+        "Remove the user from the team, so they are no longer in any team of the organization.",
+        "As the owner, see that the Collaborators page still lists the user as Write.",
+        "As the user, open the repository's Releases page or try to edit a file and see that write actions are gone."
+      ],
+      "severity": 3,
+      "sourceCause": "services/org/team.go removeTeamMember recalculates access (keeping the collaborator grant), then removeInvalidOrgUser calls RemoveOrgUser when no teams remain. services/org/user.go RemoveOrgUser deletes the user's Access rows for every public organization repository without recalculating them from their Collaboration rows, so models/perm/access accessLevel falls back to public Read. Changing the collaborator role only updates an existing Access row, so it can't recreate the deleted one.",
+      "matchingGuidance": {
+        "scope": "Reports that a direct collaborator loses write access after being removed from an organization team, removed from the organization, or leaving it, while the Collaborators page still shows their role, match this entry.",
+        "relatedReference": {
+          "id": "gitea-public-repo-read-collaborator-upgrade-ignored",
+          "distinction": "Both show a collaborator role the user's effective access doesn't match on a public repository. That entry is upgrading a Read collaborator to Write on a user-owned repository; this entry is a Write collaborator losing access when they leave an organization's last team."
+        }
+      }
+    },
+    {
+      "id": "gitea-empty-repo-home-redirects-to-404-unit",
+      "name": "Opening an empty repository with Code and Issues disabled redirects to a 404 Pull Requests page",
+      "summary": "For a repository with no commits whose Code and Issues units are disabled, every link to the repository (its name in lists, the header and search) redirects to /pulls, which shows 404 Not Found. Pull Requests and Releases don't work in an empty repository, while the enabled Wiki, Projects and Packages sections open normally.",
+      "expected": "Opening the repository lands on a section that works, such as Wiki or Projects, or explains why there is nothing to show.",
+      "actual": "Clicking the repository in the owner's repository list went to /<owner>/<repo>/pulls and showed '404 Not Found. The page you are trying to reach either does not exist or you are not authorized to view it.' The tab bar on that page listed only Packages, Projects, Wiki and Settings, and /wiki, /projects and /packages each opened normally. With Pull Requests also disabled, the redirect went to /releases, also a 404. The same settings on a repository with commits open /pulls normally, and disabling only Code opens /issues.",
+      "reproSteps": [
+        "Create a repository without initializing it, so it has no commits.",
+        "In its Settings, turn off Code and Issues and save, leaving Wiki, Projects and Packages enabled.",
+        "Open the repository from a repository list or its name in the header.",
+        "Observe the redirect to /pulls and the 404 Not Found page."
+      ],
+      "severity": 3,
+      "sourceCause": "routers/web/repo/view.go checkHomeCodeViewable redirects to the highest-priority readable unit when Code isn't readable, without checking whether that unit's pages work in an empty repository. The Pull Requests and Releases routes are gated by repo.MustBeNotEmpty, which returns 404 for empty repositories.",
+      "matchingGuidance": {
+        "scope": "Reports that opening an empty repository with Code disabled redirects to a 404 Pull Requests or Releases page match this entry.",
+        "relatedReference": {
+          "id": "gitea-writer-sees-switch-default-branch-404",
+          "distinction": "Both are in-product navigation that ends on a 404. That entry is the Branches page Switch default branch icon for Write collaborators; this entry is the repository home redirect for an empty repository with Code and Issues disabled."
+        }
+      }
+    },
+    {
+      "id": "gitea-archived-repo-stale-comment-json-error",
+      "name": "Commenting from a stale issue page after the repository is archived shows a raw JSON error",
+      "summary": "If a repository is archived while an existing issue's page is open, submitting a comment from that page shows a red \"Network error SyntaxError: Unexpected token 'N', \\\"Not found.\\\" is not valid JSON\" instead of saying the repository is archived and read-only.",
+      "expected": "Commenting on an issue in a repository that has since been archived shows a clear message that the repository is archived and read-only.",
+      "actual": "Clicking Comment showed the red network SyntaxError banner about \"Not found.\" not being valid JSON, and the draft stayed in the editor. Commenting before archiving works, and reloading the archived issue shows 'This repo is archived. You cannot comment on issues.'",
+      "reproSteps": [
+        "Open an existing issue and type a comment.",
+        "In another tab, archive the repository.",
+        "Back in the first tab, click Comment and read the message."
+      ],
+      "severity": 1,
+      "sourceCause": "The issue comment route (routers/web/web.go, POST /issues/{index}/comments) rejects archived repositories with a plain-text 404 \"Not found.\", which web_src/js/features/common-fetch-action.ts parses as JSON and reports as a network SyntaxError.",
+      "matchingGuidance": {
+        "relatedReference": {
+          "id": "gitea-archived-repo-stale-issue-form-json-error",
+          "distinction": "Same archived-repository guard and JSON parse error. That entry's reproduction is the New Issue form; this entry is the Comment form on an existing issue."
+        }
+      }
+    },
+    {
+      "id": "gitea-collaborator-remove-after-demotion-silent",
+      "name": "Removing a collaborator after losing admin access closes the dialog with no error",
+      "summary": "On a repository's Collaborators settings page that was opened as an administrator, if the user loses admin access (for example by setting their own role to Read) without reloading, clicking Remove on another collaborator and confirming closes the dialog with no message. The removal is refused, so the collaborator stays.",
+      "expected": "A refused removal tells the user it failed, for example that they no longer have permission.",
+      "actual": "After alex changed his own role from Administrator to Read on the open page, Remove > Yes on maya sent a request that returned 404; the dialog closed with no message and maya stayed a Write collaborator. Without the demotion, the same steps remove maya and show 'The collaborator has been removed.'",
+      "reproSteps": [
+        "As a repository administrator who isn't the owner, open the repository's Settings > Collaborators page.",
+        "Change your own role to Read on that page, without reloading.",
+        "Click Remove on another collaborator and confirm.",
+        "Observe the dialog closes with no message and the collaborator is still listed."
+      ],
+      "severity": 1,
+      "sourceCause": "The collaborator delete route requires repository admin and answers with a plain 404 once the user isn't one. The Remove button is a legacy delete-button (templates/repo/settings/collaboration.tmpl), whose handler in web_src/js/features/common-button.ts only acts when the response is ok and shows nothing otherwise.",
+      "matchingGuidance": {
+        "scope": "Reports that removing a collaborator after the user's own admin access was removed, by themselves or by another administrator, fails silently match this entry.",
+        "relatedReference": {
+          "id": "gitea-rejected-collaborator-role-change-shows-new-role",
+          "distinction": "Same page and the same lost-admin trigger. That entry is the role dropdown showing a new role after a refused change; this entry is the Remove button closing its dialog with no error."
+        }
+      }
+    },
+    {
+      "id": "gitea-novel-013",
+      "name": "Disabled repository Packages page stays accessible",
+      "summary": "After the repository Packages unit is disabled, the Packages tab disappears but the repository's /packages URL still opens the Packages page, unlike other disabled tabs, which return 404.",
+      "expected": "After the repository Packages unit is disabled and settings are saved, the repository Packages page should be unavailable through direct URL access as well as absent from navigation.",
+      "actual": "The settings save succeeded and the Packages navigation item disappeared, but directly opening /eval/cu-packages-20260316-1537/packages loaded the Packages page with the visible empty state “There are no packages yet.”",
+      "reproSteps": [
+        "At desktop viewport 1440×1000, use the supplied saved authentication state to sign in as the admin account; do not include or expose its saved-state path.",
+        "Open /repo/create and create a public repository owned by eval named cu-packages-20260316-1537, leaving unrelated settings at their defaults.",
+        "Open the new repository's Settings > Repository page, scroll to Advanced Settings, uncheck “Enable Repository Packages Registry,” and submit using the Update Settings button at the end of the Advanced Settings form.",
+        "Confirm the success notice and that Packages is absent from the repository navigation.",
+        "Navigate directly to /eval/cu-packages-20260316-1537/packages and observe the loaded Packages page and its empty-state message. Do not create or inspect package contents."
+      ],
+      "severity": 1,
+      "sourceCause": "The repository /packages route (routers/web/web.go) only requires repository access (context.RepoAssignment) and never checks the Packages unit or the user's Packages permission, unlike other repository tabs whose routes return 404 without that permission. Upstream removed per-unit package permission enforcement in go-gitea/gitea#25707, so the setting only hides the tab.",
+      "matchingGuidance": {
+        "relatedReference": {
+          "id": "gitea-team-packages-no-access-page-reachable",
+          "distinction": "Same unchecked /packages route. This entry is the repository's Packages unit being disabled; the related entry is a team with Packages set to No Access."
+        }
+      }
+    },
+    {
+      "id": "gitea-team-packages-no-access-page-reachable",
+      "name": "Packages page remains accessible with team Packages set to No Access",
+      "summary": "An organization member whose team has Packages set to No Access doesn't see the Packages tab, but can open the repository's /packages URL directly and list, open and download its packages, while Projects and Releases set to No Access return 404.",
+      "expected": "A team with Packages set to No Access can't open or download from the repository's Packages page, as other tabs set to No Access return 404.",
+      "actual": "As a member of a team with Packages set to No Access, the Packages tab was hidden, but the repository's /packages URL loaded and listed linked packages, which could be opened and downloaded. Non-members got 404.",
+      "reproSteps": [
+        "In an organization, give a team access to a private repository with Packages set to No Access.",
+        "As a member of that team, open the repository and confirm the Packages tab is hidden.",
+        "Open the repository's /packages URL directly."
+      ],
+      "severity": 3,
+      "sourceCause": "The repository /packages route (routers/web/web.go) only requires repository access (context.RepoAssignment) and never checks the Packages unit or the user's Packages permission, unlike other repository tabs whose routes return 404 without that permission. Upstream removed per-unit package permission enforcement in go-gitea/gitea#25707, so the setting only hides the tab.",
+      "matchingGuidance": {
+        "relatedReference": {
+          "id": "gitea-novel-013",
+          "distinction": "Same unchecked /packages route. This entry is a team with Packages set to No Access, where packages can still be listed and downloaded; the related entry is the repository's Packages unit being disabled."
+        }
+      }
+    },
+    {
+      "id": "gitea-private-repo-packages-not-set-page-reachable",
+      "name": "Packages page stays reachable on a private repository when Public Access for Packages is Not set",
+      "summary": "On a private repository whose Public Access gives Code to everyone signed in but leaves Packages Not set, a signed-in non-member doesn't see the Packages tab but can still open the repository's /packages URL, unlike other tabs left Not set, which return 404.",
+      "expected": "With Packages not granted, opening the repository's /packages URL returns 404 like other tabs the user has no access to.",
+      "actual": "After Packages was reset to Not set (with Code Everyone Read) and the repository made private, alex, who has no repository membership, saw no Packages tab but opening /packages showed the repository header and 'There are no packages yet.'",
+      "reproSteps": [
+        "In a repository's Public Access settings, give signed-in users Read on Code and leave Packages Not set.",
+        "Make the repository private.",
+        "As a signed-in user with no repository membership, confirm the Packages tab is hidden.",
+        "Open the repository's /packages URL directly and observe the Packages page."
+      ],
+      "severity": 1,
+      "sourceCause": "The repository /packages route (routers/web/web.go) only requires repository access (context.RepoAssignment) and never checks the Packages unit or the user's Packages permission, unlike other repository tabs whose routes return 404 without that permission. Upstream removed per-unit package permission enforcement in go-gitea/gitea#25707, so the setting only hides the tab.",
+      "matchingGuidance": {
+        "relatedReference": {
+          "id": "gitea-novel-013",
+          "distinction": "Same unchecked /packages route. This entry is Public Access leaving Packages Not set on a private repository; the related entry is the repository's Packages unit being disabled."
+        }
+      }
+    },
+    {
+      "id": "gitea-generated-repo-without-git-content-upload-404",
+      "name": "Upload File in a repository generated without Git Content opens a 404",
+      "summary": "A repository generated from a template with Git Content unchecked shows the empty-repository Quick Guide, but its Upload File button opens /<repo>/_upload// and 404 Not Found, because the new repository has no default branch.",
+      "expected": "Upload File opens the upload form so the first files can be added.",
+      "actual": "After generating a repository from an initialized template with Topics and Branch Protection selected and Git Content unchecked, clicking Upload File in the Quick Guide opened /<owner>/<repo>/_upload// and showed 404 Not Found. A repository generated with Git Content, and a normal empty repository, open the upload form on main.",
+      "reproSteps": [
+        "Create a template repository with an initial commit.",
+        "Use it to create a new repository with Git Content unchecked (selecting other items such as Topics or Branch Protection).",
+        "On the new repository's Quick Guide, click Upload File.",
+        "Observe the /_upload// URL and the 404 page."
+      ],
+      "severity": 3,
+      "sourceCause": "routers/web/repo/repo.go builds GenerateRepoOptions without DefaultBranch, and the only fallback to the template's branch is inside GenerateGitContent, so with Git Content unchecked the repository is saved with a blank default branch and the Quick Guide's upload link has an empty branch segment.",
+      "matchingGuidance": {
+        "relatedReference": {
+          "id": "codex-30m-gitea-0",
+          "distinction": "Same blank default branch after generating without Git Content. That entry is the repository's broken initialization, including New File and the checkout and push commands; this entry is the Quick Guide's Upload File button opening a 404."
+        }
+      }
+    },
+    {
+      "id": "gitea-generated-from-empty-template-blank-branch",
+      "name": "Generating a repository from an empty template leaves its Quick Guide commands without a branch name",
+      "summary": "Generating a repository from a template that has no commits, with Git Content checked, saves the new repository with a blank default branch, so its Quick Guide shows 'git checkout -b ' and 'git push -u origin ' with no branch name, and New File and Upload File open 404 pages.",
+      "expected": "The generated repository gets a default branch such as main, and the Quick Guide's commands and links use it.",
+      "actual": "After generating a repository from an uninitialized template with only Git Content checked, the Quick Guide showed 'git checkout -b ' and 'git push -u origin ' with no branch, the API reported an empty default_branch, and New File and Upload File opened /_new// and /_upload// with 404. A normal empty repository, and generating from a template with commits, both use main.",
+      "reproSteps": [
+        "Create a repository marked as a template without initializing it.",
+        "Create a new repository from that template with Git Content checked.",
+        "Open the new repository and read the Quick Guide's checkout and push commands.",
+        "Observe the missing branch name (and that New File and Upload File open 404 pages)."
+      ],
+      "severity": 3,
+      "sourceCause": "routers/web/repo/repo.go doesn't pass DefaultBranch, and services/repository/template.go only runs GenerateGitContent (which holds the fallback to the template's default branch) when Git Content is checked and the template isn't empty, so an empty template skips the fallback.",
+      "matchingGuidance": {
+        "relatedReference": {
+          "id": "codex-30m-gitea-0",
+          "distinction": "Same skipped default-branch fallback (template.go only generates Git content when Git Content is checked and the template has commits). That entry is Git Content unchecked on a template with commits; this entry is Git Content checked on an empty template."
+        }
+      }
+    },
+    {
+      "id": "gitea-protected-tag-delete-blocked-after-outsider-release",
+      "name": "An allowed user can't delete a protected tag after someone outside the rule published a release on it",
+      "summary": "Deleting a protected tag checks whether the tag's stored publisher is allowed by the protected-tag rule, not the person deleting it. Publishing a release on an existing tag makes the publisher that user, so after someone outside the rule publishes (and later deletes) a release on a tag, an allowlisted collaborator is refused with 'The tag name is protected.'",
+      "expected": "A user allowed by a protected-tag rule can delete any matching tag, whoever published a release on it.",
+      "actual": "With alex as the only allowed user on an exact-tag rule, the repository owner (not on the rule) published a release on the tag and deleted the release, leaving the tag. As alex, Delete Tag showed 'The tag name is protected.' and the tag stayed. When alex created the tag or published the release, alex could delete it.",
+      "reproSteps": [
+        "Add a protected-tag rule that allows a collaborator but not the repository owner.",
+        "Create a matching tag, then as the owner publish a release on that tag.",
+        "Delete the release, keeping the tag.",
+        "As the allowed collaborator, open Tags and click Delete Tag on it.",
+        "Observe 'The tag name is protected.' and that the tag stays."
+      ],
+      "severity": 3,
+      "sourceCause": "services/release/release.go DeleteReleaseByID passes rel.PublisherID instead of doer.ID to IsUserAllowedToControlTag, and routers/web/repo/release.go sets PublisherID to the user who publishes a release on an existing tag. Upstream later checks doer.ID.",
+      "matchingGuidance": {
+        "relatedReference": {
+          "id": "gitea-protected-tag-delete-checks-creator-not-deleter",
+          "distinction": "Same check of the stored publisher instead of the deleter. That entry is a tag created by someone outside the rule; this entry is a tag on which someone outside the rule published a release."
+        },
+        "scope": "Reports that an allowlisted user is refused when deleting a matching protected tag ('The tag name is protected.') after a release was published on it and deleted match this entry, even if they say the allowlisted user created the tag, since the refusal only happens when the stored publisher is outside the rule."
+      }
     }
   ]
 }

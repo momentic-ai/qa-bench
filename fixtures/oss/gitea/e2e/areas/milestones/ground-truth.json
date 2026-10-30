@@ -77,6 +77,7 @@
       "severity": 3
     },
     {
+      "id": "gitea-milestone-close-redirects-to-state-close",
       "name": "Closing a milestone opens an empty closed-milestone list",
       "summary": "Closing the milestone redirects to a list URL with `state=close`; the page reports one closed milestone but renders no row until the Closed filter changes the URL to `state=closed`.",
       "expected": "After closing the milestone, the closed-milestone list should display the milestone consistently with its closed count, without requiring the user to select the Closed filter again.",
@@ -89,7 +90,11 @@
         "On the resulting page at /eval/mo-gitea-03-issues-milestones-close-repro/milestones?state=close, observe “1 Closed” and no milestone row; the state remained visible after five seconds.",
         "Click the visible “1 Closed” filter. At /eval/mo-gitea-03-issues-milestones-close-repro/milestones?state=closed, observe the milestone row."
       ],
-      "severity": 3
+      "severity": 3,
+      "sourceCause": "routers/web/repo/milestone.go ChangeMilestoneStatus redirects to /milestones?state=<action>, so Close sends state=close, while the Milestones page only treats state=closed as the Closed view and shows the Open list for anything else.",
+      "matchingGuidance": {
+        "scope": "Reports that closing a milestone (from its details page or the list, however the page was reached) lands on state=close, the Open view, an empty list, or a list without the just-closed milestone match this entry, unless the report's observed result says the repository tabs, header or page body disappeared; those match gitea-milestone-close-blanks-page instead."
+      }
     },
     {
       "id": "gitea-whitespace-milestone-title-saved-empty",
@@ -578,6 +583,70 @@
         "relatedReference": {
           "name": "Milestone search treats underscores and percent signs as wildcards",
           "distinction": "Same unescaped search pattern, but that entry is '_' and '%' over-matching other titles; this entry is a term ending or starting with '%' missing the titles that contain it."
+        }
+      }
+    },
+    {
+      "id": "gitea-milestone-repo-badge-overlaps-heading-mobile",
+      "name": "Repository badge text runs over the milestone heading on mobile milestone lists",
+      "summary": "At a 390×844 viewport, a milestone's repository badge on the organization and global milestone lists paints its text past the badge over the milestone icon and title, even for repository names around 31–38 characters.",
+      "expected": "Repository badges on milestone rows fit, wrap or truncate without covering the milestone icon and title.",
+      "actual": "On /org/<org>/milestones and /milestones at 390×844, a badge whose box ended at x=215 painted its text through x=360, over the icon at x=222–238 and the title at x=245–337. Repositories with short names and the same rows at 1024 and 1280 pixels render cleanly. Clicking the title still opens the milestone.",
+      "reproSteps": [
+        "Create a repository whose full name (owner/repository) is about 35 characters or longer and add a milestone to it.",
+        "Set the viewport to 390×844 CSS pixels.",
+        "Open the organization's Milestones page or the global Milestones page.",
+        "Observe the repository badge text running over the milestone icon and title."
+      ],
+      "severity": 1,
+      "sourceCause": "templates/user/dashboard/milestones.tmpl puts the repository .ui.large.label in a flex heading, and web_src/css/modules/label.css makes .ui.label shrinkable (min-width:0) and nowrap with no overflow clipping, so its text paints past the shrunken box.",
+      "matchingGuidance": {
+        "relatedReference": {
+          "id": "gitea-org-milestone-repo-badge-overlaps-title-mobile",
+          "distinction": "Same pages and cause. That entry was recorded with a repository name of about 60 characters; this entry is the same overlap from names of about 31–38 characters."
+        },
+        "scope": "Reports that a milestone row's repository badge text runs over the milestone icon or title on the organization or global Milestones lists match this entry at any narrow width (mobile or tablet), whether the badge is squeezed by a long repository name or by a long milestone title."
+      }
+    },
+    {
+      "id": "gitea-global-milestone-name-sort-descending",
+      "name": "Global Milestones Sort > Name lists Zulu before Alpha",
+      "summary": "On the global Milestones page (/milestones), choosing Sort > Name orders the listed milestones in reverse alphabetical order, so a search for two milestones named Alpha and Zulu shows Zulu first.",
+      "expected": "Sort > Name lists Alpha before Zulu.",
+      "actual": "After searching the global Milestones page for two new milestones sharing a prefix (Alpha and Zulu) and choosing Sort > Name, Zulu stayed above Alpha.",
+      "reproSteps": [
+        "Create two milestones named <prefix> Alpha and <prefix> Zulu.",
+        "Open the global Milestones page from the top navigation and search for the prefix.",
+        "Choose Sort > Name.",
+        "Observe Zulu listed above Alpha."
+      ],
+      "severity": 1,
+      "sourceCause": "models/issues/milestone_list.go maps the name sort to \"name DESC\", and the global Milestones page (routers/web/user/home.go Milestones) uses that order.",
+      "matchingGuidance": {
+        "relatedReference": {
+          "id": "gitea-milestone-name-sort-descending",
+          "distinction": "Same name DESC ordering. This entry is the global Milestones page at /milestones; the related entry was recorded on the repository Milestones list."
+        }
+      }
+    },
+    {
+      "id": "gitea-org-milestone-name-sort-descending",
+      "name": "Organization Milestones Sort > Name orders milestones Z to A",
+      "summary": "On an organization's Milestones page (/org/<org>/milestones), choosing Sort > Name lists milestones in reverse alphabetical order, unlike the usual A-to-Z meaning of a plain Name sort.",
+      "expected": "Sort > Name lists milestones alphabetically from A to Z.",
+      "actual": "On the organization's Milestones page, the default order was A to Z, and choosing Sort > Name changed it to Z to A (for example Zulu, Delta, Charlie, Bravo, Alpha).",
+      "reproSteps": [
+        "In an organization repository, create milestones named Alpha, Delta and Zulu.",
+        "Open the organization's Milestones page from its dashboard.",
+        "Choose Sort > Name.",
+        "Observe Zulu listed first and Alpha last."
+      ],
+      "severity": 1,
+      "sourceCause": "models/issues/milestone_list.go maps the name sort to \"name DESC\", and routers/web/user/home.go Milestones serves /org/<org>/milestones with that order.",
+      "matchingGuidance": {
+        "relatedReference": {
+          "id": "gitea-milestone-name-sort-descending",
+          "distinction": "Same name DESC ordering. This entry is the organization Milestones page; gitea-milestone-name-sort-descending is the repository list and gitea-global-milestone-name-sort-descending is the global /milestones page."
         }
       }
     }

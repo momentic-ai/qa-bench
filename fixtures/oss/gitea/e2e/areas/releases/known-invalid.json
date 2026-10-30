@@ -34,18 +34,78 @@
     },
     {
       "id": "gitea-deleted-release-text-stays-on-tag",
-      "name": "Deleting a release leaves its title and notes visible on the tag page and feed",
-      "summary": "After Delete Release (keeping the tag), the release's title and notes still appear on the tag's page, in the tags RSS/Atom feed, and pre-filled in New Release for that tag.",
-      "expected": "The reported expectation is that deleting a release removes its title and notes from Gitea while keeping the Git tag.",
-      "actual": "After deleting a published release on a tag without its own message, /releases/tag/<tag> still showed the release title and notes, tags.rss still carried the notes, and New Release for the tag pre-filled them. The release was gone from the Releases list.",
+      "name": "Deleting a release leaves its title and notes visible on the tag page",
+      "summary": "The report says that after Delete Release (keeping the tag), the release's title and notes still appear on the tag's page at /releases/tag/<tag>.",
+      "expected": "The reported expectation is that deleting a release removes its title and notes from the tag's page while keeping the Git tag.",
+      "actual": "After deleting a published release on a tag without its own message, /releases/tag/<tag> still showed the release title and notes. The release was gone from the Releases list.",
       "reproSteps": [
         "Publish a release on a tag without ticking the tag-message option.",
         "Delete the release with Delete Release (not Delete Tag).",
-        "Open the tag's page, the repository tags.rss feed, and New Release for that tag."
+        "Open the tag's page."
       ],
-      "reason": "User-rejected after source review. Delete Release keeps the tag row and only marks it as a tag, so the title and notes it carried stay attached to the tag. The reviewer judged keeping that text on the surviving tag to be acceptable, consistent with tags being expected to show their message, rather than a defect.",
+      "reason": "Delete Release (keeping the tag) only marks the release row as a tag (services/release/release.go), so its title and notes stay attached to the surviving tag. The user judged keeping that text on the tag acceptable, consistent with tags showing their message, rather than a defect. The tag page, the tags RSS/Atom feed and the New Release prefill are separate rejections of this same behavior, so each report is matched once per run.",
       "matchingGuidance": {
-        "scope": "Reject reports that a deleted release's title and notes still show on its surviving tag's page, tags feed, or New Release prefill. Do not generalize to draft-release deletion leaving an undeletable record, or to the release still appearing on the Releases list."
+        "scope": "Reject reports that a deleted release's title or notes still show on its surviving tag's page. Do not generalize to draft-release deletion leaving an undeletable record, or to the release still appearing on the Releases list."
+      }
+    },
+    {
+      "id": "gitea-release-preview-shows-stale-content",
+      "name": "Release-notes Preview keeps showing stale content after Bold formatting",
+      "summary": "The report claims that after formatting release notes with the Bold toolbar button and switching to Preview, the Preview pane doesn't update and keeps showing the previous content instead of the bold text.",
+      "expected": "The reporter expects Preview to show the newly entered notes in bold.",
+      "actual": "After entering 'Responsive toolbar note', selecting it, clicking Bold and then Preview at 768×900, the Preview pane was reported to still show the earlier preview.",
+      "reproSteps": [
+        "Open a New Release form at 768×900.",
+        "Enter text in the notes, select it and click the Bold toolbar button.",
+        "Click Preview."
+      ],
+      "reason": "Not reproduced. Preview sends the current notes on every click and replaces the pane with the server's response (web_src/js/features/comp/ComboMarkdownEditor.ts), which rendered the text as <strong> each time. The previous preview stays visible only until that response arrives (about 50–100 ms), a loading state rather than stale content. Bold rendering itself is already rejected as gitea-pass2-014.",
+      "matchingGuidance": {
+        "scope": "Reports that the release-notes Preview doesn't update or keeps showing previous content after editing or Bold formatting.",
+        "relatedReference": {
+          "id": "gitea-pass2-014",
+          "distinction": "That rejection is Bold text rendering in regular weight; this one is the claim that Preview doesn't refresh and shows stale content."
+        }
+      }
+    },
+    {
+      "id": "gitea-deleted-release-text-stays-in-tags-feed",
+      "name": "Deleting a release leaves its notes in the tags RSS/Atom feed",
+      "summary": "The report says that after Delete Release (keeping the tag), the tags RSS or Atom feed still shows the deleted release's notes for that tag.",
+      "expected": "The reporter expects the deleted release's notes to disappear from the tags feed.",
+      "actual": "After deleting a published release and keeping its tag, tags.rss and tags.atom showed the tag with the release's notes (the item title becomes the tag name).",
+      "reproSteps": [
+        "Publish a release with notes on a new tag.",
+        "Delete the release, keeping the tag.",
+        "Open the repository's tags.rss or tags.atom feed and find the tag."
+      ],
+      "reason": "Delete Release (keeping the tag) only marks the release row as a tag (services/release/release.go), so its title and notes stay attached to the surviving tag. The user judged keeping that text on the tag acceptable, consistent with tags showing their message, rather than a defect. The tags feed renders each tag row's notes (routers/web/feed/convert.go). The tag page, the tags RSS/Atom feed and the New Release prefill are separate rejections of this same behavior, so each report is matched once per run.",
+      "matchingGuidance": {
+        "scope": "Reject reports that a deleted release's notes still appear in the tags RSS or Atom feed. Do not generalize to draft-release deletion leaving an undeletable record, or to the release still appearing on the Releases list.",
+        "relatedReference": {
+          "id": "gitea-deleted-release-text-stays-on-tag",
+          "distinction": "Same retained text. That rejection is the tag page; this one is the tags feed."
+        }
+      }
+    },
+    {
+      "id": "gitea-deleted-release-text-prefills-new-release",
+      "name": "Deleting a release leaves its title and notes pre-filled in New Release for the tag",
+      "summary": "The report says that after Delete Release (keeping the tag), starting a New Release for that tag pre-fills the deleted release's title and notes.",
+      "expected": "The reporter expects New Release for the tag to start empty.",
+      "actual": "After deleting a published release and keeping its tag, New Release from the tag pre-filled the old title and notes.",
+      "reproSteps": [
+        "Publish a release with a title and notes on a new tag.",
+        "Delete the release, keeping the tag.",
+        "Start a New Release for that tag and look at the title and notes fields."
+      ],
+      "reason": "Delete Release (keeping the tag) only marks the release row as a tag (services/release/release.go), so its title and notes stay attached to the surviving tag. The user judged keeping that text on the tag acceptable, consistent with tags showing their message, rather than a defect. New Release for an existing tag pre-fills from that tag row. The tag page, the tags RSS/Atom feed and the New Release prefill are separate rejections of this same behavior, so each report is matched once per run.",
+      "matchingGuidance": {
+        "scope": "Reject reports that New Release for a tag whose release was deleted pre-fills the old title or notes. Do not generalize to draft-release deletion leaving an undeletable record, or to the release still appearing on the Releases list.",
+        "relatedReference": {
+          "id": "gitea-deleted-release-text-stays-on-tag",
+          "distinction": "Same retained text. That rejection is the tag page; this one is the New Release prefill."
+        }
       }
     }
   ]
