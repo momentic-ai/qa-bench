@@ -92,6 +92,19 @@
           "This entry rejects only the reported display mismatch, not every effect of restored form state."
         ]
       }
+    },
+    {
+      "id": "gitea-profile-location-over-limit-silently-truncated",
+      "name": "Location over 50 characters is silently truncated and reported as success",
+      "summary": "The report says that a profile Location longer than 50 characters is accepted by the server, cut to 50 characters, and saved with a success message.",
+      "expected": "The reported expectation is a validation error and no save.",
+      "actual": "The report described 'Your profile has been updated.' and a stored Location of the first 50 characters after removing the input's maxlength and submitting 51 characters.",
+      "reproSteps": [
+        "Open user Settings > Profile.",
+        "Remove the Location input's maxlength attribute and enter 51 characters.",
+        "Click Update Profile and reload."
+      ],
+      "reason": "Not reproducible, and the server can't do it: UpdateProfileForm.Location is bound with MaxSize(50) (services/forms/user_form.go) and routers/web/user/setting/profile.go returns on ctx.HasError() before UpdateUser, so 51 or more characters (form, programmatic value, direct POST, CJK) shows 'form.Location must contain at most 50 characters.' and nothing is saved. The only success-plus-50-characters path is the browser's own maxlength=50 on the input (templates/user/settings/profile.tmpl) cutting the typed text before submit, so the server never receives 51. The validation re-render discarding the other unsaved fields is the separate accepted entry 'Profile edits are cleared after invalid Website URL submission'."
     }
   ]
 }
