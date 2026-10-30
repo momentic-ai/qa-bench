@@ -614,6 +614,29 @@
           "distinction": "Same archived-repository guard and JSON parse error, but on a different form. That entry is the New Issue or comment form; this entry is the Create Pull Request form on the compare page."
         }
       }
+    },
+    {
+      "id": "gitea-leaving-org-drops-direct-collaborator-write",
+      "name": "Direct Write collaborator loses write access on public organization repositories after leaving their last team",
+      "summary": "When a user who is also a direct Write collaborator on an organization's public repository is removed from their last team in that organization, they stop being an organization member and lose write access to the repository. The Collaborators page still lists them as Write, and changing their role there doesn't restore access.",
+      "expected": "A direct collaborator grant keeps applying after the user leaves the organization's teams, as it does for private repositories and for collaborators who were never organization members.",
+      "actual": "alex had team Write and a direct Write collaborator grant on a public and a private organization repository. After removing alex from the team, the public repository's Collaborators page still listed alex as Write, but alex had no New Release button, release creation returned 403 and editing a file returned 404. The private repository kept Write. Leaving alex in a second team of the organization kept Write on both repositories.",
+      "reproSteps": [
+        "In an organization, create a public repository and a team with Write access to it.",
+        "Add a user to that team, and also add the same user as a Write collaborator under the repository's Settings > Collaborators.",
+        "Remove the user from the team, so they are no longer in any team of the organization.",
+        "As the owner, see that the Collaborators page still lists the user as Write.",
+        "As the user, open the repository's Releases page or try to edit a file and see that write actions are gone."
+      ],
+      "severity": 3,
+      "sourceCause": "services/org/team.go removeTeamMember recalculates access (keeping the collaborator grant), then removeInvalidOrgUser calls RemoveOrgUser when no teams remain. services/org/user.go RemoveOrgUser deletes the user's Access rows for every public organization repository without recalculating them from their Collaboration rows, so models/perm/access accessLevel falls back to public Read. Changing the collaborator role only updates an existing Access row, so it can't recreate the deleted one.",
+      "matchingGuidance": {
+        "scope": "Reports that a direct collaborator loses write access after being removed from an organization team, removed from the organization, or leaving it, while the Collaborators page still shows their role, match this entry.",
+        "relatedReference": {
+          "id": "gitea-public-repo-read-collaborator-upgrade-ignored",
+          "distinction": "Both show a collaborator role the user's effective access doesn't match on a public repository. That entry is upgrading a Read collaborator to Write on a user-owned repository; this entry is a Write collaborator losing access when they leave an organization's last team."
+        }
+      }
     }
   ]
 }
