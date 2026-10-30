@@ -637,6 +637,28 @@
           "distinction": "Both show a collaborator role the user's effective access doesn't match on a public repository. That entry is upgrading a Read collaborator to Write on a user-owned repository; this entry is a Write collaborator losing access when they leave an organization's last team."
         }
       }
+    },
+    {
+      "id": "gitea-empty-repo-home-redirects-to-404-unit",
+      "name": "Opening an empty repository with Code and Issues disabled redirects to a 404 Pull Requests page",
+      "summary": "For a repository with no commits whose Code and Issues units are disabled, every link to the repository (its name in lists, the header and search) redirects to /pulls, which shows 404 Not Found. Pull Requests and Releases don't work in an empty repository, while the enabled Wiki, Projects and Packages sections open normally.",
+      "expected": "Opening the repository lands on a section that works, such as Wiki or Projects, or explains why there is nothing to show.",
+      "actual": "Clicking the repository in the owner's repository list went to /<owner>/<repo>/pulls and showed '404 Not Found. The page you are trying to reach either does not exist or you are not authorized to view it.' The tab bar on that page listed only Packages, Projects, Wiki and Settings, and /wiki, /projects and /packages each opened normally. With Pull Requests also disabled, the redirect went to /releases, also a 404. The same settings on a repository with commits open /pulls normally, and disabling only Code opens /issues.",
+      "reproSteps": [
+        "Create a repository without initializing it, so it has no commits.",
+        "In its Settings, turn off Code and Issues and save, leaving Wiki, Projects and Packages enabled.",
+        "Open the repository from a repository list or its name in the header.",
+        "Observe the redirect to /pulls and the 404 Not Found page."
+      ],
+      "severity": 3,
+      "sourceCause": "routers/web/repo/view.go checkHomeCodeViewable redirects to the highest-priority readable unit when Code isn't readable, without checking whether that unit's pages work in an empty repository. The Pull Requests and Releases routes are gated by repo.MustBeNotEmpty, which returns 404 for empty repositories.",
+      "matchingGuidance": {
+        "scope": "Reports that opening an empty repository with Code disabled redirects to a 404 Pull Requests or Releases page match this entry.",
+        "relatedReference": {
+          "id": "gitea-writer-sees-switch-default-branch-404",
+          "distinction": "Both are in-product navigation that ends on a 404. That entry is the Branches page Switch default branch icon for Write collaborators; this entry is the repository home redirect for an empty repository with Code and Issues disabled."
+        }
+      }
     }
   ]
 }
