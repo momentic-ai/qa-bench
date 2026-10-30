@@ -4481,6 +4481,32 @@
       "matchingGuidance": {
         "scope": "Non-finite overflow accepted by a workflow Form Number field and silently serialized to null. Excludes ordinary safe-integer precision limits and rejected input correctly retaining a previous saved value."
       }
+    },
+    {
+      "id": "reviewed-r65-twenty-workflows",
+      "name": "If/Else cannot compare a form Select field with any of its choices",
+      "summary": "When an If/Else condition refers to a Select field from a Form step, the comparison value picker is empty even though the form's underlying field has selectable options. This prevents configuring an equality branch based on the user's choice.",
+      "expected": "The comparison value picker offers the same choices as the form's Select field, allowing a condition such as Stage is Customer.",
+      "actual": "The comparison picker reports No option found for Form Select outputs using Opportunity Stage and Task Status, although the tested Form offers those choices.",
+      "reproSteps": [
+        "Create a manual workflow with a Form Select using Opportunity Stage or Task Status.",
+        "Add If/Else and choose the Form Select field and the Is operand.",
+        "Open the comparison value picker and observe No option found.",
+        "Test the Form and confirm that its Select has choices."
+      ],
+      "severity": 3,
+      "owningArea": "twenty/workflows",
+      "reviewEvidence": {
+        "basis": "User-approved manual retained-report and source review.",
+        "analysis": "The offered If/Else Select comparison cannot be configured for a Form Select output. generateFormOutputSchema emits a primitive Select leaf without field metadata; searchThroughFormOutputSchema returns only label/path/type for this leaf. WorkflowDropdownStepOutputItems stores the absent metadata id in the filter, and WorkflowStepFilterValueInput gets Select options exclusively from that metadata, yielding an empty picker although the Form has choices. This is failure of an offered comparison, not an inferred extra control.",
+        "limitations": "Retained benchmark reports plus pinned Twenty source 35c645064f72bc4e3180a2c6c506cbbfee170007. No fresh browser reproduction or independent model judges in this manual pass.",
+        "sourceLocations": [
+          "packages/twenty-front/src/modules/workflow/workflow-variables/utils/generate/generateFormOutputSchema.ts:33-46",
+          "packages/twenty-shared/src/workflow/workflow-schema/utils/search-variable-in-output-schema.ts:452-459",
+          "packages/twenty-front/src/modules/workflow/workflow-steps/components/WorkflowDropdownStepOutputItems.tsx:104-150",
+          "packages/twenty-front/src/modules/workflow/workflow-steps/filters/components/WorkflowStepFilterValueInput.tsx:132-147,201-211"
+        ]
+      }
     }
   ]
 }

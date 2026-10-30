@@ -276,6 +276,52 @@
           "https://github.com/twentyhq/twenty/blob/35c645064f72bc4e3180a2c6c506cbbfee170007/packages/twenty-front/src/modules/activities/hooks/useOpenCreateActivityDrawer.ts#L73-L145"
         ]
       }
+    },
+    {
+      "id": "reviewed-r40-twenty-record-pages-activities",
+      "name": "Note and task CSV exports omit related records",
+      "summary": "Exporting notes and tasks produces CSVs without their Relations, so related companies and people are lost even though other fields are exported.",
+      "expected": "Exports include the note's related company and the task's related person so their associations can be retained outside the app.",
+      "actual": "Neither CSV has a Relations column or the related record's name or ID. The note CSV contains only title, body and metadata; the task CSV contains other fields including assignee but omits Mark Young.",
+      "reproSteps": [
+        "Link a Note to a company and a Task to a person using Relations.",
+        "Export each record to CSV.",
+        "Observe that collection-side Relations are omitted; compare with a many-to-one field such as task assignee."
+      ],
+      "reason": "Pinned export documentation explicitly exports relation IDs only on the many side and excludes collection-side IDs. Note Relations and Task Relations are ONE_TO_MANY target collections. generateCsv excludes these while retaining MANY_TO_ONE fields such as task assignee. Requiring the collection and its linked names in these CSVs contradicts the documented scope. Rejected by the reviewer under the bug-reproducer rules.",
+      "reviewEvidence": {
+        "basis": "User-approved manual retained-report and source review.",
+        "analysis": "Pinned export documentation explicitly exports relation IDs only on the many side and excludes collection-side IDs. Note Relations and Task Relations are ONE_TO_MANY target collections. generateCsv excludes these while retaining MANY_TO_ONE fields such as task assignee. Requiring the collection and its linked names in these CSVs contradicts the documented scope.",
+        "limitations": "Retained benchmark reports plus pinned Twenty source 35c645064f72bc4e3180a2c6c506cbbfee170007. No fresh browser reproduction or independent model judges in this manual pass.",
+        "sourceLocations": [
+          "packages/twenty-docs/user-guide/data-migration/how-tos/export-your-data.mdx:65-82",
+          "packages/twenty-front/src/modules/object-record/record-index/export/hooks/useRecordIndexExportRecords.ts:39-45",
+          "packages/twenty-server/src/engine/workspace-manager/twenty-standard-application/utils/field-metadata/compute-note-standard-flat-field-metadata.util.ts:232-249",
+          "packages/twenty-server/src/engine/workspace-manager/twenty-standard-application/utils/field-metadata/compute-task-standard-flat-field-metadata.util.ts:289-304"
+        ]
+      }
+    },
+    {
+      "id": "reviewed-r39-twenty-record-pages-activities",
+      "name": "Note and task PDF exports omit the record title",
+      "summary": "Export to PDF renders only the body and leaves out the note or task title, so the resulting document has no identifying heading.",
+      "expected": "Each PDF includes the record's title and body.",
+      "actual": "The note PDF contains only “List note body”, and the task PDF contains only its body; neither includes its title on the page or in document metadata.",
+      "reproSteps": [
+        "Create a Note or Task with a title and distinct body text.",
+        "Choose Export to PDF.",
+        "Inspect the body content and title-based filename; the report demands the title additionally appear inside the PDF."
+      ],
+      "reason": "The PDF command exports the Note/Task rich-text body and uses the record title for its download filename. The report describes a successful body export and demands an additional title heading or PDF metadata. No applicable product promise requires that extra PDF content; this is an inferred output-format requirement, not demonstrated failed body export. Rejected by the reviewer under the bug-reproducer rules.",
+      "reviewEvidence": {
+        "basis": "User-approved manual retained-report and source review.",
+        "analysis": "The PDF command exports the Note/Task rich-text body and uses the record title for its download filename. The report describes a successful body export and demands an additional title heading or PDF metadata. No applicable product promise requires that extra PDF content; this is an inferred output-format requirement, not demonstrated failed body export.",
+        "limitations": "Retained benchmark reports plus pinned Twenty source 35c645064f72bc4e3180a2c6c506cbbfee170007. No fresh browser reproduction or independent model judges in this manual pass.",
+        "sourceLocations": [
+          "packages/twenty-front/src/modules/command-menu-item/engine-command/record/single-record/components/ExportNoteSingleRecordCommand.tsx",
+          "packages/twenty-front/src/modules/command-menu-item/engine-command/record/single-record/components/ExportTaskSingleRecordCommand.tsx"
+        ]
+      }
     }
   ]
 }
