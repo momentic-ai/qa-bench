@@ -118,9 +118,9 @@
     },
     {
       "id": "metabase-querying-160",
-      "name": "Category \"Does not contain %\" returns no Products instead of all rows without a percent sign",
+      "name": "\"Does not contain\" a wildcard character (% or _) returns no Products instead of all rows without it",
       "severity": 3,
-      "summary": "Category \"Does not contain %\" returns no Products instead of all rows without a percent sign.",
+      "summary": "A Products \"Does not contain\" filter on a text field such as Category or Title, given a literal % or _, returns no rows even though the values do not contain that character.",
       "expected": "The filter pill reads \"Category does not contain %\", so all 200 Products should be returned, because no category contains a literal \"%\".",
       "actual": "Visualize shows \"No results!\" and \"Showing 0 rows\".",
       "reproSteps": [
@@ -129,7 +129,10 @@
         "Click Add filters to narrow your answer > Category, change the operator to Does not contain, type %, and leave Case sensitive unchecked",
         "Click Add filter, then Visualize",
         "Observe No results! / Showing 0 rows"
-      ]
+      ],
+      "matchingGuidance": {
+        "claimScope": "Credit any \"Does not contain\" filter given a literal % or _ on any Products text field that wrongly returns zero or too few rows. Contains filters that wrongly match rows are separate references."
+      }
     },
     {
       "id": "metabase-querying-162",
@@ -1744,9 +1747,9 @@
     },
     {
       "id": "metabase-querying-b37",
-      "name": "Previous-hour filter returns timestamps outside its previewed range",
+      "name": "Previous relative-date filter returns timestamps beyond its previewed range",
       "severity": 1,
-      "summary": "Previous-hour filter returns timestamps outside its previewed range.",
+      "summary": "A Previous relative-date filter returns rows dated after the end of the range its preview shows. Seen with Previous 24 hours, and with Previous 30 days starting one month ago.",
       "expected": "The returned timestamps fall inside the range shown by the filter preview.",
       "actual": "The 11-row result includes multiple timestamps later than the preview's October28 2:59PM endpoint.",
       "reproSteps": [
@@ -1754,7 +1757,10 @@
         "Add Created At → Relative date range → Previous; set interval 24 and unit hours. Leave Include this hour off and no Starting from offset.",
         "Observe preview: Oct 27, 3:00 PM – Oct 28, 2026, 2:59 PM (on observed application date/time).",
         "Apply and Visualize. Inspect Created At values such as order1490 at October28 7:20PM and order6570 at6:56PM."
-      ]
+      ],
+      "matchingGuidance": {
+        "claimScope": "Credit any Previous relative-date filter, in any unit and with or without a Starting from offset, that returns rows later than the previewed end. A filter that leaves out rows from the final previewed day is a different bug. A Previous N days filter whose preview names one calendar day while the applied query uses the next day, because the browser and report timezones differ, is codex-60m-metabase-2, not this reference."
+      }
     },
     {
       "id": "metabase-querying-b38",
@@ -1842,7 +1848,13 @@
         "Add Products as a left join and manually choose source ID and Products ID.",
         "Click the joined Products name (not its column dropdown) and replace it with Orders.",
         "Inspect the condition, then open its left ID key."
-      ]
+      ],
+      "matchingGuidance": {
+        "relatedReference": {
+          "id": "metabase-querying-replaced-join-blank-columns",
+          "distinction": "This reference covers the wrong join labels after replacing the joined table. The related one covers the blank joined columns when the query runs."
+        }
+      }
     },
     {
       "id": "metabase-querying-b58",
@@ -1916,6 +1928,26 @@
         "In the Data step, click 'B82 source' to open the data picker and choose 'B82 source' again.",
         "Observe: the Summarize step is gone; only the Data step remains."
       ]
+    },
+    {
+      "id": "metabase-querying-replaced-join-blank-columns",
+      "name": "After replacing the joined table on a saved-question source, joined columns come back blank",
+      "summary": "After replacing the joined table on a saved-question source, running the query returns the source rows with every joined column blank.",
+      "expected": "The join returns matching rows from the new joined table.",
+      "actual": "The query returns only the source rows, and all joined Orders columns are blank.",
+      "reproSteps": [
+        "Start a notebook from a saved question built on Products.",
+        "Add Products as a left join on source ID = Products ID.",
+        "Replace the joined Products with Orders using the table-name picker.",
+        "Run the query and inspect the joined Orders columns."
+      ],
+      "severity": 3,
+      "matchingGuidance": {
+        "relatedReference": {
+          "id": "metabase-querying-b35",
+          "distinction": "The related reference covers the wrong join labels. This one covers the blank joined columns in the results."
+        }
+      }
     }
   ]
 }
