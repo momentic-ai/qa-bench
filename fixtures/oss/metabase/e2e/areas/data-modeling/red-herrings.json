@@ -190,6 +190,43 @@
           ],
           "reason": "Cannot reproduce on human review."
         }
+      },
+      {
+        "source": "known-invalid.json",
+        "index": 36,
+        "report": {
+          "id": "metabase-data-modeling-b101",
+          "name": "Turn back to saved question on duplicate opens ad-hoc question",
+          "summary": "Turn back to saved question on duplicate opens ad-hoc question.",
+          "expected": "After turning the duplicated model back into a question, you land on the saved question (/question/<new id>-<slug>) showing its name, same as for any other model.",
+          "actual": "URL becomes /question#eyJ... (ad-hoc), the header reads 'New question' with a Save button, and the app bar says 'Started from A Products QA model - Duplicate'. GET /api/card/<new id> returns type 'question', so the page doesn't match the saved state, and clicking Save would create yet another card. Reproduced twice (cards 44 and 47).",
+          "reproSteps": [
+            "Open a model, e.g. /model/42 (native SQL model 'A Products QA model')",
+            "Click ... (Move, trash, and more…) > Duplicate, then click Duplicate in the dialog; you land on /model/<new id>-...-duplicate",
+            "Without reloading, click ... > 'Turn back to saved question'",
+            "See URL /question#..., header 'New question' with a Save button",
+            "For comparison: reload any model page first and repeat step 3; it correctly goes to /question/<id>-<slug>"
+          ],
+          "reason": "Cannot reproduce on human review."
+        }
+      },
+      {
+        "source": "known-invalid.json",
+        "index": 37,
+        "report": {
+          "id": "metabase-data-modeling-b102",
+          "name": "Metric title edit reverts after refresh",
+          "summary": "Metric title edit reverts after refresh.",
+          "expected": "The title edit persists and a rename entry appears in history.",
+          "actual": "The header displays MO-Metric-0823-B history-only rename immediately; after refresh it displays MO-Metric-0823-B renamed again.",
+          "reproSteps": [
+            "Own fixture is card 42, MO-Metric-0823-B renamed, in Harbor Admin's Personal Collection. Seed Revenue was duplicated into Examples, renamed, description cleared, trashed/restored, then moved to personal collection before this check. Unknown whether all earlier steps are necessary.",
+            "Open its detail from the personal collection.",
+            "Set the header title to MO-Metric-0823-B history-only rename and press Tab.",
+            "Observe the new title, open More info and History, then refresh."
+          ],
+          "reason": "Cannot reproduce on human review."
+        }
       }
     ]
   },
@@ -401,11 +438,11 @@
   },
   {
     "id": "preexisting-state-confounder-attributed-to-current-action",
-    "explanation": "A later action is blamed for a discrepancy without verifying that the starting state was valid. The reviewed cases were confounded by an already incorrect schema or a separately known name change; a later operation restoring correct state, or searching for a name no longer saved, does not establish a new independent failure.",
+    "explanation": "A later action is blamed for a discrepancy without verifying that the starting state or prerequisite remained valid. The reviewed cases were confounded by an already incorrect schema, a separately known name change or an earlier defect removing a setting. Correct behavior for that actual state does not establish a new downstream failure; the earlier defect remains a separate claim.",
     "verificationGuidance": [
-      "Verify the exact saved baseline and preconditions before the action, including names, schema and known neighboring defects.",
-      "Repeat from a fresh valid baseline with the confounding change absent.",
-      "Do not infer the full historical cause from a plausible confounder, or reject a failure reproduced with verified valid preconditions."
+      "Verify the exact saved baseline and prerequisites immediately before the action, including names, schema, settings and known neighboring defects.",
+      "Repeat from a fresh valid baseline with the confounding change absent, and evaluate the later operation against the configuration actually present.",
+      "Do not infer a complete historical cause from a merely plausible confounder, or reject a failure reproduced with verified valid preconditions."
     ],
     "instances": [
       {
@@ -820,10 +857,11 @@
   },
   {
     "id": "deliberate-confirmed-action-assumed-forbidden",
-    "explanation": "Calling an explicitly offered, confirmed and undoable type-conversion action a defect because the reporter expects that object type never to support it. Completing the named conversion is not evidence of silent or accidental mutation.",
+    "explanation": "Calling an explicitly offered and undoable type-conversion action a defect because the reporter expects that source object type never to support it. A confirmation can be shown until acknowledged and skipped thereafter; its absence on a later conversion does not make the deliberate conversion unintended.",
     "verificationGuidance": [
-      "Read the action label and confirmation and verify the resulting supported type.",
-      "Establish a restriction on that source type before asserting the conversion should not be offered."
+      "Read the action label and whether the user has already acknowledged its confirmation.",
+      "Verify the resulting supported type and undo path, and establish an actual restriction before claiming the source type must never offer this conversion.",
+      "Distinguish deliberate conversion from unrelated accidental or silent mutation."
     ],
     "instances": [
       {
@@ -834,7 +872,7 @@
           "name": "Metric action menu offers \"Turn into a model\" and converts the metric into a model",
           "summary": "Metric action menu offers \"Turn into a model\" and converts the metric into a model.",
           "expected": "\"Turn into a model\" should only be offered for saved questions. A metric's menu should offer metric actions only (Edit metric definition, Move, Duplicate, Move to trash, and so on), and a metric should never be silently converted into a model.",
-          "actual": "The metric menu lists: Add to dashboard, Create an alert, Edit metric definition, Turn into a model, Move, Duplicate, Move to trash. Clicking \"Turn into a model\" and then \"Turn this into a model\" redirects to /model/44-... . GET /api/card/44 now returns type \"model\" and display \"table\". History shows \"type changed from :metric to :model\", and the page shows the model menu (Edit query definition / Edit metadata / Turn back to saved question).",
+          "actual": "The metric menu lists: Add to dashboard, Create an alert, Edit metric definition, Turn into a model, Move, Duplicate, Move to trash. Clicking \"Turn into a model\" and then \"Turn this into a model\" redirects to /model/44-... . GET /api/card/44 now returns type \"model\" and display \"table\". History shows \"type changed from :metric to :model\", and the page shows the model menu (Edit query definition / Edit metadata / Turn back to saved question). Once a user has acknowledged that modal, later conversions skip it and happen immediately.",
           "reproSteps": [
             "Sign in as eval@momentic.ai / momentic-eval-1.",
             "Go to /browse/metrics and click the + (Create a new metric) icon.",
@@ -844,7 +882,10 @@
             "Observe the redirect to /model/<id>: the item is now a model (GET /api/card/<id> returns type \"model\") and it is gone from /browse/metrics.",
             "Cleanup: open More info → History and revert to the previous version."
           ],
-          "reason": "Works as intended: Turn into a model is a deliberate, confirmed and undoable action that is offered for metrics."
+          "reason": "Works as intended: Turn into a model is a deliberate, undoable action that is offered for metrics. The confirmation modal shows until the user acknowledges it, and later conversions skip it by design (handleTurnToModel checks the turn_into_model_modal acknowledgement).",
+          "matchingGuidance": {
+            "claimScope": "Credit any report that a metric's menu offers Turn into a model or that using it converts the metric into a model, whether the report mentions the confirmation dialog, omits it, or says there was none."
+          }
         }
       }
     ]
