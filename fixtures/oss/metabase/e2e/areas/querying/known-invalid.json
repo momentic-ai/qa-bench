@@ -782,6 +782,46 @@
           "https://github.com/metabase/metabase/blob/f42632893810325d9f74375a4cd29bd31d8daefa/src/metabase/lib/remove_replace.cljc#L672-L697"
         ]
       }
+    },
+    {
+      "id": "reviewed-ng14-metabase-querying",
+      "name": "Explicit sort on a remapped FK column (Orders.Product ID) is ignored; rows sort by remapped Title instead",
+      "summary": "With Orders.Product ID remapped to Products.Title, a query that groups by Product ID and sorts by Product ID ascending returns rows ordered alphabetically by the remapped Title. Product IDs come back out of order. Tie-breaks after sorting by count are also ordered by Title instead of Product ID.",
+      "expected": "ORDER BY Product ID asc returns product IDs 1, 2, 3, 4, 5, and so on. Ties in a descending count sort break by ascending Product ID (77, 118, 157). This is the order the equivalent SQL returns.",
+      "actual": "Sorting by Product ID asc returns 144, 116, 197, 165, 47, which is Title order (Aerodynamic Bronze Hat, Aerodynamic Concrete Bench, ...). For quantity=2 sorted by count desc then Product ID asc, MBQL returns 86, 172, 157, 77, 118, while SQL returns 86, 172, 77, 118, 157.",
+      "reproSteps": [
+        "Explicit sort on a remapped FK column (Orders.Product ID) is ignored; rows sort by remapped Title instead.",
+        "Follow the normal in-app flow described by the summary and compare the observed result with the reported expectation."
+      ],
+      "reason": "External display remapping intentionally replaces order-by references to the raw FK with the human-readable target field. The reported displayed Title order is consistent with that documented middleware behavior; raw SQL sorting unremapped IDs is a different operation. Rejected by the reviewer under the bug-reproducer rules. This does not reject a distinct demonstrated functional failure or a contradictory explicit product requirement.",
+      "reviewEvidence": {
+        "basis": "User-approved manual retained-report and source review.",
+        "analysis": "External display remapping intentionally replaces order-by references to the raw FK with the human-readable target field. The reported displayed Title order is consistent with that documented middleware behavior; raw SQL sorting unremapped IDs is a different operation.",
+        "limitations": "Public Metabase source f42632893810325d9f74375a4cd29bd31d8daefa is version-adjacent; exact private runtime 03d994f is unavailable. Retained benchmark reports reviewed; no fresh browser reproduction or independent model judges in this manual pass.",
+        "sourceLocations": [
+          "src/metabase/query_processor/middleware/add_remaps.clj:1-25"
+        ]
+      }
+    },
+    {
+      "id": "reviewed-r22-metabase-querying",
+      "name": "Post-aggregation filters erase source and summary from the suggested question name",
+      "summary": "Adding a filter after a grouped summary causes the generated name to describe only the last stage, omitting the source table, aggregation, and grouping.",
+      "expected": "The automatically suggested name identifies the source and the grouped count as well as the later filter, sort, and limit.",
+      "actual": "The proposed name is `Filtered by Count is between 200 and 1000, Sorted by Count descending, 5 rows`, with no People, Orders, or State; the notebook/result header also falls back to just `People`. Accepting the default produces a question that cannot be identified from its name.",
+      "reproSteps": [
+        "Post-aggregation filters erase source and summary from the suggested question name.",
+        "Follow the normal in-app flow described by the summary and compare the observed result with the reported expectation."
+      ],
+      "reason": "The query executes and its proposed name remains editable. Requiring the auto-suggested name to enumerate source, joins and summaries from earlier stages is an inferred naming/completeness requirement. No saved custom name is lost and no explicit naming promise is established. Rejected by the reviewer under the bug-reproducer rules. This does not reject a distinct demonstrated functional failure or a contradictory explicit product requirement.",
+      "reviewEvidence": {
+        "basis": "User-approved manual retained-report and source review.",
+        "analysis": "The query executes and its proposed name remains editable. Requiring the auto-suggested name to enumerate source, joins and summaries from earlier stages is an inferred naming/completeness requirement. No saved custom name is lost and no explicit naming promise is established.",
+        "limitations": "Public Metabase source f42632893810325d9f74375a4cd29bd31d8daefa is version-adjacent; exact private runtime 03d994f is unavailable. Retained benchmark reports reviewed; no fresh browser reproduction or independent model judges in this manual pass.",
+        "sourceLocations": [
+          "Retained report: post-aggregation filter/sort/limit suggestion; user-editable Name field."
+        ]
+      }
     }
   ]
 }
