@@ -9,7 +9,6 @@ export type ExecutionOptions = {
 export const executionOptions = {
   concurrency: { type: "string" },
   minutes: { type: "string" },
-  "time-limit": { type: "string" },
   "output-dir": { type: "string" },
 } as const;
 
@@ -22,7 +21,6 @@ export function resolveOutputDirectory(value: string | undefined) {
 export function parseExecutionOptions(values: {
   concurrency?: string;
   minutes?: string;
-  "time-limit"?: string;
   "output-dir"?: string;
 }): ExecutionOptions {
   let concurrency: number | undefined;
@@ -32,10 +30,7 @@ export function parseExecutionOptions(values: {
       throw new Error("--concurrency must be a positive integer.");
     }
   }
-  if (values.minutes !== undefined && values["time-limit"] !== undefined) {
-    throw new Error("Use either --time-limit or --minutes, not both.");
-  }
-  let duration = values["time-limit"];
+  let timeLimitMs: number | undefined;
   if (values.minutes !== undefined) {
     if (
       !/^\d+$/.test(values.minutes) ||
@@ -44,38 +39,11 @@ export function parseExecutionOptions(values: {
     ) {
       throw new Error("--minutes must be an integer from 1 to 120.");
     }
-    duration = `${values.minutes}m`;
-  }
-  let timeLimitMs: number | undefined;
-  if (duration !== undefined) {
-    timeLimitMs = parseDuration(duration);
+    timeLimitMs = Number(values.minutes) * 60_000;
   }
   return {
     concurrency,
     timeLimitMs,
     outputDirectory: resolveOutputDirectory(values["output-dir"]),
   };
-}
-
-function parseDuration(duration: string): number {
-  const match = /^(\d+(?:\.\d+)?)(s|m|h)$/.exec(duration);
-  if (!match) {
-    throw new Error(
-      "--time-limit requires a positive duration, e.g. 30s, 15m or 2h.",
-    );
-  }
-  const units = { s: 1000, m: 60_000, h: 3_600_000 };
-  const unit = match[2];
-  if (unit !== "s" && unit !== "m" && unit !== "h") {
-    throw new Error("Unsupported time-limit unit.");
-  }
-  const milliseconds = Number(match[1]) * units[unit];
-  if (
-    !Number.isSafeInteger(milliseconds) ||
-    milliseconds <= 0 ||
-    milliseconds > 24 * 60 * 60 * 1000
-  ) {
-    throw new Error("--time-limit must be between 1ms and 1 day.");
-  }
-  return milliseconds;
 }

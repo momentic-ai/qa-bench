@@ -69,9 +69,8 @@ pnpm merge --fixtures gitea
 areas of an app (`gitea/areas`), or `oss-areas`. A whole-app run is graded
 against the union of its area references.
 
-Runs stop after 2h unless `--time-limit` or `--minutes` sets another limit. A
-limit you set appears in every agent's brief. Mo's own budget comes from
-`--effort`.
+Runs stop after 2h unless `--minutes` sets another limit (up to 120). A limit
+you set appears in every agent's brief. Mo's own budget comes from `--effort`.
 
 Reports go to `reports/<agent>/<fixture>/<run-id>/`. Each run writes
 `scores.csv`, `grading.json` and a `review.md` queue of unmatched findings.

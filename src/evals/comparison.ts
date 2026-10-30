@@ -233,7 +233,7 @@ export function buildComparison(scores: LabeledScore[]) {
       if (previous.time_limit_ms !== score.time_limit_ms) {
         // A comparison cannot mix recorded budgets with unknown or different budgets.
         throw new Error(
-          `Mismatched time limits for ${score.fixture}; rerun all agents with the same --time-limit.`,
+          `Mismatched time limits for ${score.fixture}; rerun all agents with the same --minutes.`,
         );
       }
       if (
