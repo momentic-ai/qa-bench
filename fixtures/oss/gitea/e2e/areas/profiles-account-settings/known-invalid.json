@@ -105,6 +105,19 @@
         "Click Update Profile and reload."
       ],
       "reason": "Not reproducible, and the server can't do it: UpdateProfileForm.Location is bound with MaxSize(50) (services/forms/user_form.go) and routers/web/user/setting/profile.go returns on ctx.HasError() before UpdateUser, so 51 or more characters (form, programmatic value, direct POST, CJK) shows 'form.Location must contain at most 50 characters.' and nothing is saved. The only success-plus-50-characters path is the browser's own maxlength=50 on the input (templates/user/settings/profile.tmpl) cutting the typed text before submit, so the server never receives 51. The validation re-render discarding the other unsaved fields is the separate accepted entry 'Profile edits are cleared after invalid Website URL submission'."
+    },
+    {
+      "id": "gitea-username-admin-not-reserved",
+      "name": "Username can be changed to the reserved name 'admin'",
+      "summary": "The report says that profile settings let a user rename their account to 'admin', which it treats as a reserved username, and that the profile then takes over the /admin URL instead of the Site Administration panel.",
+      "expected": "The reported expectation is an error that 'admin' is reserved, with the username unchanged.",
+      "actual": "The rename succeeded with 'Your profile has been updated.', and /admin showed the user's profile.",
+      "reproSteps": [
+        "As a non-admin test user, open Settings > Profile.",
+        "Change Username to admin and click Update Profile.",
+        "Open /admin."
+      ],
+      "reason": "Intended in this version (1.24). 'admin' was reserved only while Site Administration lived at /admin. go-gitea/gitea#32189 (shipped in 1.23) moved the admin routes to /-/admin and removed \"admin\" from reservedUsernames in models/user/user.go, resolving go-gitea/gitea#32181, which asked to allow a user named admin (SSO setups using that name failed with 'name is reserved'). The pinned list holds only top-level paths still in use (api, user, explore, org, repo, issues, ...), which is why explore and user are rejected. With a user named admin, /-/admin stays reachable and the navbar links there; /admin showing that user's profile is normal /{username} routing."
     }
   ]
 }
