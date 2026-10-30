@@ -13,8 +13,8 @@ its own E2B sandbox. Areas live in [`fixtures/oss`](fixtures/oss).
 ## Results
 
 Per-area results are in [`results/2026-10-30.csv`](results/2026-10-30.csv). This
-summary is one pass through 20 product areas: the sum of per-area means over
-three runs (one run for Devin). Mo's medium effort has a 30-minute budget and high
+summary adds up per-area means across 20 product areas, using three runs per
+area and one for Devin. It shows an average pass, not a single real one. Mo's medium effort has a 30-minute budget and high
 effort has 60.
 
 | Configuration                           | Areas   | Correct, 30 min | Correct, 60 min | Recall, 60 min | Precision, 60 min | Score, 60 min | Cost per correct, 60 min |
