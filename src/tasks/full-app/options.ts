@@ -27,7 +27,8 @@ export type FullAppOptions = {
   maxConcurrentSubAgents?: number;
   timeLimitMs?: number;
   effort?: MoEffort;
-  model?: CodexModel | ClaudeModel;
+  codexModel?: CodexModel;
+  claudeModel?: ClaudeModel;
   outputDirectory: string;
   browser: Browser;
 };
@@ -75,6 +76,15 @@ export function parseFullAppOptions(args: string[]): FullAppOptions {
       throw new Error("--effort is supported only with --agent mo.");
     effort = values.effort as MoEffort;
   }
+  let codexModel: CodexModel | undefined;
+  let claudeModel: ClaudeModel | undefined;
+  if (values.model !== undefined) {
+    if (values.agent?.startsWith("codex-"))
+      codexModel = parseModel(CODEX_MODELS, values.model);
+    else if (values.agent?.startsWith("claude-"))
+      claudeModel = parseModel(CLAUDE_MODELS, values.model);
+    else throw new Error("--model applies only to Codex and Claude agents.");
+  }
   if (values["run-id"] && !values["grade-only"])
     throw new Error(
       "--run-id selects saved runs to regrade with --grade-only.",
@@ -87,19 +97,18 @@ export function parseFullAppOptions(args: string[]): FullAppOptions {
     maxConcurrentSubAgents,
     timeLimitMs,
     effort,
-    model: parseModel(values.agent, values.model),
+    codexModel,
+    claudeModel,
     outputDirectory: outputDirectory ?? REPORTS_DIRECTORY,
     gradeOnly: values["grade-only"],
     runIds: parseRunIds(values["run-id"]),
   };
 }
 
-function parseModel(agent: string | undefined, model: string | undefined) {
-  if (model === undefined) return undefined;
-  let models: readonly (CodexModel | ClaudeModel)[];
-  if (agent?.startsWith("codex-")) models = CODEX_MODELS;
-  else if (agent?.startsWith("claude-")) models = CLAUDE_MODELS;
-  else throw new Error("--model applies only to Codex and Claude agents.");
+function parseModel<Model extends string>(
+  models: readonly Model[],
+  model: string,
+) {
   const selected = models.find((candidate) => candidate === model);
   if (!selected)
     throw new Error(`--model must be one of ${models.join(", ")}.`);

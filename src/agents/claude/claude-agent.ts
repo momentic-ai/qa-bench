@@ -22,6 +22,7 @@ import { promisify } from "node:util";
 import { z } from "zod";
 
 import {
+  AgentContext,
   Browser,
   CLAUDE_MODELS,
   ClaudeModel,
@@ -134,6 +135,14 @@ class MessageQueue implements AsyncIterable<SDKUserMessage> {
 }
 
 export class ClaudeAgent extends CodexAgent {
+  constructor(
+    context: AgentContext,
+    browserTool: BrowserTool = "playwright-mcp",
+    model: ClaudeModel = CLAUDE_MODELS[0],
+  ) {
+    super(context, browserTool, model);
+  }
+
   protected skillOwner = ".claude" as const;
   private session: Query | undefined;
   private reporting:

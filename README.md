@@ -103,7 +103,7 @@ Versions are pinned in [`package.json`](package.json).
 | Devin       | Devin's defaults             | Devin's native browser          |
 
 Results also include Codex with `gpt-6.1-terra` and Claude Code with
-`claude-sonnet-5-5`. Models are set in the agent adapters.
+`claude-sonnet-5-5`. Use `--model` to run them.
 
 ### Browsers and subagents
 
