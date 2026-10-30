@@ -1,7 +1,7 @@
 [
   {
     "id": "unfinished-asynchronous-operation-treated-as-complete",
-    "explanation": "An optimistic edit, in-flight operation or queued background effect is treated as completed before its recorded completion. Hard reload, immediate execution or checking results too soon can expose old state without proving loss or failure of a completed operation. This covers reviewed unfinished work, not acknowledged-save loss, ordinary navigation discarding valid edits or an effect still absent after completion.",
+    "explanation": "An interface can display an edit or newly created item before its background save, multi-step creation or notification processing has finished. This pattern matches reports that interrupt that unfinished work with a hard refresh, immediately run the previously saved configuration or check results before processing completes, then call the old state loss of a completed operation. Verify the actual completion and reread the same item or recipient. Acknowledged-save loss, ordinary navigation discarding valid edits, or an effect still absent after completion needs separate evidence.",
     "verificationGuidance": [
       "Observe the actual completion or acknowledgement, then reread the same object or result after processing settles.",
       "Distinguish visible optimistic state from durable saved state and avoid interrupting a multi-request operation with hard reload.",
@@ -28,7 +28,7 @@
   },
   {
     "id": "unsupported-input-syntax-assumed-valid",
-    "explanation": "Declaring parsing, prefill or validation broken because it rejects a plausible but unsupported input syntax or noncanonical representation. General familiarity with URI, quoting or hexadecimal conventions does not override the application’s documented/tested format; correctly formed input must be tested before attributing rejection to the parser.",
+    "explanation": "A setup helper can require a particular input format even when another notation looks equivalent. Reviewed Metabase examples include SQLite connection strings requiring sqlite:///, with four slashes for an absolute Unix path; 64-character embedding secret keys accepting lowercase hexadecimal; and a lone opening quote being incomplete filter syntax rather than a literal quote. A Spark connection string outside the form's advertised syntax was also rejected while supported input worked. This pattern matches assuming those unsupported forms must work; a failure for the promised format or an accepted value being overwritten is different.",
     "verificationGuidance": [
       "Compare the exact input, including slash counts, delimiters, quoting and accepted character case, with supported syntax.",
       "Test the documented/canonical equivalent and inspect resulting field or saved values before claiming a supported input is rejected."
@@ -111,7 +111,7 @@
   },
   {
     "id": "encoded-display-assumed-corrupted-data",
-    "explanation": "Treating an encoded field representation as corrupted connection data without checking how the server consumes it. Encoding visible in a form can be the required working representation, and decoding it prematurely can change literal percent-containing values.",
+    "explanation": "A PostgreSQL database connection address can encode characters, for example representing a space as %20. In the reviewed prefill form, that encoded database name remained visible but the server decoded it correctly and the connection succeeded. This pattern matches calling the displayed representation corruption without checking its actual use; decoding it prematurely could also alter a name containing a literal percent sign. A valid connection name actually misinterpreted or made unusable is a different failure.",
     "verificationGuidance": [
       "Inspect the value sent to the server and the server-side decode/connection behavior.",
       "Distinguish cosmetic encoded text from a failed connection or a demonstrably altered database identifier."
@@ -138,7 +138,7 @@
   },
   {
     "id": "inventing-restrictive-free-form-validation",
-    "explanation": "Assuming an administrator-authored URL, domain, template or reusable code field must reject every value that seems malformed or unusable. These fields may deliberately accept relative links, templates, partial code or unconstrained text; saving user-provided content alone does not demonstrate a broken feature. This does not excuse corruption of valid input or an application-generated invalid value.",
+    "explanation": "An administrator-authored field can deliberately accept flexible text, including relative addresses, templates or partial reusable code. This pattern matches a report that assumes the form must reject every value that looks incomplete or unusable, without establishing a restrictive format requirement for that field. Saving the user's own free-form content is not sufficient evidence that the application generated or corrupted an invalid value. Test valid supported input and distinguish an explicit validation promise from a preferred restriction.",
     "verificationGuidance": [
       "Establish the documented accepted syntax and whether relative paths, templates or partial content are allowed.",
       "Test valid configured content separately from an unusable value deliberately entered by the author.",
@@ -226,7 +226,7 @@
   },
   {
     "id": "assuming-secret-field-masking-contract",
-    "explanation": "Reporting an unmasked credential input as a confirmed product defect without a requirement that this particular field mask its contents. Visible text in an authorized configuration form alone does not establish unintended disclosure to another actor.",
+    "explanation": "A webhook can send a request to another service using a Basic authentication username and password. The reviewed report objected that this password was readable in its authorized configuration form, but no requirement for that particular field to hide the characters was established. This pattern matches a masking complaint on that basis alone, without an unauthorized viewer or a masking promise being violated. Verify who can see the field; actual disclosure outside the allowed audience is a different security claim.",
     "verificationGuidance": [
       "Check the field’s documented behavior and applicable labeling requirements.",
       "If alleging disclosure, demonstrate an unauthorized viewer or unintended exposure beyond the authorized input itself."
@@ -253,7 +253,7 @@
   },
   {
     "id": "wording-only-preference-treated-as-functional-failure",
-    "explanation": "Correct rejection of invalid input is called a functional defect solely because the reporter prefers more specific wording, another message or an additional error outline. In these reviewed cases valid corrections work, saved values remain intact and the requested extra feedback is not an established requirement. This does not dismiss proven silent refusal, misleading success, an applicable accessibility requirement or missing recovery.",
+    "explanation": "A form can correctly refuse invalid input and preserve the saved value without using the reporter's preferred error phrase, extra message or additional red outline. This pattern matches those reviewed feedback preferences when valid corrections work and no applicable requirement for the requested treatment is established. Verify the actual rejection, recovery and saved state rather than judging only the wording. Proven silent refusal, misleading success, an applicable accessibility requirement or inability to recover is outside this narrow rejection.",
     "verificationGuidance": [
       "Verify whether invalid input is rejected, valid input works and the previous saved state survives.",
       "Identify the applicable feedback contract rather than treating a preferred phrase or extra visual treatment as mandatory.",
@@ -299,7 +299,7 @@
   },
   {
     "id": "interaction-target-or-gesture-mismatch",
-    "explanation": "An intended action is blamed for a failure even though the recorded input did not activate that action: it reached another element, used an incomplete gesture or editing mode, or simulated a different keyboard shortcut. A tool timeout, surrounding-cell click or value entered into a popup does not establish failure of the intended application control.",
+    "explanation": "A test must actually activate the control whose behavior it claims to measure. This pattern matches reports where the input reached a neighboring element or popup, a drag never reached the required threshold, the editor was in the wrong mode, or a simulated key combination differed from the real shortcut. A click timeout or text appearing elsewhere therefore does not establish failure of the intended link, input or command. Confirm the event target, focus and complete gesture, then repeat the same intended action correctly before alleging its failure.",
     "verificationGuidance": [
       "Confirm the actual event target, focus, editing mode and completed gesture from the rendered UI or recording.",
       "Repeat using the precise anchor, input, drag threshold or real keyboard shortcut; check key and modifier details for simulated events.",
@@ -330,7 +330,7 @@
   },
   {
     "id": "intended-behavior-rejection-without-recorded-rationale",
-    "explanation": "The reviewer labels the reported expectation as intended behavior but records no supporting rationale. These instances are an explicit holding group: the narrow rejection is known, while the specific model reasoning error, source semantics and general product policy are not established.",
+    "explanation": "These instances were rejected by a reviewer as intended behavior, but the record does not explain why. This is a holding group, not an established reusable explanation of what the model misunderstood. A new report can be compared with the exact rejected action and outcome in the stored instance, but similar wording alone is insufficient to declare it intended. Recover the missing rationale or obtain new evidence before applying a more specific rejection rule.",
     "verificationGuidance": [
       "Preserve the exact rejected claim and human decision without inventing a causal explanation.",
       "Do not use this holding group to dismiss a similar new report without checking its own trigger, contract and evidence.",
@@ -432,7 +432,7 @@
   },
   {
     "id": "invalid-authored-configuration-treated-as-supported-failure",
-    "explanation": "Failure of an author-created incompatible or invalid configuration is reported as failure of a supported valid workflow. The reviewed errors are recoverable or the invalid draft is blocked at normal activation; allowing configuration or Test to expose that error does not establish a guarantee to prevalidate every combination. This does not excuse corrupting a valid definition or losing unrelated saved data.",
+    "explanation": "A configured query or workflow can be invalid because its author selected incompatible data types, references, relations or duplicate field names. This pattern matches a report that treats the resulting clear, recoverable error, or a failed test of an invalid draft, as failure of a valid supported configuration. First repair the stated configuration problem and run a valid control; the ability to edit or test a draft does not by itself promise that every invalid combination is blocked earlier. Corruption of a valid definition or loss of unrelated saved data is outside this rejection.",
     "verificationGuidance": [
       "Repair the invalid value, reference, relation or duplicate name and run a valid positive control.",
       "Read the actual validation or execution error and distinguish invalid-draft testing from the normally activated supported flow.",
@@ -518,7 +518,7 @@
   },
   {
     "id": "expecting-valid-state-to-clear-from-omitted-prefill",
-    "explanation": "Assuming replacing a connection string resets every existing field even when the new string supplies no replacement for that field. Prefill can intentionally update only supplied values; retaining a visibly populated port omitted from the new string is not proof of stale parsing.",
+    "explanation": "A connection-string helper fills individual database settings from a supplied string, but it may update only fields that the new string actually specifies. This pattern matches a report that replaces the string, omits a setting such as Port, and assumes a previously visible valid port must be cleared automatically. Retaining that visible value is allowed under the reviewed prefill behavior. Supplying an explicit new port that is ignored, or a hidden old value overriding the displayed configuration, is a different failure.",
     "verificationGuidance": [
       "Check whether prefill is a partial update or full replacement by contract.",
       "Compare supplied properties with the existing field values, and test an explicit replacement value separately."
@@ -571,7 +571,7 @@
   },
   {
     "id": "incorrect-instance-configuration-attributed-to-product",
-    "explanation": "Failure caused by an incorrect public instance URL or reverse-proxy scheme configuration is attributed to application behavior under a valid deployment. Wrong origins can make generated links unreachable, and missing original-scheme forwarding can create redirect loops. A product defect requires evidence that the correctly configured supported environment still fails.",
+    "explanation": "The public address and network proxy settings of an installation affect generated links and redirects. A wrong public address can produce unreachable links, and a proxy that fails to tell the application the original request used HTTPS can cause a redirect loop. This pattern matches a report that attributes those demonstrated setup problems to application behavior under a correctly configured installation. Verify the external address and required forwarded scheme information; failures that remain with correct supported configuration require independent investigation.",
     "verificationGuidance": [
       "Verify the configured external URL, actual browser origin and required proxy forwarding headers.",
       "Repeat with the supported configuration and inspect fresh requests, not only a page already affected by redirects.",
@@ -660,7 +660,7 @@
   },
   {
     "id": "visually-similar-names-assumed-identical",
-    "explanation": "Assuming duplicate-name validation must trim meaningful whitespace because two distinct stored names look the same when rendered. If spaces are permitted in names, a trailing space can intentionally distinguish them; visual similarity alone does not establish a duplicate-key bypass.",
+    "explanation": "Two names that look the same on screen can contain different permitted characters, such as a meaningful trailing space. This pattern matches a duplicate-name report that assumes validation must remove that whitespace and treat the names as identical despite the reviewed naming rules allowing the distinction. Compare the actual stored names and the promised normalization behavior. A collision between truly identical keys or a violation of an explicit trimming rule remains a separate claim.",
     "verificationGuidance": [
       "Compare the exact stored strings and the documented normalization/uniqueness rule.",
       "Demonstrate rejection requirements for whitespace-padded variants rather than assuming trimming is mandatory."
@@ -687,7 +687,7 @@
   },
   {
     "id": "benchmark-scope-mistaken-for-product-defect",
-    "explanation": "A technical observation is submitted as an eligible benchmark bug without checking the benchmark's accepted scope. Recorded exclusions include accessibility-only claims with no accepted visible or pointer defect, API-only states unavailable through supported UI, and explicitly excluded exotic inputs. A scope exclusion does not prove the underlying technical issue cannot exist.",
+    "explanation": "This benchmark is a curated evaluation with rules about which kinds of findings count. A report matches this pattern when its only established issue falls outside those rules, such as an accessibility-tree-only label problem with no accepted visible or pointer-driven failure, an invalid state reachable only through an API, or an expressly excluded exotic input. The mistake is assuming that every technical imperfection is eligible for this evaluation. Scope exclusion does not establish that the underlying issue is imaginary, and a separately demonstrated in-scope functional failure must be assessed independently.",
     "verificationGuidance": [
       "Read the applicable benchmark eligibility rule and the exact recorded exclusion.",
       "Establish the supported UI path, input domain and accepted observable impact for the new claim.",
@@ -842,7 +842,7 @@
   },
   {
     "id": "public-error-details-assumed-required",
-    "explanation": "Expecting a public execution page to expose detailed internal errors or preserve an editable retry form when it deliberately uses a generic error screen. In the reviewed case the author also supplied a read query to a write-action executor; the generic public error does not establish a valid action failed.",
+    "explanation": "A public execution page can deliberately display a generic failure message rather than expose internal errors or keep an editable retry form. In the reviewed case, the author also supplied a read-only database query to an action intended to write changes. This pattern matches an assumption that the generic public error proves a valid action failed or that detailed internal information must be revealed. Verify a valid write action and the public page's error contract before making either claim.",
     "verificationGuidance": [
       "Confirm the action is valid for its executor before evaluating the public result.",
       "Compare public error-disclosure behavior with the intended public/private boundary and test the same action in an authorized editor."
@@ -869,7 +869,7 @@
   },
   {
     "id": "visible-input-normalization-mistaken-for-save-corruption",
-    "explanation": "A visible input transformation is attributed to silent save-time corruption even though the field or preview already shows the effective value before submission. Reviewed controls normalize unsupported characters, dates or precision; saving that displayed accepted value is different from secretly replacing a valid submitted value.",
+    "explanation": "An input can visibly change unsupported characters, dates or numeric precision while the user is still editing. This pattern matches a report that remembers the intended text and blames Save for a different result, although the field or preview already displayed that effective value before submission and the save preserved it. Observe the value immediately before saving and compare it with storage. A valid displayed value secretly replaced only during submission is a different failure.",
     "verificationGuidance": [
       "Record the input and preview immediately before blur, Apply or Save, then compare the submitted and persisted values.",
       "Check the field-specific normalization contract and a supported-input control.",
@@ -918,7 +918,7 @@
   },
   {
     "id": "claim-contradicted-by-controlled-verification",
-    "explanation": "The claimed missing, changed or unusable state is contradicted by a decisive observation or controlled verification of that same claim. Examples include an allegedly lost value remaining intact or an allegedly broken action succeeding under the stated setup. This disproves the checked allegation, not every related workflow or the possibility of a different historical failure.",
+    "explanation": "A report's specific factual claim is contradicted by a decisive observation or by a controlled repetition of the same setup. For example, the allegedly deleted value is still present, or the allegedly broken control performs the requested action when activated as described. Match this pattern only when that counterevidence addresses the same value, action and conditions; a vaguely similar successful workflow is insufficient. The finding rejects the checked allegation, not every related defect or every possible historical failure.",
     "verificationGuidance": [
       "Verify the actual displayed, submitted and persisted values, and the precise action target, instead of repeating the original interpretation.",
       "Repeat the reported setup and a positive control; record what the decisive observation actually establishes.",
@@ -1078,7 +1078,7 @@
   },
   {
     "id": "numeric-safe-integer-boundary-assumed-lossless",
-    "explanation": "Arbitrary integers beyond the browser's safe numeric representation are assumed to round-trip exactly without an established exact-integer guarantee. Rounding outside that range does not demonstrate corruption of ordinary supported values. An explicit precision promise or a failure within the supported range requires separate assessment.",
+    "explanation": "The browser's ordinary numeric representation cannot preserve every digit of arbitrarily large integers. This pattern matches a report that enters a number beyond its safe exact-integer range and assumes any rounding violates the field's contract without evidence that such precision is supported. Compare the value during typing, submission and storage, and test normal in-range values. An explicit exact-precision promise or corruption within the supported range requires separate assessment.",
     "verificationGuidance": [
       "Check the field's supported range and representation, including the safe-integer boundary where relevant.",
       "Compare the value during entry, the submitted payload and the stored result; a final screenshot alone does not establish when rounding occurred.",
@@ -1107,7 +1107,7 @@
   },
   {
     "id": "fractional-integer-units-assumed-supported",
-    "explanation": "Fractional input is treated as supported precision in a control whose reviewed contract represents integer counts, offsets or raw units. Conversion or rejection of a fraction does not establish loss of supported data, and a preferred warning policy is not automatically required. Valid integer corruption and fields promising fractional precision remain separate.",
+    "explanation": "Some numeric controls represent whole numbers, such as a row count, retention period, offset or raw smallest currency unit. This pattern matches a report that enters a fraction into such a control and treats its reviewed rounding or rejection as loss of supported precision without establishing that fractions are allowed. Check the unit and supported domain, then compare an ordinary integer control. An integer changing incorrectly, a field promising decimals, or a hidden value differing from the accepted display is a separate claim.",
     "verificationGuidance": [
       "Determine the stored unit and supported numeric domain, not just whether the input accepts decimal keystrokes.",
       "Test valid integer controls and inspect the effective value before and after submission.",
@@ -1136,7 +1136,7 @@
   },
   {
     "id": "concurrent-save-assumed-to-merge-fields",
-    "explanation": "A stale editor is expected to merge another writer's changes or warn about conflicts even though the reviewed contract accepts last-write-wins saves. A full stale-object submission can restore its displayed fields without establishing corruption of the submitted data. This ruling does not cover a promised merge guarantee or loss without a competing write.",
+    "explanation": "When the same saved item is open in two tabs, one tab can be editing an older copy of its settings. Under the reviewed last-write-wins contract, saving that older copy may replace another tab's changes rather than merge the two edits or display a conflict warning. This pattern matches a report that assumes merging or conflict detection is guaranteed, despite the submitted older copy explaining the overwrite. A promised conflict-protection feature failing, or data disappearing without a competing save, is outside this rejection.",
     "verificationGuidance": [
       "Check the documented or adjudicated concurrency contract before requiring automatic merging or conflict detection.",
       "Inspect both editors' saved baselines and submitted fields, then repeat without another writer.",
@@ -1166,7 +1166,7 @@
   },
   {
     "id": "ignoring-implicit-query-permission-dependencies",
-    "explanation": "Assuming access to a visible base table is sufficient for a query that also resolves foreign-key display names through other tables. The apparent single-table result can require implicit joins and therefore permissions on those related tables.",
+    "explanation": "A query that appears to read one table can also need related tables to replace stored identifiers with human-readable names. This pattern matches a report that assumes permission for the visible base table is sufficient, then calls a permission error wrong even though those additional name lookups require access too. Identify the related data the query actually reads and test with the appropriate grants. A query failing after all required access is present is a separate permission claim.",
     "verificationGuidance": [
       "Inspect the generated query, remapping and implicit joins.",
       "Compare permissions for every required table, and test without display remapping before alleging a base-table permission failure."
@@ -1195,7 +1195,7 @@
   },
   {
     "id": "scrollable-content-mistaken-for-missing-data",
-    "explanation": "Content outside the initially visible portion of a scrollable menu, panel or narrow input is assumed absent, incorrect or unusable. In the reviewed cases scrolling or copying reveals the complete value and the control works. This does not cover essential content that remains inaccessible through normal supported interaction.",
+    "explanation": "A menu, panel or narrow text field may show only part of its contents until the user scrolls, moves within the field or copies the complete value. This pattern matches a report that calls an option or value missing or incorrect from that initial visible slice, while the reviewed normal interaction reveals it in full and the control works. Inspect the complete content before alleging loss. Essential information that remains inaccessible through the supported interaction is a different failure.",
     "verificationGuidance": [
       "Inspect the full scroll container and input value, including content above or beyond the initial viewport.",
       "Use normal scrolling, text navigation or copying to verify the complete value and the selectable control.",
@@ -1243,7 +1243,7 @@
   },
   {
     "id": "unverified-failure-treated-as-established",
-    "explanation": "A reported failure is treated as established without recovering the claimed failing state after independent review could not reproduce it. Nonreproduction leaves the historical event and its cause unresolved; it does not prove the behavior impossible or intended, and a nearby accepted bug does not verify a different trigger or outcome.",
+    "explanation": "The report describes a failure, but independent review did not recover the claimed failing state under the stated conditions. This group records that evidence limitation rather than an established explanation of why the behavior was correct or why the original event occurred. A future report must match the same trigger and outcome and still needs its own reliable reproduction; resemblance to a nearby accepted bug is insufficient. Nonreproduction does not prove the event impossible or intended.",
     "verificationGuidance": [
       "Reproduce the exact reported trigger and outcome in a fresh, isolated state, with the required permissions and completed saves.",
       "Keep an unrecovered historical claim explicitly unverified; do not invent an intended-behavior or source-cause explanation.",
@@ -1563,7 +1563,7 @@
   },
   {
     "id": "unsubmitted-draft-mistaken-for-save-loss",
-    "explanation": "An edited local value is assumed saved without establishing that the supported commit action ran. Enter, synthetic blur and an open editor do not universally mean the rename or form was submitted; reload restoring the old value does not prove a completed save was lost.",
+    "explanation": "Typing into an editor does not establish that the new value was saved. This pattern matches reports that assume Enter, a scripted loss-of-focus event or an open editing form completed the operation, although the supported commit gesture never ran. Refreshing then correctly returns the previously saved value. Verify the applicable Save, outside click, Tab or other accepted action and its completion before reporting loss of a completed edit.",
     "verificationGuidance": [
       "Use the actual supported commit gesture for this editor and verify its completion or persistence acknowledgement.",
       "Compare trusted outside-click, Enter, Tab or explicit Save controls as applicable; do not assume a programmatic event is equivalent.",
@@ -1592,7 +1592,7 @@
   },
   {
     "id": "temporary-view-state-assumed-persistent-setting",
-    "explanation": "Temporary interactive state is assumed to be a saved setting that must survive refresh or preview regeneration. A contextual list filter can require an explicit saved view, while an embedding preview can reload its configured initial values when its token changes. Loss of these unsaved runtime choices is distinct from loss of completed saved settings.",
+    "explanation": "A current interactive choice is not always a saved preference. In the reviewed cases, a filter reached through contextual navigation required an explicit saved view to survive refresh, and an embedding preview reloaded its configured initial values after a configuration change. This pattern matches an assumption that those temporary choices must survive automatically. Establish whether the value was actually saved; losing a completed saved setting or opening the wrong initial context is a different failure.",
     "verificationGuidance": [
       "Identify whether the value belongs to a saved view/default or only the current navigation or preview session.",
       "Use the supported save or initial-value configuration, then verify that persisted setting survives the same transition.",
@@ -1622,7 +1622,7 @@
   },
   {
     "id": "supported-input-fallback-assumed-validation-failure",
-    "explanation": "Assuming invalid or blank input must remain as an error instead of reverting to the previous valid value, being treated as no value, or being constrained to a supported minimum. The reviewed controls deliberately use fallback/clearing behavior; showing a different parsed condition alone does not establish data corruption. This does not cover a valid accepted value that is secretly replaced.",
+    "explanation": "An input can deliberately handle blank or invalid text by clearing it, restoring the last valid value or applying a supported minimum instead of leaving an error. Reviewed Metabase examples include a relative date interval of zero becoming one day, invalid numeric text meaning no filter, and an empty required title or invalid typed date retaining the previous valid value. This pattern matches a demand for a different rejection style without evidence that a valid accepted value was lost. Check the field-specific rule and effective display; a valid value secretly replaced during submission is a different failure.",
     "verificationGuidance": [
       "Identify the control’s documented/tested invalid-input and blank-input policy.",
       "Inspect the retained calendar selection, range bounds and applied chip rather than only transient typed text.",
@@ -1652,7 +1652,7 @@
   },
   {
     "id": "missed-recovery-or-confirmation-step",
-    "explanation": "Declaring a control ineffective or a hidden state unrecoverable without completing its confirmation or using the available global recovery action. Reviewed examples include a permission confirmation before drilling down and Reset all filters restoring a hidden card.",
+    "explanation": "An action may require confirmation, and a filtered display may offer a separate reset control to return to a visible state. This pattern matches a report that stops before that confirmation or ignores the working recovery control and then calls the operation broken or the hidden state unrecoverable. Reviewed examples include confirming a permissions change before opening details and using Reset all filters to reveal a card again. Complete the supported flow and verify its result; failure after those steps is a different claim.",
     "verificationGuidance": [
       "Inspect dialogs and page-level reset controls after the action.",
       "Complete the confirmation or recovery and verify the resulting state.",
@@ -1682,7 +1682,7 @@
   },
   {
     "id": "group-permission-setting-confused-with-effective-access",
-    "explanation": "Reading a save confirmation about one group’s configured permission as a statement about a user’s total effective access. Greater access through another group can remain in effect and may already have been explained by an earlier warning.",
+    "explanation": "A person's effective access can come from more than one group. Saving a restrictive setting for one group therefore does not necessarily remove broader access granted by another group. This pattern matches a report that reads confirmation of the first group's setting as a promise about the person's total access, while the additional grant remains active. Check every applicable group and any earlier warning before calling that confirmation or resulting access incorrect.",
     "verificationGuidance": [
       "Separate the edited group’s setting from the union of the actor’s group permissions.",
       "Read preceding inherited-access warnings and verify effective access with the actor before claiming the save dialog revoked it."
@@ -1710,7 +1710,7 @@
   },
   {
     "id": "partial-credential-clear-assumed-independent-fields",
-    "explanation": "Expecting half of a composite credential to persist when clearing its key or value intentionally removes the whole unusable credential. The pair’s lifecycle differs from unrelated independently editable fields.",
+    "explanation": "Some credentials are stored as a meaningful pair, such as a key and its value, rather than two independent optional fields. This pattern matches a report that clears one half and expects the unusable other half to remain saved even though the reviewed behavior removes the whole pair. Check the credential's supported lifecycle before calling that removal data loss. Unrelated fields disappearing or a complete valid pair being lost is outside this rejection.",
     "verificationGuidance": [
       "Check the credential schema and how empty key/value pairs serialize.",
       "Test whether an intact valid pair persists and distinguish pair deletion from unintended loss of a complete credential."
@@ -1738,7 +1738,7 @@
   },
   {
     "id": "bounded-loading-observation-assumed-indefinite-failure",
-    "explanation": "A bounded observation of a loading indicator is described as an indefinite hang without a terminal error, a documented maximum duration or evidence that completion cannot occur. The reviewed rejection does not claim loading was observed to finish; it limits the conclusion supported by the observation window.",
+    "explanation": "Seeing a loading indicator for a limited period establishes only that the operation had not finished during that period. This pattern matches a report that watches it for a short interval, such as about twenty seconds, and then claims it will never finish without a terminal error, a promised maximum duration, or additional evidence of a permanent stall. The rejection does not establish that the operation eventually completed. A demonstrated timeout, failure beyond an applicable limit, or confirmed lack of progress can support a different, properly bounded claim.",
     "verificationGuidance": [
       "Record how long loading was observed and distinguish that finite window from an indefinite claim.",
       "Look for a terminal failure or explicit completion-time requirement; repeated reloads do not establish either.",
