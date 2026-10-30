@@ -2,94 +2,17 @@
   {
     "id": "unfinished-asynchronous-operation-treated-as-complete",
     "explanation": "An interface can display an edit or newly created item before its background save, multi-step creation or notification processing has finished. This pattern matches reports that interrupt that unfinished work with a hard refresh, immediately run the previously saved configuration or check results before processing completes, then call the old state loss of a completed operation. Verify the actual completion and reread the same item or recipient. Acknowledged-save loss, ordinary navigation discarding valid edits, or an effect still absent after completion needs separate evidence.",
-    "verificationGuidance": [
-      "Observe the actual completion or acknowledgement, then reread the same object or result after processing settles.",
-      "Distinguish visible optimistic state from durable saved state and avoid interrupting a multi-request operation with hard reload.",
-      "For background effects verify an eligible recipient and wait for the queue; absence immediately after the triggering action is insufficient."
-    ],
-    "instances": [
-      {
-        "source": "known-invalid.json",
-        "index": 0,
-        "report": {
-          "id": "gitea-watched-repo-new-issue-notification-missing",
-          "name": "Watching a repository doesn't deliver a notification for a newly created issue",
-          "summary": "The report says that a user watching a repository gets no notification when another user opens a new issue in it.",
-          "expected": "The reported expectation is that the watcher receives an unread notification for the new issue.",
-          "actual": "After alex watched a new repository and eval opened an issue in it, alex's Unread notifications were reported to show only older entries, even after a refresh.",
-          "reproSteps": [
-            "As one user, create a repository.",
-            "As a second user, watch the repository.",
-            "As the first user, open an issue in the repository.",
-            "As the second user, check Notifications > Unread."
-          ],
-          "reason": "Not reproduced: watchers do get a notification for a new issue. Notifications are created by a background queue, so they arrive shortly after the issue is opened; in repeated runs, including the reported setup, the watcher's unread count went up with the new issue within a few seconds, and a manual repro confirmed it. The person who opens the issue is deliberately not notified of their own action ('dont notify user who cause notification' in models/activities/notification_list.go), so a report about the issue author not being notified is also intended."
-        }
-      },
-      {
-        "source": "known-invalid.json",
-        "index": 1,
-        "report": {
-          "id": "gitea-subscribed-issue-comment-notification-missing",
-          "name": "A comment on a subscribed issue doesn't generate an unread notification",
-          "summary": "The report says that after a user subscribes to an issue, another user's new comment on it (or an @mention of the subscriber in a comment) doesn't produce an unread notification for the subscriber.",
-          "expected": "The reported expectation is that the subscriber receives an unread notification for the new comment.",
-          "actual": "After alex subscribed to an issue and eval commented on it, alex's Unread notifications were reported to show only older entries, even after a refresh; an @alex mention comment on the same issue was reported the same way.",
-          "reproSteps": [
-            "As one user, create an issue.",
-            "As a second user, open the issue and click Subscribe.",
-            "As the first user, add a comment to the issue (optionally @mentioning the second user).",
-            "As the second user, check Notifications > Unread."
-          ],
-          "reason": "Not reproduced: subscribers and mentioned users do get an unread notification for a new comment. Notifications are created by a background queue, so they arrive shortly after the comment is posted; in repeated runs the new notification appeared once the queue ran, a manual repro confirmed it works, and a user who wasn't subscribed correctly got nothing. The commenter is deliberately not notified of their own comment."
-        }
-      }
+    "reproductionPaths": [
+      "In Gitea, follow this workflow: As one user, create a repository. As a second user, watch the repository. As the first user, open an issue in the repository. As the second user, check Notifications > Unread. The rejected report expected: The reported expectation is that the watcher receives an unread notification for the new issue. It claimed this outcome: After alex watched a new repository and eval opened an issue in it, alex's Unread notifications were reported to show only older entries, even after a refresh. Review concluded: Not reproduced: watchers do get a notification for a new issue. Notifications are created by a background queue, so they arrive shortly after the issue is opened; in repeated runs, including the reported setup, the watcher's unread count went up with the new issue within a few seconds, and a manual repro confirmed it. The person who opens the issue is deliberately not notified of their own action ('dont notify user who cause notification' in models/activities/notification_list.go), so a report about the issue author not being notified is also intended.",
+      "In Gitea, follow this workflow: As one user, create an issue. As a second user, open the issue and click Subscribe. As the first user, add a comment to the issue (optionally @mentioning the second user). As the second user, check Notifications > Unread. The rejected report expected: The reported expectation is that the subscriber receives an unread notification for the new comment. It claimed this outcome: After alex subscribed to an issue and eval commented on it, alex's Unread notifications were reported to show only older entries, even after a refresh; an @alex mention comment on the same issue was reported the same way. Review concluded: Not reproduced: subscribers and mentioned users do get an unread notification for a new comment. Notifications are created by a background queue, so they arrive shortly after the comment is posted; in repeated runs the new notification appeared once the queue ran, a manual repro confirmed it works, and a user who wasn't subscribed correctly got nothing. The commenter is deliberately not notified of their own comment."
     ]
   },
   {
     "id": "shared-fixture-interference-attributed-to-local-action",
     "explanation": "Several testers or agents can change the same account, saved item or notification at the same time. This pattern matches a report that blames the immediately preceding local action for another state change without isolating those other writers. In some reviewed cases another actor's change is established; in others it is only a plausible explanation and must remain uncertain. Repeat with isolated records or correlate the actual requests and object identities before claiming that one item's action changed unrelated data.",
-    "verificationGuidance": [
-      "Reproduce with isolated records and no other writer, or correlate action requests with object IDs and concurrent activity.",
-      "Check whether the supposedly missing record was actually trashed, renamed or otherwise changed by another actor.",
-      "Preserve uncertainty about historical interference and assess failures reproduced in isolation independently."
-    ],
-    "instances": [
-      {
-        "source": "known-invalid.json",
-        "index": 2,
-        "report": {
-          "id": "gitea-notification-pin-marks-other-read",
-          "name": "Pinning a notification marks another unread notification read",
-          "summary": "The report says that pinning one notification also marks a different unread notification as read.",
-          "expected": "The reported expectation is that pinning changes only the pinned notification, and other unread notifications stay unread.",
-          "actual": "Pinning fresh notifications changed only the pinned one; every other unread notification stayed unread and the unread count dropped by exactly one, including after a reload.",
-          "reproSteps": [
-            "Make sure the account has at least two unread notifications.",
-            "On the Notifications page, pin one of them.",
-            "Check whether the other notification is still unread."
-          ],
-          "reason": "Not reproducible: the Pin action posts a single notification id, and the server updates only that notification. The only actions that mark other notifications read are Mark all as read and opening an issue, both intended. The report came from a run on an account shared with other agents, whose concurrent actions most likely changed the other notification."
-        }
-      },
-      {
-        "source": "known-invalid.json",
-        "index": 3,
-        "report": {
-          "id": "gitea-notification-pinned-mark-read-clears-other",
-          "name": "Marking a pinned notification read clears another unread notification",
-          "summary": "The report says that marking a pinned notification as read also marks a different unread notification as read.",
-          "expected": "The reported expectation is that marking one notification as read leaves other unread notifications unread.",
-          "actual": "Pinning a notification, marking all as read, marking another notification unread, and then marking the pinned one read left the other notification unread every time, including through the API.",
-          "reproSteps": [
-            "Pin notification A and mark all notifications as read.",
-            "From the Read tab, mark notification B as unread.",
-            "Mark notification A as read.",
-            "Check whether notification B is still unread."
-          ],
-          "reason": "Not reproducible: the Mark as read action posts a single notification id, and the server updates only that notification. The only actions that mark other notifications read are Mark all as read and opening an issue, both intended. The report came from a run on an account shared with other agents, whose concurrent actions most likely changed the other notification."
-        }
-      }
+    "reproductionPaths": [
+      "In Gitea, follow this workflow: Make sure the account has at least two unread notifications. On the Notifications page, pin one of them. Check whether the other notification is still unread. The rejected report expected: The reported expectation is that pinning changes only the pinned notification, and other unread notifications stay unread. It claimed this outcome: Pinning fresh notifications changed only the pinned one; every other unread notification stayed unread and the unread count dropped by exactly one, including after a reload. Review concluded: Not reproducible: the Pin action posts a single notification id, and the server updates only that notification. The only actions that mark other notifications read are Mark all as read and opening an issue, both intended. The report came from a run on an account shared with other agents, whose concurrent actions most likely changed the other notification.",
+      "In Gitea, follow this workflow: Pin notification A and mark all notifications as read. From the Read tab, mark notification B as unread. Mark notification A as read. Check whether notification B is still unread. The rejected report expected: The reported expectation is that marking one notification as read leaves other unread notifications unread. It claimed this outcome: Pinning a notification, marking all as read, marking another notification unread, and then marking the pinned one read left the other notification unread every time, including through the API. Review concluded: Not reproducible: the Mark as read action posts a single notification id, and the server updates only that notification. The only actions that mark other notifications read are Mark all as read and opening an issue, both intended. The report came from a run on an account shared with other agents, whose concurrent actions most likely changed the other notification."
     ]
   }
 ]
