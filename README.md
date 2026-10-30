@@ -1,128 +1,171 @@
 # QA bench
 
-Runs QA agents against seeded open-source apps and grades their bug reports
-against labeled ground truth.
+A benchmark of AI QA agents finding real bugs in open-source web apps. It runs
+Mo, Codex, Claude Code and Devin against product areas of Metabase, Saleor
+(vouchers), Gitea and Twenty, then grades their bug reports against
+human-reviewed labels.
 
-Agents: `mo` (through the `qa` CLI), `codex-playwright-mcp`, `claude-playwright-mcp` and `devin-qa`. Each fixture runs in
-its own E2B sandbox. Codex and Claude drive a browser through Playwright MCP:
-Browserbase by default, or a headless Chromium on the eval host with
-`--browser local`. The run records its browser in `duration.json`, and `merge`
-labels those rows, e.g. `codex-playwright-mcp (local browser)`.
+Momentic builds Mo and maintains this benchmark.
 
-Mo, Codex and Claude can use subagents. Mo runs its own subagents on Momentic's
-service. Codex uses its multi-agent mode, and each Codex subagent starts its own
-Playwright MCP server with its own Browserbase browser. Claude Code uses its
-subagent tool; Claude shares one MCP connection across agents, so a loopback
-proxy gives each subagent its own Playwright process and Browserbase browser.
-For both, only the parent can save findings. With `--browser local`, Codex and
-Claude run single-agent, since one local browser can't be shared. The run
-records `subagents` in `duration.json`, and `merge` labels runs without them,
-e.g. `claude-playwright-mcp (no subagents)`.
+Each run gets a fresh copy of the app at a pinned commit, with seeded data, in
+its own E2B sandbox. Areas live in [`fixtures/oss`](fixtures/oss).
 
-`devin-qa` uses Devin's default configuration and hosted browser, with VM
-network restrictions and instructions against outside research. Built-in
-retrieval relies on prompt compliance. See [Devin QA setup](src/agents/devin/README.md).
+## Results
 
-## Setup
+Results will be published in [`results/results.csv`](results/results.csv).
 
-Requires Node.js 22.12+ and pnpm.
+## Run it
+
+You need Node.js 22.12+, pnpm, and an [E2B](https://e2b.dev) account. Build the
+sandbox templates once per E2B org. Twenty needs the larger one.
 
 ```bash
 pnpm install
-pnpm build-template            # once per E2B org: Docker host template (2 CPU / 4 GiB)
-pnpm build-template --cpu 4 --memory 8   # also once, for twenty
+pnpm build-template
+pnpm build-template --cpu 4 --memory 8
 ```
 
-Environment:
+| Environment variable                   | Needed for                                            |
+| -------------------------------------- | ----------------------------------------------------- |
+| `E2B_API_KEY`                          | All runs                                              |
+| `OPENAI_API_KEY`                       | All runs (grading), Codex                             |
+| `ANTHROPIC_API_KEY`                    | Claude Code                                           |
+| `BROWSERBASE_API_KEY`                  | Codex and Claude Code, unless using `--browser local` |
+| `MOMENTIC_API_KEY`                     | Mo, unless signed in with `qa login`                  |
+| `DEVIN_ORGANIZATION_ID`, `DEVIN_TOKEN` | Devin ([setup](src/agents/devin/README.md))           |
 
-| Variable | Used by |
-| --- | --- |
-| `E2B_API_KEY` | all runs |
-| `OPENAI_API_KEY` | grading, `codex-playwright-mcp` |
-| `BROWSERBASE_API_KEY` | `codex-playwright-mcp`, `claude-playwright-mcp` (not with `--browser local`) |
-| `ANTHROPIC_API_KEY` | `claude-playwright-mcp` |
-| `MOMENTIC_API_KEY` | `mo` (or sign in with `qa`) |
-| `DEVIN_ORGANIZATION_ID`, `DEVIN_TOKEN` | `devin-qa` session and security-profile access |
-
-`mo` runs on Momentic's hosted service and needs a Momentic account. Install
-the CLI with `npm install -g qa@0.27.0` and sign in, or set
-`MOMENTIC_API_KEY`. Set `MO_EVAL_CLI` to use another executable. Use
-`--effort low|medium|high|max` to set Mo's effort preset (default: medium). An
-explicit `--effort` is recorded in `duration.json`.
-
-## Development
-
-Run `pnpm lint`, `pnpm format:check` and `pnpm typecheck` before submitting
-changes. CI runs the same checks. Use `pnpm lint:fix` and `pnpm format` to apply
-automatic fixes to `src/`.
-
-## Run
+Mo runs on Momentic's hosted service, so it needs a Momentic account and the
+[`qa` CLI](https://www.npmjs.com/package/qa). Runs require version 0.27.0:
 
 ```bash
-pnpm eval --agent mo --fixtures gitea --time-limit 2h
-pnpm eval --agent codex-playwright-mcp --fixtures gitea/areas --time-limit 30m
-pnpm eval --agent claude-playwright-mcp --grade-only --fixtures gitea
-pnpm merge --fixtures gitea
+npm install -g qa@0.27.0
 ```
 
-`--fixtures` takes app names (`gitea`), one area (`gitea/areas/issues`), all
-areas of an app (`gitea/areas`), or `oss-areas`. A whole-app run is graded
-against the union of its area references.
+Run one agent on one area, then compare saved runs:
 
-Runs stop after 2h unless `--time-limit` or `--minutes` sets another limit.
-Every agent sees the limit in its brief. Mo's own budget comes from `--effort`.
+```bash
+pnpm eval --agent codex-playwright-mcp --fixtures saleor/areas/vouchers --minutes 30
+pnpm merge --fixtures saleor/areas/vouchers
+```
 
-Reports go to `reports/<agent>/<fixture>/<run-id>/`. Each run writes
-`scores.csv`, `grading.json` and a `review.md` queue of unmatched findings.
+`--agent` takes `mo`, `codex-playwright-mcp`, `claude-playwright-mcp`,
+`codex-agent-browser`, `claude-agent-browser` or `devin-qa`. `--fixtures` takes
+an app (`gitea`), all of its areas (`gitea/areas`), one area, or `oss-areas`.
 
-Every agent gets the same brief, built in `src/evals/bugbash-brief.ts`: the app
-URL, test accounts, and the area's scope and entry points.
+Each run is graded when it finishes and saved to
+`reports/<agent>/<fixture>/<run-id>/`. `merge` writes `reports/comparison.md`.
+
+## Methodology
+
+**Brief.** Every agent gets the same short brief from
+[`bugbash-brief.ts`](src/evals/bugbash-brief.ts): the app URL, test accounts, the
+area's scope and entry points, and the rules to report only verified bugs and not
+read benchmark files. Codex, Claude Code and Devin are also told which browser to
+use and how to save findings. Devin's prompt adds its
+[isolation rules](src/agents/devin/README.md).
+
+**Time.** `--minutes` sets a limit from 1 to 120, stated in the brief. Without
+it, the brief states no limit and the run stops at 2 hours. A minute before the
+stop, each agent is told to save its work. Durations exclude fixture setup and
+grading.
+
+**Mo's budget.** `--effort low|medium|high|max` sets Mo's budget. It applies only
+to Mo.
+
+**Agents.** Versions are pinned in [`package.json`](package.json).
+
+| Agent       | Model and reasoning effort   | Browser                         |
+| ----------- | ---------------------------- | ------------------------------- |
+| Mo          | Chosen by Momentic's service | Hosted by Momentic              |
+| Codex       | `gpt-6.1-sol`, medium        | Playwright MCP or agent-browser |
+| Claude Code | `claude-opus-5-5`, medium    | Playwright MCP or agent-browser |
+| Devin       | Devin's defaults             | Devin's native browser          |
+
+**Browsers and subagents.**
+
+- `*-playwright-mcp` agents use Playwright MCP on Browserbase. The parent and
+  each subagent get their own Browserbase browser.
+- `*-agent-browser` agents use the pinned
+  [agent-browser](https://www.npmjs.com/package/agent-browser) CLI and its
+  bundled skill. Each run connects to one Browserbase browser, and the agent
+  decides how to share it.
+- `--browser local` swaps Browserbase for headless Chromium on the host.
+  Playwright MCP runs then have no subagents, and `merge` labels them separately.
+- Mo manages its own subagents, and `--max-concurrent-sub-agents` caps them.
+  Devin runs in one session with no child sessions.
 
 ## Scoring
 
-A judge model (GPT-6.1 Sol, high reasoning) matches each finding to the area's
-`ground-truth.json` (known bugs) or `known-invalid.json` (known false reports).
-Repeat reports of one bug count as duplicates. Anything else is unverified.
-Duplicates and unverified findings are listed in `review.md`.
+A judge model (`gpt-6.1-sol`, high reasoning) reads each area's
+[labels](#labels) and sorts every finding. It first groups reports of the same
+failure, then classifies the best report in each group:
 
-- Recall: known hits / known bugs in the area.
-- Precision: correct reports / adjudicated reports. Duplicates count, so a
-  repeat of a known bug is correct and a repeat of a known invalid finding is
-  not. Unverified findings are excluded.
-- Severity sum: each known bug has a severity of 1 (cosmetic), 3 (functional)
-  or 5 (broken page or error dump). The sum counts each bug once.
-- Score: severity sum minus known-invalid and duplicate findings.
+| Result    | Meaning                                                                |
+| --------- | ---------------------------------------------------------------------- |
+| Correct   | Matches a label in `ground-truth.json`. Each label matches one finding |
+| Incorrect | Matches a rejected claim in `known-invalid.json`                       |
+| Unmatched | Matches neither. It may be a new bug, and is neither right nor wrong   |
+| Dup.      | An extra report of a failure already in a group                        |
 
-The judge is a model, so regrading the same findings can change a few matches.
-`--grade-only` regrades saved runs.
+Findings that match another area's labels are recorded separately and left out
+of every metric below. The judge is a model, so regrading can change a few
+matches. Its full prompt is in
+[`grading-contract.ts`](src/evals/grading-contract.ts).
 
-## Cost
+| Metric           | Definition                                      |
+| ---------------- | ----------------------------------------------- |
+| Findings         | Correct + Incorrect + Unmatched + Dup.          |
+| Precision        | Correct / (Correct + Incorrect)                 |
+| Recall           | Correct / labeled bugs in the area              |
+| Score            | Severity of Correct findings − Incorrect − Dup. |
+| Cost per run     | Mean cost of a run                              |
+| Cost per correct | Cost / Correct                                  |
 
-Reported costs are directional. Codex and Claude costs are token estimates at
-list prices plus Browserbase time. Mo cost is Momentic's billed session spend.
-E2B sandbox time and grading calls are not included. Short test runs on one
-area cost $1 to $5 per agent; full runs cost much more.
+Severity comes from the label: 1 for cosmetic issues, 3 for functional bugs and 5
+for broken pages or raw error dumps. Unmatched findings don't affect Precision or
+Score.
 
-Start a fixture by hand with `pnpm start-fixture gitea --timeout 30m`; stop it
-with `pnpm stop-fixture <sandbox-id>`.
+In the results CSV, each row is the mean over an agent's runs of one area.
+Precision, Recall and cost per correct are calculated from those means. Totals
+sum the rows and recalculate the ratios from the sums.
 
-## Fixtures
+Costs are directional:
 
-Each app lives under `fixtures/oss/<app>/`: a Compose recipe, seed scripts and
-`e2e/areas/<area>/` with `fixture.json` (scope and entry points),
-`ground-truth.json` and `known-invalid.json`.
+- Codex is token usage at list prices, plus estimated Browserbase time.
+- Claude Code is the cost reported by the Agent SDK, plus estimated Browserbase
+  time.
+- Mo is its reported session spend.
+- Devin has no USD cost.
 
-## agent-browser variants
+None include E2B or grading.
 
-`codex-agent-browser` and `claude-agent-browser` use the pinned agent-browser CLI
-and its official bundled skill in place of Playwright MCP. Use the same fixture,
-time-limit and browser options. agent-browser declares Node.js 24+ support.
+`scores.csv` uses `known_hits`, `known_invalid`, `unverified` and `duplicates`
+for Correct, Incorrect, Unmatched and Dup. Its `precision` field also counts
+duplicates of classified findings, so it can differ from the definition above.
+
+## Labels
+
+Each area in `fixtures/oss/<app>/e2e/areas/<area>/` has:
+
+- `fixture.json`: scope and entry points
+- `ground-truth.json`: confirmed bugs
+- `known-invalid.json`: rejected claims
+
+To add labels:
+
+1. Open `review.md` in a run's report folder. It lists every finding and its
+   result.
+2. Reproduce the finding. `pnpm start-fixture <fixture> --timeout 30m` starts an
+   app, and `pnpm stop-fixture <sandbox-id>` stops it.
+3. Add a confirmed bug to `ground-truth.json` with `name`, `summary`, `expected`,
+   `actual`, `reproSteps` and `severity`. Add a rejected claim to
+   `known-invalid.json` with those fields, minus `severity`, plus `reason`.
+4. Regrade every agent, since `merge` won't compare scores from different labels:
 
 ```bash
-pnpm eval --agent codex-agent-browser --fixtures twenty/areas --time-limit 30m
-pnpm eval --agent claude-agent-browser --fixtures twenty/areas --time-limit 30m
+pnpm eval --agent mo --fixtures saleor/areas/vouchers --grade-only
 ```
 
-Codex's CLI variant uses a writable workspace with network access so the CLI can
-create its browser socket. Each run owns its socket directory and Browserbase
-connection; native agents choose how to use subagents, sessions and tabs.
+## Contributing
+
+Run `pnpm lint`, `pnpm format:check` and `pnpm typecheck` before opening a PR.
