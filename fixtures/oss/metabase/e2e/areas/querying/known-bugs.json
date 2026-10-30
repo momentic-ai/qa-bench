@@ -262,9 +262,9 @@
     },
     {
       "id": "metabase-relative-preview-query-timezone",
-      "explanation": "Relative date/time filters can return rows outside the absolute interval advertised by their preview, including a different calendar day near a browser/report-timezone boundary.",
+      "explanation": "Relative date/time filters can return timestamps after the range advertised by their preview, or apply the next calendar day instead of the previewed day. Previous intervals can disagree at hourly or daily boundaries and can also involve a Starting from offset.",
       "rootCause": {
-        "explanation": "The frontend range formatter calls the browser-side time implementation with now() and no report/database timezone argument. Server relative-date evaluation uses the query/report/database timezone. Near a day boundary these different clocks produce different calendar dates for yesterday/previous-day previews and results. Source applicability caveat: inspected public revision f42632893810325d9f74375a4cd29bd31d8daefa is approximate context; the fixture image revision 03d994f is unavailable.",
+        "explanation": "The frontend range formatter calls the browser-side time implementation with now() and no report/database timezone argument. Server relative-date evaluation uses the query/report/database timezone. Near a day boundary these different clocks produce different calendar dates for yesterday/previous-day previews and results. Source applicability caveat: inspected public revision f42632893810325d9f74375a4cd29bd31d8daefa is approximate context; the fixture image revision 03d994f is unavailable. The expanded Previous-interval reference accepts later-than-preview timestamps in any unit and with offsets, without requiring a timezone diagnosis. The available source does not establish that every such endpoint variant shares this timezone mechanism; those variants retain provisional attribution rather than being equated solely by symptom.",
         "sourceReferences": [
           {
             "repository": "metabase/metabase",
@@ -302,7 +302,7 @@
             "url": "https://github.com/metabase/metabase/blob/f42632893810325d9f74375a4cd29bd31d8daefa/src/metabase/driver/h2.clj#L369"
           }
         ],
-        "analysisStatus": "source-supported"
+        "analysisStatus": "inferred"
       },
       "reproductionPaths": [
         {
@@ -330,12 +330,12 @@
         },
         {
           "id": "metabase-relative-preview-query-timezone-querying-path-2",
-          "explanation": "Previous-hour filter returns timestamps outside its previewed range.",
+          "explanation": "A Previous relative-date filter returns rows dated after the end of the range its preview shows. Seen with Previous 24 hours, and with Previous 30 days starting one month ago.",
           "sourceBugs": [
             {
               "index": 117,
               "id": "metabase-querying-b37",
-              "name": "Previous-hour filter returns timestamps outside its previewed range"
+              "name": "Previous relative-date filter returns timestamps beyond its previewed range"
             }
           ],
           "expected": "The returned timestamps fall inside the range shown by the filter preview.",
@@ -346,7 +346,17 @@
             "Observe preview: Oct 27, 3:00 PM – Oct 28, 2026, 2:59 PM (on observed application date/time).",
             "Apply and Visualize. Inspect Created At values such as order1490 at October28 7:20PM and order6570 at6:56PM."
           ],
-          "severity": 1
+          "severity": 1,
+          "sourceConstraints": [
+            {
+              "sourceBugIndex": 117,
+              "constraints": {
+                "matchingGuidance": {
+                  "claimScope": "Credit any Previous relative-date filter, in any unit and with or without a Starting from offset, that returns rows later than the previewed end. A filter that leaves out rows from the final previewed day is a different bug. A Previous N days filter whose preview names one calendar day while the applied query uses the next day, because the browser and report timezones differ, is codex-60m-metabase-2, not this reference."
+                }
+              }
+            }
+          ]
         }
       ]
     },
@@ -431,12 +441,12 @@
       "reproductionPaths": [
         {
           "id": "metabase-sql-like-wildcard-escaping-querying-path-1",
-          "explanation": "Category \"Does not contain %\" returns no Products instead of all rows without a percent sign.",
+          "explanation": "A Products \"Does not contain\" filter on a text field such as Category or Title, given a literal % or _, returns no rows even though the values do not contain that character.",
           "sourceBugs": [
             {
               "index": 8,
               "id": "metabase-querying-160",
-              "name": "Category \"Does not contain %\" returns no Products instead of all rows without a percent sign"
+              "name": "\"Does not contain\" a wildcard character (% or _) returns no Products instead of all rows without it"
             }
           ],
           "expected": "The filter pill reads \"Category does not contain %\", so all 200 Products should be returned, because no category contains a literal \"%\".",
@@ -448,7 +458,17 @@
             "Click Add filter, then Visualize",
             "Observe No results! / Showing 0 rows"
           ],
-          "severity": 3
+          "severity": 3,
+          "sourceConstraints": [
+            {
+              "sourceBugIndex": 8,
+              "constraints": {
+                "matchingGuidance": {
+                  "claimScope": "Credit any \"Does not contain\" filter given a literal % or _ on any Products text field that wrongly returns zero or too few rows. Contains filters that wrongly match rows are separate references."
+                }
+              }
+            }
+          ]
         },
         {
           "id": "metabase-sql-like-wildcard-escaping-querying-path-2",
@@ -529,6 +549,25 @@
             "Edit the parameter, remove G, enter %, press Enter, Update filter and run."
           ],
           "severity": 3
+        },
+        {
+          "expected": "The row whose LABEL contains the backslash remains visible.",
+          "actual": "No results! is displayed. A whole-page multimodal assertion confirmed no result rows for LABEL contains a single backslash.",
+          "reproSteps": [
+            "Create a new SQL question on Sample Database using SELECT 1 AS ID, 'QA_Filter%\\literal' AS LABEL UNION ALL SELECT 2, 'Alpha'. Run and verify ID 1 displays a literal backslash in LABEL.",
+            "Save under a fresh QA-FILTER-prefixed name and choose Explore results.",
+            "Add LABEL filter, keep Contains, enter a single backslash and apply."
+          ],
+          "severity": 3,
+          "id": "metabase-sql-like-wildcard-escaping-querying-path-6",
+          "explanation": "Contains backslash misses a label containing a backslash.",
+          "sourceBugs": [
+            {
+              "index": 125,
+              "id": "metabase-querying-b24",
+              "name": "Contains backslash misses a label containing a backslash"
+            }
+          ]
         }
       ]
     },
@@ -671,7 +710,7 @@
     },
     {
       "id": "metabase-self-join-fk-remap-source-provenance",
-      "explanation": "An Orders self-join can show the joined record’s user/product display labels on the original source record’s foreign-key columns.",
+      "explanation": "An Orders self-join can display the joined record’s user/product labels in the original source’s foreign-key columns, including names shown on a right-outer-join row whose source fields are null.",
       "rootCause": {
         "explanation": "FK remapping adds human-readable target columns to query results. In a self-join, matching remaps by field identity without preserving the originating join alias can associate source IDs with joined labels; the report retains source IDs while displaying the wrong names. The add-remaps path explicitly carries current join aliases, so the exact fixture failure in that provenance chain is not established. Source applicability caveat: inspected public revision f42632893810325d9f74375a4cd29bd31d8daefa is approximate context; the fixture image revision 03d994f is unavailable.",
         "sourceReferences": [
@@ -707,6 +746,26 @@
             "Optionally add source custom column concat([User ID], \" / \", [Product ID]) to confirm source numeric keys are still1 /14 despite the wrong labels."
           ],
           "severity": 3
+        },
+        {
+          "expected": "Because no base Order ID is less than 1, the unmatched row for joined Order 1 should have all base-side fields empty.",
+          "actual": "Base ID, Subtotal, Tax and Total are empty, but base User ID shows Hudson Borer and Product ID shows Awesome Concrete Shoes. A multimodal whole-page assertion confirmed this inconsistent row.",
+          "reproSteps": [
+            "As Harbor Admin create New > Question > Sample Database > Orders, using a fresh QA-joinsedge-prefixed question.",
+            "Join Orders to itself and select Right outer join.",
+            "Set join condition base Orders ID < joined Orders ID.",
+            "Visualize and inspect the first row, whose joined Orders ID is 1."
+          ],
+          "severity": 3,
+          "id": "metabase-self-join-fk-remap-source-provenance-querying-path-2",
+          "explanation": "Unmatched right self join row displays a person and product.",
+          "sourceBugs": [
+            {
+              "index": 126,
+              "id": "metabase-querying-b47",
+              "name": "Unmatched right self join row displays a person and product"
+            }
+          ]
         }
       ]
     },
@@ -1018,7 +1077,7 @@
     },
     {
       "id": "metabase-custom-list-multivalue-summary-only-first-label",
-      "explanation": "A native SQL parameter with a custom value list displays only the first selected label in its summary even though multiple values are selected and applied.",
+      "explanation": "Native SQL parameter summaries and the Variables sidebar’s Default filter widget value can show only the first custom-list label even though multiple defaults or applied values remain selected and used by the query.",
       "rootCause": {
         "explanation": "FormattedParameterValue.getValue returns value[0] for an array. The custom values label lookup uses that first item and renders its mapped label, losing the labels of additional selected custom-list values even though the query retains them. Source applicability caveat: inspected public revision f42632893810325d9f74375a4cd29bd31d8daefa is approximate context; the fixture image revision 03d994f is unavailable.",
         "sourceReferences": [
@@ -1060,6 +1119,27 @@
             "Select Devices, click Update filter and run the query."
           ],
           "severity": 1
+        },
+        {
+          "expected": "The Default filter widget value field should show both configured defaults, or a count such as \"2 selections\".",
+          "actual": "The field shows only \"Gizmo label\" and gives no sign that a second value is selected. The query uses both defaults (URL ?category=Gizmo&category=Widget) and shows rows for Gizmo 51 and Widget 54.",
+          "reproSteps": [
+            "Enter: SELECT CATEGORY, COUNT(*) AS PRODUCT_COUNT FROM PRODUCTS WHERE 1=1 [[AND CATEGORY IN ({{category}})]] GROUP BY CATEGORY ORDER BY CATEGORY",
+            "In the variable sidebar, leave Variable type as Text, then select Dropdown list and Multiple values.",
+            "Click Edit next to Dropdown list, choose Custom list, enter 'Gizmo, Gizmo label' and 'Widget, Widget label' on separate lines, and click Done.",
+            "Open Default filter widget value, check Gizmo label and Widget label, and click Add filter.",
+            "Click Run. Result: the Default filter widget value field shows only 'Gizmo label', while the results show Gizmo 51 and Widget 54."
+          ],
+          "severity": 1,
+          "id": "metabase-custom-list-multivalue-summary-only-first-label-querying-path-2",
+          "explanation": "Multi-value Default filter widget value field shows only first selected label.",
+          "sourceBugs": [
+            {
+              "index": 124,
+              "id": "metabase-querying-b58",
+              "name": "Multi-value Default filter widget value field shows only first selected label"
+            }
+          ]
         }
       ]
     },
@@ -1770,6 +1850,27 @@
             "Return to Editor: the second stage remains absent."
           ],
           "severity": 3
+        },
+        {
+          "expected": "The notebook displays the active filter on the later-stage custom column and allows inspecting or editing it.",
+          "actual": "The notebook displays the later-stage custom column stage, but no filter step or condition appears anywhere in the notebook.",
+          "reproSteps": [
+            "Create an own Orders question with a custom column coalesce([Discount], 0), then summarize its sum.",
+            "Add a custom-column stage after Summarize, named QA-COL Later Ratio, with coalesce([Sum of the discount custom column] / 0, 99), and Visualize.",
+            "Use Filter > Summaries > QA-COL Later Ratio and apply Between 98 and 100. The result is one row with 99; changing the upper bound to 98 produces No results, and restoring 100 returns the row.",
+            "Save the question, refresh, and expand the filter-count badge to see the saved between-98-and-100 condition.",
+            "Open Editor and inspect all notebook stages."
+          ],
+          "severity": 3,
+          "id": "metabase-notebook-hides-post-scalar-stages-querying-path-3",
+          "explanation": "Notebook hides the filter on a later-stage custom column.",
+          "sourceBugs": [
+            {
+              "index": 127,
+              "id": "metabase-querying-b79",
+              "name": "Notebook hides the filter on a later-stage custom column"
+            }
+          ]
         }
       ]
     },
@@ -2020,9 +2121,9 @@
     },
     {
       "id": "metabase-copy-card-dashboard-name-placeholder",
-      "explanation": "Duplicating a saved question or metric asks “What is the name of your dashboard?” in the Name field, despite creating a copy of the selected card.",
+      "explanation": "Duplicating a saved question, model or metric asks “What is the name of your dashboard?” in the Name field despite creating a copy of the selected card.",
       "rootCause": {
-        "explanation": "CopyCardForm uses an unconditional dashboard-specific Name placeholder for card copies, regardless of whether the card is a question or metric.",
+        "explanation": "CopyCardForm uses an unconditional dashboard-specific Name placeholder for card copies, regardless of whether the card is a question, model or metric.",
         "sourceReferences": [
           {
             "repository": "metabase/metabase",
@@ -3474,9 +3575,9 @@
     },
     {
       "id": "metabase-search-date-ranges-server-timezone",
-      "explanation": "Search Creation date and Last edit filters can include or exclude recently created items on the wrong calendar day near midnight: browser-local fixed-date choices or relative-date previews disagree with the server-clock search boundary.",
+      "explanation": "Search Creation date and Last edit filters can disagree on which items belong to Today or a fixed calendar day, excluding models, metrics or questions whose displayed creation/edit date is today. A browser/server day boundary is one trigger; reports can also involve seeded items never edited since creation.",
       "rootCause": {
-        "explanation": "Search date-range-filter-clause calls date-string->range without a viewer timezone. Relative decoding obtains t/local-date-time on the server, while the search comparison casts stored timestamps to date; browser-local date picks and previews therefore need not describe the same day near a timezone boundary. Exact fixture timezone configuration remains a prerequisite of each report.",
+        "explanation": "Search date-range-filter-clause calls date-string->range without a viewer timezone. Relative decoding obtains t/local-date-time on the server, while the search comparison casts stored timestamps to date; browser-local date picks and previews therefore need not describe the same day near a timezone boundary. Exact fixture timezone configuration remains a prerequisite of each report. Seeded or never-edited item variants are now accepted by the source matching scope; the supplied evidence does not establish that each such exclusion has the same timezone cause rather than missing last-edit metadata. Attribution of those broader symptoms remains provisional.",
         "sourceReferences": [
           {
             "repository": "metabase/metabase",
@@ -5109,6 +5210,221 @@
           "severity": 3
         }
       ]
+    },
+    {
+      "id": "metabase-replaced-card-source-join-rebinds-left-key",
+      "explanation": "Replacing a notebook join’s table when the base source is a saved question can relabel or rebind the left key to the newly joined table; the join row shows both sides as that table and matching joined columns can come back blank.",
+      "rootCause": {
+        "explanation": "JoinComplete.handleTableChange regenerates suggestedJoinConditions for the new right-hand table and replaces the entire join clause. The report’s picker retains the saved-question left-column identity while the rendered/executed condition uses the replacement table, identifying a provenance/metadata inconsistency across regenerated condition and replacement. Exact alias selection is not established in the approximate source; this pair shares the same source-selection workflow and state change, but is kept separate from prior post-aggregation and physical-to-saved-source replacement cases whose exact common mechanism is unproven.",
+        "sourceReferences": [
+          {
+            "repository": "metabase/metabase",
+            "revision": "f42632893810325d9f74375a4cd29bd31d8daefa",
+            "path": "frontend/src/metabase/querying/notebook/components/JoinStep/JoinComplete/JoinComplete.tsx",
+            "line": 64,
+            "url": "https://github.com/metabase/metabase/blob/f42632893810325d9f74375a4cd29bd31d8daefa/frontend/src/metabase/querying/notebook/components/JoinStep/JoinComplete/JoinComplete.tsx#L64"
+          },
+          {
+            "repository": "metabase/metabase",
+            "revision": "f42632893810325d9f74375a4cd29bd31d8daefa",
+            "path": "src/metabase/lib/join.cljc",
+            "line": 987,
+            "url": "https://github.com/metabase/metabase/blob/f42632893810325d9f74375a4cd29bd31d8daefa/src/metabase/lib/join.cljc#L987"
+          },
+          {
+            "repository": "metabase/metabase",
+            "revision": "f42632893810325d9f74375a4cd29bd31d8daefa",
+            "path": "src/metabase/lib/remove_replace.cljc",
+            "line": 697,
+            "url": "https://github.com/metabase/metabase/blob/f42632893810325d9f74375a4cd29bd31d8daefa/src/metabase/lib/remove_replace.cljc#L697"
+          }
+        ],
+        "analysisStatus": "inferred"
+      },
+      "reproductionPaths": [
+        {
+          "expected": "The left key and left-side source label identify the saved question, matching the selected field shown in its picker.",
+          "actual": "The join row reads Orders joined to Orders and its condition reads Orders ID = Orders Product ID. Opening the left key instead shows ID selected under QA-joins-20261028-no-fields, the actual saved source.",
+          "reproSteps": [
+            "Create a fresh saved question named QA-joins-products-copy from Sample Database Products (all original columns).",
+            "Start a new notebook using that saved question as its source.",
+            "Add Products as a left join and manually choose source ID and Products ID.",
+            "Click the joined Products name (not its column dropdown) and replace it with Orders.",
+            "Inspect the condition, then open its left ID key."
+          ],
+          "severity": 3,
+          "id": "metabase-replaced-card-source-join-rebinds-left-key-querying-path-1",
+          "explanation": "Replacing a notebook join’s table when the base source is a saved question can relabel or rebind the left key to the newly joined table; the join row shows both sides as that table and matching joined columns can come back blank.",
+          "sourceBugs": [
+            {
+              "index": 123,
+              "id": "metabase-querying-b35",
+              "name": "Replacing the joined table on a saved-question source attaches the new join to the left key"
+            },
+            {
+              "index": 129,
+              "id": "metabase-querying-replaced-join-blank-columns",
+              "name": "After replacing the joined table on a saved-question source, joined columns come back blank"
+            }
+          ],
+          "sourceConstraints": [
+            {
+              "sourceBugIndex": 123,
+              "constraints": {
+                "matchingGuidance": {
+                  "relatedReference": {
+                    "id": "metabase-querying-replaced-join-blank-columns",
+                    "distinction": "This reference covers the wrong join labels after replacing the joined table. The related one covers the blank joined columns when the query runs."
+                  }
+                }
+              }
+            },
+            {
+              "sourceBugIndex": 129,
+              "constraints": {
+                "matchingGuidance": {
+                  "relatedReference": {
+                    "id": "metabase-querying-b35",
+                    "distinction": "The related reference covers the wrong join labels. This one covers the blank joined columns in the results."
+                  }
+                }
+              }
+            }
+          ],
+          "sourceReproductions": [
+            {
+              "sourceBugIndices": [
+                123
+              ],
+              "explanation": "Replacing the joined table on a saved-question source attaches the new join to the left key.",
+              "expected": "The left key and left-side source label identify the saved question, matching the selected field shown in its picker.",
+              "actual": "The join row reads Orders joined to Orders and its condition reads Orders ID = Orders Product ID. Opening the left key instead shows ID selected under QA-joins-20261028-no-fields, the actual saved source.",
+              "reproSteps": [
+                "Create a fresh saved question named QA-joins-products-copy from Sample Database Products (all original columns).",
+                "Start a new notebook using that saved question as its source.",
+                "Add Products as a left join and manually choose source ID and Products ID.",
+                "Click the joined Products name (not its column dropdown) and replace it with Orders.",
+                "Inspect the condition, then open its left ID key."
+              ],
+              "severity": 3
+            },
+            {
+              "sourceBugIndices": [
+                129
+              ],
+              "explanation": "After replacing the joined table on a saved-question source, running the query returns the source rows with every joined column blank.",
+              "expected": "The join returns matching rows from the new joined table.",
+              "actual": "The query returns only the source rows, and all joined Orders columns are blank.",
+              "reproSteps": [
+                "Start a notebook from a saved question built on Products.",
+                "Add Products as a left join on source ID = Products ID.",
+                "Replace the joined Products with Orders using the table-name picker.",
+                "Run the query and inspect the joined Orders columns."
+              ],
+              "severity": 3
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "id": "metabase-reselect-card-source-resets-query-stages",
+      "explanation": "Reselecting the already selected saved-question source in the notebook resets the query to Data only, silently removing existing filters and summaries instead of preserving the unchanged source’s stages.",
+      "rootCause": {
+        "explanation": "DataStep.handleTableChange always builds a fresh queryFromTableOrCardMetadata and calls updateQuery; it does not compare the selected source with the current source or preserve later stages for an unchanged selection. Rechoosing the same saved card therefore takes the source-replacement reset path.",
+        "sourceReferences": [
+          {
+            "repository": "metabase/metabase",
+            "revision": "f42632893810325d9f74375a4cd29bd31d8daefa",
+            "path": "frontend/src/metabase/querying/notebook/components/DataStep/DataStep.tsx",
+            "line": 46,
+            "url": "https://github.com/metabase/metabase/blob/f42632893810325d9f74375a4cd29bd31d8daefa/frontend/src/metabase/querying/notebook/components/DataStep/DataStep.tsx#L46"
+          }
+        ],
+        "analysisStatus": "source-supported"
+      },
+      "reproductionPaths": [
+        {
+          "expected": "Reselecting the already-selected source should leave the existing query stages unchanged rather than discard them.",
+          "actual": "The notebook resets to Data only. A whole-page multimodal assertion confirmed both summaries and both filters are absent; Filter/Summarize are now only add-stage controls.",
+          "reproSteps": [
+            "Sign in as admin. New > Question > Orders. Save it as 'B82 source'.",
+            "New > Question > pick the saved question 'B82 source'.",
+            "Summarize: Count of rows, by Quantity. Visualize, then save as 'B82 test'.",
+            "Open 'B82 test' and click the Editor (notebook) icon.",
+            "In the Data step, click 'B82 source' to open the data picker and choose 'B82 source' again.",
+            "Observe: the Summarize step is gone; only the Data step remains."
+          ],
+          "severity": 3,
+          "id": "metabase-reselect-card-source-resets-query-stages-querying-path-1",
+          "explanation": "Reselecting the same saved-question source clears all notebook stages.",
+          "sourceBugs": [
+            {
+              "index": 128,
+              "id": "metabase-querying-b82",
+              "name": "Reselecting the same saved-question source clears all notebook stages"
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "id": "metabase-single-number-variable-expands-comma-values",
+      "explanation": "A native SQL Number variable set to “A single value” accepts comma-separated input and expands it into multiple SQL expressions, changing arithmetic and the returned value instead of using one number or rejecting it.",
+      "rootCause": {
+        "explanation": "value->number splits every string numeric value on commas and returns many-or-one parsed numbers. This legacy list-expansion path does not enforce the UI variable’s single-value cardinality, so 1,000 is interpreted as separate 1 and 0 expressions rather than one scalar. The source explicitly documents intentional general comma-list support; the reviewed defect is its incompatibility with the visible single-value contract, not a claim that all comma-list support is accidental. Runtime applicability is based on retained native evidence in the report, not exact-public-build identity.",
+        "sourceReferences": [
+          {
+            "repository": "metabase/metabase",
+            "revision": "f42632893810325d9f74375a4cd29bd31d8daefa",
+            "path": "src/metabase/driver/common/parameters/values.clj",
+            "line": 368,
+            "url": "https://github.com/metabase/metabase/blob/f42632893810325d9f74375a4cd29bd31d8daefa/src/metabase/driver/common/parameters/values.clj#L368"
+          }
+        ],
+        "analysisStatus": "source-supported"
+      },
+      "reproductionPaths": [
+        {
+          "expected": "A single-value Number variable accepts one numeric value or rejects invalid input; it does not expand a comma-containing input into multiple SQL expressions.",
+          "actual": "For SELECT {{amount}} * 2 AS doubled, input 1000 returns 2,000 while 1,000 returns 1. The query preview shows SELECT 1, 0 * 2 AS doubled while A single value remains selected.",
+          "reproSteps": [
+            "Create a native SQL question against Sample Database with SELECT {{amount}} * 2 AS doubled.",
+            "Configure amount as Number with Input box and A single value.",
+            "Run with 1000 and observe 2,000.",
+            "Replace the input with 1,000, run again, and inspect the result and query preview."
+          ],
+          "severity": 3,
+          "id": "metabase-single-number-variable-expands-comma-values-querying-path-1",
+          "explanation": "A Number variable configured for A single value accepts comma-separated input and substitutes multiple SQL expressions, silently changing the query result.",
+          "sourceBugs": [
+            {
+              "index": 130,
+              "id": "metabase-single-number-variable-expands-comma-values",
+              "name": "Single-value SQL Number variable expands comma input into multiple expressions"
+            }
+          ],
+          "sourceConstraints": [
+            {
+              "sourceBugIndex": 130,
+              "constraints": {
+                "owningArea": "metabase/querying",
+                "reviewEvidence": {
+                  "basis": "User-approved review of saved native browser evidence and source.",
+                  "userAccepted": true,
+                  "analysis": [
+                    "Saved native tool output at lines 1144 and 1152 confirms A single value remains checked: 1000 returns 2,000, whereas 1,000 returns 1. Saved query-preview screenshot shows SELECT 1, 0 * 2 AS doubled. Contract comes from the visible single-value setting; approximate public Metabase source is not treated as exact build proof."
+                  ],
+                  "limitations": [
+                    "Saved native evidence and source review; no fresh browser reproduction or independent judge run.",
+                    "The exact deployed Metabase source revision is not publicly available; approximate public source is not represented as proof of that build. The visible single-value setting and retained native readbacks establish the reviewed behavior."
+                  ]
+                }
+              }
+            }
+          ]
+        }
+      ]
     }
   ],
   "sourceContext": {
@@ -5119,5 +5435,5 @@
     "limitation": "Approximate context: latest public release-x.58.x commit before the v0.58.24 image was built on 2026-08-05. The actual build revision 03d994f is unavailable publicly. Use this source to investigate; resolve differences against the running application rather than rejecting a reproduced bug solely because the source differs.",
     "validation": "Static source analysis; no new browser reproductions performed for this clustering."
   },
-  "sourceGroundTruthSha256": "0fed0fbadebad01b363392ed654fc576d37926b8b663148925cde728116f27f2"
+  "sourceGroundTruthSha256": "87b6536c2be5e5a63be3c73a706698cce00901dbed5fa6a9d3dc97fdf187e02f"
 }
