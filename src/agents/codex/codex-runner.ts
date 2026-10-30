@@ -44,6 +44,7 @@ export abstract class CodexRunner implements EvalAgent {
 
   constructor(
     protected context: AgentContext,
+    protected model: string,
     protected command = path.join(
       path.dirname(require.resolve("@openai/codex/package.json")),
       "bin/codex.js",
@@ -101,7 +102,7 @@ export abstract class CodexRunner implements EvalAgent {
       await this.server.request(
         "thread/start",
         {
-          model: "gpt-6.1-sol",
+          model: this.model,
           cwd: workspace,
           runtimeWorkspaceRoots: [workspace],
           approvalPolicy: "never",
@@ -115,7 +116,7 @@ export abstract class CodexRunner implements EvalAgent {
             mcp_servers: setup.mcpServers,
             agents: {
               enabled: setup.subagents,
-              default_subagent_model: "gpt-6.1-sol",
+              default_subagent_model: this.model,
               default_subagent_reasoning_effort: "medium",
             },
           },

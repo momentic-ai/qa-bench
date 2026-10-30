@@ -59,6 +59,10 @@ const prices: Record<string, { short: TokenPrices; long: TokenPrices }> = {
     short: { input: 2, cachedInput: 0.1, cacheWrite: 2.5, output: 10 },
     long: { input: 4, cachedInput: 0.2, cacheWrite: 5, output: 15 },
   },
+  "gpt-6.1-terra": {
+    short: { input: 1, cachedInput: 0.05, cacheWrite: 1.25, output: 5 },
+    long: { input: 2, cachedInput: 0.1, cacheWrite: 2.5, output: 7.5 },
+  },
   "gpt-6-sol": {
     short: { input: 2, cachedInput: 0.2, cacheWrite: 2.5, output: 10 },
     long: { input: 4, cachedInput: 0.4, cacheWrite: 5, output: 15 },

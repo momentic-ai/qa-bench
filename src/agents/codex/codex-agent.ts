@@ -3,7 +3,13 @@ import { createRequire } from "node:module";
 import { tmpdir } from "node:os";
 import path from "node:path";
 
-import { AgentContext, Browser, EvalAgentDefinition } from "../../evals/agent";
+import {
+  AgentContext,
+  Browser,
+  CODEX_MODELS,
+  CodexModel,
+  EvalAgentDefinition,
+} from "../../evals/agent";
 import {
   BrowserTool,
   closeAgentBrowsers,
@@ -34,8 +40,9 @@ export class CodexAgent extends CodexRunner {
   constructor(
     context: AgentContext,
     protected browserTool: BrowserTool = "playwright-mcp",
+    model: string = CODEX_MODELS[0],
   ) {
-    super(context);
+    super(context, model);
   }
 
   protected async prepare() {
@@ -134,12 +141,14 @@ export class CodexAgent extends CodexRunner {
 export function codexAgent(
   browser: Browser,
   browserTool: BrowserTool = "playwright-mcp",
+  model: CodexModel = CODEX_MODELS[0],
 ): EvalAgentDefinition {
   return {
     name: `codex-${browserTool}`,
     reportSubdirectory: `codex-${browserTool}`,
     concurrency: browser === "local" ? 2 : Infinity,
     config: {
+      model,
       browser,
       ...(browserTool === "playwright-mcp"
         ? { subagents: browser !== "local" }
@@ -155,8 +164,8 @@ export function codexAgent(
     },
     create(context) {
       return browser === "local"
-        ? new LocalCodexAgent(context, browserTool)
-        : new CodexAgent(context, browserTool);
+        ? new LocalCodexAgent(context, browserTool, model)
+        : new CodexAgent(context, browserTool, model);
     },
   };
 }

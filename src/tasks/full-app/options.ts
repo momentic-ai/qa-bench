@@ -1,6 +1,14 @@
 import { parseArgs } from "node:util";
 
-import { Browser, MO_EFFORTS, MoEffort } from "../../evals/agent";
+import {
+  Browser,
+  CLAUDE_MODELS,
+  CODEX_MODELS,
+  ClaudeModel,
+  CodexModel,
+  MO_EFFORTS,
+  MoEffort,
+} from "../../evals/agent";
 import {
   executionOptions,
   parseExecutionOptions,
@@ -19,6 +27,8 @@ export type FullAppOptions = {
   maxConcurrentSubAgents?: number;
   timeLimitMs?: number;
   effort?: MoEffort;
+  codexModel?: CodexModel;
+  claudeModel?: ClaudeModel;
   outputDirectory: string;
   browser: Browser;
 };
@@ -31,6 +41,7 @@ export function parseFullAppOptions(args: string[]): FullAppOptions {
       agent: { type: "string" },
       "max-concurrent-sub-agents": { type: "string" },
       effort: { type: "string" },
+      model: { type: "string" },
       fixtures: { type: "string" },
       "grade-only": { type: "boolean", default: false },
       "run-id": { type: "string", multiple: true },
@@ -65,6 +76,15 @@ export function parseFullAppOptions(args: string[]): FullAppOptions {
       throw new Error("--effort is supported only with --agent mo.");
     effort = values.effort as MoEffort;
   }
+  let codexModel: CodexModel | undefined;
+  let claudeModel: ClaudeModel | undefined;
+  if (values.model !== undefined) {
+    if (values.agent?.startsWith("codex-"))
+      codexModel = parseModel(CODEX_MODELS, values.model);
+    else if (values.agent?.startsWith("claude-"))
+      claudeModel = parseModel(CLAUDE_MODELS, values.model);
+    else throw new Error("--model applies only to Codex and Claude agents.");
+  }
   if (values["run-id"] && !values["grade-only"])
     throw new Error(
       "--run-id selects saved runs to regrade with --grade-only.",
@@ -77,10 +97,22 @@ export function parseFullAppOptions(args: string[]): FullAppOptions {
     maxConcurrentSubAgents,
     timeLimitMs,
     effort,
+    codexModel,
+    claudeModel,
     outputDirectory: outputDirectory ?? REPORTS_DIRECTORY,
     gradeOnly: values["grade-only"],
     runIds: parseRunIds(values["run-id"]),
   };
+}
+
+function parseModel<Model extends string>(
+  models: readonly Model[],
+  model: string,
+) {
+  const selected = models.find((candidate) => candidate === model);
+  if (!selected)
+    throw new Error(`--model must be one of ${models.join(", ")}.`);
+  return selected;
 }
 
 function parseBrowser(
