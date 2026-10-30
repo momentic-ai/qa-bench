@@ -1,7 +1,7 @@
 [
   {
     "id": "ignoring-card-query-and-dashboard-filter-intersection",
-    "explanation": "Assuming every chart must show data whenever another dashboard card does, without evaluating each saved card query together with the applied dashboard filter. Existing date windows and post-aggregation thresholds can correctly eliminate all rows even while neighboring cards remain populated.",
+    "explanation": "A dashboard contains cards whose charts can each have their own saved query and restrictions. A dashboard-wide filter adds conditions to each card's existing conditions; it does not replace them or guarantee that every card still has matching records. This pattern matches a report that calls an empty card broken merely because a neighboring card shows data, without checking the first card's date window or calculation thresholds. Evaluate the combined conditions for that card before alleging that the dashboard filter was ignored or applied incorrectly.",
     "verificationGuidance": [
       "Inspect the exact executed query for the affected card, including saved filters, aggregation thresholds and dashboard predicates.",
       "Compute the intersection of all date ranges and other restrictions using the fixture’s actual data dates.",
@@ -70,7 +70,7 @@
   },
   {
     "id": "object-ownership-confused-with-global-discoverability",
-    "explanation": "Assuming a saved item must appear in every browse/search surface because it can be reopened from its owning dashboard or personal collection. Collection-owned questions, dashboard-owned cards and category browse have intentionally different inclusion rules; access to an item does not promise inclusion in every catalog.",
+    "explanation": "A saved item can belong to a dashboard or a private collection without being listed in every global catalog. In Metabase, saved questions, chart cards and folder-like collections have different ownership and browsing rules. This pattern matches a report that assumes an item must appear in a particular search or category listing merely because it opens correctly from its owning location. Verify that listing's inclusion rules before claiming the item was lost; lack of access through its supported owning location is a different issue.",
     "verificationGuidance": [
       "Determine the item’s owner and collection scope.",
       "Inspect that browse surface’s inclusion/exclusion policy, including personal collections.",
@@ -101,7 +101,7 @@
   },
   {
     "id": "visible-input-normalization-mistaken-for-save-corruption",
-    "explanation": "A visible input transformation is attributed to silent save-time corruption even though the field or preview already shows the effective value before submission. Reviewed controls normalize unsupported characters, dates or precision; saving that displayed accepted value is different from secretly replacing a valid submitted value.",
+    "explanation": "An input can visibly change unsupported characters, dates or numeric precision while the user is still editing. This pattern matches a report that remembers the intended text and blames Save for a different result, although the field or preview already displayed that effective value before submission and the save preserved it. Observe the value immediately before saving and compare it with storage. A valid displayed value secretly replaced only during submission is a different failure.",
     "verificationGuidance": [
       "Record the input and preview immediately before blur, Apply or Save, then compare the submitted and persisted values.",
       "Check the field-specific normalization contract and a supported-input control.",
@@ -148,7 +148,7 @@
   },
   {
     "id": "supported-input-fallback-assumed-validation-failure",
-    "explanation": "Assuming invalid or blank input must remain as an error instead of reverting to the previous valid value, being treated as no value, or being constrained to a supported minimum. The reviewed controls deliberately use fallback/clearing behavior; showing a different parsed condition alone does not establish data corruption. This does not cover a valid accepted value that is secretly replaced.",
+    "explanation": "An input can deliberately handle blank or invalid text by clearing it, restoring the last valid value or applying a supported minimum instead of leaving an error. Reviewed Metabase examples include a relative date interval of zero becoming one day, invalid numeric text meaning no filter, and an empty required title or invalid typed date retaining the previous valid value. This pattern matches a demand for a different rejection style without evidence that a valid accepted value was lost. Check the field-specific rule and effective display; a valid value secretly replaced during submission is a different failure.",
     "verificationGuidance": [
       "Identify the control’s documented/tested invalid-input and blank-input policy.",
       "Inspect the retained calendar selection, range bounds and applied chip rather than only transient typed text.",
@@ -211,7 +211,7 @@
   },
   {
     "id": "interaction-target-or-gesture-mismatch",
-    "explanation": "An intended action is blamed for a failure even though the recorded input did not activate that action: it reached another element, used an incomplete gesture or editing mode, or simulated a different keyboard shortcut. A tool timeout, surrounding-cell click or value entered into a popup does not establish failure of the intended application control.",
+    "explanation": "A test must actually activate the control whose behavior it claims to measure. This pattern matches reports where the input reached a neighboring element or popup, a drag never reached the required threshold, the editor was in the wrong mode, or a simulated key combination differed from the real shortcut. A click timeout or text appearing elsewhere therefore does not establish failure of the intended link, input or command. Confirm the event target, focus and complete gesture, then repeat the same intended action correctly before alleging its failure.",
     "verificationGuidance": [
       "Confirm the actual event target, focus, editing mode and completed gesture from the rendered UI or recording.",
       "Repeat using the precise anchor, input, drag threshold or real keyboard shortcut; check key and modifier details for simulated events.",
@@ -277,7 +277,7 @@
   },
   {
     "id": "unverified-failure-treated-as-established",
-    "explanation": "A reported failure is treated as established without recovering the claimed failing state after independent review could not reproduce it. Nonreproduction leaves the historical event and its cause unresolved; it does not prove the behavior impossible or intended, and a nearby accepted bug does not verify a different trigger or outcome.",
+    "explanation": "The report describes a failure, but independent review did not recover the claimed failing state under the stated conditions. This group records that evidence limitation rather than an established explanation of why the behavior was correct or why the original event occurred. A future report must match the same trigger and outcome and still needs its own reliable reproduction; resemblance to a nearby accepted bug is insufficient. Nonreproduction does not prove the event impossible or intended.",
     "verificationGuidance": [
       "Reproduce the exact reported trigger and outcome in a fresh, isolated state, with the required permissions and completed saves.",
       "Keep an unrecovered historical claim explicitly unverified; do not invent an intended-behavior or source-cause explanation.",
@@ -552,7 +552,7 @@
   },
   {
     "id": "relative-link-resolution-contract-assumed-from-url-text",
-    "explanation": "A familiar interpretation of an authored relative, fragment or leading-slash URL is imposed despite the application's documented render context or base URL. The reviewed products use different policies; a missing target after applying that policy does not prove application-generated URL corruption or loss of the saved link.",
+    "explanation": "An authored link can be resolved relative to the current content, the application's base address or an explicitly specified site root, depending on the product's rules. This pattern matches a report that assumes its familiar interpretation of a relative path, fragment or leading slash must apply everywhere and calls the documented result corrupted navigation. The reviewed products use different policies, so check the saved link, rendered destination and supported root-relative syntax in the relevant app. An application-generated link that violates its own policy is a different failure.",
     "verificationGuidance": [
       "Inspect the authored value, rendered href, document base and the product's context-relative or root-relative syntax.",
       "Compare an explicitly qualified or product-generated canonical destination that follows the supported policy.",
@@ -615,7 +615,7 @@
   },
   {
     "id": "inventing-restrictive-free-form-validation",
-    "explanation": "Assuming an administrator-authored URL, domain, template or reusable code field must reject every value that seems malformed or unusable. These fields may deliberately accept relative links, templates, partial code or unconstrained text; saving user-provided content alone does not demonstrate a broken feature. This does not excuse corruption of valid input or an application-generated invalid value.",
+    "explanation": "An administrator-authored field can deliberately accept flexible text, including relative addresses, templates or partial reusable code. This pattern matches a report that assumes the form must reject every value that looks incomplete or unusable, without establishing a restrictive format requirement for that field. Saving the user's own free-form content is not sufficient evidence that the application generated or corrupted an invalid value. Test valid supported input and distinguish an explicit validation promise from a preferred restriction.",
     "verificationGuidance": [
       "Establish the documented accepted syntax and whether relative paths, templates or partial content are allowed.",
       "Test valid configured content separately from an unusable value deliberately entered by the author.",
@@ -643,7 +643,7 @@
   },
   {
     "id": "scrollable-content-mistaken-for-missing-data",
-    "explanation": "Content outside the initially visible portion of a scrollable menu, panel or narrow input is assumed absent, incorrect or unusable. In the reviewed cases scrolling or copying reveals the complete value and the control works. This does not cover essential content that remains inaccessible through normal supported interaction.",
+    "explanation": "A menu, panel or narrow text field may show only part of its contents until the user scrolls, moves within the field or copies the complete value. This pattern matches a report that calls an option or value missing or incorrect from that initial visible slice, while the reviewed normal interaction reveals it in full and the control works. Inspect the complete content before alleging loss. Essential information that remains inaccessible through the supported interaction is a different failure.",
     "verificationGuidance": [
       "Inspect the full scroll container and input value, including content above or beyond the initial viewport.",
       "Use normal scrolling, text navigation or copying to verify the complete value and the selectable control.",
@@ -670,7 +670,7 @@
   },
   {
     "id": "missing-template-value-assumed-automatic-fallback",
-    "explanation": "An absent optional variable is expected to disappear or receive a friendly default automatically, although the reviewed template or expression contract requires the author to guard or default that source. Missing-value text does not by itself prove a renderer or workflow failure. This does not declare every unresolved token or literal undefined desirable or intended.",
+    "explanation": "A template or workflow expression can insert values from other fields, some of which may be absent. This pattern matches a report that assumes a missing optional value must automatically disappear or become friendly empty text, although the relevant resolver requires an explicit optional block, guard or default. Test that supported missing-value syntax rather than transferring a promise from a different editor or rich-text field. The rejection does not declare every unresolved token or literal undefined desirable or intended.",
     "verificationGuidance": [
       "Verify whether the referenced source can be absent and which missing-value behavior this resolver promises.",
       "Use the supported optional-block, guard or default syntax and test both present and absent values.",
@@ -697,7 +697,7 @@
   },
   {
     "id": "claim-contradicted-by-controlled-verification",
-    "explanation": "The claimed missing, changed or unusable state is contradicted by a decisive observation or controlled verification of that same claim. Examples include an allegedly lost value remaining intact or an allegedly broken action succeeding under the stated setup. This disproves the checked allegation, not every related workflow or the possibility of a different historical failure.",
+    "explanation": "A report's specific factual claim is contradicted by a decisive observation or by a controlled repetition of the same setup. For example, the allegedly deleted value is still present, or the allegedly broken control performs the requested action when activated as described. Match this pattern only when that counterevidence addresses the same value, action and conditions; a vaguely similar successful workflow is insufficient. The finding rejects the checked allegation, not every related defect or every possible historical failure.",
     "verificationGuidance": [
       "Verify the actual displayed, submitted and persisted values, and the precise action target, instead of repeating the original interpretation.",
       "Repeat the reported setup and a positive control; record what the decisive observation actually establishes.",
@@ -777,7 +777,7 @@
   },
   {
     "id": "conversion-tool-confused-with-settings-editor",
-    "explanation": "Expecting “Visualize another way” to preserve a visualization type that the alternate visualizer does not support. That conversion workflow can deliberately open a bar chart or require axis choices; the existing visualization’s settings editor is a different operation.",
+    "explanation": "Metabase's Visualize another way action opens an alternative tool for rebuilding a chart; it is different from editing the existing chart's settings. The alternative tool may not support the current chart type and can start with a bar chart or ask for axis choices. This pattern matches a report that interprets that deliberate conversion as the original visualization losing its saved configuration. Verify which operation was chosen and whether the original chart changed before claiming a settings-preservation failure.",
     "verificationGuidance": [
       "Identify which toolbar control was activated.",
       "Compare supported types in the alternate visualizer with the separate Edit visualization/settings workflow.",
@@ -871,7 +871,7 @@
   },
   {
     "id": "missed-recovery-or-confirmation-step",
-    "explanation": "Declaring a control ineffective or a hidden state unrecoverable without completing its confirmation or using the available global recovery action. Reviewed examples include a permission confirmation before drilling down and Reset all filters restoring a hidden card.",
+    "explanation": "An action may require confirmation, and a filtered display may offer a separate reset control to return to a visible state. This pattern matches a report that stops before that confirmation or ignores the working recovery control and then calls the operation broken or the hidden state unrecoverable. Reviewed examples include confirming a permissions change before opening details and using Reset all filters to reveal a card again. Complete the supported flow and verify its result; failure after those steps is a different claim.",
     "verificationGuidance": [
       "Inspect dialogs and page-level reset controls after the action.",
       "Complete the confirmation or recovery and verify the resulting state.",
@@ -901,7 +901,7 @@
   },
   {
     "id": "expired-transient-action-assumed-successful-undo",
-    "explanation": "Interpreting a click after a toast’s Undo action expired as a successfully accepted Undo that failed to restore state. A disappearing toast alone does not establish the undo handler ran.",
+    "explanation": "A temporary success notification can offer Undo only for a limited time. This pattern matches a report that clicks after that offer has expired and interprets the disappearing notification as proof that Undo was accepted but failed to restore the item. Confirm that the action was still active and actually ran before evaluating its result. An Undo request accepted while available that fails to restore state would be a separate defect.",
     "verificationGuidance": [
       "Record the click relative to the toast’s expiry and verify the action remained mounted/enabled.",
       "Click while the toast is live and inspect the resulting restore request or state change."
@@ -930,7 +930,7 @@
   },
   {
     "id": "concurrent-save-assumed-to-merge-fields",
-    "explanation": "A stale editor is expected to merge another writer's changes or warn about conflicts even though the reviewed contract accepts last-write-wins saves. A full stale-object submission can restore its displayed fields without establishing corruption of the submitted data. This ruling does not cover a promised merge guarantee or loss without a competing write.",
+    "explanation": "When the same saved item is open in two tabs, one tab can be editing an older copy of its settings. Under the reviewed last-write-wins contract, saving that older copy may replace another tab's changes rather than merge the two edits or display a conflict warning. This pattern matches a report that assumes merging or conflict detection is guaranteed, despite the submitted older copy explaining the overwrite. A promised conflict-protection feature failing, or data disappearing without a competing save, is outside this rejection.",
     "verificationGuidance": [
       "Check the documented or adjudicated concurrency contract before requiring automatic merging or conflict detection.",
       "Inspect both editors' saved baselines and submitted fields, then repeat without another writer.",
@@ -961,7 +961,7 @@
   },
   {
     "id": "incomplete-configuration-without-demonstrated-harm",
-    "explanation": "Treating the ability to save an incomplete optional action as a functional defect solely because an inner completion button is disabled. The reviewed incomplete click action has no mapped target and causes no demonstrated harm; different save affordances need not imply a required blocking-validation contract.",
+    "explanation": "A dashboard can let an unfinished optional click action be saved even when a more specific completion button is disabled. In the reviewed case no destination or filter target was connected, and the incomplete action caused no demonstrated harm. This pattern matches a report that treats the difference between those save controls as a functional failure without establishing a requirement to block that incomplete state. Do not infer a later runtime validation rule from this rejection; a harmful action or a lost valid configuration needs separate evidence.",
     "verificationGuidance": [
       "Test the resulting saved action and identify any broken supported behavior or unintended side effect.",
       "Establish a requirement that the outer save reject the incomplete configuration rather than inferring it solely from an inner Done button."
@@ -991,7 +991,7 @@
   },
   {
     "id": "intended-behavior-rejection-without-recorded-rationale",
-    "explanation": "The reviewer labels the reported expectation as intended behavior but records no supporting rationale. These instances are an explicit holding group: the narrow rejection is known, while the specific model reasoning error, source semantics and general product policy are not established.",
+    "explanation": "These instances were rejected by a reviewer as intended behavior, but the record does not explain why. This is a holding group, not an established reusable explanation of what the model misunderstood. A new report can be compared with the exact rejected action and outcome in the stored instance, but similar wording alone is insufficient to declare it intended. Recover the missing rationale or obtain new evidence before applying a more specific rejection rule.",
     "verificationGuidance": [
       "Preserve the exact rejected claim and human decision without inventing a causal explanation.",
       "Do not use this holding group to dismiss a similar new report without checking its own trigger, contract and evidence.",
@@ -1132,7 +1132,7 @@
   },
   {
     "id": "dismissible-overlay-mistaken-for-broken-covered-action",
-    "explanation": "An action is called broken while a dismissible announcement, dropdown or active editor still owns the interaction. The supported first dismissal or outside click can close or commit that UI, with a subsequent action working correctly. These rejections do not cover an undismissable layer, loss during dismissal or failure after the control is exposed.",
+    "explanation": "An announcement, dropdown or active text editor can cover a button or consume the first click meant for another command. In the reviewed cases, dismissing that layer, finishing the edit, or clicking again after it closes makes the requested action work. This pattern matches a report that calls the covered command broken without completing that supported first step or establishing a requirement for one click to both dismiss and activate. It does not cover a layer that cannot be dismissed, edits lost during dismissal, or a command that still fails afterward.",
     "verificationGuidance": [
       "Identify whether an announcement, popup or editor is active and use its supported dismissal or completion action.",
       "Retry the intended command once the layer has closed and verify the action and saved state.",
@@ -1162,7 +1162,7 @@
   },
   {
     "id": "info-shortcut-assumed-history-shortcut",
-    "explanation": "Reading an “Edited” metadata shortcut as a promise to open the revision-history tab directly, when it deliberately opens the information panel on Overview and History remains available separately.",
+    "explanation": "A saved item's Edited label can open a general information panel rather than jump directly to the list of earlier revisions. In the reviewed cases, the panel deliberately opened on Overview and still offered a separate History tab. This pattern matches a report that calls that shortcut broken solely because it expected History to open immediately. Verify the shortcut's intended destination and whether revision history remains accessible; missing history or a link to the wrong item is a different claim.",
     "verificationGuidance": [
       "Identify the intended destination of that specific shortcut.",
       "Open the separate History tab to verify revisions are accessible before filing a navigation failure."
@@ -1190,7 +1190,7 @@
   },
   {
     "id": "assuming-type-change-clears-visible-applied-value",
-    "explanation": "Expecting a filter-type change to erase the previously applied selection automatically, even when the old value remains visibly applied and can be cleared or replaced. The adjudicated case treats that recoverable retained state as allowed; hidden incompatible values or an unusable control would be a different claim.",
+    "explanation": "A filter chooses which records or results to show, and changing its type does not always clear the value that was already applied. In the reviewed case the old selection remained visible and could be removed or replaced normally. This pattern matches a report that assumes the type change must clear that recoverable selection, rather than demonstrating hidden incompatible data or an unusable filter. A value that is invisible, cannot be cleared, or is applied differently from what the control shows needs separate investigation.",
     "verificationGuidance": [
       "Inspect both the applied chip and the new default rather than equating them.",
       "Clear or replace the retained selection and verify normal execution resumes.",
@@ -1220,7 +1220,7 @@
   },
   {
     "id": "full-revision-restore-assumed-location-preserving",
-    "explanation": "Expecting a history revert to restore content while keeping the current collection or location. The adjudicated behavior restores the earlier version’s location too, even if that makes the object inaccessible to the actor afterward; a normal Move picker’s choices do not alone establish a different revert contract.",
+    "explanation": "Restoring an older saved version can restore where the item was located as well as its content. In the reviewed cases, reverting a Metabase item also restored its former collection, which is the folder-like location used to organize saved items. This pattern matches a report that expects the item to stay in its current collection despite that full-version restore policy, including when the old location changes who can access it. Verify what the revision restores; the choices offered by a separate Move operation do not establish a different restore contract.",
     "verificationGuidance": [
       "Inspect the chosen revision’s stored collection and full restore payload.",
       "Compare expected restore scope with the reviewed product contract rather than assuming a partial revert.",
@@ -1251,7 +1251,7 @@
   },
   {
     "id": "saved-filter-connections-assumed-automatic-rewiring",
-    "explanation": "Assuming a dashboard filter automatically connects to every relevant card, or automatically disconnects other cards when its widget is moved. Explicit saved mappings determine which cards respond; placement or nearby explanatory text does not supersede those connections.",
+    "explanation": "A dashboard filter affects chart cards through explicitly saved connections between that filter and each card's data field. Moving the filter control, placing it near a card or reading nearby explanatory text does not automatically create or remove those connections. This pattern matches a report that expects the response of particular cards to change from layout alone. Inspect the saved connections first; a card ignoring a correctly configured connection is a separate filter failure.",
     "verificationGuidance": [
       "Inspect each affected card’s saved parameter mapping.",
       "Check whether a moved widget retained a Disconnect option and explicitly change mappings before comparing behavior.",
@@ -1298,7 +1298,7 @@
   },
   {
     "id": "markup-rendering-assumed-literal-source-roundtrip",
-    "explanation": "A rendered markup surface is expected to mirror literal source text, and supported interpretation or sanitization is mistaken for lost saved content. Reviewed examples include Markdown soft line breaks and restricted HTML handling. This concerns rendering semantics with retained source, not actual stored-text deletion or an established formatting promise being ignored.",
+    "explanation": "Markup is source text interpreted into formatted output, so the displayed result need not reproduce every source character or line break literally. In the reviewed cases, ordinary Markdown line breaks were rendered as soft breaks, or restricted HTML was interpreted and sanitized while the saved source remained intact. This pattern matches a claim of text loss based only on that supported rendering behavior. Compare the saved source with the markup rules; actual stored-text deletion or incorrectly rendered supported syntax is a different failure.",
     "verificationGuidance": [
       "Compare the saved editor source with the rendered output before claiming content loss.",
       "Check the supported markup and sanitization rules, including soft versus explicit line breaks.",
@@ -1327,7 +1327,7 @@
   },
   {
     "id": "unsupported-chart-shape-assumed-query-error",
-    "explanation": "Treating a visualization’s deliberate guidance for an incompatible grouping as a broken query. A trend display can require chronological time rather than extracted day-of-week values, while a shared dashboard grouping control offers units for other card types.",
+    "explanation": "A chart can require a particular shape of data even when the underlying query is valid. For example, a trend display can need a chronological time sequence rather than categories containing only names of weekdays. This pattern matches a report that treats the chart's instruction to choose compatible grouping as a broken query, while a shared dashboard control offers options intended for other chart types. Inspect the actual query results and the chart's requirements before alleging query failure.",
     "verificationGuidance": [
       "Inspect raw query results separately from the visualization message.",
       "Check the selected chart’s dimensional requirements and whether the dashboard author restricted grouping choices.",
@@ -1355,7 +1355,7 @@
   },
   {
     "id": "compact-summary-mistaken-for-complete-stored-value",
-    "explanation": "A concise badge, selection count or shortened secondary label is assumed to serialize the complete configured value or identity. In the reviewed cases the full amount, bounds or identifying value remains available in primary controls or details and the correct object or predicate is used. Summary brevity alone does not establish lost data.",
+    "explanation": "A short badge, selection count or secondary label often summarizes only part of an item's configuration. In the reviewed cases, a discount-type badge did not promise to show its amount, a selection count did not display both numeric bounds, or a shortened secondary label did not replace the full identity shown elsewhere. This pattern matches an inference of lost or wrong data from that abbreviated text while the full configuration and actual operation remain correct. Verify the detailed value or selected object before deciding that the summary proves corruption.",
     "verificationGuidance": [
       "Open the full configuration and compare the actual saved value, selected identity or applied predicate.",
       "Determine whether the label describes type, count or a secondary display rather than the full value.",
@@ -1385,7 +1385,7 @@
   },
   {
     "id": "reversed-range-assumed-invalid-configuration",
-    "explanation": "Assuming a range control must reject or reorder endpoints when it intentionally accepts a reversed interval that matches no rows. An empty result for an impossible predicate is not evidence that the query engine ignored or corrupted the range.",
+    "explanation": "A range condition can deliberately allow a lower bound greater than its upper bound, even though no record can satisfy it. This pattern matches a report that assumes the form must reject or reorder those endpoints and calls the resulting empty query a filtering defect. Check whether the range control's accepted contract permits that impossible predicate. A normally ordered range returning incorrect records, or bounds secretly changing from what the user sees, is a different failure.",
     "verificationGuidance": [
       "Inspect the persisted endpoints and executed predicate.",
       "Test an overlapping correctly ordered range and confirm its results before requesting extra validation as a bug fix."
@@ -1414,7 +1414,7 @@
   },
   {
     "id": "benchmark-scope-mistaken-for-product-defect",
-    "explanation": "A technical observation is submitted as an eligible benchmark bug without checking the benchmark's accepted scope. Recorded exclusions include accessibility-only claims with no accepted visible or pointer defect, API-only states unavailable through supported UI, and explicitly excluded exotic inputs. A scope exclusion does not prove the underlying technical issue cannot exist.",
+    "explanation": "This benchmark is a curated evaluation with rules about which kinds of findings count. A report matches this pattern when its only established issue falls outside those rules, such as an accessibility-tree-only label problem with no accepted visible or pointer-driven failure, an invalid state reachable only through an API, or an expressly excluded exotic input. The mistake is assuming that every technical imperfection is eligible for this evaluation. Scope exclusion does not establish that the underlying issue is imaginary, and a separately demonstrated in-scope functional failure must be assessed independently.",
     "verificationGuidance": [
       "Read the applicable benchmark eligibility rule and the exact recorded exclusion.",
       "Establish the supported UI path, input domain and accepted observable impact for the new claim.",
