@@ -1203,7 +1203,7 @@
           "id": "gitea-global-requested-review-search-stale-index",
           "distinction": "That entry covers missing refresh after individual review-request mutations, repaired by reindexing. This entry covers team-member omission even after reindexing, demonstrated on the organization dashboard."
         },
-        "scope": "Require a team request where the viewer is a member and matching keyword search omits the PR. Team-only omission after forced reindex distinguishes this from stale individual-review metadata."
+        "scope": "Require a team request where the viewer is a member and matching keyword search omits the PR. Team-only omission after forced reindex distinguishes this from stale individual-review metadata. Includes reports from a team's Pull Requests page (/org/<org>/pulls/<team>), which is the same page with a team filter, even when they also say the search reset the team selector; the team stays selected, so that claim doesn't make it a different bug."
       },
       "reviewEvidence": {
         "basis": "Explicit user acceptance at severity 3 after Codex and Claude independently accepted and each reproduced on two fresh team-requested PRs.",
@@ -1356,6 +1356,28 @@
           "id": "gitea-global-requested-review-search-stale-index",
           "distinction": "Same stale review-request index. That entry is the global Pull Requests page; this entry is an organization's Pull Requests page with a review requested directly from the user (team requests are a separate entry)."
         }
+      }
+    },
+    {
+      "id": "gitea-pr-comment-after-lock-raw-json-error",
+      "name": "Commenting on a pull request that was just locked shows a raw JSON SyntaxError",
+      "summary": "If the owner locks a pull request's conversation while a non-collaborator has a comment draft open, clicking Comment shows a 'Network error SyntaxError … is not valid JSON' toast instead of saying the conversation is locked.",
+      "expected": "Submitting the stale comment explains that the conversation was locked, and the draft is kept.",
+      "actual": "Clicking Comment showed the toast: Network error SyntaxError: Unexpected token '<', \"<!DOCTYPE \"... is not valid JSON. The comment was not posted and the draft stayed in the editor.",
+      "reproSteps": [
+        "As a repository owner, create a public repository and a pull request; use a second user who is not a collaborator.",
+        "As the second user, open the pull request and type a comment without submitting.",
+        "As the owner, in another session, lock the conversation on that pull request.",
+        "Without reloading, click Comment as the second user."
+      ],
+      "severity": 1,
+      "sourceCause": "routers/web/repo/issue.go MustAllowUserComment answers a comment on a locked conversation from a user without write access with a flash error and a redirect to the pull request page. The comment form posts with fetch, which follows the redirect and fails to parse the HTML as JSON, so the handler's comment_on_locked JSON error is never reached.",
+      "matchingGuidance": {
+        "relatedReference": {
+          "id": "gitea-comment-after-lock-raw-json-error",
+          "distinction": "Same locked-conversation redirect and JSON error. That entry is an issue; this entry is a pull request's conversation comment."
+        },
+        "scope": "Submitting a conversation comment on a pull request after it was locked, from a page loaded before the lock, showing a JSON SyntaxError or network error instead of a locked message. Review-panel submissions are a separate entry."
       }
     }
   ]
