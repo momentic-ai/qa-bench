@@ -1163,7 +1163,7 @@
     },
     {
       "id": "metabase-tab-copy-parameter-ownership",
-      "explanation": "Duplicating a dashboard tab leaves copied local text/heading filters tied to the original tab: copied text may show an uninterpolated placeholder, and opening its filter settings can jump to the source tab.",
+      "explanation": "Duplicating a dashboard tab leaves copied local text/heading filters and question-card mappings tied to the wrong ownership: text may show an uninterpolated placeholder, filter settings may jump to the original tab, or copied cards can show unfiltered totals despite the copied heading’s active selection.",
       "rootCause": {
         "explanation": "duplicateTab copies sourceDashCard by spread and replaces only id/dashboard_tab_id/isDirty. It does not clone dashboard parameters or rewrite inline parameter ownership and text mappings to the new card/tab.",
         "sourceReferences": [
@@ -1223,6 +1223,27 @@
             "Click the copied heading's Text widget. Observe that selection jumps to source Tab 1 and filter settings open there."
           ],
           "severity": 3
+        },
+        {
+          "expected": "Duplicating a tab should preserve the filter connections between its copied inline filter/heading and copied question cards, yielding the same filtered results as the source tab.",
+          "actual": "The copied heading retains inline_parameters and its text-tag mapping, but the copied question has parameter_mappings:[] (source retains its Product.Category mapping). The displayed filter and heading say Gizmo while the card shows the all-category total 67,863.4 instead of 15,576.4, including after reload.",
+          "reproSteps": [
+            "Create a dashboard with two tabs; on the second tab add a heading 'Selected {{category}}' and the existing question Revenue per quarter.",
+            "Add a Text or Category filter, connect it to the heading's category variable and the question's Product.Category field. Move the filter into the heading via Move filter, then save.",
+            "Select Gizmo and apply. The heading says Selected Gizmo and Revenue per quarter shows 15,576.4.",
+            "Edit, open the second tab's dropdown, choose Duplicate, then Save.",
+            "On the copied tab observe Selected Gizmo and the Gizmo filter, but Revenue per quarter shows 67,863.4. Reloading or selecting Widget does not fix the card. Existing reproduction: /dashboard/4?qa_category=Gizmo&tab=17."
+          ],
+          "severity": 3,
+          "id": "metabase-tab-copy-parameter-ownership-dashboards-path-3",
+          "explanation": "Duplicating tab disconnects question cards from inline filters.",
+          "sourceBugs": [
+            {
+              "index": 94,
+              "id": "metabase-dashboards-b97",
+              "name": "Duplicating tab disconnects question cards from inline filters"
+            }
+          ]
         }
       ]
     },
@@ -1327,7 +1348,7 @@
       "reproductionPaths": [
         {
           "id": "metabase-upper-only-number-range-serialization-dashboards-path-1",
-          "explanation": "Valid upper-only Between filter reverses to lower-only after reload.",
+          "explanation": "A Between filter with only an upper bound (for example when the lower bound was left blank or was invalid text like abc) changes after reload: the upper value moves into the lower field, so the filter becomes lower-only.",
           "sourceBugs": [
             {
               "index": 31,
@@ -1343,7 +1364,17 @@
             "Observe Release requests IDs 2 and 6, amounts 240 and 150.",
             "Reload the dashboard and inspect the same card."
           ],
-          "severity": 3
+          "severity": 3,
+          "sourceConstraints": [
+            {
+              "sourceBugIndex": 31,
+              "constraints": {
+                "matchingGuidance": {
+                  "claimScope": "Credit any Between filter whose upper bound moves into the lower field after reload, whatever the reason the lower bound was empty, including invalid non-numeric input. Non-numeric input that clears a filter without the bound moving is a separate known-invalid reference."
+                }
+              }
+            }
+          ]
         }
       ]
     },
@@ -2620,9 +2651,9 @@
     },
     {
       "id": "metabase-search-date-ranges-server-timezone",
-      "explanation": "Search Creation date and Last edit filters can include or exclude recently created items on the wrong calendar day near midnight: browser-local fixed-date choices or relative-date previews disagree with the server-clock search boundary.",
+      "explanation": "Search Creation date and Last edit filters can disagree on which items belong to Today or a fixed calendar day, excluding models, metrics or questions whose displayed creation/edit date is today. A browser/server day boundary is one trigger; reports can also involve seeded items never edited since creation.",
       "rootCause": {
-        "explanation": "Search date-range-filter-clause calls date-string->range without a viewer timezone. Relative decoding obtains t/local-date-time on the server, while the search comparison casts stored timestamps to date; browser-local date picks and previews therefore need not describe the same day near a timezone boundary. Exact fixture timezone configuration remains a prerequisite of each report.",
+        "explanation": "Search date-range-filter-clause calls date-string->range without a viewer timezone. Relative decoding obtains t/local-date-time on the server, while the search comparison casts stored timestamps to date; browser-local date picks and previews therefore need not describe the same day near a timezone boundary. Exact fixture timezone configuration remains a prerequisite of each report. Seeded or never-edited item variants are now accepted by the source matching scope; the supplied evidence does not establish that each such exclusion has the same timezone cause rather than missing last-edit metadata. Attribution of those broader symptoms remains provisional.",
         "sourceReferences": [
           {
             "repository": "metabase/metabase",
@@ -3509,5 +3540,5 @@
     "runtimeRevision": "03d994f",
     "limitation": "fixture.json identifies the public revision as approximate; the actual runtime build revision is unavailable publicly. source-supported means the cited public source supports the mechanism, not that the private runtime implementation was independently verified. Inferred causes are hypotheses requiring additional source or runtime evidence."
   },
-  "sourceGroundTruthSha256": "dfcc9a87df6e4af0c3f7aa0b5c9c40314bb348fd5ee4c16f9d69ad5d7a84626a"
+  "sourceGroundTruthSha256": "93285da1683188f3b1ea98a451b72211811375e36abe1a9a0d35a305acbc996a"
 }
