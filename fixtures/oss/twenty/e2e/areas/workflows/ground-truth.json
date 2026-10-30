@@ -4448,6 +4448,39 @@
         "relatedReference": "workflows-loop-623855c1",
         "distinction": "This entry covers opening the full run page from its side panel at desktop width without resizing or collapsing navigation. The related reference covers viewport resize or tablet navigation-collapse triggers."
       }
+    },
+    {
+      "id": "twenty-workflow-form-nonfinite-number-submits-null",
+      "name": "Workflow Number form accepts overflowing input and submits null",
+      "severity": 3,
+      "owningArea": "twenty/workflows",
+      "summary": "A workflow Form accepts an overflowing numeric value without a validation error, displays Infinity and completes with null instead of the displayed input.",
+      "expected": "Reject non-finite Number input with a visible validation error before submission; support for storing Infinity is not required.",
+      "actual": "Entering 1e999 displays Infinity and leaves Submit enabled. The run completes with null for that answer; a normal decimal such as 12.5 is retained.",
+      "reproSteps": [
+        "Create a manual workflow with a Form action containing a Number field and a downstream action.",
+        "Test the workflow, enter 1e999 in the Number input and observe Infinity without a validation error.",
+        "Submit and inspect the Form output: the answer is null.",
+        "Repeat with 12.5 as a passing control."
+      ],
+      "reviewEvidence": {
+        "basis": "User-approved manual review of retained reports and pinned source.",
+        "userAccepted": true,
+        "sourceRevision": "35c645064f72bc4e3180a2c6c506cbbfee170007",
+        "severityReason": "Broken search functionality or accepted input/settings data overwritten without an explicit corresponding edit.",
+        "analysis": "The input 1e999 converts to Infinity, which is not NaN; the original report shows it passes the guard and Submit. The form copies values into a JSON GraphQL input; JSON serializes Infinity as null. A normal 12.5 control preserves its value. Nonfinite rejection is the narrow proposed contract.",
+        "expectedContract": "Inferred from Invalid number validation and successful-form submission not silently replacing accepted numeric input with null",
+        "sourceReferences": [
+          "https://github.com/twentyhq/twenty/blob/35c645064f72bc4e3180a2c6c506cbbfee170007/packages/twenty-front/src/utils/cast-as-number-or-null.ts#L34-L46",
+          "https://github.com/twentyhq/twenty/blob/35c645064f72bc4e3180a2c6c506cbbfee170007/packages/twenty-front/src/modules/object-record/record-field/ui/form-types/components/FormNumberFieldInput.tsx#L71-L83",
+          "https://github.com/twentyhq/twenty/blob/35c645064f72bc4e3180a2c6c506cbbfee170007/packages/twenty-front/src/modules/workflow/workflow-steps/workflow-actions/form-action/components/WorkflowEditActionFormFiller.tsx#L78-L94",
+          "https://github.com/twentyhq/twenty/blob/35c645064f72bc4e3180a2c6c506cbbfee170007/packages/twenty-front/src/modules/workflow/workflow-steps/workflow-actions/form-action/hooks/useSubmitFormStep.ts#L34-L46"
+        ],
+        "limitations": "Original reports and pinned source; no fresh browser reproduction or independent judge verification in this manual pass."
+      },
+      "matchingGuidance": {
+        "scope": "Non-finite overflow accepted by a workflow Form Number field and silently serialized to null. Excludes ordinary safe-integer precision limits and rejected input correctly retaining a previous saved value."
+      }
     }
   ]
 }
