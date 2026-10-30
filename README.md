@@ -59,8 +59,8 @@ automatic fixes to `src/`.
 ## Run
 
 ```bash
-pnpm eval --agent mo --fixtures gitea
-pnpm eval --agent codex-playwright-mcp --fixtures gitea/areas
+pnpm eval --agent mo --fixtures gitea --time-limit 2h
+pnpm eval --agent codex-playwright-mcp --fixtures gitea/areas --time-limit 30m
 pnpm eval --agent claude-playwright-mcp --grade-only --fixtures gitea
 pnpm merge --fixtures gitea
 ```
@@ -69,14 +69,14 @@ pnpm merge --fixtures gitea
 areas of an app (`gitea/areas`), or `oss-areas`. A whole-app run is graded
 against the union of its area references.
 
-Runs stop after 2h unless `--minutes` sets another limit (up to 120). A limit
-you set appears in every agent's brief. Mo's own budget comes from `--effort`.
+Runs stop after 2h unless `--time-limit` or `--minutes` sets another limit.
+Every agent sees the limit in its brief. Mo's own budget comes from `--effort`.
 
 Reports go to `reports/<agent>/<fixture>/<run-id>/`. Each run writes
 `scores.csv`, `grading.json` and a `review.md` queue of unmatched findings.
 
 Every agent gets the same brief, built in `src/evals/bugbash-brief.ts`: the app
-URL, test accounts, the area's scope and entry points, and the reporting rules.
+URL, test accounts, and the area's scope and entry points.
 
 ## Scoring
 
@@ -115,12 +115,12 @@ Each app lives under `fixtures/oss/<app>/`: a Compose recipe, seed scripts and
 ## agent-browser variants
 
 `codex-agent-browser` and `claude-agent-browser` use the pinned agent-browser CLI
-and its official bundled skill in place of Playwright MCP. Use the same fixture
-and browser options. agent-browser declares Node.js 24+ support.
+and its official bundled skill in place of Playwright MCP. Use the same fixture,
+time-limit and browser options. agent-browser declares Node.js 24+ support.
 
 ```bash
-pnpm eval --agent codex-agent-browser --fixtures twenty/areas
-pnpm eval --agent claude-agent-browser --fixtures twenty/areas
+pnpm eval --agent codex-agent-browser --fixtures twenty/areas --time-limit 30m
+pnpm eval --agent claude-agent-browser --fixtures twenty/areas --time-limit 30m
 ```
 
 Codex's CLI variant uses a writable workspace with network access so the CLI can

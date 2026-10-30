@@ -7,7 +7,7 @@ export type AgentContext = {
   agentName?: string;
   fixture: Fixture;
   targetUrl?: URL;
-  /** Set only when --minutes is passed. */
+  /** Set only when --time-limit or --minutes is passed. */
   timeLimitMs?: number;
   maxConcurrentSubAgents?: number;
   effort?: MoEffort;

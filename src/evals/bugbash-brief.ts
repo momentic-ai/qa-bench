@@ -8,7 +8,7 @@ export function bugbashBrief(
 ) {
   const sections = [
     `Find bugs in this app: ${url.href}`,
-    `${fixtureAuthentication(fixture)} Do not change account credentials.`,
+    `${fixtureAuthentication(fixture)}\nDo not change account credentials.`,
   ];
   const area = fixture.productArea;
   if (area) {
@@ -26,7 +26,6 @@ ${area.entryPoints.map((entry) => `- ${entry.path}: ${entry.directions}`).join("
     );
   }
   sections.push(
-    "Report only bugs you have verified, with expected and actual behavior and steps to reproduce.",
     "Do not read benchmark files, ground truth, or previous eval reports.",
   );
   if (timeLimitMs) sections.push(`You have ${timeLimitMs / 60_000} minutes.`);
@@ -69,6 +68,5 @@ ${fixtureAccounts(fixture)
     (account) =>
       `- ${account.name}: username ${account.username}, password ${account.password}; ${account.role}.`,
   )
-  .join("\n")}
-Use separate browser sessions for different users.`;
+  .join("\n")}`;
 }
