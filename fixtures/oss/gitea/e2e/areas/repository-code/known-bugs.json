@@ -26,7 +26,7 @@
     },
     {
       "id": "gitea-empty-upload-writes-probe-buffer",
-      "description": "In Gitea, upload File accepts a genuinely empty text file, but committing it stores a nonempty binary file containing a fixed-size buffer instead of zero bytes. Downloading confirms that the content was changed, and the file also acquires the wrong size and loses ordinary text editability.",
+      "description": "In Gitea, Add File > Upload File accepts a genuinely empty file, but committing it stores 1,024 zero bytes instead of an empty file. The file page consequently shows 1.0 KiB and View Raw rather than 0 B and The file is empty; downloading can confirm the incorrect stored bytes. A report of the wrong size after committing a zero-byte upload matches even without downloading the file. Creating an empty file through New File works normally.",
       "rootCause": "UploadFileToServer allocates a 1024-byte probe and slices it only when n>0; NewUpload writes the entire unsliced zero buffer for an empty file.",
       "reproductionPaths": [
         "In Gitea, upload File accepts a genuinely empty text file, but committing it stores a nonempty binary file containing a fixed-size buffer instead of zero bytes. Downloading confirms that the content was changed, and the file also acquires the wrong size and loses ordinary text editability."
@@ -307,10 +307,11 @@
     },
     {
       "id": "gitea-edit-error-cancel-wrong-path",
-      "description": "In Gitea’s file editor, if renaming or moving a file is rejected (for example because part of the new path is an existing file), the editor's Cancel link then points at the rejected new path instead of the original file, so clicking Cancel opens a 404. The error page renders with the attempted path as the current file path.",
-      "rootCause": "The error form renders cancellation from the submitted tree_path instead of retaining the original existing source path, producing a 404 destination.",
+      "description": "In Gitea’s file editor, after a rename or move is rejected, Cancel points at the attempted destination instead of returning to the original file. If that destination does not exist, Cancel opens a 404; if it is an existing file that caused the name conflict, Cancel opens that other file and its contents. The matching trigger is submitting the change and receiving a validation error, rather than merely typing a new name and cancelling before submission.",
+      "rootCause": "The edit submission replaces the template’s current file path with the submitted destination before validating it. When validation fails, both Cancel links are rendered from that rejected destination instead of retaining the original source path. The result is a 404 for an absent destination or navigation to the wrong existing file.",
       "reproductionPaths": [
-        "In Gitea’s file editor, if renaming or moving a file is rejected (for example because part of the new path is an existing file), the editor's Cancel link then points at the rejected new path instead of the original file, so clicking Cancel opens a 404. The error page renders with the attempted path as the current file path."
+        "In Gitea’s file editor, if renaming or moving a file is rejected (for example because part of the new path is an existing file), the editor's Cancel link then points at the rejected new path instead of the original file, so clicking Cancel opens a 404. The error page renders with the attempted path as the current file path.",
+        "Create two different files in a repository, open the first in Edit File and change its path to the second file’s existing path. Submit the commit and wait for the already-exists validation error. Click either Cancel link: it opens the second file with its own contents rather than returning to the first file. Cancelling before submitting the rename returns to the original file correctly."
       ]
     },
     {
@@ -367,6 +368,30 @@
       "rootCause": "The diff file tree uses the commit full changed-file summary while only the body is filtered; it renders links to absent body anchors without a filter indicator or navigation behavior.",
       "reproductionPaths": [
         "In Gitea, open a commit diff limited with ?files=<path>. Only that file’s diff is shown, but the changed-files tree still lists all files without a filter indicator; clicking an excluded file does nothing because its diff anchor is absent."
+      ]
+    },
+    {
+      "id": "gitea-branch-action-redirect-drops-search",
+      "description": "In Gitea, searching a repository’s Branches list limits the rows to matching branch names. Deleting or restoring a branch from those results succeeds but clears the search and returns to the unfiltered list. The current page number can remain, so a result on page 2 can lead to unrelated branches on unfiltered page 2. The failure concerns losing the active search after the action, not a failed deletion or restoration.",
+      "rootCause": "The shared redirect used after branch deletion and restoration constructs the Branches address with only the page parameter. The action buttons also pass the page but omit the search query, so the server cannot preserve the active search when redirecting.",
+      "reproductionPaths": [
+        "Open a repository’s Branches page and search for a prefix shared by several branch names. Delete a matching branch and confirm, or restore a deleted matching branch. The action succeeds, but the resulting page has an empty search box and shows branches outside the searched prefix; when started on a later results page, that page number is retained without its search."
+      ]
+    },
+    {
+      "id": "gitea-file-history-removed-path-snapshot-link",
+      "description": "In Gitea, a file’s History lists the commits that changed its old path, including the commit that renamed or deleted it. The View at this point in history link on that removal commit still opens the old path in that commit and returns 404, because the path no longer exists there. Links to earlier versions and the removal commit’s View changes link can work correctly.",
+      "rootCause": "The history query includes commits that remove the requested path. The history template nevertheless builds every snapshot link from that row’s commit ID and the unchanged history path, without resolving a renamed destination or suppressing the link when the old path is absent from the selected commit.",
+      "reproductionPaths": [
+        "Create a file, commit it, edit and commit it again, then rename or delete it in another commit. Open History for the original file path and choose View at this point in history on the rename or deletion commit. The snapshot opens a 404 saying the old path does not exist; snapshots from the earlier commits and View changes for the removal commit remain usable."
+      ]
+    },
+    {
+      "id": "gitea-fork-comparison-source-repository-name",
+      "description": "In Gitea, a fork is a copy of another repository that may have a different name. When comparing a differently named fork’s branch against its upstream repository, View File links in the comparison combine the fork’s owner with the upstream repository’s name. They open the wrong repository address and can show 404 instead of the compared file. The comparison itself can display the changes correctly, and comparisons inside the fork or forks retaining the upstream name hide the error.",
+      "rootCause": "The comparison handler passes the head fork’s owner but the base repository’s name into the shared source-path builder. That mismatched owner/name pair is then used for both the changed-file source links and the before-change source links, instead of using the head fork’s own repository name.",
+      "reproductionPaths": [
+        "Fork a repository under a different name, add a file on a branch in the fork, and compare that branch against upstream. Open the changed file’s menu and click View File. Its address uses the fork owner with the upstream repository name and returns 404 when that repository does not exist. Two-dot and three-dot comparisons are affected, including links for deleted files."
       ]
     }
   ]
