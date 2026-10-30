@@ -971,6 +971,27 @@
           "distinction": "Same symptom of a delete action dropping the active search, but a different page and handler. That entry is the milestones list; this entry is the repository Branches page."
         }
       }
+    },
+    {
+      "id": "gitea-editor-cancel-after-rename-conflict-opens-other-file",
+      "name": "Cancel after a rename rejected for an existing file opens that other file",
+      "summary": "In the file editor, if a rename is rejected because a file already exists at the new path, the editor's Cancel links point at that existing file instead of the file being edited, so Cancel opens a different file with different contents.",
+      "expected": "Cancel abandons the rename and returns to the file that was being edited.",
+      "actual": "While editing qa-dir/first.txt, renaming it to qa-dir/sub/second.txt (an existing file) showed 'A file named \"qa-dir/sub/second.txt\" already exists in this repository.' Both Cancel links then pointed at qa-dir/sub/second.txt, and clicking either opened second.txt with its own contents. Typing the same new name and clicking Cancel without committing returns to first.txt.",
+      "reproSteps": [
+        "Create two files in a branch, for example a.txt and dir/b.txt.",
+        "Open a.txt, click Edit File and change its path to dir/b.txt.",
+        "Commit and see the 'already exists' error.",
+        "Click Cancel and observe that dir/b.txt opens instead of a.txt."
+      ],
+      "severity": 1,
+      "sourceCause": "routers/web/repo/editor.go editFilePost stores the submitted form.TreePath in ctx.Data[\"TreePath\"] before validation, and RenderWithErr re-renders the editor with it, so the Cancel links in templates/repo/editor/edit.tmpl and commit_form.tmpl are built from the rejected path.",
+      "matchingGuidance": {
+        "relatedReference": {
+          "id": "gitea-editor-cancel-after-rejected-move-404",
+          "distinction": "Same cause and Cancel link. That entry is a rejected path that doesn't exist, so Cancel opens a 404; this entry is a rejected path that is an existing file, so Cancel opens that other file."
+        }
+      }
     }
   ]
 }
