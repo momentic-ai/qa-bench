@@ -4,7 +4,7 @@
   "logicalBugs": [
     {
       "id": "twenty-record-pages-activities-a-stale-note-or-task-main-editor-overwrites-completed-body-field-saves",
-      "explanation": "Saving the Body field through its popup updates the stored body and field preview, but leaves the main Note or Task editor showing the old content. Editing that stale document then overwrites the completed popup save.",
+      "explanation": "In Twenty, a Note or Task can have its main body editor and a separate Body-field popup open on the same text. Saving in one does not refresh the other; editing the older copy then overwrites the completed save and loses the newer text, including after reload.",
       "rootCause": {
         "explanation": "RichTextFieldEditor memoizes initialBody by fieldName and recordId, creates its editor once, and only replaces editor content when recordId changes. External completed body saves do not refresh an already-mounted editor; its next save replaces the entire body with its stale document.",
         "sourceReferences": [
@@ -91,7 +91,7 @@
       "reproductionPaths": [
         {
           "id": "twenty-record-pages-activities-a-stale-note-or-task-main-editor-overwrites-completed-body-field-saves-record-pages-activities-path-1",
-          "explanation": "Saving the Body field through its popup updates the stored body and field preview, but leaves the main Note or Task editor showing the old content. Editing that stale document then overwrites the completed popup save.",
+          "explanation": "Twenty Notes and Tasks store formatted text in a Body field, editable on the record page or through a field popup. Save new text through a Note or Task Body-field popup while the main body editor is already open. The popup preview and saved record update, but the main editor keeps the old text; editing it then overwrites the completed popup save.",
           "sourceBugs": [
             {
               "index": 11,
@@ -113,7 +113,7 @@
         },
         {
           "id": "twenty-record-pages-activities-a-stale-note-or-task-main-editor-overwrites-completed-body-field-saves-record-pages-activities-path-2",
-          "explanation": "An already-open Body-field popover retains an old document and overwrites completed main-editor saves when edited.",
+          "explanation": "Twenty Notes and Tasks store formatted text in a Body field, editable on the record page or through a field popup. Leave the Body-field popup open while saving changes through the main Note or Task editor. The popup keeps its older text, and editing that popup overwrites the completed main-editor changes.",
           "sourceBugs": [
             {
               "index": 29,
@@ -162,7 +162,7 @@
     },
     {
       "id": "twenty-record-pages-activities-opening-a-new-note-immediately-after-typing-permanently-loses-its-body",
-      "explanation": "Pending Note or Task body edits are silently lost when the rich-text editor unmounts before its save delay, including opening the full record or leaving the body tab. Waiting for autosave preserves the same text.",
+      "explanation": "Twenty Notes and Tasks store formatted text in a Body field, editable on the record page or through a field popup. Pending Note or Task body edits are silently lost when the rich-text editor closes or is replaced before its save delay, including opening the full record or leaving the body tab. Waiting for autosave preserves the same text.",
       "rootCause": {
         "explanation": "RichTextFieldEditor debounces document handling by 500ms and persistence by a further 300ms. It does not flush these callbacks on unmount, so opening another record or switching away from the body tab can discard the pending document before it reaches the server.",
         "sourceReferences": [
@@ -179,7 +179,7 @@
       "reproductionPaths": [
         {
           "id": "twenty-record-pages-activities-opening-a-new-note-immediately-after-typing-permanently-loses-its-body-record-pages-activities-path-1",
-          "explanation": "The note side panel does not flush pending body edits when Open navigates to the full record. Reproduced twice; waiting before Open preserves the content.",
+          "explanation": "Twenty Notes and Tasks store formatted text in a Body field, editable on the record page or through a field popup. Type into a Note body in its side panel, then click Open to show the full record before the delayed save completes. The full page has an empty body that remains empty after waiting and reloading; waiting before Open preserves the text.",
           "sourceBugs": [
             {
               "index": 12,
@@ -202,7 +202,7 @@
         },
         {
           "id": "twenty-record-pages-activities-opening-a-new-note-immediately-after-typing-permanently-loses-its-body-record-pages-activities-path-2",
-          "explanation": "Pending Note and Task body edits disappear when switching immediately to Timeline and remain missing after returning and reloading.",
+          "explanation": "Twenty Notes and Tasks store formatted text in a Body field, editable on the record page or through a field popup. Append text to a Note or Task body and immediately switch to its Timeline tab. Returning to the body loses the new paragraph, with no warning, and reload does not recover it.",
           "sourceBugs": [
             {
               "index": 62,
@@ -239,7 +239,7 @@
     },
     {
       "id": "twenty-record-pages-activities-escape-commits-annual-revenue-edit-instead-of-cancelling-it",
-      "explanation": "Pressing Escape in record detail Currency or Address editors commits the pending draft instead of cancelling it and preserving the saved value.",
+      "explanation": "Twenty record pages show saved entries, their editable fields and related activities. Pressing Escape in record detail Currency or Address editors commits the pending draft instead of cancelling it and preserving the saved value.",
       "rootCause": {
         "explanation": "FieldWidgetInputContextProvider implements Escape by persisting the supplied newValue and then closing the editor, the same sequence as Enter. Currency and Address editors supply their pending drafts, so Escape commits instead of discarding them.",
         "sourceReferences": [
@@ -256,7 +256,7 @@
       "reproductionPaths": [
         {
           "id": "twenty-record-pages-activities-escape-commits-annual-revenue-edit-instead-of-cancelling-it-record-pages-activities-path-1",
-          "explanation": "Pressing Escape in an Annual Revenue editor commits the pending amount instead of preserving the previously saved value.",
+          "explanation": "Twenty record pages show saved entries, their editable fields and related activities. Pressing Escape in an Annual Revenue editor commits the pending amount instead of preserving the previously saved value.",
           "sourceBugs": [
             {
               "index": 25,
@@ -284,7 +284,7 @@
         },
         {
           "id": "twenty-record-pages-activities-escape-commits-annual-revenue-edit-instead-of-cancelling-it-record-pages-activities-path-2",
-          "explanation": "Pressing Escape in a company Address editor saves a pending Address 1 change and creates a Timeline update.",
+          "explanation": "Twenty record pages show saved entries, their editable fields and related activities. Pressing Escape in a company Address editor saves a pending Address 1 change and creates a Timeline update.",
           "sourceBugs": [
             {
               "index": 26,
@@ -306,7 +306,7 @@
     },
     {
       "id": "twenty-record-pages-activities-company-side-panel-activity-context-redirects-main-page-note-and-task-creation",
-      "explanation": "Opening another company’s Notes or Tasks in the side panel overwrites the main company’s activity header and makes its New action create records linked only to the side-panel company.",
+      "explanation": "In Twenty, opening related Notes or Tasks for the same record type in multiple surfaces can mix up their activity headers. A side-panel Company can take over the main Company’s counts and New action, causing new activities to link to the wrong Company; opening a Company from its panel can instead remove the full-page Tasks header and New button until a tab switch.",
       "rootCause": {
         "explanation": "Widget header state is keyed by object-level pageLayoutId and widget ID rather than record or mounted publisher. Main-page and side-panel activities overwrite one another’s count and creation callback, and one publisher cleanup can clear the other surface’s header.",
         "sourceReferences": [
@@ -414,7 +414,7 @@
       "reproductionPaths": [
         {
           "id": "twenty-record-pages-activities-company-side-panel-activity-context-redirects-main-page-note-and-task-creation-record-pages-activities-path-1",
-          "explanation": "Opening another company’s Notes or Tasks in the side panel overwrites the main company’s activity header and makes its New action create records linked only to the side-panel company.",
+          "explanation": "Twenty record pages show saved entries, their editable fields and related activities. Opening another company’s Notes or Tasks in the side panel overwrites the main company’s activity header and makes its New action create records linked only to the side-panel company.",
           "sourceBugs": [
             {
               "index": 28,
@@ -446,7 +446,7 @@
         },
         {
           "id": "twenty-record-pages-activities-company-side-panel-activity-context-redirects-main-page-note-and-task-creation-record-pages-activities-path-2",
-          "explanation": "When a company's side panel is displaying Tasks and the user clicks Open, the full record retains task cards but loses the Tasks header/count and New task button. Switching tabs restores them.",
+          "explanation": "Twenty record pages show saved entries, their editable fields and related activities. From a Company side panel showing Tasks, click Open to reach the full Company record. Task cards remain, but the Tasks heading, count and New task button disappear until a tab switch or reload.",
           "sourceBugs": [
             {
               "index": 60,
@@ -495,7 +495,7 @@
     },
     {
       "id": "twenty-record-pages-activities-note-body-preview-drops-later-inline-text-fragments-within-one-paragraph",
-      "explanation": "The Note Body field and list preview hide later text runs in the same paragraph even though the saved body is complete.",
+      "explanation": "In Twenty, a Note’s Body preview in record fields or lists can omit text within a single saved paragraph. Formatting, workflow variables or hyperlinks split the paragraph into fragments; later fragments disappear, and a paragraph made entirely into a link can preview as blank. The full text remains saved and visible in the editor.",
       "rootCause": {
         "explanation": "The preview helper returns the first nonempty inline text item rather than concatenating the paragraph and traversing link inline content. Formatting splits and link nodes can therefore drop saved text from the displayed preview.",
         "sourceReferences": [
@@ -568,7 +568,7 @@
       "reproductionPaths": [
         {
           "id": "twenty-record-pages-activities-note-body-preview-drops-later-inline-text-fragments-within-one-paragraph-record-pages-activities-path-1",
-          "explanation": "Preview a saved Note paragraph containing multiple inline text runs, including formatting or link nodes; only the first text fragment is shown although the saved paragraph is complete.",
+          "explanation": "Twenty Notes and Tasks store formatted text in a Body field, editable on the record page or through a field popup. Save a Note paragraph containing multiple text fragments created by formatting or a workflow variable, then inspect its Body field or list preview. Only the first fragment is shown although the full paragraph remains saved.",
           "sourceBugs": [
             {
               "index": 40,
@@ -705,7 +705,7 @@
     },
     {
       "id": "twenty-record-pages-activities-restoring-notes-or-tasks-revives-removed-relations-and-can-create-duplicate-links",
-      "explanation": "Restoring a deleted Note or Task reactivates relations removed before deletion. If a relation was removed and re-added beforehand, Restore can revive both link rows and show duplicate activity cards.",
+      "explanation": "Twenty record pages show saved entries, their editable fields and related activities. Restoring a deleted Note or Task reactivates links to other records removed before deletion. If a record link was removed and re-added beforehand, Restore can revive both link rows and show duplicate activity cards.",
       "rootCause": {
         "explanation": "Note and Task restore hooks restore every soft-deleted target row by activity ID, without recording which targets were live at activity deletion. Previously unlinked rows and multiple historical links are therefore restored together.",
         "sourceReferences": [
@@ -729,7 +729,7 @@
       "reproductionPaths": [
         {
           "id": "twenty-record-pages-activities-restoring-notes-or-tasks-revives-removed-relations-and-can-create-duplicate-links-record-pages-activities-path-1",
-          "explanation": "Restoring a deleted Note or Task reactivates relations removed before deletion. If a relation was removed and re-added beforehand, Restore can revive both link rows and show duplicate activity cards.",
+          "explanation": "Twenty record pages show saved entries, their editable fields and related activities. Restoring a deleted Note or Task reactivates links to other records removed before deletion. If a record link was removed and re-added beforehand, Restore can revive both link rows and show duplicate activity cards.",
           "sourceBugs": [
             {
               "index": 0,
@@ -756,7 +756,7 @@
     },
     {
       "id": "twenty-record-pages-activities-deleting-a-named-related-task-or-note-changes-its-creation-timeline-label-to-untit",
-      "explanation": "After deleting a named Task or Note created from a company, its creation entry remains in the company Timeline but identifies the activity as Untitled.",
+      "explanation": "Twenty’s Timeline shows a record’s change history and related activities. After deleting a named Task or Note created from a company, its creation entry remains in the company Timeline but identifies the activity as Untitled.",
       "rootCause": {
         "explanation": "Timeline activity names are read from the live activity cache with linkedRecordCachedName as fallback. Creation can record an empty cached name before the user names the activity; deleting the activity removes the live title, exposing the empty fallback as Untitled.",
         "sourceReferences": [
@@ -780,7 +780,7 @@
       "reproductionPaths": [
         {
           "id": "twenty-record-pages-activities-deleting-a-named-related-task-or-note-changes-its-creation-timeline-label-to-untit-record-pages-activities-path-1",
-          "explanation": "After deleting a named Task or Note created from a company, its creation entry remains in the company Timeline but identifies the activity as Untitled.",
+          "explanation": "Twenty’s Timeline shows a record’s change history and related activities. After deleting a named Task or Note created from a company, its creation entry remains in the company Timeline but identifies the activity as Untitled.",
           "sourceBugs": [
             {
               "index": 1,
@@ -805,7 +805,7 @@
     },
     {
       "id": "twenty-new-record-title-reopen-empty-draft",
-      "explanation": "Reloading a newly created Note or Task can reopen its title editor with an empty draft. Committing that draft erases the saved title; the Note variant also occurs when reopening the activity from its company Timeline after the creation-page reload.",
+      "explanation": "Twenty opens a name editor when a Note, Task or workflow is first created. Reloading the initial page of a newly created Note, Task or workflow can reopen its name editor with an empty draft despite a saved title. Committing that empty draft through ordinary clicking or keyboard navigation erases the saved name. The accepted Note case can also occur when reopening it from its Company Timeline after the creation-page reload.",
       "rootCause": {
         "explanation": "The creation flag retained in router history reopens the new-record title editor after reload. useOpenNewRecordTitleCell initializes its draft from the record store before the fetched title is available; commit handlers persist this empty draft.",
         "sourceReferences": [
@@ -864,7 +864,7 @@
       "reproductionPaths": [
         {
           "id": "twenty-new-record-title-reopen-empty-draft-record-pages-activities-path-1",
-          "explanation": "Reloading a newly created Note or Task can reopen its title editor with an empty draft. Committing that draft erases the saved title; the Note variant also occurs when reopening the activity from its company Timeline after the creation-page reload.",
+          "explanation": "Twenty opens a name editor when a Note, Task or workflow is first created. Reloading a newly created Note or Task can reopen its title editor with an empty draft. Committing that draft erases the saved title; the Note variant also occurs when reopening the activity from its company Timeline after the creation-page reload.",
           "sourceBugs": [
             {
               "index": 2,
@@ -890,7 +890,7 @@
     },
     {
       "id": "twenty-record-pages-activities-deleting-a-company-related-note-or-task-leaves-its-tab-total-stale",
-      "explanation": "Deleting a Note or Task from a company’s embedded activity view removes its card but leaves the overall Notes or Tasks total unchanged until the view is reopened or refreshed.",
+      "explanation": "Twenty record pages show saved entries, their editable fields and related activities. Deleting a Note or Task from a company’s embedded activity view removes its card but leaves the overall Notes or Tasks total unchanged until the view is reopened or refreshed.",
       "rootCause": {
         "explanation": "Related activities query activity-target connections, whose totalCount is independent of the rendered live activities. Deletion removes activity records/cards without updating that target-query aggregate, which is then published unchanged as the widget header count.",
         "sourceReferences": [
@@ -914,7 +914,7 @@
       "reproductionPaths": [
         {
           "id": "twenty-record-pages-activities-deleting-a-company-related-note-or-task-leaves-its-tab-total-stale-record-pages-activities-path-1",
-          "explanation": "Deleting a Note or Task from a company’s embedded activity view removes its card but leaves the overall Notes or Tasks total unchanged until the view is reopened or refreshed.",
+          "explanation": "Twenty record pages show saved entries, their editable fields and related activities. Deleting a Note or Task from a company’s embedded activity view removes its card but leaves the overall Notes or Tasks total unchanged until the view is reopened or refreshed.",
           "sourceBugs": [
             {
               "index": 3,
@@ -938,7 +938,7 @@
     },
     {
       "id": "twenty-record-pages-activities-typing-in-search-with-a-note-or-task-body-editor-open-inserts-and-saves-the-query-",
-      "explanation": "Typing into focused command-menu or navigation records Search on an open Note or Task leaves Search empty and saves the query in the activity body.",
+      "explanation": "Twenty Notes and Tasks store formatted text in a Body field, editable on the record page or through a field popup. Typing into focused command-menu or navigation records Search on an open Note or Task leaves Search empty and saves the query in the activity body.",
       "rootCause": {
         "explanation": "ActivityRichTextEditor registers a wildcard hotkey for side-panel focus. Its writing-key handler prevents propagation and inserts a new paragraph into the activity editor without checking whether a search input owns the keystroke.",
         "sourceReferences": [
@@ -990,7 +990,7 @@
       "reproductionPaths": [
         {
           "id": "twenty-record-pages-activities-typing-in-search-with-a-note-or-task-body-editor-open-inserts-and-saves-the-query--record-pages-activities-path-1",
-          "explanation": "Typing into focused command-menu or navigation records Search on an open Note or Task leaves Search empty and saves the query in the activity body.",
+          "explanation": "Twenty Notes and Tasks store formatted text in a Body field, editable on the record page or through a field popup. Typing into focused command-menu or navigation records Search on an open Note or Task leaves Search empty and saves the query in the activity body.",
           "sourceBugs": [
             {
               "index": 4,
@@ -1023,7 +1023,7 @@
     },
     {
       "id": "twenty-record-pages-activities-opening-a-related-record-s-tasks-tab-hides-the-open-task-s-saved-assignee",
-      "explanation": "Viewing a related Person’s or Company’s Tasks tab makes an already saved assignee disappear from the open Task, falsely displaying it as unassigned until reload.",
+      "explanation": "Twenty record pages show saved entries, their editable fields and related activities. Viewing a related Person’s or Company’s Tasks tab makes an already saved assignee disappear from the open Task, falsely displaying it as unassigned until reload.",
       "rootCause": {
         "explanation": "useActivities replaces each activity record-store entry with a shallow activity fetched through a depth-zero target query. The response omits the assignee relation, so opening related Tasks replaces the complete Task with a record lacking the displayed assignee.",
         "sourceReferences": [
@@ -1047,7 +1047,7 @@
       "reproductionPaths": [
         {
           "id": "twenty-record-pages-activities-opening-a-related-record-s-tasks-tab-hides-the-open-task-s-saved-assignee-record-pages-activities-path-1",
-          "explanation": "Viewing a related Person’s or Company’s Tasks tab makes an already saved assignee disappear from the open Task, falsely displaying it as unassigned until reload.",
+          "explanation": "Twenty record pages show saved entries, their editable fields and related activities. Viewing a related Person’s or Company’s Tasks tab makes an already saved assignee disappear from the open Task, falsely displaying it as unassigned until reload.",
           "sourceBugs": [
             {
               "index": 5,
@@ -1071,7 +1071,7 @@
     },
     {
       "id": "twenty-record-pages-activities-previous-calendar-event-navigation-skips-tied-position-records-or-stays-on-the-sam",
-      "explanation": "The Previous Calendar event action can skip adjacent records or remain on the current event when multiple events share the same sort position, while Next traverses them correctly.",
+      "explanation": "Twenty stores calendar meetings as records and lists related events on a record’s Calendar tab. The Previous Calendar event action can skip adjacent records or remain on the current event when multiple events share the same sort position, while Next traverses them correctly.",
       "rootCause": {
         "explanation": "Cursor filtering appends an ascending ID tie-breaker when the sort omits ID, but the reversed-order neighbor query reverses only the explicitly supplied fields. Tied-position Previous results are therefore ordered with an inconsistent implicit ID direction.",
         "sourceReferences": [
@@ -1095,7 +1095,7 @@
       "reproductionPaths": [
         {
           "id": "twenty-record-pages-activities-previous-calendar-event-navigation-skips-tied-position-records-or-stays-on-the-sam-record-pages-activities-path-1",
-          "explanation": "The Previous Calendar event action can skip adjacent records or remain on the current event when multiple events share the same sort position, while Next traverses them correctly.",
+          "explanation": "Twenty stores calendar meetings as records and lists related events on a record’s Calendar tab. The Previous Calendar event action can skip adjacent records or remain on the current event when multiple events share the same sort position, while Next traverses them correctly.",
           "sourceBugs": [
             {
               "index": 6,
@@ -1118,7 +1118,7 @@
     },
     {
       "id": "twenty-record-pages-activities-unlinking-a-company-from-a-task-or-note-is-described-as-deleting-the-activity-in-t",
-      "explanation": "Removing a Task’s or Note’s company relation creates a company Timeline entry saying the activity was deleted even though it remains live.",
+      "explanation": "Twenty’s Timeline shows a record’s change history and related activities. Removing a Task’s or Note’s company record link creates a company Timeline entry saying the activity was deleted even though it remains live.",
       "rootCause": {
         "explanation": "Target-row deletion is translated to a linked activity deleted timeline event, and EventRowActivity renders that action as deletion of the related Task or Note. The event model/presentation does not distinguish unlinking a target from deleting the activity.",
         "sourceReferences": [
@@ -1142,7 +1142,7 @@
       "reproductionPaths": [
         {
           "id": "twenty-record-pages-activities-unlinking-a-company-from-a-task-or-note-is-described-as-deleting-the-activity-in-t-record-pages-activities-path-1",
-          "explanation": "Removing a Task’s or Note’s company relation creates a company Timeline entry saying the activity was deleted even though it remains live.",
+          "explanation": "Twenty’s Timeline shows a record’s change history and related activities. Removing a Task’s or Note’s company record link creates a company Timeline entry saying the activity was deleted even though it remains live.",
           "sourceBugs": [
             {
               "index": 7,
@@ -1165,7 +1165,7 @@
     },
     {
       "id": "twenty-record-pages-activities-deleting-activity-attachments-hides-saved-relations-and-can-create-duplicate-links",
-      "explanation": "Deleting an attachment hides a Note’s or Task’s existing relation chips. The relation picker then incorrectly shows those links as unselected; reselecting one on a Note can create a second persisted link to the same record.",
+      "explanation": "Twenty record pages provide file attachments and export or download actions. Deleting an attachment hides a Note’s or Task’s existing record link chips. The relation picker then incorrectly shows those links as unselected; reselecting one on a Note can create a second persisted link to the same record.",
       "rootCause": {
         "explanation": "Attachment destruction runs relation optimistic synchronization and re-upserts its related activity from a cache read. Activity relation collections can be replaced by the incomplete relation shape instead of preserving the existing target collection; the picker then treats persisted links as absent and can insert another target row.",
         "sourceReferences": [
@@ -1196,7 +1196,7 @@
       "reproductionPaths": [
         {
           "id": "twenty-record-pages-activities-deleting-activity-attachments-hides-saved-relations-and-can-create-duplicate-links-record-pages-activities-path-1",
-          "explanation": "Deleting an attachment hides a Note’s or Task’s existing relation chips. The relation picker then incorrectly shows those links as unselected; reselecting one on a Note can create a second persisted link to the same record.",
+          "explanation": "Twenty record pages provide file attachments and export or download actions. Deleting an attachment hides a Note’s or Task’s existing record link chips. The relation picker then incorrectly shows those links as unselected; reselecting one on a Note can create a second persisted link to the same record.",
           "sourceBugs": [
             {
               "index": 8,
@@ -1221,7 +1221,7 @@
     },
     {
       "id": "twenty-record-pages-activities-company-and-person-tasks-tabs-show-raw-status-codes-and-null-as-group-headings",
-      "explanation": "Related Task lists group records under internal status values instead of the readable labels used by the same Tasks’ status fields and pickers.",
+      "explanation": "Twenty record pages show saved entries, their editable fields and related activities. Related Task lists group records under internal status values instead of the readable labels used by the same Tasks’ status fields and pickers.",
       "rootCause": {
         "explanation": "TaskGroups groups by raw status and passes each Object.entries key directly as TaskList title. No select-option label lookup or null-status label is applied.",
         "sourceReferences": [
@@ -1238,7 +1238,7 @@
       "reproductionPaths": [
         {
           "id": "twenty-record-pages-activities-company-and-person-tasks-tabs-show-raw-status-codes-and-null-as-group-headings-record-pages-activities-path-1",
-          "explanation": "Related Task lists group records under internal status values instead of the readable labels used by the same Tasks’ status fields and pickers.",
+          "explanation": "Twenty record pages show saved entries, their editable fields and related activities. Related Task lists group records under internal status values instead of the readable labels used by the same Tasks’ status fields and pickers.",
           "sourceBugs": [
             {
               "index": 9,
@@ -1261,7 +1261,7 @@
     },
     {
       "id": "twenty-record-pages-activities-metadata-only-calendar-sharing-exposes-meeting-links-and-locations",
-      "explanation": "Calendar events shared as Metadata expose meeting URLs and locations to another workspace member even though the settings promise to share only date and participants.",
+      "explanation": "Twenty stores calendar meetings as records and lists related events on a record’s Calendar tab. Calendar events shared as Metadata expose meeting URLs and locations to another workspace member even though the settings promise to share only date and participants.",
       "rootCause": {
         "explanation": "METADATA calendar visibility redacts only title and description and then continues. Meeting link and location fields remain in the returned event and are rendered normally.",
         "sourceReferences": [
@@ -1278,7 +1278,7 @@
       "reproductionPaths": [
         {
           "id": "twenty-record-pages-activities-metadata-only-calendar-sharing-exposes-meeting-links-and-locations-record-pages-activities-path-1",
-          "explanation": "Calendar events shared as Metadata expose meeting URLs and locations to another workspace member even though the settings promise to share only date and participants.",
+          "explanation": "Twenty stores calendar meetings as records and lists related events on a record’s Calendar tab. Calendar events shared as Metadata expose meeting URLs and locations to another workspace member even though the settings promise to share only date and participants.",
           "sourceBugs": [
             {
               "index": 10,
@@ -1301,7 +1301,7 @@
     },
     {
       "id": "twenty-record-pages-activities-slash-command-selection-leaves-a-literal-slash-in-note-content",
-      "explanation": "Choosing an item from the rich-text slash menu can leave the command-trigger slash in saved content, including Note editing and dashboard Rich Text widgets.",
+      "explanation": "Twenty Notes and Tasks store formatted text in a Body field, editable on the record page or through a field popup. Choosing an item from the rich-text slash menu can leave the command-trigger slash in saved content, including Note editing and dashboard Rich Text widgets.",
       "rootCause": {
         "explanation": "CustomSlashMenu ignores the onItemClick callback supplied by BlockNote's SuggestionMenuController and passes each raw default item to CustomSlashMenuListItem, whose click/Enter handler calls item.onItemClick() directly. In the locked @blocknote/react 0.51.4 dependency, the supplied callback first closes the menu and calls clearQuery(), which deletes the slash trigger and query, before executing the selected item's block command. Bypassing that callback converts the block to Heading or List without consuming its slash text. Notes and dashboard Rich Text widgets both mount this custom menu, including dashboard Heading 1; the separate custom File insertion is not the cause of these reported block-command failures.",
         "sourceReferences": [
@@ -1385,7 +1385,7 @@
       "reproductionPaths": [
         {
           "id": "twenty-record-pages-activities-slash-command-selection-leaves-a-literal-slash-in-note-content-record-pages-activities-path-1",
-          "explanation": "Selecting a block type from the rich-text slash menu retains the command-trigger slash and places the cursor before it. Reported variant (mo-30m-twenty-4): Selecting Heading 1 in a new dashboard’s Rich Text widget formats the text but leaves the slash command trigger visible at the end of the heading, including after saving and leaving edit mode. Count this as the same reference rather than a separate bug.",
+          "explanation": "Twenty Notes and Tasks store formatted text in a Body field, editable on the record page or through a field popup. Type / in a Note body and choose Heading 1 or Bullet List, then type text. The block changes type but retains an unwanted trailing slash, including after saving and reloading. The same retained-slash behavior is also reported for Heading 1 in a dashboard Rich Text widget.",
           "sourceBugs": [
             {
               "index": 13,
@@ -1416,7 +1416,7 @@
     },
     {
       "id": "twenty-record-pages-activities-new-mailing-lists-cannot-be-named-through-the-creation-or-record-ui",
-      "explanation": "New List creates an Untitled record, but its table cell, side panel and full record provide no name editor. Lists created from campaign recipient selection are likewise left named Untitled list.",
+      "explanation": "Twenty record pages show saved entries, their editable fields and related activities. New List creates an Untitled record, but its table cell, side panel and full record provide no name editor. Lists created from campaign recipient selection are likewise left named Untitled list.",
       "rootCause": {
         "explanation": "The standard mailing-list layout exposes the members widget but does not provide an editable Name field widget. Creation opens the generic record surface, leaving the stored message-list name without a reachable naming control in the configured UI.",
         "sourceReferences": [
@@ -1440,7 +1440,7 @@
       "reproductionPaths": [
         {
           "id": "twenty-record-pages-activities-new-mailing-lists-cannot-be-named-through-the-creation-or-record-ui-record-pages-activities-path-1",
-          "explanation": "New List creates an Untitled record, but its table cell, side panel and full record provide no name editor. Lists created from campaign recipient selection are likewise left named Untitled list.",
+          "explanation": "Twenty record pages show saved entries, their editable fields and related activities. New List creates an Untitled record, but its table cell, side panel and full record provide no name editor. Lists created from campaign recipient selection are likewise left named Untitled list.",
           "sourceBugs": [
             {
               "index": 14,
@@ -1465,7 +1465,7 @@
     },
     {
       "id": "twenty-record-pages-activities-opportunity-timeline-activity-descriptions-are-clipped-without-a-reveal-option-at-",
-      "explanation": "On narrow Opportunity record pages, Timeline creation and field-update descriptions are clipped at the right edge with no usable way to reveal the remainder.",
+      "explanation": "Twenty’s Timeline shows a record’s change history and related activities. On narrow Opportunity (sales deal) record pages, Timeline creation and field-update descriptions are clipped at the right edge with no usable way to reveal the remainder.",
       "rootCause": {
         "explanation": "Timeline field-diff values are constrained to a 24px single-line overflow-hidden container. On narrow Opportunity records the content is clipped without an expansion or tooltip on the full diff description.",
         "sourceReferences": [
@@ -1482,7 +1482,7 @@
       "reproductionPaths": [
         {
           "id": "twenty-record-pages-activities-opportunity-timeline-activity-descriptions-are-clipped-without-a-reveal-option-at--record-pages-activities-path-1",
-          "explanation": "At 390×844, the new opportunity’s Timeline update and creation descriptions are visibly cut off at the right edge, and scrolling or tapping does not reveal their remaining text.",
+          "explanation": "Twenty’s Timeline shows a record’s change history and related activities. Open a sales Opportunity Timeline at phone width. Creation and field-change descriptions are cut off on the right, and tapping or scrolling does not reveal the missing text.",
           "sourceBugs": [
             {
               "index": 15,
@@ -1506,7 +1506,7 @@
     },
     {
       "id": "twenty-record-pages-activities-browser-back-clears-company-timeline-fragment-without-switching-back-to-home",
-      "explanation": "Browser Back removes the new company’s Timeline fragment but leaves the Timeline view selected; refreshing the restored hashless URL then displays Home.",
+      "explanation": "Twenty’s Timeline shows a record’s change history and related activities. Browser Back removes the new company’s Timeline fragment but leaves the Timeline view selected; refreshing the restored hashless URL then displays Home.",
       "rootCause": {
         "explanation": "TabListFromUrlOptionalEffect updates activeTabId only when the URL hash is a known tab ID. Browser Back to an empty fragment does not select the default Home tab, leaving the old Timeline state active.",
         "sourceReferences": [
@@ -1523,7 +1523,7 @@
       "reproductionPaths": [
         {
           "id": "twenty-record-pages-activities-browser-back-clears-company-timeline-fragment-without-switching-back-to-home-record-pages-activities-path-1",
-          "explanation": "Browser Back removes the new company’s Timeline fragment but leaves the Timeline view selected; refreshing the restored hashless URL then displays Home.",
+          "explanation": "Twenty’s Timeline shows a record’s change history and related activities. Browser Back removes the new company’s Timeline fragment but leaves the Timeline view selected; refreshing the restored hashless URL then displays Home.",
           "sourceBugs": [
             {
               "index": 16,
@@ -1545,7 +1545,7 @@
     },
     {
       "id": "twenty-record-pages-activities-restricted-calendar-event-titles-are-revealed-in-side-panels-and-relation-lists",
-      "explanation": "Calendar event titles hidden by permissions in the main event table/full page are revealed in side-panel headings and Event ID relation chips in participants and channel-association lists.",
+      "explanation": "Twenty stores calendar meetings as records and lists related events on a record’s Calendar tab. Calendar event titles hidden by permissions in the main event table/full page are revealed in side-panel headings and Event ID record link chips in participants and channel-association lists.",
       "rootCause": {
         "explanation": "Calendar visibility redaction is applied by top-level calendarEvent find query hooks. Nested calendar-event records reached through relation queries do not pass through these root hooks, allowing titles to reach relation lists and side-panel caches without the same redaction.",
         "sourceReferences": [
@@ -1569,7 +1569,7 @@
       "reproductionPaths": [
         {
           "id": "twenty-record-pages-activities-restricted-calendar-event-titles-are-revealed-in-side-panels-and-relation-lists-record-pages-activities-path-1",
-          "explanation": "Calendar event titles hidden by permissions in the main event table/full page are revealed in side-panel headings and Event ID relation chips in participants and channel-association lists.",
+          "explanation": "Twenty stores calendar meetings as records and lists related events on a record’s Calendar tab. Calendar event titles hidden by permissions in the main event table/full page are revealed in side-panel headings and Event ID record link chips in participants and channel-association lists.",
           "sourceBugs": [
             {
               "index": 17,
@@ -1594,7 +1594,7 @@
     },
     {
       "id": "twenty-record-pages-activities-annual-revenue-drops-the-decimal-separator-and-saves-a-hundredfold-amount",
-      "explanation": "Typing a decimal currency amount in company Annual Revenue or Opportunity Amount drops the decimal separator and saves a larger amount.",
+      "explanation": "Twenty record pages show saved entries, their editable fields and related activities. Typing a decimal currency amount in company Annual Revenue or Opportunity (sales deal) Amount drops the decimal separator and saves a larger amount.",
       "rootCause": {
         "explanation": "CurrencyInput passes the locale radix and unmask to IMaskInput but handles the formatted onAccept value as the amount string. When the selected locale treats the typed decimal separator as a grouping separator, masking removes it before CurrencyFieldInput parses and converts the number to micros.",
         "sourceReferences": [
@@ -1618,7 +1618,7 @@
       "reproductionPaths": [
         {
           "id": "twenty-record-pages-activities-annual-revenue-drops-the-decimal-separator-and-saves-a-hundredfold-amount-record-pages-activities-path-1",
-          "explanation": "Typing a decimal currency amount in company Annual Revenue or Opportunity Amount drops the decimal separator and saves a larger amount.",
+          "explanation": "Twenty record pages show saved entries, their editable fields and related activities. Typing a decimal currency amount in company Annual Revenue or Opportunity (sales deal) Amount drops the decimal separator and saves a larger amount.",
           "sourceBugs": [
             {
               "index": 18,
@@ -1641,7 +1641,7 @@
     },
     {
       "id": "twenty-record-pages-activities-tablet-record-opening-leaves-expanded-workspace-navigation-covering-the-loaded-not",
-      "explanation": "Expanded desktop workspace navigation carries into tablet layout and covers a Note or Task opened from a related activity card.",
+      "explanation": "Twenty record pages show saved entries, their editable fields and related activities. Expanded desktop workspace navigation carries into tablet layout and covers a Note or Task opened from a related activity card.",
       "rootCause": {
         "explanation": "Record opening checks the mobile breakpoint for the full-page navigation path and closes the side panel there; it does not close the independently expanded workspace navigation for tablet-width record navigation. The navigation overlay can therefore remain over the destination record.",
         "sourceReferences": [
@@ -1658,7 +1658,7 @@
       "reproductionPaths": [
         {
           "id": "twenty-record-pages-activities-tablet-record-opening-leaves-expanded-workspace-navigation-covering-the-loaded-not-record-pages-activities-path-1",
-          "explanation": "Expanded desktop workspace navigation carries into tablet layout and covers a Note or Task opened from a related activity card.",
+          "explanation": "Twenty record pages show saved entries, their editable fields and related activities. Expanded desktop workspace navigation carries into tablet layout and covers a Note or Task opened from a related activity card.",
           "sourceBugs": [
             {
               "index": 19,
@@ -1681,7 +1681,7 @@
     },
     {
       "id": "twenty-record-pages-activities-mobile-note-task-body-popup-clips-editable-text-and-its-expand-control-beyond-the-",
-      "explanation": "The rich text popup opened from a note or task Body field is wider than a mobile screen, clipping the editor and putting its expand button outside the usable viewport.",
+      "explanation": "Twenty Notes and Tasks store formatted text in a Body field, editable on the record page or through a field popup. The rich text popup opened from a note or task Body field is wider than a mobile screen, clipping the editor and putting its expand button outside the usable viewport.",
       "rootCause": {
         "explanation": "RichTextFieldInput fixes its popover width at 480px with a negative left margin and hidden overflow. It does not constrain the width to the mobile viewport, so the editor and right-hand expand control can extend beyond the screen.",
         "sourceReferences": [
@@ -1698,7 +1698,7 @@
       "reproductionPaths": [
         {
           "id": "twenty-record-pages-activities-mobile-note-task-body-popup-clips-editable-text-and-its-expand-control-beyond-the--record-pages-activities-path-1",
-          "explanation": "The rich text popup opened from a note or task Body field is wider than a mobile screen, clipping the editor and putting its expand button outside the usable viewport.",
+          "explanation": "Twenty Notes and Tasks store formatted text in a Body field, editable on the record page or through a field popup. The rich text popup opened from a note or task Body field is wider than a mobile screen, clipping the editor and putting its expand button outside the usable viewport.",
           "sourceBugs": [
             {
               "index": 20,
@@ -1721,7 +1721,7 @@
     },
     {
       "id": "twenty-record-pages-activities-notes-and-tasks-containing-record-mentions-cannot-export-to-pdf",
-      "explanation": "PDF export fails for Notes and Tasks whose bodies contain a supported record mention, while plain-text bodies export successfully.",
+      "explanation": "Twenty Notes and Tasks store formatted text in a Body field, editable on the record page or through a field popup. PDF export fails for Notes and Tasks whose bodies contain a supported record mention, while plain-text bodies export successfully.",
       "rootCause": {
         "explanation": "PDF export creates a default BlockNoteEditor and default PDF schema mappings rather than the application BLOCK_SCHEMA. A saved record-mention inline node is absent from that schema and cannot be parsed/exported.",
         "sourceReferences": [
@@ -1738,7 +1738,7 @@
       "reproductionPaths": [
         {
           "id": "twenty-record-pages-activities-notes-and-tasks-containing-record-mentions-cannot-export-to-pdf-record-pages-activities-path-1",
-          "explanation": "PDF export fails for Notes and Tasks whose bodies contain a supported record mention, while plain-text bodies export successfully.",
+          "explanation": "Twenty Notes and Tasks store formatted text in a Body field, editable on the record page or through a field popup. Export a Note or Task body containing a record mention, a text token that links to another saved record, to PDF. Export fails, while an otherwise plain-text body exports successfully.",
           "sourceBugs": [
             {
               "index": 21,
@@ -1761,7 +1761,7 @@
     },
     {
       "id": "twenty-record-pages-activities-mobile-record-tasks-rows-leave-only-a-few-task-title-characters-visible",
-      "explanation": "Narrow company and person Tasks rows squeeze task titles to only a few visible characters, especially when a due date and body preview are present.",
+      "explanation": "Twenty record pages show saved entries, their editable fields and related activities. Narrow company and person Tasks rows squeeze task titles to only a few visible characters, especially when a due date and body preview are present.",
       "rootCause": {
         "explanation": "TaskRow reserves space for due date and right-side controls while the left content is constrained by a percentage max-width. At mobile widths these simultaneous flex allocations leave only a small title area instead of reflowing the row.",
         "sourceReferences": [
@@ -1778,7 +1778,7 @@
       "reproductionPaths": [
         {
           "id": "twenty-record-pages-activities-mobile-record-tasks-rows-leave-only-a-few-task-title-characters-visible-record-pages-activities-path-1",
-          "explanation": "Narrow company and person Tasks rows squeeze task titles to only a few visible characters, especially when a due date and body preview are present.",
+          "explanation": "Twenty record pages show saved entries, their editable fields and related activities. Narrow company and person Tasks rows squeeze task titles to only a few visible characters, especially when a due date and body preview are present.",
           "sourceBugs": [
             {
               "index": 22,
@@ -1801,7 +1801,7 @@
     },
     {
       "id": "twenty-record-pages-activities-restricted-calendar-description-displays-raw-field-restricted-additional-permissio",
-      "explanation": "A teammate opening a restricted calendar event sees an internal permission error constant in its Description field.",
+      "explanation": "Twenty stores calendar meetings as records and lists related events on a record’s Calendar tab. A teammate opening a restricted calendar event sees an internal permission error constant in its Description field.",
       "rootCause": {
         "explanation": "The calendar visibility service replaces restricted descriptions with a machine sentinel, but the ordinary text-field display passes fieldValue directly to TextDisplay. Unlike the specialized calendar row, the detail field does not translate that sentinel into a restricted-content UI.",
         "sourceReferences": [
@@ -1825,7 +1825,7 @@
       "reproductionPaths": [
         {
           "id": "twenty-record-pages-activities-restricted-calendar-description-displays-raw-field-restricted-additional-permissio-record-pages-activities-path-1",
-          "explanation": "A teammate opening a restricted calendar event sees an internal permission error constant in its Description field.",
+          "explanation": "Twenty stores calendar meetings as records and lists related events on a record’s Calendar tab. A teammate opening a restricted calendar event sees an internal permission error constant in its Description field.",
           "sourceBugs": [
             {
               "index": 23,
@@ -1854,7 +1854,7 @@
     },
     {
       "id": "twenty-record-pages-activities-linkedin-url-entered-with-enter-disappears-after-refresh",
-      "explanation": "A company Linkedin URL shows a preview after Enter but is empty after refreshing the record.",
+      "explanation": "Twenty record pages provide file attachments and export or download actions. A company Linkedin URL shows a preview after Enter but is empty after refreshing the record.",
       "rootCause": {
         "explanation": "MultiItemFieldInput handles Enter by updating items through onChange and only invokes the field persistence onEnter callback when shouldAutoEnterBecauseOnlyOneItemIsAllowed is true. For a multi-link field, Enter can close the draft item input without committing the outer field before navigation.",
         "sourceReferences": [
@@ -1871,7 +1871,7 @@
       "reproductionPaths": [
         {
           "id": "twenty-record-pages-activities-linkedin-url-entered-with-enter-disappears-after-refresh-record-pages-activities-path-1",
-          "explanation": "A company Linkedin URL shows a preview after Enter but is empty after refreshing the record.",
+          "explanation": "Twenty record pages provide file attachments and export or download actions. A company Linkedin URL shows a preview after Enter but is empty after refreshing the record.",
           "sourceBugs": [
             {
               "index": 24,
@@ -1901,7 +1901,7 @@
     },
     {
       "id": "twenty-record-pages-activities-record-csv-exports-contain-only-id-when-list-column-state-is-uninitialized",
-      "explanation": "A record CSV export routed through the index exporter produces only Id when that object’s list-column state has not initialized. Direct loading, refreshing, or opening a related Calendar event before visiting its list can reach this state.",
+      "explanation": "Twenty record pages provide file attachments and export or download actions. A record CSV export routed through the index exporter produces only Id when that record type’s list-column state has not initialized. Direct loading, refreshing, or opening a related Calendar event before visiting its list can reach this state.",
       "rootCause": {
         "explanation": "A record context with a resolvable view ID supplies recordIndexId, routing ExportRecordsCommand through the index exporter. When visible list-column state has not initialized, CSV generation inserts only mandatory Id. Refresh and direct load are ways to reach this state, not required triggers.",
         "sourceReferences": [
@@ -1960,7 +1960,7 @@
       "reproductionPaths": [
         {
           "id": "twenty-record-pages-activities-record-csv-exports-contain-only-id-when-list-column-state-is-uninitialized-record-pages-activities-path-1",
-          "explanation": "A record CSV export routed through the index exporter produces only Id when that object’s list-column state has not initialized. Direct loading, refreshing, or opening a related Calendar event before visiting its list can reach this state.",
+          "explanation": "Twenty record pages provide file attachments and export or download actions. Export a record to CSV before its record type’s list columns have initialized, such as after directly loading the record without visiting its list. The file contains only the Id column rather than the record fields.",
           "sourceBugs": [
             {
               "index": 27,
@@ -2010,7 +2010,7 @@
     },
     {
       "id": "twenty-record-pages-activities-resizing-an-open-txt-or-pdf-attachment-preview-across-the-mobile-breakpoint-blanks",
-      "explanation": "Crossing the 768px layout breakpoint blanks an already-rendered TXT or PDF attachment preview until it is closed and reopened.",
+      "explanation": "Twenty record pages provide file attachments and export or download actions. Crossing the 768px layout breakpoint blanks an already-rendered TXT or PDF attachment preview until it is closed and reopened.",
       "rootCause": {
         "explanation": "Twenty allocates new documents/config props on render. The document-viewer library resets currentDocument to an unloaded prop object while its loader effect depends only on renderer/file index, leaving the renderer without fileData. Mobile subscriptions support the resize-trigger explanation, but the complete ancestor scheduling sequence was not traced.",
         "sourceReferences": [
@@ -2132,7 +2132,7 @@
       "reproductionPaths": [
         {
           "id": "twenty-record-pages-activities-resizing-an-open-txt-or-pdf-attachment-preview-across-the-mobile-breakpoint-blanks-record-pages-activities-path-1",
-          "explanation": "Crossing the 768px layout breakpoint blanks an already-rendered TXT or PDF attachment preview until it is closed and reopened.",
+          "explanation": "Twenty record pages provide file attachments and export or download actions. Open a TXT or PDF attachment preview, then resize across the desktop/mobile layout boundary. The preview becomes blank and remains so until it is closed and reopened.",
           "sourceBugs": [
             {
               "index": 30,
@@ -2167,7 +2167,7 @@
     },
     {
       "id": "twenty-record-pages-activities-ctrl-k-in-selected-note-or-task-text-opens-both-link-editing-and-the-global-comman",
-      "explanation": "The advertised rich-text link shortcut also triggers the global command menu, overlapping editing controls or closing an existing Task side panel.",
+      "explanation": "Twenty Notes and Tasks store formatted text in a Body field, editable on the record page or through a field popup. The advertised rich-text link shortcut also triggers the global command menu, overlapping editing controls or closing an existing Task side panel.",
       "rootCause": {
         "explanation": "The rich-text link listener prevents the browser default but does not stop propagation. Focused editor configuration permits global modifier shortcuts, allowing the global Ctrl+K handler to toggle the command side panel too.",
         "sourceReferences": [
@@ -2289,7 +2289,7 @@
       "reproductionPaths": [
         {
           "id": "twenty-record-pages-activities-ctrl-k-in-selected-note-or-task-text-opens-both-link-editing-and-the-global-comman-record-pages-activities-path-1",
-          "explanation": "The advertised rich-text link shortcut also triggers the global command menu, overlapping editing controls or closing an existing Task side panel.",
+          "explanation": "Twenty Notes and Tasks store formatted text in a Body field, editable on the record page or through a field popup. Select Note or Task body text and press the advertised Ctrl+K link shortcut. It also opens or toggles the global command menu, overlapping the link controls or closing the existing side panel.",
           "sourceBugs": [
             {
               "index": 31,
@@ -2323,7 +2323,7 @@
     },
     {
       "id": "twenty-record-pages-activities-renaming-a-favorited-record-leaves-its-sidebar-label-and-tooltip-stale-across-relo",
-      "explanation": "A completed record rename does not refresh the favorite’s cached sidebar label or tooltip, including after ordinary reload.",
+      "explanation": "Twenty record pages show saved entries, their editable fields and related activities. A completed record rename does not refresh the favorite’s cached sidebar label or tooltip, including after ordinary reload.",
       "rootCause": {
         "explanation": "Sidebar labels read cached targetRecordIdentifier. Server queries resolve current record names, but record renames do not refresh that navigation metadata path; hash-gated persistent metadata loading can preserve the stale identifier across ordinary reload.",
         "sourceReferences": [
@@ -2431,7 +2431,7 @@
       "reproductionPaths": [
         {
           "id": "twenty-record-pages-activities-renaming-a-favorited-record-leaves-its-sidebar-label-and-tooltip-stale-across-relo-record-pages-activities-path-1",
-          "explanation": "A completed record rename does not refresh the favorite’s cached sidebar label or tooltip, including after ordinary reload.",
+          "explanation": "Twenty record pages show saved entries, their editable fields and related activities. A completed record rename does not refresh the favorite’s cached sidebar label or tooltip, including after ordinary reload.",
           "sourceBugs": [
             {
               "index": 32,
@@ -2464,7 +2464,7 @@
     },
     {
       "id": "twenty-record-pages-activities-a-narrow-company-timeline-hides-the-related-task-or-note-identity-beside-a-long-ti",
-      "explanation": "Long timestamps in narrow Company side-panel Timeline rows can collapse the related Task or Note name to zero width and clip its activity type.",
+      "explanation": "Twenty’s Timeline shows a record’s change history and related activities. Long timestamps in narrow Company side-panel Timeline rows can collapse the related Task or Note name to zero width and clip its activity type.",
       "rootCause": {
         "explanation": "Single-line overflow-hidden row content and the timestamp compete for limited width. Observed geometry shows the linked activity identity collapsing first, followed by clipping of the activity-type text. Exact flex/min-content interaction is inferred from styles and measurements rather than a complete layout trace.",
         "sourceReferences": [
@@ -2572,7 +2572,7 @@
       "reproductionPaths": [
         {
           "id": "twenty-record-pages-activities-a-narrow-company-timeline-hides-the-related-task-or-note-identity-beside-a-long-ti-record-pages-activities-path-1",
-          "explanation": "Long timestamps in narrow Company side-panel Timeline rows can collapse the related Task or Note name to zero width and clip its activity type.",
+          "explanation": "Twenty’s Timeline shows a record’s change history and related activities. Open a Company Timeline in a narrow side panel where a row has a long timestamp. The related Task or Note name can collapse completely, and the activity-type text is clipped.",
           "sourceBugs": [
             {
               "index": 33,
@@ -2622,7 +2622,7 @@
     },
     {
       "id": "twenty-multi-value-field-rejection-has-no-explanation",
-      "explanation": "Explicitly saving an invalid Domain, Linkedin, Email or Phone edit leaves the record-field editor open and preserves the previous value without explaining why the change was rejected. Existing items can also suppress the error outline, leaving no useful validation feedback.",
+      "explanation": "Twenty record pages show saved entries, their editable fields and related activities. Explicitly saving an invalid Domain, Linkedin, Email or Phone edit leaves the record-field editor open and preserves the previous value without explaining why the change was rejected. Existing items can also suppress the error outline, leaving no useful validation feedback.",
       "rootCause": {
         "explanation": "LinksFieldInput, EmailsFieldInput and PhonesFieldInput supply validation failures with empty errorMessage values. MultiItemFieldInput rejects the draft in its shared Enter/save path without forwarding a useful explanatory message to MultiItemBaseInput, whose message renders only for nonempty text. The shared rejection boundary therefore suppresses validation feedback across these field types.",
         "sourceReferences": [
@@ -2737,7 +2737,7 @@
       "reproductionPaths": [
         {
           "id": "twenty-multi-value-field-rejection-has-no-explanation-record-pages-activities-path-1",
-          "explanation": "Explicitly saving an invalid edit to a saved Company Domain is refused without a validation explanation, toast or inline message.",
+          "explanation": "Twenty record pages show saved entries, their editable fields and related activities. Explicitly saving an invalid edit to a saved Company Domain is refused without a validation explanation, toast or inline message.",
           "sourceBugs": [
             {
               "index": 34,
@@ -2783,7 +2783,7 @@
         },
         {
           "id": "twenty-multi-value-field-rejection-has-no-explanation-record-pages-activities-path-2",
-          "explanation": "Explicitly saving an invalid Email leaves the editor open without explaining why the edit was rejected.",
+          "explanation": "Twenty record pages show saved entries, their editable fields and related activities. Explicitly saving an invalid Email leaves the editor open without explaining why the edit was rejected.",
           "sourceBugs": [
             {
               "index": 38,
@@ -2821,7 +2821,7 @@
         },
         {
           "id": "twenty-multi-value-field-rejection-has-no-explanation-record-pages-activities-path-3",
-          "explanation": "An invalid edit to an existing Person Linkedin link is refused while the editor provides no explanation.",
+          "explanation": "Twenty record pages show saved entries, their editable fields and related activities. An invalid edit to an existing Person Linkedin link is refused while the editor provides no explanation.",
           "sourceBugs": [
             {
               "index": 45,
@@ -2869,7 +2869,7 @@
         },
         {
           "id": "twenty-multi-value-field-rejection-has-no-explanation-record-pages-activities-path-4",
-          "explanation": "Explicitly saving a validator-refused edit to a saved Person Phone leaves a pale red outline and the editor open without explanatory text or toast. The previous saved number remains; a valid replacement saves normally.",
+          "explanation": "Twenty record pages show saved entries, their editable fields and related activities. Replace a saved Person Phone with a value refused by validation and explicitly save. The editor stays open with only a pale outline and no explanation or notification; the old number remains saved and a valid correction works.",
           "sourceBugs": [
             {
               "index": 51,
@@ -2914,7 +2914,7 @@
     },
     {
       "id": "twenty-record-pages-activities-calendar-all-day-summary-disagrees-with-event-detail-timestamps",
-      "explanation": "A calendar event marked all-day displays All day in its record Calendar summary but specific daytime start/end times in its details.",
+      "explanation": "Twenty stores calendar meetings as records and lists related events on a record’s Calendar tab. A calendar event marked all-day displays All day in its record Calendar summary but specific daytime start/end times in its details.",
       "rootCause": {
         "explanation": "The Calendar row uses the isFullDay flag to display All day, while the event details display raw stored startsAt and endsAt timestamps. Development seed data can combine an all-day flag with daytime timestamps.",
         "sourceReferences": [
@@ -2952,7 +2952,7 @@
       "reproductionPaths": [
         {
           "id": "twenty-record-pages-activities-calendar-all-day-summary-disagrees-with-event-detail-timestamps-record-pages-activities-path-1",
-          "explanation": "A calendar event marked all-day displays All day in its record Calendar summary but specific daytime start/end times in its details.",
+          "explanation": "Twenty stores calendar meetings as records and lists related events on a record’s Calendar tab. A calendar event marked all-day displays All day in its record Calendar summary but specific daytime start/end times in its details.",
           "sourceBugs": [
             {
               "index": 35,
@@ -2985,7 +2985,7 @@
     },
     {
       "id": "twenty-record-pages-activities-note-and-task-pdf-exports-corrupt-japanese-text-while-preserving-saved-source-cont",
-      "explanation": "Twenty Note and Task PDF exports render saved Japanese text as missing or corrupted glyphs, while the original editor content remains intact.",
+      "explanation": "Twenty Notes and Tasks store formatted text in a Body field, editable on the record page or through a field popup. Twenty Note and Task PDF exports render saved Japanese text as missing or corrupted glyphs, while the original editor content remains intact.",
       "rootCause": {
         "explanation": "Browser PDF exporter registers Inter and relies on BlockNote exporter fonts without tested-script fallback coverage. Actual PDF writes affected bytes as Helvetica/WinAnsi; exact react-pdf fallback branch untraced.",
         "sourceReferences": [
@@ -3002,7 +3002,7 @@
       "reproductionPaths": [
         {
           "id": "twenty-record-pages-activities-note-and-task-pdf-exports-corrupt-japanese-text-while-preserving-saved-source-cont-record-pages-activities-path-1",
-          "explanation": "PDF export renders saved Japanese characters as missing or corrupted glyphs.",
+          "explanation": "Twenty Notes and Tasks store formatted text in a Body field, editable on the record page or through a field popup. Save Japanese text in a Note or Task body, then export it to PDF. The downloaded PDF has missing, overlapping or corrupted Japanese characters although the saved editor text remains correct.",
           "sourceBugs": [
             {
               "index": 36,
@@ -3048,7 +3048,7 @@
     },
     {
       "id": "twenty-record-pages-activities-deleting-an-imported-calendar-event-without-a-channel-association-silently-leaves-",
-      "explanation": "The Calendar Delete command closes without deleting a visible imported event or displaying feedback.",
+      "explanation": "Twenty stores calendar meetings as records and lists related events on a record’s Calendar tab. The Calendar Delete command closes without deleting a visible imported event or displaying feedback.",
       "rootCause": {
         "explanation": "Calendar visibility post-hook splices unassociated events from the same findMany records array, yielding empty edges despite totalCount1. Incremental deletion fetches IDs first and silently skips mutation when that list is empty. findOne uses a temporary wrapper array, so the visible record remains accessible.",
         "sourceReferences": [
@@ -3079,7 +3079,7 @@
       "reproductionPaths": [
         {
           "id": "twenty-record-pages-activities-deleting-an-imported-calendar-event-without-a-channel-association-silently-leaves--record-pages-activities-path-1",
-          "explanation": "The Calendar Delete command closes without deleting a visible imported event or displaying feedback.",
+          "explanation": "Twenty stores calendar meetings as records and lists related events on a record’s Calendar tab. Open an imported Calendar event that has no calendar-channel association and choose Delete. The command panel closes without deleting the event or explaining the refusal; after associating the event with a calendar channel, deletion works.",
           "sourceBugs": [
             {
               "index": 37,
@@ -3111,7 +3111,7 @@
     },
     {
       "id": "twenty-record-pages-activities-restoring-a-person-or-company-leaves-saved-notes-hidden-behind-an-empty-state",
-      "explanation": "After deleting and restoring a Person or Company with saved Notes, the Notes panel can show Notes 1 and No notes until refetched.",
+      "explanation": "Twenty record pages show saved entries, their editable fields and related activities. After deleting and restoring a Person or Company with saved Notes, the Notes panel can show Notes 1 and No notes until its data is reloaded.",
       "rootCause": {
         "explanation": "Soft-delete optimistic relation handling removes cached NoteTarget edges/entities. Restoration clears parent deletedAt but does not refetch the removed activity-target list; unchanged relations can short-circuit restoration. Filter-based count updates can disagree with ID-based edge eviction when cached target fragments are partial. The precise running-cache ordering/count mechanism was not instrumented.",
         "sourceReferences": [
@@ -3149,7 +3149,7 @@
       "reproductionPaths": [
         {
           "id": "twenty-record-pages-activities-restoring-a-person-or-company-leaves-saved-notes-hidden-behind-an-empty-state-record-pages-activities-path-1",
-          "explanation": "After deleting and restoring a Person or Company with saved Notes, the Notes panel can show Notes 1 and No notes until refetched.",
+          "explanation": "Twenty record pages show saved entries, their editable fields and related activities. After deleting and restoring a Person or Company with saved Notes, the Notes panel can show Notes 1 and No notes until its data is reloaded.",
           "sourceBugs": [
             {
               "index": 39,
@@ -3191,7 +3191,7 @@
     },
     {
       "id": "twenty-record-pages-activities-open-opportunity-calendar-keeps-its-old-empty-results-after-linking-a-company-with",
-      "explanation": "Linking an Opportunity to a company with meetings while its Calendar tab is open leaves Calendar showing no events until the tab is remounted or the page reloaded.",
+      "explanation": "Twenty stores calendar meetings as records and lists related events on a record’s Calendar tab. Linking an Opportunity (sales deal) to a company with meetings while its Calendar tab is open leaves Calendar showing no events until the tab is reopened or the page reloaded.",
       "rootCause": {
         "explanation": "The Calendar query is keyed by object name, record ID and pagination, which stay unchanged after a Company edit. Its refresh subscription watches Calendar participant changes for previously returned people instead of the Opportunity relation change, and skips that subscription when the previous people list is empty. A new query recomputes people from current saved relations.",
         "sourceReferences": [
@@ -3236,7 +3236,7 @@
       "reproductionPaths": [
         {
           "id": "twenty-record-pages-activities-open-opportunity-calendar-keeps-its-old-empty-results-after-linking-a-company-with-record-pages-activities-path-1",
-          "explanation": "Linking an Opportunity to a company with meetings while its Calendar tab is open leaves Calendar showing no events until the tab is remounted or the page reloaded.",
+          "explanation": "Twenty stores calendar meetings as records and lists related events on a record’s Calendar tab. Linking an Opportunity (sales deal) to a company with meetings while its Calendar tab is open leaves Calendar showing no events until the tab is reopened or the page reloaded.",
           "sourceBugs": [
             {
               "index": 41,
@@ -3285,7 +3285,7 @@
     },
     {
       "id": "twenty-timeline-composite-empty-value-detection",
-      "explanation": "Clearing a Company Domain, Linkedin or Annual Revenue saves the removal, but its Timeline change row displays a blank destination after the arrow instead of Empty. Reload preserves the blank row; ordinary text clears and a numeric zero render correctly.",
+      "explanation": "Twenty’s Timeline shows a record’s change history and related activities. Clearing a Company Domain, Linkedin or Annual Revenue saves the removal, but its Timeline change row displays a blank destination after the arrow instead of Empty. Reload preserves the blank row; ordinary text clears and a numeric zero render correctly.",
       "rootCause": {
         "explanation": "EventFieldDiff determines composite emptiness with Object.values(...).every(isValueEmpty), where only null, undefined and the empty string are empty. A cleared Links value still contains secondaryLinks:[], and a cleared Currency value can retain currencyCode alongside null amountMicros. Both are classified as nonempty and sent to a field renderer that has no meaningful value to display.",
         "sourceReferences": [
@@ -3379,7 +3379,7 @@
       "reproductionPaths": [
         {
           "id": "twenty-timeline-composite-empty-value-detection-record-pages-activities-path-1",
-          "explanation": "Clearing a Company Domain Name or Linkedin saves correctly, but its Timeline row shows only the field label and arrow instead of identifying the new value as Empty.",
+          "explanation": "Twenty’s Timeline shows a record’s change history and related activities. Clear a saved Company Domain Name or Linkedin field and inspect its Timeline change. The value is removed, but the row ends at an arrow with no Empty label, including after reload.",
           "sourceBugs": [
             {
               "index": 42,
@@ -3424,7 +3424,7 @@
         },
         {
           "id": "twenty-timeline-composite-empty-value-detection-record-pages-activities-path-2",
-          "explanation": "After successfully clearing Company Annual Revenue, Timeline displays a blank destination after the change arrow instead of Empty. Reload retains the blank label. An ordinary Name clear displays Empty and a revenue value of 0 renders 0.",
+          "explanation": "Twenty’s Timeline shows a record’s change history and related activities. Clear saved Company Annual Revenue and inspect its Timeline change after reload. The destination after the arrow is blank instead of Empty; clearing an ordinary text field shows Empty, and a saved zero displays as zero.",
           "sourceBugs": [
             {
               "index": 55,
@@ -3468,7 +3468,7 @@
     },
     {
       "id": "twenty-record-pages-activities-permanent-person-or-company-destruction-leaves-a-stale-deleted-record-page-with-re",
-      "explanation": "Destroying a soft-deleted Person or Company through its full-page command menu succeeds but leaves the destroyed record displayed with unusable Restore controls.",
+      "explanation": "Twenty record pages show saved entries, their editable fields and related activities. Destroying a soft-deleted Person or Company through its full-page command menu succeeds but leaves the destroyed record displayed with unusable Restore controls.",
       "rootCause": {
         "explanation": "The side-panel command list targets the main full-page record but marks commands as isInSidePanel. The destruction command therefore takes the side-panel stay-put path instead of navigating to the record index. Defined-only record synchronization retains the previous deleted record in the UI store after the underlying record disappears.",
         "sourceReferences": [
@@ -3513,7 +3513,7 @@
       "reproductionPaths": [
         {
           "id": "twenty-record-pages-activities-permanent-person-or-company-destruction-leaves-a-stale-deleted-record-page-with-re-record-pages-activities-path-1",
-          "explanation": "Destroying a soft-deleted Person or Company through its full-page command menu succeeds but leaves the destroyed record displayed with unusable Restore controls.",
+          "explanation": "Twenty record pages show saved entries, their editable fields and related activities. Permanently destroy an already-deleted Person or Company from its full record page. The old page remains visible with a deleted banner and Restore buttons that cannot recover the destroyed record.",
           "sourceBugs": [
             {
               "index": 43,
@@ -3565,7 +3565,7 @@
     },
     {
       "id": "twenty-record-pages-activities-canceled-events-appear-as-active-meetings-in-record-calendar-rows",
-      "explanation": "Record Calendar rows omit cancellation state and render canceled event titles without the intended strikethrough.",
+      "explanation": "Twenty stores calendar meetings as records and lists related events on a record’s Calendar tab. Record Calendar rows omit cancellation state and render canceled event titles without the intended strikethrough.",
       "rootCause": {
         "explanation": "CalendarEventRow explicitly chooses line-through from calendarEvent.isCanceled. The timeline event fragment does not request isCanceled, so the row receives undefined and treats the event as uncanceled even though the server exposes and retains the stored flag.",
         "sourceReferences": [
@@ -3617,7 +3617,7 @@
       "reproductionPaths": [
         {
           "id": "twenty-record-pages-activities-canceled-events-appear-as-active-meetings-in-record-calendar-rows-record-pages-activities-path-1",
-          "explanation": "Record Calendar rows omit cancellation state and render canceled event titles without the intended strikethrough.",
+          "explanation": "Twenty stores calendar meetings as records and lists related events on a record’s Calendar tab. Open the record Calendar for an event whose saved cancellation flag is set. Its title has no cancellation strikethrough and looks like an active meeting, including after reload.",
           "sourceBugs": [
             {
               "index": 44,
@@ -3667,7 +3667,7 @@
     },
     {
       "id": "twenty-record-pages-activities-create-link-opens-an-unusable-url-form-for-the-first-paragraph-in-a-narrow-note-or",
-      "explanation": "At a narrow viewport, the Note or Task formatting toolbar’s Create link action fails to expose a usable URL form for first-paragraph selections.",
+      "explanation": "Twenty Notes and Tasks store formatted text in a Body field, editable on the record page or through a field popup. At a narrow viewport, the Note or Task formatting toolbar’s Create link action fails to expose a usable URL form for first-paragraph selections.",
       "rootCause": {
         "explanation": "The default BlockNote/Mantine link popover can hide when its reference button is clipped. The toolbar floats above the first paragraph while the editor sits inside scrolling and hidden-overflow containers. The observed hidden form, geometry and library hide-detached behavior support this mechanism; exact runtime timing is inferred.",
         "sourceReferences": [
@@ -3712,7 +3712,7 @@
       "reproductionPaths": [
         {
           "id": "twenty-record-pages-activities-create-link-opens-an-unusable-url-form-for-the-first-paragraph-in-a-narrow-note-or-record-pages-activities-path-1",
-          "explanation": "At a narrow viewport, the Note or Task formatting toolbar’s Create link action fails to expose a usable URL form for first-paragraph selections.",
+          "explanation": "Twenty Notes and Tasks store formatted text in a Body field, editable on the record page or through a field popup. At a narrow viewport, the Note or Task formatting toolbar’s Create link action fails to expose a usable URL form for first-paragraph selections.",
           "sourceBugs": [
             {
               "index": 46,
@@ -3756,7 +3756,7 @@
     },
     {
       "id": "twenty-record-pages-activities-extensionless-company-file-rejection-incorrectly-reports-a-permission-denial",
-      "explanation": "A filename-extension validation error appears as Access denied despite working upload permissions.",
+      "explanation": "Twenty record pages provide file attachments and export or download actions. A filename-extension validation error appears as Access denied despite working upload permissions.",
       "rootCause": {
         "explanation": "The storage validator rejects a filename without an extension. Its caller maps validation failures to ACCESS_DENIED without a more appropriate friendly-message override. The frontend selects the Access denied user-friendly message instead of the diagnostic filename error.",
         "sourceReferences": [
@@ -3794,7 +3794,7 @@
       "reproductionPaths": [
         {
           "id": "twenty-record-pages-activities-extensionless-company-file-rejection-incorrectly-reports-a-permission-denial-record-pages-activities-path-1",
-          "explanation": "A filename-extension validation error appears as Access denied despite working upload permissions.",
+          "explanation": "Twenty record pages provide file attachments and export or download actions. Upload a nonempty file without a filename extension through Company Files. The upload is rejected as Access denied even though the same content uploads successfully when given a .txt extension.",
           "sourceBugs": [
             {
               "index": 47,
@@ -3842,7 +3842,7 @@
     },
     {
       "id": "twenty-record-pages-activities-relinking-a-task-or-note-hides-its-existing-company-creation-history",
-      "explanation": "Relinking a recently unlinked Task or Note can rewrite its creation Timeline row into an empty diff, hiding that history while the activity remains linked.",
+      "explanation": "Twenty’s Timeline records the creation of related Tasks and Notes. Unlink one of those activities from its Company, then link it back and reload. The previously visible creation-history row disappears even though the activity remains linked and accessible; this concerns missing displayed history, not deletion of the activity.",
       "rootCause": {
         "explanation": "The recent-event repository can merge the relink into an existing creation event. Merging two empty properties objects produces an empty diff. The frontend keeps linked activity rows without a diff but filters rows with a defined empty diff, so the rewritten creation event disappears from rendered history.",
         "sourceReferences": [
@@ -3880,7 +3880,7 @@
       "reproductionPaths": [
         {
           "id": "twenty-record-pages-activities-relinking-a-task-or-note-hides-its-existing-company-creation-history-record-pages-activities-path-1",
-          "explanation": "Relinking a recently unlinked Task or Note can rewrite its creation Timeline row into an empty diff, hiding that history while the activity remains linked.",
+          "explanation": "Twenty’s Timeline shows a record’s change history and related activities. Unlink a Company from a Task or Note, then link it back and reload the Company Timeline. Its previously visible creation-history row disappears even though the activity is again linked and remains accessible.",
           "sourceBugs": [
             {
               "index": 48,
@@ -3928,7 +3928,7 @@
     },
     {
       "id": "twenty-page-header-long-title-overlaps-actions",
-      "explanation": "A long record or settings-page title squeezes the page header action area until controls overlap. Record ellipsis can cover the position counter, and settings Edit actions can overlap the title instead of remaining separately usable.",
+      "explanation": "Twenty record and settings pages place the title beside header action buttons. A long record or settings-page title squeezes the page header action area until controls overlap. Record ellipsis can cover the position counter, and settings Edit actions can overlap the title instead of remaining separately usable.",
       "rootCause": {
         "explanation": "PageCardHeader allocates its left breadcrumb/title track as minmax(0, auto) and its right action track as minmax(0, 1fr). The right wrapper can shrink to zero while its child controls retain intrinsic widths. A long left title therefore leaves action children painting over one another rather than reserving their required width.",
         "sourceReferences": [
@@ -3980,7 +3980,7 @@
       "reproductionPaths": [
         {
           "id": "twenty-page-header-long-title-overlaps-actions-record-pages-activities-path-1",
-          "explanation": "A long record title can collapse the header’s action-button column, placing the ellipsis over the record-position counter.",
+          "explanation": "Twenty record and settings pages place the title beside header action buttons. Open a record with a long title at phone width. Its ellipsis command-menu button overlaps the record-position counter; the menu still opens, and a short title or desktop width avoids the overlap.",
           "sourceBugs": [
             {
               "index": 49,
@@ -4028,7 +4028,7 @@
     },
     {
       "id": "twenty-record-pages-activities-timeline-stops-updating-after-a-same-record-panel-transition",
-      "explanation": "After opening the same Company from its side panel into the full record page with overlapping Timeline instances, changing Annual Revenue updates Fields but the Timeline stays at its earlier history. Reload shows the saved changes.",
+      "explanation": "Twenty’s Timeline shows a record’s change history and related activities. After opening the same Company from its side panel into the full record page with overlapping Timeline instances, changing Annual Revenue updates Fields but the Timeline stays at its earlier history. Reload shows the saved changes.",
       "rootCause": {
         "explanation": "Timeline instances for the same Company share a query registration ID. Registration deduplicates IDs without tracking independent owners; one instance cleanup can remove the remaining instance’s subscription. Codex actual lifecycle results show two components sharing one ID, followed by one component with no corresponding listener. The original historical lifecycle itself was not captured.",
         "sourceReferences": [
@@ -4066,7 +4066,7 @@
       "reproductionPaths": [
         {
           "id": "twenty-record-pages-activities-timeline-stops-updating-after-a-same-record-panel-transition-record-pages-activities-path-1",
-          "explanation": "After opening the same Company from its side panel into the full record page with overlapping Timeline instances, changing Annual Revenue updates Fields but the Timeline stays at its earlier history. Reload shows the saved changes.",
+          "explanation": "Twenty’s Timeline shows a record’s change history and related activities. Open the same Company from its side panel into a full record page, then change Annual Revenue. The Fields area updates but the already-open Timeline does not add the new history until reload.",
           "sourceBugs": [
             {
               "index": 52,
@@ -4115,7 +4115,7 @@
     },
     {
       "id": "twenty-record-pages-activities-deleted-record-breadcrumb-keeps-the-active-record-total",
-      "explanation": "Deleting a Company leaves the deleted banner with its previous active-record rank/total, such as 1/610. Reload changes it to the deleted-only 1/1 or 1/2; a fresh Person shows the same stale-total defect.",
+      "explanation": "Twenty’s Timeline shows a record’s change history and related activities. Deleting a Company leaves the deleted banner with its previous active-record rank/total, such as 1/610. Reload changes it to the deleted-only 1/1 or 1/2; a fresh Person shows the same stale-total defect.",
       "rootCause": {
         "explanation": "Record breadcrumb pagination derives and caches its total from before/after queries, while the current record is separately fetched withSoftDeleted. The cached active-view counts can remain displayed during the deleted-record transition rather than matching the deleted-only neighbor set.",
         "sourceReferences": [
@@ -4167,7 +4167,7 @@
       "reproductionPaths": [
         {
           "id": "twenty-record-pages-activities-deleted-record-breadcrumb-keeps-the-active-record-total-record-pages-activities-path-1",
-          "explanation": "Deleting a Company leaves the deleted banner with its previous active-record rank/total, such as 1/610. Reload changes it to the deleted-only 1/1 or 1/2; a fresh Person shows the same stale-total defect.",
+          "explanation": "Twenty’s Timeline shows a record’s change history and related activities. Delete a Company or Person while viewing its record page. The deleted banner retains the previous position and total from the active-record list rather than the deleted-record list; reload corrects the numbers.",
           "sourceBugs": [
             {
               "index": 53,
@@ -4211,7 +4211,7 @@
     },
     {
       "id": "twenty-record-pages-activities-deleting-a-related-task-omits-its-timeline-removal-history",
-      "explanation": "Deleting related Tasks removes them from Company Tasks, but after refresh the Company Timeline has no removal entry. Explicitly unlinking a live control Task creates the expected relationship-removal entry. Existing creation links may become Untitled but still open the correct deleted Task.",
+      "explanation": "Twenty’s Timeline shows a record’s change history and related activities. Deleting related Tasks removes them from Company Tasks, but after refresh the Company Timeline has no removal entry. Explicitly unlinking a live control Task creates the expected relationship-removal entry. Existing creation links may become Untitled but still open the correct deleted Task.",
       "rootCause": {
         "explanation": "Timeline creation for activity events requires event.properties.diff.title.after. A delete event has no new title diff, so computeActivityEvents returns no related timeline event instead of resolving the existing saved title for deletion history.",
         "sourceReferences": [
@@ -4263,7 +4263,7 @@
       "reproductionPaths": [
         {
           "id": "twenty-record-pages-activities-deleting-a-related-task-omits-its-timeline-removal-history-record-pages-activities-path-1",
-          "explanation": "Deleting related Tasks removes them from Company Tasks, but after refresh the Company Timeline has no removal entry. Explicitly unlinking a live control Task creates the expected relationship-removal entry. Existing creation links may become Untitled but still open the correct deleted Task.",
+          "explanation": "Twenty’s Timeline shows a record’s change history and related activities. Delete a Task linked to a Company, then reload the Company Timeline. The Task disappears from the Company Tasks list but there is no history entry for that relationship removal; explicitly unlinking a live Task does create one.",
           "sourceBugs": [
             {
               "index": 54,
@@ -4307,7 +4307,7 @@
     },
     {
       "id": "twenty-record-pages-activities-email-edit-saves-a-malformed-comma-suffix-address",
-      "explanation": "Editing a Person Email to a whole comma-suffix string saves it and reopening after reload displays the same complete malformed string. A valid replacement saves; not-an-email and a pair of complete addresses are refused.",
+      "explanation": "Twenty record pages show saved entries, their editable fields and related activities. Editing a Person Email to a whole comma-suffix string saves it and reopening after reload displays the same complete malformed string. A valid replacement saves; not-an-email and a pair of complete addresses are refused.",
       "rootCause": {
         "explanation": "EmailsFieldInput validates the entire entered string with shared emailSchema; its Unicode email regex accepts the comma-suffix shape. MultiItemFieldInput then stores that accepted string as a single item without an additional single-address delimiter validation.",
         "sourceReferences": [
@@ -4366,7 +4366,7 @@
       "reproductionPaths": [
         {
           "id": "twenty-record-pages-activities-email-edit-saves-a-malformed-comma-suffix-address-record-pages-activities-path-1",
-          "explanation": "Editing a Person Email to a whole comma-suffix string saves it and reopening after reload displays the same complete malformed string. A valid replacement saves; not-an-email and a pair of complete addresses are refused.",
+          "explanation": "Twenty record pages show saved entries, their editable fields and related activities. Edit a Person Email to a single string consisting of an address followed by a comma suffix. The malformed whole string saves and survives reload, although ordinary invalid text and two complete email addresses are refused.",
           "sourceBugs": [
             {
               "index": 56,
@@ -4410,7 +4410,7 @@
     },
     {
       "id": "twenty-record-pages-activities-escape-commits-an-attachment-rename-instead-of-cancelling-it",
-      "explanation": "Pressing Escape during a Company attachment rename commits the pending filename, which persists after reload.",
+      "explanation": "Twenty record pages provide file attachments and export or download actions. Pressing Escape during a Company attachment rename commits the pending filename, which persists after reload.",
       "rootCause": {
         "explanation": "AttachmentRow saves attachmentFileName unconditionally on blur and does not handle Escape to restore the original name before edit mode closes. The Escape-induced blur therefore persists the pending filename.",
         "sourceReferences": [
@@ -4427,7 +4427,7 @@
       "reproductionPaths": [
         {
           "id": "twenty-record-pages-activities-escape-commits-an-attachment-rename-instead-of-cancelling-it-record-pages-activities-path-1",
-          "explanation": "Pressing Escape during a Company attachment rename commits the pending filename, which persists after reload.",
+          "explanation": "Twenty record pages provide file attachments and export or download actions. Pressing Escape during a Company attachment rename commits the pending filename, which persists after reload.",
           "sourceBugs": [
             {
               "index": 57,
@@ -4478,7 +4478,7 @@
     },
     {
       "id": "twenty-record-pages-activities-overdue-due-date-not-highlighted-for-in-progress-tasks",
-      "explanation": "In the record Tasks tab, a past-due task's due date is shown in red while status is To do, but loses the overdue (red) styling as soon as status changes to In progress, even though the task is still not done.",
+      "explanation": "Twenty record pages show saved entries, their editable fields and related activities. In the record Tasks tab, a past-due task's due date is shown in red while status is To do, but loses the overdue (red) styling as soon as status changes to In progress, even though the task is still not done.",
       "rootCause": {
         "explanation": "TaskRow marks its due-date display overdue only when status equals TODO. The condition excludes unfinished IN_PROGRESS tasks even when their due date is past.",
         "sourceReferences": [
@@ -4509,7 +4509,7 @@
       "reproductionPaths": [
         {
           "id": "twenty-record-pages-activities-overdue-due-date-not-highlighted-for-in-progress-tasks-record-pages-activities-path-1",
-          "explanation": "In the record Tasks tab, a past-due task's due date is shown in red while status is To do, but loses the overdue (red) styling as soon as status changes to In progress, even though the task is still not done.",
+          "explanation": "Twenty record pages show saved entries, their editable fields and related activities. In the record Tasks tab, a past-due task's due date is shown in red while status is To do, but loses the overdue (red) styling as soon as status changes to In progress, even though the task is still not done.",
           "sourceBugs": [
             {
               "index": 58,
@@ -4541,7 +4541,7 @@
     },
     {
       "id": "twenty-record-pages-activities-company-emails-tab-shows-threads-out-of-date-order-once-more-pages-load",
-      "explanation": "On a company's Emails tab, the first 20 threads are newest-first. Each further page loaded by scrolling is sorted only within itself, so newer threads show up below older ones. The list is not in one chronological order.",
+      "explanation": "Twenty record pages show saved entries, their editable fields and related activities. On a company's Emails tab, the first 20 threads are newest-first. Each further page loaded by scrolling is sorted only within itself, so newer threads show up below older ones. The list is not in one chronological order.",
       "rootCause": {
         "explanation": "The timeline messaging service paginates threads by related-person message dates while the client sorts each fetched page by latest overall message date. Appending those independently sorted pages cannot produce a globally chronological list.",
         "sourceReferences": [
@@ -4579,7 +4579,7 @@
       "reproductionPaths": [
         {
           "id": "twenty-record-pages-activities-company-emails-tab-shows-threads-out-of-date-order-once-more-pages-load-record-pages-activities-path-1",
-          "explanation": "On a company's Emails tab, the first 20 threads are newest-first. Each further page loaded by scrolling is sorted only within itself, so newer threads show up below older ones. The list is not in one chronological order.",
+          "explanation": "Twenty record pages show saved entries, their editable fields and related activities. Open a Company Emails tab and scroll past the first page of threads. Each newly loaded page is sorted internally, but its newer threads appear below older threads from earlier pages instead of maintaining newest-first order across the whole list.",
           "sourceBugs": [
             {
               "index": 59,
@@ -4610,7 +4610,7 @@
     },
     {
       "id": "twenty-record-pages-activities-edit-layout-from-a-note-side-panel-opens-the-company-layout-editor",
-      "explanation": "Edit Layout in a related Note side panel targets the underlying Company layout instead of the Note layout.",
+      "explanation": "Twenty record pages show saved entries, their editable fields and related activities. Edit Layout in a related Note side panel targets the underlying Company layout instead of the Note layout.",
       "rootCause": {
         "explanation": "EditRecordPageLayoutSingleRecordCommand closes the side panel and invokes enterLayoutCustomizationMode without carrying the selected side-panel record/object. The customization hook resolves the underlying main-page layout, so invoking it from a Note edits the Company layout.",
         "sourceReferences": [
@@ -4627,7 +4627,7 @@
       "reproductionPaths": [
         {
           "id": "twenty-record-pages-activities-edit-layout-from-a-note-side-panel-opens-the-company-layout-editor-record-pages-activities-path-1",
-          "explanation": "Edit Layout in a related Note side panel targets the underlying Company layout instead of the Note layout.",
+          "explanation": "Twenty record pages show saved entries, their editable fields and related activities. Open a related Note in a side panel over a Company record and choose Edit Layout from the Note. The Note panel closes and the Company layout editor opens instead of the Note layout editor.",
           "sourceBugs": [
             {
               "index": 61,
@@ -4670,7 +4670,7 @@
     },
     {
       "id": "twenty-record-pages-activities-inline-note-file-s-download-button-opens-a-preview-instead-of-downloading",
-      "explanation": "The explicit inline Note file Download action opens a raw-text preview, while Files downloads the same newly uploaded attachment.",
+      "explanation": "Twenty record pages provide file attachments and export or download actions. The explicit inline Note file Download action opens a raw-text preview, while Files downloads the same newly uploaded attachment.",
       "rootCause": {
         "explanation": "The inline BlockNote file uses an ordinary safeUrl anchor opened in a new tab and does not use the attachment downloadFile helper that fetches a blob with a filename. Browser-renderable text therefore opens as a preview through this path.",
         "sourceReferences": [
@@ -4694,7 +4694,7 @@
       "reproductionPaths": [
         {
           "id": "twenty-record-pages-activities-inline-note-file-s-download-button-opens-a-preview-instead-of-downloading-record-pages-activities-path-1",
-          "explanation": "The explicit inline Note file Download action opens a raw-text preview, while Files downloads the same newly uploaded attachment.",
+          "explanation": "Twenty record pages provide file attachments and export or download actions. Upload a text file into a Note body and choose its inline Download action. A new raw-text preview tab opens instead of a download; the Files-tab Download command downloads that same attachment successfully.",
           "sourceBugs": [
             {
               "index": 63,
