@@ -734,6 +734,54 @@
       "matchingGuidance": {
         "distinction": "Match only this accessibility/keyboard/contrast claim. Independently observed pointer or saved-data failures, and explicitly promised keyboard shortcuts, are outside this negative reference."
       }
+    },
+    {
+      "id": "reviewed-r21-metabase-querying",
+      "name": "Removing a custom column silently removes dependent filters and summaries",
+      "summary": "Deleting a custom column automatically deletes every filter, summary, and other custom column that depends on it without warning or an undo option, silently changing the question's meaning.",
+      "expected": "Warn which dependent steps will be removed and require confirmation, or retain them in an explicitly invalid state that the user can repair; provide a way to undo the deletion.",
+      "actual": "One click silently deletes the dependent filter and aggregation as well as the column. The user can then run or save an unfiltered, unsummarized question without being told those steps were removed.",
+      "reproSteps": [
+        "Create a new Question using Sample Database → Orders.",
+        "Add custom column `Net` with expression `[Total] - [Tax]`.",
+        "Add a filter for `Net` between 50 and 100, then summarize by `Sum of Net`.",
+        "Click the close icon on the `Net` custom column in the notebook.",
+        "Observe that the custom column, the `Net` filter, and the `Sum of Net` summary all disappear immediately, leaving a raw Orders query. No confirmation, warning, or undo is shown."
+      ],
+      "reason": "Deleting the source custom column intentionally removes dependent query clauses; the version-adjacent remove-clause-expression-test explicitly expects dependent filters and ordering to cascade. The report demonstrates removal of dependent parts, not unrelated valid clauses. Confirmation, undo and preserving invalid dependents are additional inferred requirements. Rejected by the reviewer under the bug-reproducer rules. This does not reject a distinct demonstrated functional failure or a contradictory explicit product requirement.",
+      "reviewEvidence": {
+        "basis": "User-approved manual retained-report and source review.",
+        "analysis": "Deleting the source custom column intentionally removes dependent query clauses; the version-adjacent remove-clause-expression-test explicitly expects dependent filters and ordering to cascade. The report demonstrates removal of dependent parts, not unrelated valid clauses. Confirmation, undo and preserving invalid dependents are additional inferred requirements.",
+        "limitations": "Manual retained-report/source review; no new browser reproduction. Metabase public source f426328 is version-adjacent context, not the unavailable exact runtime 03d994f.",
+        "sourceRevision": "f42632893810325d9f74375a4cd29bd31d8daefa",
+        "sourceReferences": [
+          "https://github.com/metabase/metabase/blob/f42632893810325d9f74375a4cd29bd31d8daefa/test/metabase/lib/remove_replace_test.cljc#L334-L355"
+        ]
+      }
+    },
+    {
+      "id": "reviewed-r24-metabase-querying",
+      "name": "Removing a join silently deletes dependent joins and grouping",
+      "summary": "Deleting a join also removes downstream query configuration that depends on it, without warning or an undo, so a formerly grouped query can silently become an ungrouped count.",
+      "expected": "Warn which dependent join and grouping will be removed and allow cancellation or undo, or retain them as invalid until the user resolves them.",
+      "actual": "Removing Products immediately deletes the dependent People join and category grouping without a confirmation or undo. The remaining question is an ungrouped Count and can be run or saved with different semantics.",
+      "reproSteps": [
+        "Start a new question using Sample Database → Orders.",
+        "Join Products on Orders.Product ID = Products.ID. Add another join to People and set its left join column to Products.ID and its right column to People.ID.",
+        "Summarize by Count of rows, grouped by Products → Category.",
+        "Hover the first Products join and click its Remove step button.",
+        "Inspect the remaining notebook: the People join and Products → Category grouping have also disappeared, while Count remains."
+      ],
+      "reason": "remove-join explicitly specifies that top-level clauses referring to the removed join are removed too. Both reports concern dependent filters/grouping/joins. The demanded confirmation/undo or invalid-placeholder UI is not an established requirement. This does not reject the accepted bug where a surviving join silently changes its operand. Rejected by the reviewer under the bug-reproducer rules. This does not reject a distinct demonstrated functional failure or a contradictory explicit product requirement.",
+      "reviewEvidence": {
+        "basis": "User-approved manual retained-report and source review.",
+        "analysis": "remove-join explicitly specifies that top-level clauses referring to the removed join are removed too. Both reports concern dependent filters/grouping/joins. The demanded confirmation/undo or invalid-placeholder UI is not an established requirement. This does not reject the accepted bug where a surviving join silently changes its operand.",
+        "limitations": "Manual retained-report/source review; no new browser reproduction. Metabase public source f426328 is version-adjacent context, not the unavailable exact runtime 03d994f.",
+        "sourceRevision": "f42632893810325d9f74375a4cd29bd31d8daefa",
+        "sourceReferences": [
+          "https://github.com/metabase/metabase/blob/f42632893810325d9f74375a4cd29bd31d8daefa/src/metabase/lib/remove_replace.cljc#L672-L697"
+        ]
+      }
     }
   ]
 }
