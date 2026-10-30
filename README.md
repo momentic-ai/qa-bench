@@ -83,8 +83,8 @@ findings. Devin's prompt adds its
 
 `--minutes` (1 to 120) or `--time-limit` (such as `30m`) sets a limit,
 stated in the brief. Without it, the brief states no limit and the run stops at
-2 hours. A minute before the stop, each agent is told to save its work. Durations
-exclude fixture setup and grading.
+2 hours. In runs longer than a minute, each agent is told to save its work a
+minute before the stop. Durations exclude fixture setup and grading.
 
 ### Mo's budget
 
