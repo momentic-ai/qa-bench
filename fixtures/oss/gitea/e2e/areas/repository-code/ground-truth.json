@@ -1010,6 +1010,25 @@
       "matchingGuidance": {
         "scope": "Reports that a file history row's snapshot link opens a 404 for the commit that renamed or deleted the file match this entry."
       }
+    },
+    {
+      "id": "gitea-fork-compare-view-file-wrong-repo-404",
+      "name": "View File in an upstream comparison with a renamed fork opens a 404 under the upstream repository name",
+      "summary": "When a fork has a different name from its upstream repository, comparing the fork's branch against upstream lists the changed files, but each file's View File link combines the fork owner with the upstream repository's name, so it opens a repository that doesn't exist and shows 404 Not Found.",
+      "expected": "View File opens the file at the fork's commit in the fork repository.",
+      "actual": "For a fork named differently from upstream, the upstream comparison (two-dot or three-dot) showed the fork's new file, but View File opened /<fork owner>/<upstream name>/src/commit/<sha>/<file> and 404 Not Found. Deleted files' View File links fail the same way. The same file compared inside the fork opens correctly, and a fork that keeps the upstream name hides the problem.",
+      "reproSteps": [
+        "Fork a repository under a different name.",
+        "On a new branch in the fork, add a file and commit.",
+        "Compare that branch against the upstream repository's main branch (for example with the compare icon beside the branch selector).",
+        "Open the file's diff menu and click View File.",
+        "Observe the URL uses the upstream repository's name under the fork owner and shows 404."
+      ],
+      "severity": 3,
+      "sourceCause": "routers/web/repo/compare.go PrepareCompareDiff calls setCompareContext with ci.HeadUser.Name and repo.Name, where repo is the base (upstream) repository, instead of the head fork's own name, so SourcePath and BeforeSourcePath point at a nonexistent repository.",
+      "matchingGuidance": {
+        "scope": "Reports that View File (or another file link) in a fork-to-upstream comparison opens a 404 because the URL uses the wrong repository name match this entry."
+      }
     }
   ]
 }
