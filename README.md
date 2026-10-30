@@ -13,23 +13,24 @@ its own E2B sandbox. Areas live in [`fixtures/oss`](fixtures/oss).
 ## Results
 
 Per-area results are in [`results/2026-10-30.csv`](results/2026-10-30.csv). This
-summary totals 20 product areas. Cost is for one run of every area. Medium effort
-Mo has a 30-minute budget and high effort has 60.
+summary is one pass through 20 product areas: the sum of per-area means over
+three runs (one run for Devin). Mo's medium effort has a 30-minute budget and high
+effort has 60.
 
-| Time   | Agent                        | Findings | Correct | Incorrect | Unmatched | Dup. | Precision | Recall | Score  | Cost    | Cost per correct |
-| ------ | ---------------------------- | -------- | ------- | --------- | --------- | ---- | --------- | ------ | ------ | ------- | ---------------- |
-| 30 min | Mo                           | 161.98   | 114.34  | 26.34     | 17.66     | 3.65 | 81.3%     | 9.3%   | 249.65 | $287.92 | $2.52            |
-| 30 min | Other agents (mean)          | 59.08    | 43.25   | 8.87      | 6.79      | 0.00 | 83.6%     | 3.5%   | 103.50 | $43.24  | $1.55            |
-| 30 min | Lowest: Claude Sonnet 5.5    | 7.99     | 4.32    | 0.00      | 3.66      | 0.00 | 100.0%    | 0.5%   | 9.66   | $4.47   | $1.03            |
-| 30 min | Highest: Codex `gpt-6.1-sol` | 97.68    | 82.33   | 7.32      | 7.99      | 0.00 | 91.8%     | 6.7%   | 214.33 | $46.22  | $0.56            |
-| 60 min | Mo                           | 186.00   | 126.33  | 22.67     | 30.66     | 6.31 | 84.8%     | 10.3%  | 285.33 | $377.63 | $2.99            |
-| 60 min | Other agents (mean)          | 62.04    | 47.24   | 9.00      | 5.49      | 0.13 | 85.2%     | 3.9%   | 113.75 | $60.72  | $1.71            |
-| 60 min | Lowest: Claude Sonnet 5.5    | 8.30     | 4.64    | 0.33      | 3.33      | 0.00 | 93.4%     | 0.5%   | 8.99   | $5.99   | $1.29            |
-| 60 min | Highest: Codex `gpt-6.1-sol` | 106.00   | 89.67   | 9.34      | 7.00      | 0.00 | 90.6%     | 7.3%   | 232.32 | $52.61  | $0.59            |
+| Configuration                           | Areas   | Correct, 30 min | Correct, 60 min | Recall, 60 min | Precision, 60 min | Score, 60 min | Cost per correct, 60 min |
+| --------------------------------------- | ------- | --------------- | --------------- | -------------- | ----------------- | ------------- | ------------------------ |
+| Mo                                      | 20      | 146.3           | 242.0           | 19.6%          | 84.4%             | 533.7         | $2.98                    |
+| Codex, GPT-6.1 Sol, Playwright MCP      | 20      | 81.0            | 89.0            | 7.2%           | 91.1%             | 230.3         | $0.59                    |
+| Codex, GPT-6.1 Sol, agent-browser       | 20 / 19 | 68.0            | 69.3            | 5.8%           | 80.0%             | 163.3         | $1.08                    |
+| Codex, GPT-6.1 Terra, Playwright MCP    | 19      | 75.7            | 69.0            | 5.8%           | 78.7%             | 154.7         | $0.55                    |
+| Codex, GPT-6.1 Terra, agent-browser     | 19      | 58.0            | 52.0            | 4.3%           | 80.8%             | 125.0         | $0.31                    |
+| Claude Code, Opus 5.5, Playwright MCP   | 20      | 21.7            | 34.6            | 2.8%           | 86.0%             | 79.7          | $3.19                    |
+| Claude Code, Opus 5.5, agent-browser    | 20      | 18.0            | 30.7            | 2.5%           | 85.2%             | 76.7          | $2.68                    |
+| Devin                                   | 20      | 16.0            | 27.0            | 2.2%           | 84.4%             | 65.0          | $3.89                    |
+| Claude Code, Sonnet 5.5, Playwright MCP | 20      | 5.3             | 7.7             | 0.6%           | 88.5%             | 15.3          | $1.46                    |
+| Claude Code, Sonnet 5.5, agent-browser  | 20      | 9.0             | 6.3             | 0.5%           | 79.3%             | 12.7          | $1.24                    |
 
-Lowest and highest are by Score, and both use Playwright MCP. Other agents covers
-every non-Mo configuration in the CSV. Sonnet has results for 16 to 17 areas, and
-some Codex configurations for 19, so their totals cover fewer areas.
+Totals for a configuration with fewer than 20 areas cover the areas it ran.
 
 ## Run it
 
@@ -156,7 +157,8 @@ Costs are directional:
 - Claude Code is the cost reported by the Agent SDK, plus estimated Browserbase
   time.
 - Mo is its reported session spend.
-- Devin has no USD cost.
+- The harness doesn't record Devin's cost, so its figures were calculated
+  separately.
 
 None include E2B or grading.
 
