@@ -1226,6 +1226,42 @@
         "Reopen Filters, switch the first value to Shipping and the second to Fixed, and Apply. Observe Big order discount is returned instead of an empty result."
       ],
       "severity": 3
+    },
+    {
+      "id": "saleor-vouchers-b05",
+      "name": "Started between filter excludes voucher starting inside the interval",
+      "severity": 3,
+      "summary": "The Started between filter leaves out a voucher whose start time is inside a narrow range. A voucher starting October 20 2026 at 12:00 PM is missing for 11:59 AM to 12:01 PM that day, but is listed for a wider range.",
+      "expected": "Filtering Started between 10/20/2026 11:59 AM and 10/20/2026 12:01 PM lists a voucher that starts 10/20/2026 at 12:00 PM.",
+      "actual": "The list shows \"No vouchers found\". With a wider range (10/19 11:59 AM to 10/21 12:01 PM), the same voucher is listed.",
+      "reproSteps": [
+        "Sign in as the vouchers admin (saved session) and open /discounts/vouchers/add.",
+        "Enter a unique voucher name and a manual code, assign Channel-USD and enter 10 for its percentage.",
+        "Set Start Date to 10/20/2026 and Start Hour to 12:00 PM, then Save.",
+        "Open /discounts/vouchers, search for the voucher and confirm it is listed.",
+        "Open Filters, choose Started, between, 10/20/2026 11:59 AM and 10/20/2026 12:01 PM, and click Apply. The list shows 'No vouchers found'.",
+        "Control: change the range to 10/19/2026 11:59 AM to 10/21/2026 12:01 PM and click Apply. The voucher is listed."
+      ],
+      "matchingGuidance": {
+        "claimScope": "Covers a complete Started between range leaving out a voucher that starts inside it. saleor-vouchers-032 covers the lower operator, saleor-vouchers-b48 covers the greater operator and saleor-vouchers-b10 covers an incomplete range."
+      }
+    },
+    {
+      "id": "saleor-vouchers-b51",
+      "name": "Clearing an enabled End Date saves and silently removes voucher expiration",
+      "severity": 3,
+      "summary": "Clearing an enabled End Date saves and silently removes voucher expiration.",
+      "expected": "With Set end date enabled, a missing End Date should be rejected with a required-field error. Removing expiry should require turning the setting off.",
+      "actual": "Save succeeds without validation. voucherUpdate sends endDate:null and returns no errors. Set end date becomes unchecked, the date fields disappear, and the voucher has no expiry.",
+      "reproSteps": [
+        "Open a voucher and enable Set end date.",
+        "Set a valid future End Date and End Hour, then Save.",
+        "Clear the End Date field while leaving Set end date checked and End Hour populated.",
+        "Click Save and reopen the voucher."
+      ],
+      "matchingGuidance": {
+        "claimScope": "Covers fully clearing a saved End Date while Set end date stays checked, with End Hour filled or also cleared. saleor-vouchers-b28 covers clearing one date segment."
+      }
     }
   ]
 }
