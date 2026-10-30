@@ -1029,6 +1029,27 @@
       "matchingGuidance": {
         "scope": "Reports that View File (or another file link) in a fork-to-upstream comparison opens a 404 because the URL uses the wrong repository name match this entry."
       }
+    },
+    {
+      "id": "gitea-code-search-markdown-line-link-misses-line",
+      "name": "Code-search line links open rendered Markdown without the target line",
+      "summary": "Clicking a line number on a Markdown result in repository code search opens the file's rendered view with a #L anchor that doesn't exist there, so the matched line isn't shown, highlighted or scrolled to. The reader has to switch to source view and find the line by hand.",
+      "expected": "A code-search line link opens the file in source view at that line, highlighted, as it does for non-Markdown files and as Copy Permalink links do.",
+      "actual": "README.md opened as rendered Markdown at /src/commit/<sha>/README.md#L9 with no line numbers, selection or L9 target. docs/releases.md#L4 behaved the same. The matched line was only reachable after switching to View Source.",
+      "reproSteps": [
+        "Open the repository's code search and search for release in Exact mode.",
+        "Under README.md, click line 9 of the matched lines.",
+        "Observe that the file opens rendered, with no line 9 selected or scrolled to.",
+        "Repeat with a matched line under docs/releases.md."
+      ],
+      "severity": 3,
+      "sourceCause": "templates/shared/searchfile.tmpl builds each matched-line link as {RepoLink}/src/commit/{sha}/{file}#L{n} without ?display=source. routers/web/repo/view_file.go renders renderable files such as Markdown unless display=source is set, and the rendered HTML has no L{n} line anchors, so the #L fragment points at nothing. Gitea's own line permalinks (Copy Permalink and Reference in New Issue in templates/repo/view_file.tmpl and blame.tmpl) append ?display=source when the file has a rendered/source toggle for exactly this reason; the code-search link is the one line link that omits it. Unchanged in latest upstream.",
+      "matchingGuidance": {
+        "relatedReference": {
+          "id": "gitea-pass2-016",
+          "distinction": "That rejected report claimed clicking the line number did nothing; the link does navigate. This entry is the narrower failure where it opens the rendered Markdown view and the line target is missing."
+        }
+      }
     }
   ]
 }

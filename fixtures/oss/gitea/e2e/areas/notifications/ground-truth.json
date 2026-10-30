@@ -236,6 +236,27 @@
         "scope": "Only reports that a pinned notification updated by a new comment opens or highlights an earlier comment instead of the new one. Do not match pinned notifications that disappear, become unreachable at page boundaries, change read state, or affect other notifications."
       },
       "severity": 1
+    },
+    {
+      "id": "gitea-subscriptions-list-wrong-watched-repos",
+      "name": "Subscriptions list includes issues from repositories the user doesn't watch and never subscribed to",
+      "summary": "The Notifications > Subscriptions page lists issues from repositories the user never watched (or unwatched) and never commented on or authored, while the issue itself says the user isn't subscribed and no notification is sent. Conversely, issues the user is subscribed to through a watched repository can be missing from the list.",
+      "expected": "Subscriptions lists exactly the issues and pull requests the user is subscribed to: explicitly subscribed, authored, commented on, or in a repository the user watches. It matches the issue's Subscribe/Unsubscribe state and the subscription check API.",
+      "actual": "An issue opened by another user in a repository the signed-in user never watched, and one opened after the user unwatched its repository, both appeared at the top of the Subscriptions list. For each, the issue sidebar offered Subscribe, GET /api/v1/repos/{owner}/{repo}/issues/{index}/subscriptions/check returned subscribed:false, and no notification existed. Some issues in repositories the user does watch (check returns subscribed:true) were missing from the list.",
+      "reproSteps": [
+        "As another user, create a repository the test user doesn't watch, and open an issue in it.",
+        "Sign in as the test user and open /notifications/subscriptions?state=all.",
+        "Observe the issue listed even though its sidebar offers Subscribe and the subscriptions check API returns subscribed:false.",
+        "Whether a given repository is affected depends on its numeric ID, so create several repositories if the first doesn't show it."
+      ],
+      "severity": 3,
+      "sourceCause": "models/issues/issue_search.go applySubscribedCondition (the Subscriptions page's only filter) tests the watched-repository case as issue.repo_id IN (SELECT id FROM watch WHERE user_id = ? AND mode IN (normal, auto)). It selects the watch row's own primary key instead of watch.repo_id, so an issue is listed when its repository ID happens to equal one of the user's watch row IDs, and watched-repository issues are omitted when it doesn't. The subscription check and notification delivery read watch.repo_id correctly, so they disagree with the list. Whether a reproduction shows it depends on how the IDs line up in the database. Fixed upstream in go-gitea/gitea commit 2d36a0c (#35684), which selects repo_id and adds a regression test; the pinned revision predates it.",
+      "matchingGuidance": {
+        "relatedReference": {
+          "id": "gitea-issue-subscribe-button-stale-after-repo-unwatch",
+          "distinction": "That entry is the issue sidebar button still showing Unsubscribe after unwatching, which clears on reload. This entry is the Subscriptions list page including or omitting issues because of the wrong watch column."
+        }
+      }
     }
   ]
 }

@@ -930,6 +930,28 @@
           "distinction": "Same missing draft state on the error page. This entry is the draft actions disappearing after the validation error; the related entry is clicking the remaining Update Release, which publishes the draft."
         }
       }
+    },
+    {
+      "id": "gitea-draft-release-drops-tag-message-option",
+      "name": "Saving a draft resets the selected tag-message option and publishes a lightweight tag",
+      "summary": "Checking 'Use the title and content of release as tag message' and clicking Save Draft loses that choice: the draft's Edit page has no checkbox, only a hidden add_tag_msg=false, and publishing the draft creates a lightweight tag instead of an annotated tag with the release title and notes.",
+      "expected": "The draft keeps the tag-message choice, and publishing it creates an annotated tag containing the release title and notes, as publishing directly from New Release with the option checked does.",
+      "actual": "The draft's Edit form had a hidden add_tag_msg=false and no way to re-select the option. After Publish Release, the new tag ref pointed directly at the commit with no tag object. A release published directly from New Release with the option checked created an annotated tag object with the title and notes.",
+      "reproSteps": [
+        "Open New Release in a repository and enter a new tag name, a title and notes.",
+        "Check 'Use the title and content of release as tag message.' and click Save Draft.",
+        "Open Edit for the draft and note the option is gone.",
+        "Click Publish Release and inspect the tag (for example git cat-file -t <tag> or git ls-remote showing no peeled ^{} entry).",
+        "Compare with a release published directly from New Release with the option checked."
+      ],
+      "severity": 3,
+      "sourceCause": "services/release/release.go CreateRelease only calls createTag when the release isn't a draft (if !rel.IsDraft), so on Save Draft the tag message is never used, and the release model has no field to store the choice. templates/repo/release/new.tmpl renders the add_tag_msg checkbox only on New Release; when editing it emits a hidden add_tag_msg=false. Publishing a draft goes through UpdateRelease, which always calls createTag(ctx, gitRepo, rel, \"\") with an empty message, and Git creates a lightweight tag when the message is empty. Unchanged in latest upstream.",
+      "matchingGuidance": {
+        "relatedReference": {
+          "id": "gitea-release-validation-clears-tag-message-option",
+          "distinction": "Same lost tag-message choice. That entry is triggered by a New Release validation error re-rendering the form with the checkbox cleared; this entry is Save Draft followed by publishing from Edit, which produces a lightweight tag."
+        }
+      }
     }
   ]
 }
