@@ -848,7 +848,7 @@
     },
     {
       "id": "metabase-map-properties-not-invalidated",
-      "explanation": "Changing or refreshing a custom map’s GeoJSON URL retains the previous file’s accepted property mappings: Save/Add remains enabled with empty or stale selectors even when the replacement file is invalid.",
+      "explanation": "Changing a custom map’s URL after a valid GeoJSON load can leave Add/Save enabled using the previous file’s validation and mappings, even when the replacement does not load. Pickers may retain old or blank properties, and saving the replacement URL can produce a map that fails when reopened.",
       "rootCause": {
         "explanation": "handleMapChange replaces map without invalidating region_key/region_name or the lazy query result. Saving checks only those mapping strings and currentId, not that the current URL was successfully loaded.",
         "sourceReferences": [
@@ -905,7 +905,17 @@
             "Replace URL with polygon GeoJSON whose properties are null and Refresh; error says feature is missing properties.",
             "Open the region identifier selector."
           ],
-          "severity": 3
+          "severity": 3,
+          "sourceConstraints": [
+            {
+              "sourceBugIndex": 19,
+              "constraints": {
+                "matchingGuidance": {
+                  "claimScope": "Credit any report that, after a valid GeoJSON load, a replacement URL that does not load can still be saved, and the saved map then fails to load or shows invalid GeoJSON on reopening. Credit it with or without clicking Refresh, and whether or not the report mentions the old preview or properties. A rejected save that closes the editor is metabase-admin-001."
+                }
+              }
+            }
+          ]
         }
       ]
     },
@@ -1028,7 +1038,7 @@
     },
     {
       "id": "metabase-published-embeds-cache",
-      "explanation": "Published embeds list does not refresh after publishing or unpublishing from the embed wizard.",
+      "explanation": "Publishing or unpublishing a question or dashboard in the embedding wizard leaves the mounted Published embeds list stale: a newly published item can be absent, or an unpublished item can remain listed until refresh.",
       "rootCause": {
         "explanation": "The embedding settings listing and question/dashboard publishing mutations do not share an invalidation path that refreshes the mounted published list.",
         "sourceReferences": [
@@ -1063,6 +1073,74 @@
             "Click Done; inspect Published embeds > Embedded questions empty state."
           ],
           "severity": 3
+        },
+        {
+          "expected": "The newly published dashboard appears in the list under Embedded dashboards.",
+          "actual": "Embedded dashboards displays “No dashboards have been embedded yet.”",
+          "reproSteps": [
+            "As admin open Embedding with guest embeds initially disabled.",
+            "Click New embed, Agree and enable, Next.",
+            "Browse dashboards and select E-commerce Insights from Examples; click Next.",
+            "Click Get code then Publish; observe published confirmation and embed code.",
+            "Click Done and inspect Published embeds."
+          ],
+          "severity": 3,
+          "id": "metabase-published-embeds-cache-admin-path-2",
+          "explanation": "Published dashboard missing from embedded dashboards list.",
+          "sourceBugs": [
+            {
+              "index": 118,
+              "id": "metabase-admin-b77",
+              "name": "Published dashboard missing from embedded dashboards list"
+            }
+          ],
+          "sourceConstraints": [
+            {
+              "sourceBugIndex": 118,
+              "constraints": {
+                "matchingGuidance": {
+                  "relatedReference": {
+                    "id": "metabase-admin-unpublished-dashboard-stays-listed",
+                    "distinction": "This reference covers a newly published dashboard missing from Published embeds. The related one covers an unpublished dashboard that stays listed."
+                  }
+                }
+              }
+            }
+          ]
+        },
+        {
+          "expected": "An unpublished dashboard disappears from the Published embeds list after the wizard closes.",
+          "actual": "The wizard shows that publication is required, but Embedded dashboards still lists the dashboard.",
+          "reproSteps": [
+            "As admin, create a dashboard with a saved question card.",
+            "Open Admin > Embedding and enable guest embeds if needed.",
+            "Use New embed > Dashboard, select the dashboard, then Next, Publish, Get code and Done. Refresh and confirm it is listed.",
+            "Open New embed again, select the same dashboard, click Next, then Unpublish.",
+            "Close the wizard and inspect Published embeds > Embedded dashboards."
+          ],
+          "severity": 3,
+          "id": "metabase-published-embeds-cache-admin-path-3",
+          "explanation": "Unpublishing a dashboard in the Admin Embedding wizard says it is no longer published, but after closing the wizard the dashboard is still listed under Published embeds.",
+          "sourceBugs": [
+            {
+              "index": 121,
+              "id": "metabase-admin-unpublished-dashboard-stays-listed",
+              "name": "Unpublished dashboard stays in the Published embeds list"
+            }
+          ],
+          "sourceConstraints": [
+            {
+              "sourceBugIndex": 121,
+              "constraints": {
+                "matchingGuidance": {
+                  "relatedReference": {
+                    "id": "metabase-admin-b77",
+                    "distinction": "The related reference covers a newly published dashboard missing from the list. This one covers an unpublished dashboard that stays listed."
+                  }
+                }
+              }
+            }
+          ]
         }
       ]
     },
@@ -1321,6 +1399,26 @@
             "Observe the setting shows its default again."
           ],
           "severity": 3
+        },
+        {
+          "expected": "The saved Name (US dollars) label style remains selected after refresh.",
+          "actual": "Symbol ($) is selected after refresh instead of the saved Name (US dollars).",
+          "reproSteps": [
+            "Open Admin Settings > Localization with the primary Admin session.",
+            "Select Name (US dollars) under Currency label style.",
+            "Observe Name selected and Changes saved notification.",
+            "Refresh, wait for settings to load, and scroll to Currency."
+          ],
+          "severity": 3,
+          "id": "metabase-global-formatting-persistence-admin-path-2",
+          "explanation": "Currency name label resets to symbol after refresh.",
+          "sourceBugs": [
+            {
+              "index": 119,
+              "id": "metabase-admin-b83",
+              "name": "Currency name label resets to symbol after refresh"
+            }
+          ]
         }
       ]
     },
@@ -4610,6 +4708,114 @@
           "severity": 3
         }
       ]
+    },
+    {
+      "id": "metabase-mongodb-missing-port-raw-assertion",
+      "explanation": "Submitting MongoDB connection settings after switching from a connection string to manual fields can expose “Assert failed: (integer? port)” instead of identifying the missing required port.",
+      "rootCause": {
+        "explanation": "The manual connection form derives required-field validation from engine metadata via getFieldSchema/isFieldValid. The report reaches a downstream integer-port assertion with an unfilled port shown only as a placeholder; the exact missing/default-port propagation or validation branch is not established in the available public revision. This report was promoted from known-invalid by the updated reference and is retained with unresolved source attribution, rather than treating the displayed placeholder as an actual submitted value.",
+        "sourceReferences": [
+          {
+            "repository": "metabase/metabase",
+            "revision": "f42632893810325d9f74375a4cd29bd31d8daefa",
+            "path": "frontend/src/metabase/databases/utils/schema.ts",
+            "line": 17,
+            "url": "https://github.com/metabase/metabase/blob/f42632893810325d9f74375a4cd29bd31d8daefa/frontend/src/metabase/databases/utils/schema.ts#L17"
+          },
+          {
+            "repository": "metabase/metabase",
+            "revision": "f42632893810325d9f74375a4cd29bd31d8daefa",
+            "path": "frontend/src/metabase/databases/utils/schema.ts",
+            "line": 119,
+            "url": "https://github.com/metabase/metabase/blob/f42632893810325d9f74375a4cd29bd31d8daefa/frontend/src/metabase/databases/utils/schema.ts#L119"
+          }
+        ],
+        "analysisStatus": "source-version-unresolved"
+      },
+      "reproductionPaths": [
+        {
+          "expected": "The default ports should be usable, or the form should identify a required port value with actionable validation.",
+          "actual": "The connection alert reads “Assert failed: (integer? port)” rather than a usable connection or validation message.",
+          "reproSteps": [
+            "Open Add database as admin, select MongoDB and set a display name.",
+            "Choose Use a connection string and enter mongodb://qa-connection.invalid:27017/qa_mongo?connectTimeoutMS=1000&serverSelectionTimeoutMS=1000.",
+            "Enable SSH tunnel, use qa-ssh.invalid, username qa_ssh, Password authentication and dummy password qa_dummy_password; leave SSH port at displayed 22.",
+            "Switch to Fill out host, port and database name.",
+            "Enter Host qa-connection.invalid and Database name qa_mongo, leave MongoDB Port at displayed 27017 and click Save."
+          ],
+          "severity": 3,
+          "id": "metabase-mongodb-missing-port-raw-assertion-admin-path-1",
+          "explanation": "MongoDB SSH form shows an integer port assertion error",
+          "sourceBugs": [
+            {
+              "index": 120,
+              "id": "metabase-admin-b07",
+              "name": "MongoDB SSH form shows an integer port assertion error"
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "id": "metabase-group-delete-retains-api-keys",
+      "explanation": "Deleting a group leaves its associated API keys active under All Users even though the confirmation promises to delete them; explicit key revocation stops authentication.",
+      "rootCause": {
+        "explanation": "The group-delete endpoint deletes the PermissionsGroup and publishes group-delete. Its group model before-delete hook cleans LDAP group mappings but does not delete API keys or their service users. API keys hold a user_id and derive their displayed group through that user’s memberships, including All Users. Deleting only the custom group can therefore leave the key authenticating as its surviving user. The public source establishes this missing deletion boundary; event-handler applicability at the unavailable fixture revision remains a limitation.",
+        "sourceReferences": [
+          {
+            "repository": "metabase/metabase",
+            "revision": "f42632893810325d9f74375a4cd29bd31d8daefa",
+            "path": "src/metabase/permissions_rest/api.clj",
+            "line": 264,
+            "url": "https://github.com/metabase/metabase/blob/f42632893810325d9f74375a4cd29bd31d8daefa/src/metabase/permissions_rest/api.clj#L264"
+          },
+          {
+            "repository": "metabase/metabase",
+            "revision": "f42632893810325d9f74375a4cd29bd31d8daefa",
+            "path": "src/metabase/permissions/models/permissions_group.clj",
+            "line": 117,
+            "url": "https://github.com/metabase/metabase/blob/f42632893810325d9f74375a4cd29bd31d8daefa/src/metabase/permissions/models/permissions_group.clj#L117"
+          },
+          {
+            "repository": "metabase/metabase",
+            "revision": "f42632893810325d9f74375a4cd29bd31d8daefa",
+            "path": "src/metabase/api_keys/models/api_key.clj",
+            "line": 31,
+            "url": "https://github.com/metabase/metabase/blob/f42632893810325d9f74375a4cd29bd31d8daefa/src/metabase/api_keys/models/api_key.clj#L31"
+          }
+        ],
+        "analysisStatus": "inferred"
+      },
+      "reproductionPaths": [
+        {
+          "expected": "Deleting the group removes its associated API keys as promised.",
+          "actual": "After group deletion and reload, the key remains listed under All Users and still authenticates; explicitly revoking the key stops authentication.",
+          "reproSteps": [
+            "Create a group and an API key assigned to that group.",
+            "Delete the group using the confirmation that says the group and API key will be removed.",
+            "Reload the API-key settings and check whether the key remains.",
+            "Check authentication with that key before and after deletion, then compare with explicit key revocation."
+          ],
+          "severity": 3,
+          "id": "metabase-group-delete-retains-api-keys-admin-path-1",
+          "explanation": "The group-deletion confirmation promises to delete associated API keys, but the keys remain active under All Users after deletion.",
+          "sourceBugs": [
+            {
+              "index": 122,
+              "id": "metabase-group-delete-retains-api-keys",
+              "name": "Deleting a group retains its API keys despite promising deletion"
+            }
+          ],
+          "sourceConstraints": [
+            {
+              "sourceBugIndex": 122,
+              "constraints": {
+                "owningArea": "metabase/admin"
+              }
+            }
+          ]
+        }
+      ]
     }
   ],
   "sourceContext": {
@@ -4619,5 +4825,5 @@
     "runtimeRevision": "03d994f",
     "limitation": "fixture.json identifies the public revision as approximate; the actual runtime build revision is unavailable publicly. source-supported means the cited public source supports the mechanism, not that the private runtime implementation was independently verified. Inferred causes are hypotheses requiring additional source or runtime evidence."
   },
-  "sourceGroundTruthSha256": "2abf1d7f9d0345da1831dabc81c6d4eca34c488f8d7f6975e759627bf351082c"
+  "sourceGroundTruthSha256": "44c6aabff937cb2b6e0897556c82212d8b63f62ca7ae3ae0405744ecd0fd6a9a"
 }
