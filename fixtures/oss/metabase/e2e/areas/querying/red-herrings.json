@@ -2,1170 +2,186 @@
   {
     "id": "interaction-target-or-gesture-mismatch",
     "explanation": "A test must actually activate the control whose behavior it claims to measure. This pattern matches reports where the input reached a neighboring element or popup, a drag never reached the required threshold, the editor was in the wrong mode, or a simulated key combination differed from the real shortcut. A click timeout or text appearing elsewhere therefore does not establish failure of the intended link, input or command. Confirm the event target, focus and complete gesture, then repeat the same intended action correctly before alleging its failure.",
-    "verificationGuidance": [
-      "Confirm the actual event target, focus, editing mode and completed gesture from the rendered UI or recording.",
-      "Repeat using the precise anchor, input, drag threshold or real keyboard shortcut; check key and modifier details for simulated events.",
-      "Verify the intended control actually ran before attributing navigation failure or value loss to it."
-    ],
-    "instances": [
-      {
-        "source": "known-invalid.json",
-        "index": 0,
-        "report": {
-          "id": "metabase-querying-156",
-          "name": "Typing in the source picker search navigates away from the notebook to a new document",
-          "summary": "Typing in the source picker search navigates away from the notebook to a new document.",
-          "expected": "Typing into the 'Search for tables and more...' input filters tables within the source picker while remaining on the notebook question.",
-          "actual": "Typing into the search input dismisses the notebook and navigates to a new document page with 's' typed into the editor.",
-          "reproSteps": [
-            "Open new notebook and search orders in the starting data search.",
-            "Select Orders table from Sample Database.",
-            "Click the Orders source button to change source.",
-            "Type products in Search for tables and more."
-          ],
-          "reason": "Not a product bug: the navigation came from the test agent clicking the global search again, not from typing in the source picker."
-        }
-      },
-      {
-        "source": "known-invalid.json",
-        "index": 39,
-        "report": {
-          "id": "metabase-querying-b59",
-          "name": "Switching a multiple-value SQL filter to search drops the second selection",
-          "summary": "Switching a multiple-value SQL filter to search drops the second selection.",
-          "expected": "Existing filter selections (Gizmo and Widget) are preserved when adding Gadget via the search box filter widget, and all three categories are returned in the results.",
-          "actual": "Although both Gizmo and Widget initially appear in the search box dropdown, Widget disappears upon typing into the search input; adding Gadget and running the query yields only Gadget 53 and Gizmo 51.",
-          "reproSteps": [
-            "Create a fresh native SQL question on Sample Database: SELECT CATEGORY, COUNT(*) AS PRODUCT_COUNT FROM PRODUCTS WHERE 1=1 [[AND CATEGORY IN ({{category}})]] GROUP BY CATEGORY ORDER BY CATEGORY.",
-            "Configure Category Text, Dropdown list, Multiple values, using Custom list Gizmo, Gizmo label; Widget, Widget label; Doohickey; Gadget on separate lines.",
-            "Set both Gizmo and Widget as defaults, save as a fresh parameters question, and reopen it. Verify Gizmo 51 and Widget 54 in results.",
-            "Open editor, Variables, and change How should users filter to Search box.",
-            "Open Category and type Gad into search; wait for Gadget suggestion, select it, Update filter, and run.",
-            "Observe only Gadget 53 and Gizmo 51; Widget was dropped without being removed by the user."
-          ],
-          "reason": "Cannot reproduce on human review: adding a value by search keeps existing selections; a selection is replaced only after clicking its chip to edit it."
-        }
-      },
-      {
-        "source": "known-invalid.json",
-        "index": 40,
-        "report": {
-          "id": "metabase-querying-b75",
-          "name": "SQL editor redo replaces the query with older content",
-          "summary": "SQL editor redo replaces the query with older content.",
-          "expected": "Redo reapplies the edit that was just undone, restoring SELECT 102 AS n;.",
-          "actual": "The editor shows SELECT ID, CATEGORY FROM PRODUCTS WHERE {{category}} ORDER BY ID LIMIT 10; and reopens category parameter settings. Checks confirmed SELECT 102 before undo and SELECT 101 after undo, but the redo check read the older Products query.",
-          "reproSteps": [
-            "Open New > SQL query and select Sample Database.",
-            "Enter and run SELECT ID, CATEGORY FROM PRODUCTS WHERE {{category}} ORDER BY ID LIMIT 10; after mapping category as a Field Filter to Products Category, then clear the filter.",
-            "Replace the editor text with select id,total from orders where id<=3 order by id and run it.",
-            "Replace editor text with SELECT 101 AS n;, then replace with SELECT 102 AS n; using Ctrl+A and typing.",
-            "With the editor focused, press Ctrl+Z. Observe SELECT 101 AS n; restored.",
-            "Press Ctrl+Shift+Z. Observe the earlier Products/category query instead of SELECT 102 AS n;."
-          ],
-          "reason": "Cannot reproduce on human review: a real Ctrl+Shift+Z redoes the edit; the report came from a synthetic lowercase key event."
-        }
-      },
-      {
-        "source": "known-invalid.json",
-        "index": 41,
-        "report": {
-          "id": "metabase-querying-607",
-          "name": "Products Title column header does not open query actions",
-          "summary": "Products Title column header does not open query actions.",
-          "expected": "Clicking the Title header should open the column action menu, including sorting and filtering, as adjacent Products columns do.",
-          "actual": "Clicking either the Title columnheader or its parent button opens no menu or dialog. Category immediately beside it opens the normal menu with sorting, Filter by this column, Distribution, and Distinct values. The Title header remains inert with all default columns or with only Title, Title+Price, or Title+Price+ID selected.",
-          "reproSteps": [
-            "Sign in and choose New > Question > Sample Database > Products.",
-            "Click Visualize, leaving the default selected columns.",
-            "Click the Title column header. Observe that nothing opens.",
-            "Click the adjacent Category column header. Observe the normal column actions menu, confirming header actions are available in this question."
-          ],
-          "reason": "Cannot reproduce on human review: the report clicked the column area, not the header button, which opens the menu."
-        }
-      },
-      {
-        "source": "known-invalid.json",
-        "index": 42,
-        "report": {
-          "id": "metabase-querying-b81",
-          "name": "Field Filter mapping picker ignores the first click",
-          "summary": "Field Filter mapping picker ignores the first click.",
-          "expected": "The first click should open the Sample Database table/field picker.",
-          "actual": "After the first click there is no dialog and no table options, even after waiting; the second click opens a dialog listing Accounts, Analytic Events, Feedback, Invoices, Orders, People, Products, and Reviews. Verified with Playwright DOM observations: first click dialogs=0/options=[]; second click dialogs=1 with all eight tables.",
-          "reproSteps": [
-            "Choose New → SQL query with Sample Database selected.",
-            "Enter SELECT * FROM PRODUCTS WHERE {{category}}.",
-            "In Variables and parameters, change Variable type from Text to Field Filter.",
-            "Click Select... under Field to map to once, then wait.",
-            "Observe no picker opens; click Select... a second time."
-          ],
-          "reason": "Cannot reproduce on human review: switching to Field Filter opens the table list right away; clicking the box toggles it closed."
-        }
-      }
+    "reproductionPaths": [
+      "In Metabase, follow this workflow: Open new notebook and search orders in the starting data search. Select Orders table from Sample Database. Click the Orders source button to change source. Type products in Search for tables and more. The rejected report expected: Typing into the 'Search for tables and more...' input filters tables within the source picker while remaining on the notebook question. It claimed this outcome: Typing into the search input dismisses the notebook and navigates to a new document page with 's' typed into the editor. Review concluded: Not a product bug: the navigation came from the test agent clicking the global search again, not from typing in the source picker.",
+      "In Metabase, follow this workflow: Create a fresh native SQL question on Sample Database: SELECT CATEGORY, COUNT(*) AS PRODUCT_COUNT FROM PRODUCTS WHERE 1=1 [[AND CATEGORY IN ({{category}})]] GROUP BY CATEGORY ORDER BY CATEGORY. Configure Category Text, Dropdown list, Multiple values, using Custom list Gizmo, Gizmo label; Widget, Widget label; Doohickey; Gadget on separate lines. Set both Gizmo and Widget as defaults, save as a fresh parameters question, and reopen it. Verify Gizmo 51 and Widget 54 in results. Open editor, Variables, and change How should users filter to Search box. Open Category and type Gad into search; wait for Gadget suggestion, select it, Update filter, and run. Observe only Gadget 53 and Gizmo 51; Widget was dropped without being removed by the user. The rejected report expected: Existing filter selections (Gizmo and Widget) are preserved when adding Gadget via the search box filter widget, and all three categories are returned in the results. It claimed this outcome: Although both Gizmo and Widget initially appear in the search box dropdown, Widget disappears upon typing into the search input; adding Gadget and running the query yields only Gadget 53 and Gizmo 51. Review concluded: Cannot reproduce on human review: adding a value by search keeps existing selections; a selection is replaced only after clicking its chip to edit it.",
+      "In Metabase, follow this workflow: Open New > SQL query and select Sample Database. Enter and run SELECT ID, CATEGORY FROM PRODUCTS WHERE {{category}} ORDER BY ID LIMIT 10; after mapping category as a Field Filter to Products Category, then clear the filter. Replace the editor text with select id,total from orders where id<=3 order by id and run it. Replace editor text with SELECT 101 AS n;, then replace with SELECT 102 AS n; using Ctrl+A and typing. With the editor focused, press Ctrl+Z. Observe SELECT 101 AS n; restored. Press Ctrl+Shift+Z. Observe the earlier Products/category query instead of SELECT 102 AS n;. The rejected report expected: Redo reapplies the edit that was just undone, restoring SELECT 102 AS n;. It claimed this outcome: The editor shows SELECT ID, CATEGORY FROM PRODUCTS WHERE {{category}} ORDER BY ID LIMIT 10; and reopens category parameter settings. Checks confirmed SELECT 102 before undo and SELECT 101 after undo, but the redo check read the older Products query. Review concluded: Cannot reproduce on human review: a real Ctrl+Shift+Z redoes the edit; the report came from a synthetic lowercase key event.",
+      "In Metabase, follow this workflow: Sign in and choose New > Question > Sample Database > Products. Click Visualize, leaving the default selected columns. Click the Title column header. Observe that nothing opens. Click the adjacent Category column header. Observe the normal column actions menu, confirming header actions are available in this question. The rejected report expected: Clicking the Title header should open the column action menu, including sorting and filtering, as adjacent Products columns do. It claimed this outcome: Clicking either the Title columnheader or its parent button opens no menu or dialog. Category immediately beside it opens the normal menu with sorting, Filter by this column, Distribution, and Distinct values. The Title header remains inert with all default columns or with only Title, Title+Price, or Title+Price+ID selected. Review concluded: Cannot reproduce on human review: the report clicked the column area, not the header button, which opens the menu.",
+      "In Metabase, follow this workflow: Choose New → SQL query with Sample Database selected. Enter SELECT * FROM PRODUCTS WHERE {{category}}. In Variables and parameters, change Variable type from Text to Field Filter. Click Select... under Field to map to once, then wait. Observe no picker opens; click Select... a second time. The rejected report expected: The first click should open the Sample Database table/field picker. It claimed this outcome: After the first click there is no dialog and no table options, even after waiting; the second click opens a dialog listing Accounts, Analytic Events, Feedback, Invoices, Orders, People, Products, and Reviews. Verified with Playwright DOM observations: first click dialogs=0/options=[]; second click dialogs=1 with all eight tables. Review concluded: Cannot reproduce on human review: switching to Field Filter opens the table list right away; clicking the box toggles it closed."
     ]
   },
   {
     "id": "supported-input-fallback-assumed-validation-failure",
     "explanation": "An input can deliberately handle blank or invalid text by clearing it, restoring the last valid value or applying a supported minimum instead of leaving an error. Reviewed Metabase examples include a relative date interval of zero becoming one day, invalid numeric text meaning no filter, and an empty required title or invalid typed date retaining the previous valid value. This pattern matches a demand for a different rejection style without evidence that a valid accepted value was lost. Check the field-specific rule and effective display; a valid value secretly replaced during submission is a different failure.",
-    "verificationGuidance": [
-      "Identify the control’s documented/tested invalid-input and blank-input policy.",
-      "Inspect the retained calendar selection, range bounds and applied chip rather than only transient typed text.",
-      "Test a supported valid value and verify it is preserved before inferring a general save failure."
-    ],
-    "instances": [
-      {
-        "source": "known-invalid.json",
-        "index": 1,
-        "report": {
-          "id": "metabase-querying-153",
-          "name": "Entering 0, clearing, or entering an invalid row limit keeps the previous limit",
-          "summary": "Typing 0 or an invalid value into the notebook Row limit, or clearing it, keeps running the previous limit, and reopening the editor shows the old value.",
-          "expected": "Reject an invalid row limit with clear validation before running, rather than silently executing the previous limit.",
-          "actual": "The field displayed 0 before running, but Visualize returned five rows and reopening Editor showed 5. A whole-page multimodal assertion confirmed no warning, validation error or notification explained the rejection/reset.",
-          "reproSteps": [
-            "Create a fresh question from Sample Database > Products.",
-            "Sort Price ascending, set row limit 5, visualize, and save with a unique QA-RESULT name.",
-            "Reopen Editor, replace row limit 5 with 0 and blur the field.",
-            "Click Visualize, then reopen Editor."
-          ],
-          "reason": "Works as intended: the row limit deliberately ignores values below 1, as Metabase's own tests assert.",
-          "matchingGuidance": {
-            "relatedReference": {
-              "id": "metabase-querying-cleared-row-limit-returns-after-save",
-              "distinction": "This reference covers the previous limit still applying when the query runs. The related one covers a cleared limit returning after the question is saved and refreshed."
-            }
-          }
-        }
-      },
-      {
-        "source": "known-invalid.json",
-        "index": 23,
-        "report": {
-          "id": "metabase-querying-468",
-          "name": "Date parameter Update filter silently discards invalid typed date and closes calendar with previous date applied",
-          "summary": "Date parameter Update filter silently discards invalid typed date and closes calendar with previous date applied.",
-          "expected": "Invalid typed date should be rejected with validation feedback and keep the editor open for correction rather than silently dismissing.",
-          "actual": "Update filter remains enabled, closes the calendar on click, and retains May 15, 2025 with no validation error or feedback displayed.",
-          "reproSteps": [
-            "As default account, choose New > SQL query > Sample Database.",
-            "Create a fresh QA-PARAM question with SQL SELECT ID, CREATED_AT, TOTAL FROM ORDERS WHERE CREATED_AT >= {{start_date}} ORDER BY CREATED_AT LIMIT 10.",
-            "Configure start_date as Date and default May 15, 2025. Run, save the fresh question, and reopen.",
-            "Open Start Date calendar and replace Date text with not-a-date.",
-            "Click Update filter."
-          ],
-          "reason": "Works as intended: unparseable typed text is ignored and the last valid date, still shown in the calendar, stays applied."
-        }
-      },
-      {
-        "source": "known-invalid.json",
-        "index": 44,
-        "report": {
-          "id": "metabase-querying-cleared-row-limit-returns-after-save",
-          "name": "Cleared row limit returns after saving the question and refreshing",
-          "summary": "Clearing Row limit and saving the question does not remove the limit; after refresh the Row limit field shows a previous value.",
-          "expected": "Saving a question with an empty Row limit removes the limit.",
-          "actual": "The editor shows an empty Row limit before saving, but after refresh it shows the previous value.",
-          "reproSteps": [
-            "Create and save a Sample Database Orders notebook question with a row limit.",
-            "Reopen Editor, clear Row limit and blur the field.",
-            "Save, replacing the original question.",
-            "Refresh the notebook and inspect Row limit."
-          ],
-          "reason": "Works as intended: the same deliberate row limit handling as metabase-querying-153.",
-          "matchingGuidance": {
-            "relatedReference": {
-              "id": "metabase-querying-153",
-              "distinction": "The related reference covers the previous limit still applying when the query runs. This one covers a cleared limit returning after the question is saved and refreshed."
-            }
-          }
-        }
-      }
+    "reproductionPaths": [
+      "In Metabase, follow this workflow: Create a fresh question from Sample Database > Products. Sort Price ascending, set row limit 5, visualize, and save with a unique QA-RESULT name. Reopen Editor, replace row limit 5 with 0 and blur the field. Click Visualize, then reopen Editor. The rejected report expected: Reject an invalid row limit with clear validation before running, rather than silently executing the previous limit. It claimed this outcome: The field displayed 0 before running, but Visualize returned five rows and reopening Editor showed 5. A whole-page multimodal assertion confirmed no warning, validation error or notification explained the rejection/reset. Review concluded: Works as intended: the row limit deliberately ignores values below 1, as Metabase's own tests assert.",
+      "In Metabase, follow this workflow: As default account, choose New > SQL query > Sample Database. Create a fresh QA-PARAM question with SQL SELECT ID, CREATED_AT, TOTAL FROM ORDERS WHERE CREATED_AT >= {{start_date}} ORDER BY CREATED_AT LIMIT 10. Configure start_date as Date and default May 15, 2025. Run, save the fresh question, and reopen. Open Start Date calendar and replace Date text with not-a-date. Click Update filter. The rejected report expected: Invalid typed date should be rejected with validation feedback and keep the editor open for correction rather than silently dismissing. It claimed this outcome: Update filter remains enabled, closes the calendar on click, and retains May 15, 2025 with no validation error or feedback displayed. Review concluded: Works as intended: unparseable typed text is ignored and the last valid date, still shown in the calendar, stays applied.",
+      "In Metabase, follow this workflow: Create and save a Sample Database Orders notebook question with a row limit. Reopen Editor, clear Row limit and blur the field. Save, replacing the original question. Refresh the notebook and inspect Row limit. The rejected report expected: Saving a question with an empty Row limit removes the limit. It claimed this outcome: The editor shows an empty Row limit before saving, but after refresh it shows the previous value. Review concluded: Works as intended: the same deliberate row limit handling as metabase-querying-153."
     ]
   },
   {
     "id": "fractional-integer-units-assumed-supported",
     "explanation": "Some numeric controls represent whole numbers, such as a row count, retention period, offset or raw smallest currency unit. This pattern matches a report that enters a fraction into such a control and treats its reviewed rounding or rejection as loss of supported precision without establishing that fractions are allowed. Check the unit and supported domain, then compare an ordinary integer control. An integer changing incorrectly, a field promising decimals, or a hidden value differing from the accepted display is a separate claim.",
-    "verificationGuidance": [
-      "Determine the stored unit and supported numeric domain, not just whether the input accepts decimal keystrokes.",
-      "Test valid integer controls and inspect the effective value before and after submission.",
-      "Establish an explicit fractional-precision or warning contract before treating normalization as a defect."
-    ],
-    "instances": [
-      {
-        "source": "known-invalid.json",
-        "index": 2,
-        "report": {
-          "id": "metabase-querying-154",
-          "name": "Fractional row limit 2.5 is silently changed to 2 when running the query",
-          "summary": "Fractional row limit 2.5 is silently changed to 2 when running the query.",
-          "expected": "Require a positive whole-number limit with validation instead of silently changing an entered fractional value.",
-          "actual": "Input displayed 2.5, but Visualize returned two rows and reopening Editor displayed 2. Whole-page multimodal assertion confirmed no message explaining the truncation.",
-          "reproSteps": [
-            "Create a fresh Sample Database > Products question, sort Price ascending and set row limit 5.",
-            "Visualize and save with a unique QA-RESULT name; reopen Editor.",
-            "Replace row limit with 2.5 and blur.",
-            "Click Visualize, then reopen Editor."
-          ],
-          "reason": "Works as intended: the row limit is converted to a whole number by design."
-        }
-      }
+    "reproductionPaths": [
+      "In Metabase, follow this workflow: Create a fresh Sample Database > Products question, sort Price ascending and set row limit 5. Visualize and save with a unique QA-RESULT name; reopen Editor. Replace row limit with 2.5 and blur. Click Visualize, then reopen Editor. The rejected report expected: Require a positive whole-number limit with validation instead of silently changing an entered fractional value. It claimed this outcome: Input displayed 2.5, but Visualize returned two rows and reopening Editor displayed 2. Whole-page multimodal assertion confirmed no message explaining the truncation. Review concluded: Works as intended: the row limit is converted to a whole number by design."
     ]
   },
   {
     "id": "recreated-entity-assumed-to-retain-deleted-metadata",
     "explanation": "A query variable or output column can have separate settings tied to that particular variable or column. Removing it can remove those settings, and later recreating the same text or name does not necessarily restore the old identity and configuration. This pattern matches reports that expect text Undo or re-created query outputs to recover deleted widget, label or formatting settings automatically. Check whether the original object survived; settings lost while the same valid variable or output remained present are a different case.",
-    "verificationGuidance": [
-      "Inspect whether the intervening operation removed the variable/output and its associated settings.",
-      "Distinguish text undo from full-object revision restoration and names from persistent identity.",
-      "Test preservation on unchanged valid outputs separately from deletion and recreation."
-    ],
-    "instances": [
-      {
-        "source": "known-invalid.json",
-        "index": 3,
-        "report": {
-          "id": "metabase-querying-081",
-          "name": "Undoing SQL deletion loses saved variable types and defaults",
-          "summary": "Undoing SQL deletion loses saved variable types and defaults.",
-          "expected": "Undo should restore the query's variable definitions and defaults together with the restored SQL text, preserving the query's ability to run.",
-          "actual": "SELECT {{value}} AS selected_value is restored verbatim, but Number changes to Text and default42 disappears. Running fails: Cannot run the query: missing required parameters: #{\"value\"}. Also reproduced with a saved custom dropdown: it reverts to Input box and loses custom values/defaultalpha.",
-          "reproSteps": [
-            "Choose New > SQL query > Sample Database and enter SELECT {{value}} AS selected_value.",
-            "Open Variables, set value's Variable type to Number and its default value to42. Run and confirm result42.",
-            "Save with a unique name. Reload the saved question from its clean question URL and confirm it still runs using default42.",
-            "Open Editor and Variables; verify Number and default42 are present.",
-            "Focus the SQL editor, press Ctrl+A, Backspace, then Ctrl+Z to undo the deletion.",
-            "Run the restored SQL. Observe missing-parameter error; Variables now shows Text with no default."
-          ],
-          "reason": "Deleting a SQL variable discards its settings; undo restores only the query text, so the recreated variable starting with default settings is expected."
-        }
-      },
-      {
-        "source": "known-invalid.json",
-        "index": 45,
-        "report": {
-          "id": "metabase-querying-b104",
-          "name": "Replacing SQL text loses unchanged parameter default",
-          "summary": "Replacing SQL text loses unchanged parameter default.",
-          "expected": "Keeping the same variable while adding a selected column preserves its saved default Product ID 2, or clearly warns that variable settings will be reset.",
-          "actual": "Product ID is blank on refresh and fresh navigation; result shows IDs 1, 2, 3. A default MULTIMODAL AI assertion confirmed the blank control and three-row result.",
-          "reproSteps": [
-            "Question 48 was primary-authored and explicitly released for member editing. The edit replaced the entire SQL text, not a character-level insertion; variable recreation during replacement is a possible contributing condition.",
-            "Create a shared Sample Database SQL question: SELECT id, title FROM products WHERE id <= 3 [[AND id = {{product_id}}]] ORDER BY id; configure Product ID default 2 and save.",
-            "As Maya, reopen the shared question and verify default Product ID 2 returns Small Marble Shoes.",
-            "Open editor, select all SQL and replace it with SELECT id, title, category FROM products WHERE id <= 3 [[AND id = {{product_id}}]] ORDER BY id;",
-            "Run, save replacing original, then refresh and reopen without URL parameters."
-          ],
-          "reason": "Works as intended: replacing the SQL removes the variable before it is retyped, and a removed variable loses its settings."
-        }
-      }
+    "reproductionPaths": [
+      "In Metabase, follow this workflow: Choose New > SQL query > Sample Database and enter SELECT {{value}} AS selected_value. Open Variables, set value's Variable type to Number and its default value to42. Run and confirm result42. Save with a unique name. Reload the saved question from its clean question URL and confirm it still runs using default42. Open Editor and Variables; verify Number and default42 are present. Focus the SQL editor, press Ctrl+A, Backspace, then Ctrl+Z to undo the deletion. Run the restored SQL. Observe missing-parameter error; Variables now shows Text with no default. The rejected report expected: Undo should restore the query's variable definitions and defaults together with the restored SQL text, preserving the query's ability to run. It claimed this outcome: SELECT {{value}} AS selected_value is restored verbatim, but Number changes to Text and default42 disappears. Running fails: Cannot run the query: missing required parameters: #{\"value\"}. Also reproduced with a saved custom dropdown: it reverts to Input box and loses custom values/defaultalpha. Review concluded: Deleting a SQL variable discards its settings; undo restores only the query text, so the recreated variable starting with default settings is expected.",
+      "In Metabase, follow this workflow: Question 48 was primary-authored and explicitly released for member editing. The edit replaced the entire SQL text, not a character-level insertion; variable recreation during replacement is a possible contributing condition. Create a shared Sample Database SQL question: SELECT id, title FROM products WHERE id <= 3 [[AND id = {{product_id}}]] ORDER BY id; configure Product ID default 2 and save. As Maya, reopen the shared question and verify default Product ID 2 returns Small Marble Shoes. Open editor, select all SQL and replace it with SELECT id, title, category FROM products WHERE id <= 3 [[AND id = {{product_id}}]] ORDER BY id;. Run, save replacing original, then refresh and reopen without URL parameters. The rejected report expected: Keeping the same variable while adding a selected column preserves its saved default Product ID 2, or clearly warns that variable settings will be reset. It claimed this outcome: Product ID is blank on refresh and fresh navigation; result shows IDs 1, 2, 3. A default MULTIMODAL AI assertion confirmed the blank control and three-row result. Review concluded: Works as intended: replacing the SQL removes the variable before it is retyped, and a removed variable loses its settings."
     ]
   },
   {
     "id": "unverified-failure-treated-as-established",
     "explanation": "The report describes a failure, but independent review did not recover the claimed failing state under the stated conditions. This group records that evidence limitation rather than an established explanation of why the behavior was correct or why the original event occurred. A future report must match the same trigger and outcome and still needs its own reliable reproduction; resemblance to a nearby accepted bug is insufficient. Nonreproduction does not prove the event impossible or intended.",
-    "verificationGuidance": [
-      "Reproduce the exact reported trigger and outcome in a fresh, isolated state, with the required permissions and completed saves.",
-      "Keep an unrecovered historical claim explicitly unverified; do not invent an intended-behavior or source-cause explanation.",
-      "Compare the exact claim with accepted nearby cases rather than borrowing their evidence."
-    ],
-    "instances": [
-      {
-        "source": "known-invalid.json",
-        "index": 4,
-        "report": {
-          "id": "metabase-querying-084",
-          "name": "Saved-question onboarding dialog fails to close",
-          "summary": "Saved-question onboarding dialog fails to close.",
-          "expected": "Start exploring dismisses the onboarding dialog and lets the user interact with the saved question.",
-          "actual": "After saving and reopening a question, clicking Start exploring twice left “It's okay to play around with saved questions” visible and blocking the editor. Escape also failed. Each dismissal attempted PUT /api/user/1/modal/qbnewb and received HTTP 500 with response “Internal server error.” A later full reload cleared the dialog.",
-          "reproSteps": [
-            "Sign in as eval@momentic.ai on a fresh fixture where the saved-question onboarding has not yet been acknowledged.",
-            "Open /question/notebook; select Sample Database > Orders.",
-            "Choose Count of rows under Summarize and Created At under grouping; click Visualize.",
-            "Save with a unique question name, then reload the saved question URL.",
-            "In “It's okay to play around with saved questions”, click Start exploring. Observe the dialog remains; repeat or press Escape to reproduce the failed dismissal."
-          ],
-          "reason": "Cannot reproduce on human review."
-        }
-      },
-      {
-        "source": "known-invalid.json",
-        "index": 10,
-        "report": {
-          "id": "metabase-querying-318",
-          "name": "New custom-column editor returns to saved results while entering the column name, discarding the draft",
-          "summary": "New custom-column editor returns to saved results while entering the column name, discarding the draft.",
-          "expected": "Entering a custom-column name should leave the editor open with the formula and name available to commit using Done.",
-          "actual": "After typing QACOL Discount Zero the page showed saved results rather than the custom-column editor. Reopening Editor showed only the previously saved columns; an assertion confirmed QACOL Discount Zero was not present.",
-          "reproSteps": [
-            "Create a fresh QACOL-prefixed copy of an Orders question with custom columns and save it.",
-            "Save an additional custom column, reload the saved question, then open Editor.",
-            "Click the plus beside the custom columns and enter coalesce([Discount], 0).",
-            "Enter QACOL Discount Zero in the column-name field without clicking Done.",
-            "Observe the page return to saved results; reopen Editor to inspect the draft."
-          ],
-          "reason": "Cannot reproduce on human review."
-        }
-      },
-      {
-        "source": "known-invalid.json",
-        "index": 12,
-        "report": {
-          "id": "metabase-querying-326",
-          "name": "Trash toast Undo leaves the question in trash with editing disabled",
-          "summary": "Trash toast Undo leaves the question in trash with editing disabled.",
-          "expected": "Clicking Undo in the toast restores the question from trash. The banner goes away, and Filter, Summarize and Editor become available again.",
-          "actual": "The toast closes, but the question stays in trash. The banner remains and editing controls stay hidden. The only update request sent is the original move to trash; no restore request is sent. After a refresh, the breadcrumb shows Trash and the banner offers Restore, Move and Delete permanently.",
-          "reproSteps": [
-            "As an admin, save an Orders question in your personal collection and open it.",
-            "Click the ellipsis (…) in the question header, choose Move to trash, then click Move to trash in the dialog.",
-            "While the \"has been moved to the trash\" toast is visible at the bottom left, click its Undo button.",
-            "Look at the page: the red trash banner is still there and Filter, Summarize and Editor are missing. Refresh the page: the question is still in Trash."
-          ],
-          "reason": "Cannot reproduce on human review."
-        }
-      },
-      {
-        "source": "known-invalid.json",
-        "index": 18,
-        "report": {
-          "id": "metabase-querying-363",
-          "name": "Reopening a saved Time grouping parameter prevents inspecting or changing its field mapping",
-          "summary": "Reopening a saved Time grouping parameter prevents inspecting or changing its field mapping.",
-          "expected": "The saved parameter should display its mapped field and clicking its mapping selector should offer table/field choices.",
-          "actual": "After reopening the saved question, the mapping selector displays Select… and clicking its text or arrow shows no usable menu. The existing query still returns yearly results.",
-          "reproSteps": [
-            "Create a Sample Database native SQL question: SELECT {{grouping}} AS period, COUNT(*) AS n FROM PEOPLE GROUP BY period ORDER BY period.",
-            "Set grouping type Time grouping, map to People > Created At and set default Year. Run and save as a fresh question.",
-            "Refresh or reopen saved question, click Open Editor and Variables.",
-            "Field to map to shows Select… instead of People / Created At. Click that selector, including its arrow.",
-            "No table or field choices appear, preventing remapping."
-          ],
-          "reason": "Cannot reproduce on human review."
-        }
-      }
+    "reproductionPaths": [
+      "In Metabase, follow this workflow: Sign in as eval@momentic.ai on a fresh fixture where the saved-question onboarding has not yet been acknowledged. Open /question/notebook; select Sample Database > Orders. Choose Count of rows under Summarize and Created At under grouping; click Visualize. Save with a unique question name, then reload the saved question URL. In “It's okay to play around with saved questions”, click Start exploring. Observe the dialog remains; repeat or press Escape to reproduce the failed dismissal. The rejected report expected: Start exploring dismisses the onboarding dialog and lets the user interact with the saved question. It claimed this outcome: After saving and reopening a question, clicking Start exploring twice left “It's okay to play around with saved questions” visible and blocking the editor. Escape also failed. Each dismissal attempted PUT /api/user/1/modal/qbnewb and received HTTP 500 with response “Internal server error.” A later full reload cleared the dialog. Review concluded: Cannot reproduce on human review.",
+      "In Metabase, follow this workflow: Create a fresh QACOL-prefixed copy of an Orders question with custom columns and save it. Save an additional custom column, reload the saved question, then open Editor. Click the plus beside the custom columns and enter coalesce([Discount], 0). Enter QACOL Discount Zero in the column-name field without clicking Done. Observe the page return to saved results; reopen Editor to inspect the draft. The rejected report expected: Entering a custom-column name should leave the editor open with the formula and name available to commit using Done. It claimed this outcome: After typing QACOL Discount Zero the page showed saved results rather than the custom-column editor. Reopening Editor showed only the previously saved columns; an assertion confirmed QACOL Discount Zero was not present. Review concluded: Cannot reproduce on human review.",
+      "In Metabase, follow this workflow: As an admin, save an Orders question in your personal collection and open it. Click the ellipsis (…) in the question header, choose Move to trash, then click Move to trash in the dialog. While the \"has been moved to the trash\" toast is visible at the bottom left, click its Undo button. Look at the page: the red trash banner is still there and Filter, Summarize and Editor are missing. Refresh the page: the question is still in Trash. The rejected report expected: Clicking Undo in the toast restores the question from trash. The banner goes away, and Filter, Summarize and Editor become available again. It claimed this outcome: The toast closes, but the question stays in trash. The banner remains and editing controls stay hidden. The only update request sent is the original move to trash; no restore request is sent. After a refresh, the breadcrumb shows Trash and the banner offers Restore, Move and Delete permanently. Review concluded: Cannot reproduce on human review.",
+      "In Metabase, follow this workflow: Create a Sample Database native SQL question: SELECT {{grouping}} AS period, COUNT(*) AS n FROM PEOPLE GROUP BY period ORDER BY period. Set grouping type Time grouping, map to People > Created At and set default Year. Run and save as a fresh question. Refresh or reopen saved question, click Open Editor and Variables. Field to map to shows Select… instead of People / Created At. Click that selector, including its arrow. No table or field choices appear, preventing remapping. The rejected report expected: The saved parameter should display its mapped field and clicking its mapping selector should offer table/field choices. It claimed this outcome: After reopening the saved question, the mapping selector displays Select… and clicking its text or arrow shows no usable menu. The existing query still returns yearly results. Review concluded: Cannot reproduce on human review."
     ]
   },
   {
     "id": "benchmark-scope-mistaken-for-product-defect",
     "explanation": "This benchmark is a curated evaluation with rules about which kinds of findings count. A report matches this pattern when its only established issue falls outside those rules, such as an accessibility-tree-only label problem with no accepted visible or pointer-driven failure, an invalid state reachable only through an API, or an expressly excluded exotic input. The mistake is assuming that every technical imperfection is eligible for this evaluation. Scope exclusion does not establish that the underlying issue is imaginary, and a separately demonstrated in-scope functional failure must be assessed independently.",
-    "verificationGuidance": [
-      "Read the applicable benchmark eligibility rule and the exact recorded exclusion.",
-      "Establish the supported UI path, input domain and accepted observable impact for the new claim.",
-      "Evaluate a separately demonstrated functional failure independently; do not convert an exclusion into a universal product-correctness claim."
-    ],
-    "instances": [
-      {
-        "source": "known-invalid.json",
-        "index": 5,
-        "report": {
-          "id": "metabase-querying-082",
-          "name": "Notebook grouping and sort chips ignore advertised keyboard reorder controls",
-          "summary": "Notebook grouping and sort chips ignore advertised keyboard reorder controls.",
-          "expected": "With the second chip focused, Space should pick it up, ArrowLeft should move it before the first chip, and Space should drop it, as the accessible instructions specify.",
-          "actual": "Space does not activate dragging or update live status. ArrowLeft then Space leaves the order unchanged. Independently reproduced with grouping in two browser sessions and with two sort chips, including normal Tab navigation. Wrappers have role=button, tabindex=0, aria-disabled=false and aria-roledescription=sortable. The screen-reader instructions say 'To pick up a draggable item, press the space bar. While dragging, use the arrow keys to move the item...'.",
-          "reproSteps": [
-            "Open /question/notebook and choose Sample Database > Products.",
-            "Choose Count of rows as the summary, Category as the first grouping column, then add Vendor as the second grouping column.",
-            "Use Tab navigation until the Vendor grouping chip has keyboard focus.",
-            "Press Space, ArrowLeft, then Space.",
-            "Observe that the chip is never picked up and the grouping order remains Category, Vendor.",
-            "The same failure occurs after adding Sort Category followed by Vendor and focusing the Vendor sort wrapper (Tab past the first chip's Change direction button)."
-          ],
-          "reason": "Not a product bug for labeling: the missing keyboard reorder is an accessibility-only issue with no visible or pointer-driven defect."
-        }
-      },
-      {
-        "source": "known-invalid.json",
-        "index": 38,
-        "report": {
-          "id": "metabase-querying-b63",
-          "name": "Excluding days of the week drops the wrong days (and ignores some selected days)",
-          "summary": "Excluding days of the week drops the wrong days (and ignores some selected days).",
-          "expected": "Orders by Created At: Day of week gives 1=2678, 2=2719, 3=2590, 4=2776, 5=2646, 6=2690, 7=2661 (total 18760). Excluding day 1 should return 16082. Excluding days 1 and 7 should return 13421. Excluding days 3 and 5 should return 13524. Each matches native SQL `day_of_week(created_at) not in (...)`.",
-          "actual": "!= 1 returns 16041 (removes day 2 / Monday). != 1,7 also returns 16041: the SQL is only `extract(iso_day_of_week ...) <> 1 OR CREATED_AT IS NULL`, so the 7 is dropped entirely. != 3,5 returns 13323, with SQL `iso_day_of_week <> 3 AND iso_day_of_week <> 6`. By contrast, the SQL for = 1 is `(extract(iso_day_of_week ...) % 7) + 1 = 1`, which correctly returns 2678.",
-          "reproSteps": [
-            "Sign in, then New > Question > Sample Database > Orders. Summarize Count by Created At: Day of week and note the per-day counts.",
-            "Send the same query through the API (POST /api/dataset) with a legacy numeric MBQL filter excluding Sunday and Saturday: ['!=', ['field', <Created At field id>, {'temporal-unit': 'day-of-week'}], 1, 7].",
-            "Observe the count is 16041 rather than 13421, and the native SQL (POST /api/dataset/native) contains only iso_day_of_week <> 1.",
-            "Send the filter with only 1: it also returns 16041 rather than 16082, while the = 1 filter returns the correct 2678.",
-            "For comparison, the UI Filter > Created At > Exclude > Days of the week picker excludes the right days."
-          ],
-          "reason": "Out of scope: only reachable through the API with legacy numeric MBQL; the UI Exclude picker and 'Not on' drill exclude the right days."
-        }
-      },
-      {
-        "source": "known-invalid.json",
-        "index": 46,
-        "report": {
-          "id": "reproducer-excluded-m24-metabase-querying",
-          "name": "Join type menu ignores Escape and arrow-key navigation",
-          "summary": "The query builder's join type menu opens from the keyboard but does not respond to Escape or Arrow Down. Focus remains on 'Change join type'; the menu remains open. Reproduced using mouse and keyboard opening on multiple Orders→Products queries. Evidence: dogfood-output/screenshots/issue-003-step-1.png, issue-003-step-2.png, and issue-003-focus.json.",
-          "expected": "Escape closes the join type menu and arrow keys navigate its menu items after opening it with the keyboard.",
-          "actual": "Escape does not dismiss the menu, arrow keys do not navigate its options, and focus remains on the trigger while the popup stays open.",
-          "reproSteps": [
-            "Create a Sample Database Orders question and join Products, or open saved question /question/42-qa-joined-custom-summary/notebook.",
-            "Focus the Change join type button and press Enter; Left outer join, Right outer join, and Inner join appear.",
-            "Press Escape; the menu stays open.",
-            "Press Arrow Down; focus stays on Change join type instead of moving into the menu options. Pressing Tab moves to the Products button behind the menu."
-          ],
-          "reason": "Excluded by the browser bug-reproducer pure-accessibility rule. This report establishes only keyboard/focus/accessibility semantics or a generic contrast threshold, without an explicit supplied product requirement or documented promise for that behavior. Ordinary pointer functionality or visible setting values are not alleged to fail. This negative reference is scoped to the reported accessibility-only claim; it does not cover independently demonstrated data loss, pointer failures, or an explicitly documented keyboard action.",
-          "matchingGuidance": {
-            "distinction": "Match only this accessibility/keyboard/contrast claim. Independently observed pointer or saved-data failures, and explicitly promised keyboard shortcuts, are outside this negative reference."
-          }
-        }
-      }
+    "reproductionPaths": [
+      "In Metabase, follow this workflow: Open /question/notebook and choose Sample Database > Products. Choose Count of rows as the summary, Category as the first grouping column, then add Vendor as the second grouping column. Use Tab navigation until the Vendor grouping chip has keyboard focus. Press Space, ArrowLeft, then Space. Observe that the chip is never picked up and the grouping order remains Category, Vendor. The same failure occurs after adding Sort Category followed by Vendor and focusing the Vendor sort wrapper (Tab past the first chip's Change direction button). The rejected report expected: With the second chip focused, Space should pick it up, ArrowLeft should move it before the first chip, and Space should drop it, as the accessible instructions specify. It claimed this outcome: Space does not activate dragging or update live status. ArrowLeft then Space leaves the order unchanged. Independently reproduced with grouping in two browser sessions and with two sort chips, including normal Tab navigation. Wrappers have role=button, tabindex=0, aria-disabled=false and aria-roledescription=sortable. The screen-reader instructions say 'To pick up a draggable item, press the space bar. While dragging, use the arrow keys to move the item...'. Review concluded: Not a product bug for labeling: the missing keyboard reorder is an accessibility-only issue with no visible or pointer-driven defect.",
+      "In Metabase, follow this workflow: Sign in, then New > Question > Sample Database > Orders. Summarize Count by Created At: Day of week and note the per-day counts. Send the same query through the API (POST /api/dataset) with a legacy numeric MBQL filter excluding Sunday and Saturday: ['!=', ['field', <Created At field id>, {'temporal-unit': 'day-of-week'}], 1, 7]. Observe the count is 16041 rather than 13421, and the native SQL (POST /api/dataset/native) contains only iso_day_of_week <> 1. Send the filter with only 1: it also returns 16041 rather than 16082, while the = 1 filter returns the correct 2678. For comparison, the UI Filter > Created At > Exclude > Days of the week picker excludes the right days. The rejected report expected: Orders by Created At: Day of week gives 1=2678, 2=2719, 3=2590, 4=2776, 5=2646, 6=2690, 7=2661 (total 18760). Excluding day 1 should return 16082. Excluding days 1 and 7 should return 13421. Excluding days 3 and 5 should return 13524. Each matches native SQL `day_of_week(created_at) not in (...)`. It claimed this outcome: != 1 returns 16041 (removes day 2 / Monday). != 1,7 also returns 16041: the SQL is only `extract(iso_day_of_week ...) <> 1 OR CREATED_AT IS NULL`, so the 7 is dropped entirely. != 3,5 returns 13323, with SQL `iso_day_of_week <> 3 AND iso_day_of_week <> 6`. By contrast, the SQL for = 1 is `(extract(iso_day_of_week ...) % 7) + 1 = 1`, which correctly returns 2678. Review concluded: Out of scope: only reachable through the API with legacy numeric MBQL; the UI Exclude picker and 'Not on' drill exclude the right days.",
+      "In Metabase, follow this workflow: Create a Sample Database Orders question and join Products, or open saved question /question/42-qa-joined-custom-summary/notebook. Focus the Change join type button and press Enter; Left outer join, Right outer join, and Inner join appear. Press Escape; the menu stays open. Press Arrow Down; focus stays on Change join type instead of moving into the menu options. Pressing Tab moves to the Products button behind the menu. The rejected report expected: Escape closes the join type menu and arrow keys navigate its menu items after opening it with the keyboard. It claimed this outcome: Escape does not dismiss the menu, arrow keys do not navigate its options, and focus remains on the trigger while the popup stays open. Review concluded: Excluded by the browser bug-reproducer pure-accessibility rule. This report establishes only keyboard/focus/accessibility semantics or a generic contrast threshold, without an explicit supplied product requirement or documented promise for that behavior. Ordinary pointer functionality or visible setting values are not alleged to fail. This negative reference is scoped to the reported accessibility-only claim; it does not cover independently demonstrated data loss, pointer failures, or an explicitly documented keyboard action."
     ]
   },
   {
     "id": "deleted-or-renamed-dependency-assumed-transparent",
     "explanation": "A saved query or link can depend on another saved item, its name, or the editing mode for which the link was created. Deleting, renaming or converting that dependency can make the old reference or editing URL unusable without promising automatic repair. This pattern matches a report that demands the old route or dependent query keep working unchanged after that deliberate change. Check the supported repair or results route, and do not infer a universal policy from instances whose rejection contains only a brief human decision.",
-    "verificationGuidance": [
-      "Check source existence, output names/types and the mode required by the retained URL.",
-      "Try the supported notebook/results/editor route and inspect the dependency error.",
-      "Establish an explicit dependency-rewrite guarantee before requiring automatic repair across separately saved objects."
-    ],
-    "instances": [
-      {
-        "source": "known-invalid.json",
-        "index": 6,
-        "report": {
-          "id": "metabase-querying-241",
-          "name": "Deleting a source question makes its owned dependent View-only, preventing source repair",
-          "summary": "Deleting a source question makes its owned dependent View-only, preventing source repair.",
-          "expected": "Missing source should produce an error but the question owner should retain Editor access to replace the deleted source and repair the dependent.",
-          "actual": "Dependent changes to View-only, displays 'Card 74 does not exist.', and removes Editor and other query-edit controls. Default multimodal assertion confirmed no Editor or source-change control exists anywhere on the page; owner cannot repair the saved query.",
-          "reproSteps": [
-            "Disposable source#74 QA-SOURCE-People-Delete-1021 is permanently deleted; dependent#75 QA-SOURCE-People-Child-1021 remains for inspection. Create fresh owned fixtures for independent reproduction.",
-            "Create an owned saved raw People question using Sample Database.",
-            "Create and save an owned dependent using that question as source, Count grouped by Source.",
-            "Move the source to trash, reload it, and Delete permanently with confirmation.",
-            "Open the dependent and expand error details."
-          ],
-          "reason": "Works as intended: permanently deleting a source question is documented to break questions built on it; the dependent stays editable through its notebook URL."
-        }
-      },
-      {
-        "source": "known-invalid.json",
-        "index": 17,
-        "report": {
-          "id": "metabase-querying-360",
-          "name": "Previously working notebook deep link opens blank after replacing its builder question with SQL",
-          "summary": "Previously working notebook deep link opens blank after replacing its builder question with SQL.",
-          "expected": "The existing notebook deep link should redirect to or display the question's native SQL editor/results, or offer a usable way to open them.",
-          "actual": "Same question title loads with completely blank body. The normal saved-question URL still displays results.",
-          "reproSteps": [
-            "Create a Sample Database Orders notebook joined to Products on Product ID = ID, save with a QA-CONVERT prefix.",
-            "Open Editor on the saved question and retain its generated /question/<id>-<slug>/notebook URL.",
-            "View SQL, Convert this question to SQL, Save, and choose Replace original question.",
-            "Refresh normal saved question URL and verify SQL results load.",
-            "Open the original notebook URL that worked before conversion."
-          ],
-          "reason": "Works as intended: after a question becomes SQL it has no notebook view, so its old notebook URL no longer applies; the page still offers a way back to the results."
-        }
-      }
+    "reproductionPaths": [
+      "In Metabase, follow this workflow: Disposable source#74 QA-SOURCE-People-Delete-1021 is permanently deleted; dependent#75 QA-SOURCE-People-Child-1021 remains for inspection. Create fresh owned fixtures for independent reproduction. Create an owned saved raw People question using Sample Database. Create and save an owned dependent using that question as source, Count grouped by Source. Move the source to trash, reload it, and Delete permanently with confirmation. Open the dependent and expand error details. The rejected report expected: Missing source should produce an error but the question owner should retain Editor access to replace the deleted source and repair the dependent. It claimed this outcome: Dependent changes to View-only, displays 'Card 74 does not exist.', and removes Editor and other query-edit controls. Default multimodal assertion confirmed no Editor or source-change control exists anywhere on the page; owner cannot repair the saved query. Review concluded: Works as intended: permanently deleting a source question is documented to break questions built on it; the dependent stays editable through its notebook URL.",
+      "In Metabase, follow this workflow: Create a Sample Database Orders notebook joined to Products on Product ID = ID, save with a QA-CONVERT prefix. Open Editor on the saved question and retain its generated /question/<id>-<slug>/notebook URL. View SQL, Convert this question to SQL, Save, and choose Replace original question. Refresh normal saved question URL and verify SQL results load. Open the original notebook URL that worked before conversion. The rejected report expected: The existing notebook deep link should redirect to or display the question's native SQL editor/results, or offer a usable way to open them. It claimed this outcome: Same question title loads with completely blank body. The normal saved-question URL still displays results. Review concluded: Works as intended: after a question becomes SQL it has no notebook view, so its old notebook URL no longer applies; the page still offers a way back to the results."
     ]
   },
   {
     "id": "intended-behavior-rejection-without-recorded-rationale",
-    "explanation": "These instances were rejected by a reviewer as intended behavior, but the record does not explain why. This is a holding group, not an established reusable explanation of what the model misunderstood. A new report can be compared with the exact rejected action and outcome in the stored instance, but similar wording alone is insufficient to declare it intended. Recover the missing rationale or obtain new evidence before applying a more specific rejection rule.",
-    "verificationGuidance": [
-      "Preserve the exact rejected claim and human decision without inventing a causal explanation.",
-      "Do not use this holding group to dismiss a similar new report without checking its own trigger, contract and evidence.",
-      "Recover the missing review rationale before assigning the instance to a more specific reasoning-error pattern."
-    ],
-    "instances": [
-      {
-        "source": "known-invalid.json",
-        "index": 7,
-        "report": {
-          "id": "metabase-querying-231",
-          "name": "Saving query edits from a stale tab silently undoes a separately saved question rename",
-          "summary": "Saving query edits from a stale tab silently undoes a separately saved question rename.",
-          "expected": "Saving only the row-limit edit should retain the independently saved title, or warn that it will overwrite a newer saved rename.",
-          "actual": "Six rows are saved, but the title returns to SAVE Orders five save-as 1021, undoing the first tab's saved rename. A whole-page AI assertion confirmed the old title, six rows, and no conflict warning after save. Replace dialog had displayed the stale name; no title was edited in that tab.",
-          "reproSteps": [
-            "Create a Sample Database Orders question, add Row limit 5, Visualize and save with a unique SAVE-prefixed name.",
-            "Open the same saved question in a second browser tab using the same session.",
-            "In the second tab use Editor to change Row limit to 6, then Visualize without saving.",
-            "In the first tab rename the question inline to SAVE Orders renamed while editing 1021 and press Enter; the new title is shown.",
-            "Return to the second tab, click Save and keep Replace original question selected, then Save.",
-            "Reload the question and inspect title and row count."
-          ],
-          "reason": "Works as intended per human review."
-        }
-      },
-      {
-        "source": "known-invalid.json",
-        "index": 11,
-        "report": {
-          "id": "metabase-querying-324",
-          "name": "Reload silently drops rejected Number parameter and runs query without the filter",
-          "summary": "Reload silently drops rejected Number parameter and runs query without the filter.",
-          "expected": "Preserve the rejected filter value with validation feedback or display an explanation, rather than silently running the query with the filter omitted.",
-          "actual": "Refreshing the page clears the invalid 'oops' value from the Minimum parameter input back to its placeholder and displays count 3 from executing the query without the condition, with no error or explanation.",
-          "reproSteps": [
-            "Save a SQL question on Products that filters p.PRICE between 10.5 and 20.75 and has an optional Number parameter minimum ([[AND p.ID > {{minimum}}]]).",
-            "Enter oops in Minimum and run. The query reports For input string: \"oops\" and URL contains minimum=oops.",
-            "Refresh the browser page."
-          ],
-          "reason": "Works as intended per human review."
-        }
-      },
-      {
-        "source": "known-invalid.json",
-        "index": 13,
-        "report": {
-          "id": "metabase-querying-367",
-          "name": "Relative date filter silently changes an entered 0-day interval to 1 day",
-          "summary": "Relative date filter silently changes an entered 0-day interval to 1 day.",
-          "expected": "Reject an unsupported zero interval with clear validation, or retain the entered interval rather than silently changing it.",
-          "actual": "Entering 0 in the relative date filter interval field is accepted with an enabled 'Update filter' button and no validation error. Applying the filter turns it into 'Created At is yesterday', and reopening the filter shows the interval field changed to 1 day.",
-          "reproSteps": [
-            "Create a Sample Database Orders question and choose Created At → Relative date range → Previous.",
-            "Enter 0 in Interval with days selected and Include today off.",
-            "Click Add/Update filter; reopen the filter.",
-            "Save as a separate QA-DATE question, reload and open Editor and the date filter."
-          ],
-          "reason": "Works as intended per human review."
-        }
-      },
-      {
-        "source": "known-invalid.json",
-        "index": 15,
-        "report": {
-          "id": "metabase-querying-370",
-          "name": "Nonnumeric range minimum abc is silently discarded, changing Between into Less than or equal",
-          "summary": "Nonnumeric range minimum abc is silently discarded, changing Between into Less than or equal.",
-          "expected": "Nonnumeric minimum should be rejected with validation, not silently treated as an empty minimum and converted into a different filter.",
-          "actual": "abc is discarded and Between becomes ID is less than or equal to 3.",
-          "reproSteps": [
-            "Create Products question in Sample Database and filter ID Between 1 and 3.",
-            "Visualize; open ID filter.",
-            "Replace Min 1 with abc, leaving Max 3, then click Update filter.",
-            "Observe filter changes to ID is less than or equal to 3 and returns three rows."
-          ],
-          "reason": "Works as intended per human review."
-        }
-      },
-      {
-        "source": "known-invalid.json",
-        "index": 19,
-        "report": {
-          "id": "metabase-querying-371",
-          "name": "Question-backed SQL parameter list falls back to text input and does not recover after source column is restored",
-          "summary": "Question-backed SQL parameter list falls back to text input and does not recover after source column is restored.",
-          "expected": "After restoring the original source column, the saved question-backed list should offer the four source categories again, or provide actionable dependency feedback.",
-          "actual": "After source restoration and a full consumer refresh, Category still opens an empty free-text input with disabled Add filter, not the four values. Opening selectable-value settings after the column change showed an empty source picker. No consumer changes were saved.",
-          "reproSteps": [
-            "Create own saved SQL source: SELECT DISTINCT CATEGORY FROM PRODUCTS ORDER BY CATEGORY.",
-            "Create a SQL consumer: SELECT ID, CATEGORY FROM PRODUCTS WHERE CATEGORY = {{category}} ORDER BY ID LIMIT 10. Configure Text category dropdown values from source question CATEGORY; save.",
-            "Reload consumer; observe four categories and execute Gizmo successfully.",
-            "Edit source to SELECT DISTINCT CATEGORY AS CHANGED_CATEGORY FROM PRODUCTS ORDER BY CATEGORY; run and replace saved source.",
-            "Open consumer parameter: it now shows a free-text input instead of selectable values.",
-            "Restore the source SQL to the original CATEGORY column; run and save. Reload the consumer and reopen Category."
-          ],
-          "reason": "Works as intended per human review."
-        }
-      },
-      {
-        "source": "known-invalid.json",
-        "index": 20,
-        "report": {
-          "id": "metabase-querying-402",
-          "name": "Native SQL date parameter silently converts invalid February 29, 2023 to March 1, 2023",
-          "summary": "Native SQL date parameter silently converts invalid February 29, 2023 to March 1, 2023.",
-          "expected": "An impossible calendar date should be rejected with validation rather than silently used as a different day.",
-          "actual": "On leaving the input, 02/29/2023 changes to March 1, 2023. Updating and running uses March 1, 2023 in both filter chip and result.",
-          "reproSteps": [
-            "Using the primary fixture account, select New > SQL query and Sample Database.",
-            "Enter SELECT CAST({{day}} AS DATE) AS chosen_day; and set day variable type to Date.",
-            "Open Day filter, enter 02/29/2024, add filter and run; observe February 29, 2024.",
-            "Reopen Day filter, replace date with 02/29/2023 and leave the date input.",
-            "Click Update filter and run the query."
-          ],
-          "reason": "Works as intended per human review.",
-          "matchingGuidance": {
-            "relatedReference": {
-              "id": "metabase-querying-notebook-date-range-impossible-date",
-              "distinction": "This reference covers a native SQL Date parameter. The related one covers a notebook fixed date range filter."
-            }
-          }
-        }
-      },
-      {
-        "source": "known-invalid.json",
-        "index": 22,
-        "report": {
-          "id": "metabase-querying-465",
-          "name": "Renaming a custom summary aggregate to match an existing column name silently breaks post-aggregation filtering and returns no results",
-          "summary": "Renaming a custom summary aggregate to match an existing column name silently breaks post-aggregation filtering and returns no results.",
-          "expected": "Renaming the custom aggregation should maintain correct filter field bindings or prevent naming collisions with existing columns.",
-          "actual": "Renaming the aggregation to 'Category' produces duplicate column names and causes the query to return 'No results!' (0 rows).",
-          "reproSteps": [
-            "As Harbor Admin, create a fresh QA-SUMMARY question from Sample Database Products.",
-            "Add custom Count() named Price and Count()*10 named Category, grouped by source Category. Sort second aggregate descending.",
-            "Add post-summary numeric aggregate Category between 500 and 535; results are Gadget 53/530 and Gizmo 51/510. Save and reopen.",
-            "Add post-summary text grouping Category is Gadget; verify Gadget 53/530.",
-            "Edit the first custom aggregate name from Price to Category, leaving Count() unchanged. Click Update, then Visualize."
-          ],
-          "reason": "Works as intended per human review."
-        }
-      },
-      {
-        "source": "known-invalid.json",
-        "index": 24,
-        "report": {
-          "id": "metabase-querying-467",
-          "name": "Renaming a saved source custom column breaks a previously working downstream custom expression",
-          "summary": "Renaming a saved source custom column breaks a previously working downstream custom expression.",
-          "expected": "Renaming the source custom column should preserve the downstream expression dependency, or the rename workflow should handle dependent saved questions instead of leaving a previously valid question broken.",
-          "actual": "The downstream question displays “There was a problem with your question”; details say Column \"source.QA-EXPR-DiscountZero\" not found. The source question itself still runs after the rename.",
-          "reproSteps": [
-            "Create a QA-EXPR source question from Sample Database Orders with custom column QA-EXPR-DiscountZero = coalesce([Discount], 0), then save it.",
-            "Create a second QA-EXPR question using the saved source question. Add QA-EXPR-SafeDivide = case([QA-EXPR-DiscountZero] = 0, 0, 10 / [QA-EXPR-DiscountZero]). Visualize, save and refresh; valid numeric results appear.",
-            "Reopen the source question editor, rename QA-EXPR-DiscountZero to QA-EXPR-ZeroRenamed, Update, Visualize, then Save over the source question.",
-            "Reopen the downstream saved question and expand Show error details."
-          ],
-          "reason": "Works as intended per human review."
-        }
-      },
-      {
-        "source": "known-invalid.json",
-        "index": 25,
-        "report": {
-          "id": "metabase-querying-469",
-          "name": "Selecting second custom label for duplicate parameter value displays the first label instead",
-          "summary": "Selecting second custom label for duplicate parameter value displays the first label instead.",
-          "expected": "The selected Second label should remain displayed, or duplicate underlying values with conflicting labels should be rejected during configuration.",
-          "actual": "Both First label and Second label are offered in the dropdown, but selecting Second label causes First label to be selected and displayed in the filter parameter. Running the query returns 9 Gizmo rows while displaying First label.",
-          "reproSteps": [
-            "Create an own native Sample Database question: SELECT ID, TITLE, CATEGORY, PRICE FROM PRODUCTS WHERE CATEGORY = {{category}} AND PRICE >= {{min_price}} ORDER BY ID.",
-            "Configure category as Text, Dropdown list, single value. Enter custom list lines Gizmo,First label; Gizmo,Second label; Widget,Widget label, with each on its own line. Configure min_price Number with default80.5.",
-            "Open category widget, choose Second label and click Update filter.",
-            "Run the query and inspect the parameter label."
-          ],
-          "reason": "Works as intended per human review."
-        }
-      }
+    "explanation": "These reports were rejected by a reviewer as intended behavior, but the record does not explain why. This is a holding group, not an established reusable explanation of what the model misunderstood. A new report can be compared with the exact rejected action and outcome in the example, but similar wording alone is insufficient to declare it intended. Recover the missing rationale or obtain new evidence before applying a more specific rejection rule.",
+    "reproductionPaths": [
+      "In Metabase, follow this workflow: Create a Sample Database Orders question, add Row limit 5, Visualize and save with a unique SAVE-prefixed name. Open the same saved question in a second browser tab using the same session. In the second tab use Editor to change Row limit to 6, then Visualize without saving. In the first tab rename the question inline to SAVE Orders renamed while editing 1021 and press Enter; the new title is shown. Return to the second tab, click Save and keep Replace original question selected, then Save. Reload the question and inspect title and row count. The rejected report expected: Saving only the row-limit edit should retain the independently saved title, or warn that it will overwrite a newer saved rename. It claimed this outcome: Six rows are saved, but the title returns to SAVE Orders five save-as 1021, undoing the first tab's saved rename. A whole-page AI assertion confirmed the old title, six rows, and no conflict warning after save. Replace dialog had displayed the stale name; no title was edited in that tab. Review concluded: Works as intended per human review.",
+      "In Metabase, follow this workflow: Save a SQL question on Products that filters p.PRICE between 10.5 and 20.75 and has an optional Number parameter minimum ([[AND p.ID > {{minimum}}]]). Enter oops in Minimum and run. The query reports For input string: \"oops\" and URL contains minimum=oops. Refresh the browser page. The rejected report expected: Preserve the rejected filter value with validation feedback or display an explanation, rather than silently running the query with the filter omitted. It claimed this outcome: Refreshing the page clears the invalid 'oops' value from the Minimum parameter input back to its placeholder and displays count 3 from executing the query without the condition, with no error or explanation. Review concluded: Works as intended per human review.",
+      "In Metabase, follow this workflow: Create a Sample Database Orders question and choose Created At → Relative date range → Previous. Enter 0 in Interval with days selected and Include today off. Click Add/Update filter; reopen the filter. Save as a separate QA-DATE question, reload and open Editor and the date filter. The rejected report expected: Reject an unsupported zero interval with clear validation, or retain the entered interval rather than silently changing it. It claimed this outcome: Entering 0 in the relative date filter interval field is accepted with an enabled 'Update filter' button and no validation error. Applying the filter turns it into 'Created At is yesterday', and reopening the filter shows the interval field changed to 1 day. Review concluded: Works as intended per human review.",
+      "In Metabase, follow this workflow: Create Products question in Sample Database and filter ID Between 1 and 3. Visualize; open ID filter. Replace Min 1 with abc, leaving Max 3, then click Update filter. Observe filter changes to ID is less than or equal to 3 and returns three rows. The rejected report expected: Nonnumeric minimum should be rejected with validation, not silently treated as an empty minimum and converted into a different filter. It claimed this outcome: abc is discarded and Between becomes ID is less than or equal to 3. Review concluded: Works as intended per human review.",
+      "In Metabase, follow this workflow: Create own saved SQL source: SELECT DISTINCT CATEGORY FROM PRODUCTS ORDER BY CATEGORY. Create a SQL consumer: SELECT ID, CATEGORY FROM PRODUCTS WHERE CATEGORY = {{category}} ORDER BY ID LIMIT 10. Configure Text category dropdown values from source question CATEGORY; save. Reload consumer; observe four categories and execute Gizmo successfully. Edit source to SELECT DISTINCT CATEGORY AS CHANGED_CATEGORY FROM PRODUCTS ORDER BY CATEGORY; run and replace saved source. Open consumer parameter: it now shows a free-text input instead of selectable values. Restore the source SQL to the original CATEGORY column; run and save. Reload the consumer and reopen Category. The rejected report expected: After restoring the original source column, the saved question-backed list should offer the four source categories again, or provide actionable dependency feedback. It claimed this outcome: After source restoration and a full consumer refresh, Category still opens an empty free-text input with disabled Add filter, not the four values. Opening selectable-value settings after the column change showed an empty source picker. No consumer changes were saved. Review concluded: Works as intended per human review.",
+      "In Metabase, follow this workflow: Using the primary fixture account, select New > SQL query and Sample Database. Enter SELECT CAST({{day}} AS DATE) AS chosen_day; and set day variable type to Date. Open Day filter, enter 02/29/2024, add filter and run; observe February 29, 2024. Reopen Day filter, replace date with 02/29/2023 and leave the date input. Click Update filter and run the query. The rejected report expected: An impossible calendar date should be rejected with validation rather than silently used as a different day. It claimed this outcome: On leaving the input, 02/29/2023 changes to March 1, 2023. Updating and running uses March 1, 2023 in both filter chip and result. Review concluded: Works as intended per human review.",
+      "In Metabase, follow this workflow: As Harbor Admin, create a fresh QA-SUMMARY question from Sample Database Products. Add custom Count() named Price and Count()*10 named Category, grouped by source Category. Sort second aggregate descending. Add post-summary numeric aggregate Category between 500 and 535; results are Gadget 53/530 and Gizmo 51/510. Save and reopen. Add post-summary text grouping Category is Gadget; verify Gadget 53/530. Edit the first custom aggregate name from Price to Category, leaving Count() unchanged. Click Update, then Visualize. The rejected report expected: Renaming the custom aggregation should maintain correct filter field bindings or prevent naming collisions with existing columns. It claimed this outcome: Renaming the aggregation to 'Category' produces duplicate column names and causes the query to return 'No results!' (0 rows). Review concluded: Works as intended per human review.",
+      "In Metabase, follow this workflow: Create a QA-EXPR source question from Sample Database Orders with custom column QA-EXPR-DiscountZero = coalesce([Discount], 0), then save it. Create a second QA-EXPR question using the saved source question. Add QA-EXPR-SafeDivide = case([QA-EXPR-DiscountZero] = 0, 0, 10 / [QA-EXPR-DiscountZero]). Visualize, save and refresh; valid numeric results appear. Reopen the source question editor, rename QA-EXPR-DiscountZero to QA-EXPR-ZeroRenamed, Update, Visualize, then Save over the source question. Reopen the downstream saved question and expand Show error details. The rejected report expected: Renaming the source custom column should preserve the downstream expression dependency, or the rename workflow should handle dependent saved questions instead of leaving a previously valid question broken. It claimed this outcome: The downstream question displays “There was a problem with your question”; details say Column \"source.QA-EXPR-DiscountZero\" not found. The source question itself still runs after the rename. Review concluded: Works as intended per human review.",
+      "In Metabase, follow this workflow: Create an own native Sample Database question: SELECT ID, TITLE, CATEGORY, PRICE FROM PRODUCTS WHERE CATEGORY = {{category}} AND PRICE >= {{min_price}} ORDER BY ID. Configure category as Text, Dropdown list, single value. Enter custom list lines Gizmo,First label; Gizmo,Second label; Widget,Widget label, with each on its own line. Configure min_price Number with default80.5. Open category widget, choose Second label and click Update filter. Run the query and inspect the parameter label. The rejected report expected: The selected Second label should remain displayed, or duplicate underlying values with conflicting labels should be rejected during configuration. It claimed this outcome: Both First label and Second label are offered in the dropdown, but selecting Second label causes First label to be selected and displayed in the filter parameter. Running the query returns 9 Gizmo rows while displaying First label. Review concluded: Works as intended per human review."
     ]
   },
   {
     "id": "definition-order-confused-with-visualization-order",
     "explanation": "A query can define calculated columns in one order while the table visualization separately controls the order in which columns are displayed. This pattern matches a report that rearranges the calculation definitions and assumes the table must rearrange its columns too, despite correct returned values and a separate display-order setting. Verify whether the changed control governs query definitions or visual layout. Incorrect calculated values or an explicit column-layout change being ignored are different failures.",
-    "verificationGuidance": [
-      "Inspect table visualization column-order settings independently of expression-chip order.",
-      "Check the actual values and use the supported visualization reorder operation before alleging a query-order defect."
-    ],
-    "instances": [
-      {
-        "source": "known-invalid.json",
-        "index": 8,
-        "report": {
-          "id": "metabase-querying-317",
-          "name": "Dragging custom columns to reorder the notebook leaves results in their old column order",
-          "summary": "Dragging custom columns to reorder the notebook leaves results in their old column order.",
-          "expected": "Reordering custom columns should make the generated results use the corresponding new order, or clearly indicate that result ordering is separate.",
-          "actual": "Notebook changed from Net Delta, Triple, Band, Upper Band to Upper Band, Triple, Band, Net Delta. After Visualize the results still showed Net Delta, Triple, Band, Upper Band. Values remained correct.",
-          "reproSteps": [
-            "Use fresh test-owned question. No chart settings were intentionally changed. Result values are correct; suspicion concerns only mismatch between notebook's reordered expression chips and result order, which may have a separate intended ordering model.",
-            "Using primary fixture identity, create a fresh Orders query in Sample Database.",
-            "Add [Total] - [Subtotal] named QACOL Net Delta; [QACOL Net Delta] * 3 named QACOL Triple; case([Quantity] > 3, \"Bulk\", \"Single\") named QACOL Band; upper([QACOL Band]) named QACOL Upper Band.",
-            "Visualize and save under a unique QACOL-prefixed name. Reload and open Editor.",
-            "Drag QACOL Upper Band chip onto QACOL Net Delta chip; observe notebook order Upper Band, Triple, Band, Net Delta.",
-            "Click Visualize and inspect custom column ordering in results."
-          ],
-          "reason": "Works as intended: table column order is a visualization setting, separate from the order of custom-expression chips in the notebook; values are unaffected."
-        }
-      }
+    "reproductionPaths": [
+      "In Metabase, follow this workflow: Use fresh test-owned question. No chart settings were intentionally changed. Result values are correct; suspicion concerns only mismatch between notebook's reordered expression chips and result order, which may have a separate intended ordering model. Using primary fixture identity, create a fresh Orders query in Sample Database. Add [Total] - [Subtotal] named QACOL Net Delta; [QACOL Net Delta] * 3 named QACOL Triple; case([Quantity] > 3, \"Bulk\", \"Single\") named QACOL Band; upper([QACOL Band]) named QACOL Upper Band. Visualize and save under a unique QACOL-prefixed name. Reload and open Editor. Drag QACOL Upper Band chip onto QACOL Net Delta chip; observe notebook order Upper Band, Triple, Band, Net Delta. Click Visualize and inspect custom column ordering in results. The rejected report expected: Reordering custom columns should make the generated results use the corresponding new order, or clearly indicate that result ordering is separate. It claimed this outcome: Notebook changed from Net Delta, Triple, Band, Upper Band to Upper Band, Triple, Band, Net Delta. After Visualize the results still showed Net Delta, Triple, Band, Upper Band. Values remained correct. Review concluded: Works as intended: table column order is a visualization setting, separate from the order of custom-expression chips in the notebook; values are unaffected."
     ]
   },
   {
     "id": "shared-fixture-interference-attributed-to-local-action",
     "explanation": "Several testers or agents can change the same account, saved item or notification at the same time. This pattern matches a report that blames the immediately preceding local action for another state change without isolating those other writers. In some reviewed cases another actor's change is established; in others it is only a plausible explanation and must remain uncertain. Repeat with isolated records or correlate the actual requests and object identities before claiming that one item's action changed unrelated data.",
-    "verificationGuidance": [
-      "Reproduce with isolated records and no other writer, or correlate action requests with object IDs and concurrent activity.",
-      "Check whether the supposedly missing record was actually trashed, renamed or otherwise changed by another actor.",
-      "Preserve uncertainty about historical interference and assess failures reproduced in isolation independently."
-    ],
-    "instances": [
-      {
-        "source": "known-invalid.json",
-        "index": 9,
-        "report": {
-          "id": "metabase-querying-327",
-          "name": "A restored question is absent from its Saved in collection",
-          "summary": "A restored question is absent from its designated Saved in collection.",
-          "expected": "The restored question appears in the collection its Info panel lists.",
-          "actual": "Following the Saved in link to Harbor Admin's Personal Collection reveals the question is missing from the list, which ends alphabetically at QA-SUMMARY.",
-          "reproSteps": [
-            "Create and save a unique QA-UNDO Sample Database Orders question in Harbor Admin's Personal Collection.",
-            "Trash it, then click toast Undo while visible.",
-            "Refresh question: it remains restored and Orders query/results are intact.",
-            "Open More info and follow the Saved in Harbor Admin's Personal Collection link. Inspect the complete table and refresh it."
-          ],
-          "reason": "Cannot reproduce: restored questions stay listed in their collection; the original run likely overlapped other agents' changes in the shared sandbox."
-        }
-      }
+    "reproductionPaths": [
+      "In Metabase, follow this workflow: Create and save a unique QA-UNDO Sample Database Orders question in Harbor Admin's Personal Collection. Trash it, then click toast Undo while visible. Refresh question: it remains restored and Orders query/results are intact. Open More info and follow the Saved in Harbor Admin's Personal Collection link. Inspect the complete table and refresh it. The rejected report expected: The restored question appears in the collection its Info panel lists. It claimed this outcome: Following the Saved in link to Harbor Admin's Personal Collection reveals the question is missing from the list, which ends alphabetically at QA-SUMMARY. Review concluded: Cannot reproduce: restored questions stay listed in their collection; the original run likely overlapped other agents' changes in the shared sandbox."
     ]
   },
   {
     "id": "rounded-display-confused-with-exact-filter-value",
     "explanation": "A table or chart can display a rounded number while comparisons use the underlying full-precision value. This pattern matches a report that copies the rounded label into an equality or range condition and interprets the record's exclusion as incorrect filtering, although the true value falls outside that condition. Inspect the precise value and the field's formatting before judging the result. Incorrect filtering of the actual value, or a promised exact display showing the wrong value, is a different claim.",
-    "verificationGuidance": [
-      "Inspect the unrounded source value or executed SQL result.",
-      "Evaluate the exact predicate against full precision, especially equality and inclusive range boundaries.",
-      "Compare display-format changes separately from changes to the stored number."
-    ],
-    "instances": [
-      {
-        "source": "known-invalid.json",
-        "index": 14,
-        "report": {
-          "id": "metabase-querying-369",
-          "name": "Numeric multi-value Equal to filter returns No results despite selecting a price present in Products",
-          "summary": "Numeric multi-value Equal to filter returns No results despite selecting a price present in Products.",
-          "expected": "Equal to selections 20.5 or 25.1 should include the previously displayed product with Price 25.1.",
-          "actual": "The query displays No results! and Showing 0 rows, although the filter editor contains 25.1 and the preceding range results included that exact price.",
-          "reproSteps": [
-            "Choose Sample Database > Products in the notebook.",
-            "Add Price Between 20.5 and 30.5, then Visualize. Results show 24 rows, including Products ID 15 with Price 25.1.",
-            "Open the Price filter and change Between to Equal to.",
-            "Enter 25.1 in the number input, press Enter and click Update filter.",
-            "Reopen the resulting Price is equal to 2 selections chip; it contains 20.5 and 25.1 while results show No results."
-          ],
-          "reason": "Works as intended: the products are priced 25.09876…, displayed rounded to 25.1; exact-equality filters on the rounded value correctly match nothing."
-        }
-      },
-      {
-        "source": "known-invalid.json",
-        "index": 21,
-        "report": {
-          "id": "metabase-querying-453",
-          "name": "Decimal post-summary Between filter excludes quarter whose displayed total equals upper bound",
-          "summary": "Decimal post-summary Between filter excludes quarter whose displayed total equals upper bound.",
-          "expected": "Filtering between displayed totals 123889.6 and 132631.24 should retain both Q2 and Q3 2027.",
-          "actual": "Only Q2 2027 remains in the result table; Q3 2027 (previously displaying 132,631.24) is excluded when using that value as the upper bound.",
-          "reproSteps": [
-            "Use Orders, filter Created At Jan 1–Dec 31 2027.",
-            "Summarize Count, Average of Total, Sum of Total, Minimum of Total and Maximum of Total by Created At Quarter and Quantity with Don't bin.",
-            "Add second summary Count, Sum of Count and Sum of Sum of Total, grouped by inherited Created At Quarter; run. Q2 displays 123889.6 and Q3 displays 132631.24.",
-            "Add a subsequent Filter on Sum of Sum of Total Between 123889.6 and 132631.24; run and inspect results."
-          ],
-          "reason": "Works as intended: the filter compares the stored total (132631.2439…), which is above the bound; only the display rounds to 132,631.24."
-        }
-      }
+    "reproductionPaths": [
+      "In Metabase, follow this workflow: Choose Sample Database > Products in the notebook. Add Price Between 20.5 and 30.5, then Visualize. Results show 24 rows, including Products ID 15 with Price 25.1. Open the Price filter and change Between to Equal to. Enter 25.1 in the number input, press Enter and click Update filter. Reopen the resulting Price is equal to 2 selections chip; it contains 20.5 and 25.1 while results show No results. The rejected report expected: Equal to selections 20.5 or 25.1 should include the previously displayed product with Price 25.1. It claimed this outcome: The query displays No results! and Showing 0 rows, although the filter editor contains 25.1 and the preceding range results included that exact price. Review concluded: Works as intended: the products are priced 25.09876…, displayed rounded to 25.1; exact-equality filters on the rounded value correctly match nothing.",
+      "In Metabase, follow this workflow: Use Orders, filter Created At Jan 1–Dec 31 2027. Summarize Count, Average of Total, Sum of Total, Minimum of Total and Maximum of Total by Created At Quarter and Quantity with Don't bin. Add second summary Count, Sum of Count and Sum of Sum of Total, grouped by inherited Created At Quarter; run. Q2 displays 123889.6 and Q3 displays 132631.24. Add a subsequent Filter on Sum of Sum of Total Between 123889.6 and 132631.24; run and inspect results. The rejected report expected: Filtering between displayed totals 123889.6 and 132631.24 should retain both Q2 and Q3 2027. It claimed this outcome: Only Q2 2027 remains in the result table; Q3 2027 (previously displaying 132,631.24) is excluded when using that value as the upper bound. Review concluded: Works as intended: the filter compares the stored total (132631.2439…), which is above the bound; only the display rounds to 132,631.24."
     ]
   },
   {
     "id": "sample-database-performance-blamed-on-query-construction",
     "explanation": "A database query can be correctly constructed and still time out because the test database executes it inefficiently. In the reviewed case, the sample database repeatedly evaluated a nested part of a valid join, which combines records from different query sources. This pattern matches a report that takes the timeout alone as proof the application built the join incorrectly. Inspect the query's meaning and execution behavior; a demonstrated resource or performance problem is a different claim from incorrect query semantics.",
-    "verificationGuidance": [
-      "Inspect the generated SQL and database error category.",
-      "Check the engine’s plan and execution cost, and try a smaller supported query before attributing a timeout to malformed joins."
-    ],
-    "instances": [
-      {
-        "source": "known-invalid.json",
-        "index": 16,
-        "report": {
-          "id": "metabase-querying-372",
-          "name": "Joining People to a saved state-count question fails with a session-timeout error",
-          "summary": "Joining People to a saved state-count question fails with a session-timeout error.",
-          "expected": "The supported saved-question join returns People rows with their corresponding state count, or null for unmatched states.",
-          "actual": "The query ends with 'There was a problem with your question'. Error details begin 'Statement was canceled or the session timed out; SQL statement:'. No joined results are returned.",
-          "reproSteps": [
-            "Create a fresh builder question from Sample Database Orders.",
-            "Join Products on Orders.Product ID = Products.ID (inner join), then People on Orders.User ID = People.ID (left join).",
-            "Filter Products.Category to Gizmo, summarize Count grouped by People.State, run and save with a unique QA-JOIN-State-Gizmo name. The source returns 48 state groups.",
-            "Create another new builder question using Sample Database People.",
-            "Add a left join, search for and select the newly saved state-count question.",
-            "Set People.State = the saved question's People - User → State; leave all joined fields selected.",
-            "Click Visualize and wait for completion, then open Show error details."
-          ],
-          "reason": "Works as intended: the join is built correctly, and the timeout comes from the H2 sample database re-evaluating the joined subquery for every row. That is a sample-data performance limit, not a product bug."
-        }
-      }
+    "reproductionPaths": [
+      "In Metabase, follow this workflow: Create a fresh builder question from Sample Database Orders. Join Products on Orders.Product ID = Products.ID (inner join), then People on Orders.User ID = People.ID (left join). Filter Products.Category to Gizmo, summarize Count grouped by People.State, run and save with a unique QA-JOIN-State-Gizmo name. The source returns 48 state groups. Create another new builder question using Sample Database People. Add a left join, search for and select the newly saved state-count question. Set People.State = the saved question's People - User → State; leave all joined fields selected. Click Visualize and wait for completion, then open Show error details. The rejected report expected: The supported saved-question join returns People rows with their corresponding state count, or null for unmatched states. It claimed this outcome: The query ends with 'There was a problem with your question'. Error details begin 'Statement was canceled or the session timed out; SQL statement:'. No joined results are returned. Review concluded: Works as intended: the join is built correctly, and the timeout comes from the H2 sample database re-evaluating the joined subquery for every row. That is a sample-data performance limit, not a product bug."
     ]
   },
   {
     "id": "independent-reference-context-assumed-query-synchronized",
     "explanation": "A database query editor and its data-reference browser can have separate database selections. In the reviewed Metabase case, the reference pane could continue browsing one database after the SQL editor switched to another; the pane was not promised to follow that switch. This pattern matches a report that calls the pane stale, or blames it when unchanged SQL fails against the newly selected database. Check both selected contexts and whether the referenced tables exist in the database actually executing the query.",
-    "verificationGuidance": [
-      "Identify the database shown in the reference pane separately from the execution database.",
-      "Check whether synchronization is promised and whether the preserved SQL is valid on the selected execution database."
-    ],
-    "instances": [
-      {
-        "source": "known-invalid.json",
-        "index": 26,
-        "report": {
-          "id": "metabase-querying-510",
-          "name": "SQL database switch leaves Data Reference showing the previous database's PRODUCTS schema",
-          "summary": "SQL database switch leaves Data Reference showing the previous database's PRODUCTS schema.",
-          "expected": "After changing SQL database, Data Reference should reset or show tables belonging to the chosen database rather than suggest an unavailable table.",
-          "actual": "After switching from Sample Database to Release operations, sidebar still displays PRODUCTS with ID, EAN, TITLE, CATEGORY, VENDOR, PRICE, RATING, CREATED_AT and Orders/Reviews connections. Running the preserved products query now returns ERROR: relation \"products\" does not exist.",
-          "reproSteps": [
-            "Using the primary fixture session, create a fresh question via New > SQL query > Sample Database; no existing QA question is required.",
-            "Enter SELECT p.id, p.title, o.id AS order_id FROM products p JOIN orders o ON o.product_id = p.id WHERE p.id = 1 ORDER BY o.id LIMIT 2; and run.",
-            "In Data Reference open PRODUCTS.",
-            "Change the database dropdown above the SQL editor to Release operations.",
-            "Run the preserved query and observe the PRODUCTS sidebar beside the relation-does-not-exist error."
-          ],
-          "reason": "Works as intended: Data Reference is a browser that spans databases, and it accurately shows the Sample Database table the user opened. Nothing requires it to reset when the SQL editor's database changes. The query error is correct for the newly selected database, which has no products table."
-        }
-      }
+    "reproductionPaths": [
+      "In Metabase, follow this workflow: Using the primary fixture session, create a fresh question via New > SQL query > Sample Database; no existing QA question is required. Enter SELECT p.id, p.title, o.id AS order_id FROM products p JOIN orders o ON o.product_id = p.id WHERE p.id = 1 ORDER BY o.id LIMIT 2; and run. In Data Reference open PRODUCTS. Change the database dropdown above the SQL editor to Release operations. Run the preserved query and observe the PRODUCTS sidebar beside the relation-does-not-exist error. The rejected report expected: After changing SQL database, Data Reference should reset or show tables belonging to the chosen database rather than suggest an unavailable table. It claimed this outcome: After switching from Sample Database to Release operations, sidebar still displays PRODUCTS with ID, EAN, TITLE, CATEGORY, VENDOR, PRICE, RATING, CREATED_AT and Orders/Reviews connections. Running the preserved products query now returns ERROR: relation \"products\" does not exist. Review concluded: Works as intended: Data Reference is a browser that spans databases, and it accurately shows the Sample Database table the user opened. Nothing requires it to reset when the SQL editor's database changes. The query error is correct for the newly selected database, which has no products table."
     ]
   },
   {
     "id": "inventing-restrictive-free-form-validation",
     "explanation": "An administrator-authored field can deliberately accept flexible text, including relative addresses, templates or partial reusable code. This pattern matches a report that assumes the form must reject every value that looks incomplete or unusable, without establishing a restrictive format requirement for that field. Saving the user's own free-form content is not sufficient evidence that the application generated or corrupted an invalid value. Test valid supported input and distinguish an explicit validation promise from a preferred restriction.",
-    "verificationGuidance": [
-      "Establish the documented accepted syntax and whether relative paths, templates or partial content are allowed.",
-      "Test valid configured content separately from an unusable value deliberately entered by the author.",
-      "Show a violated supported contract or concrete unintended effect rather than relying only on the absence of preferred validation."
-    ],
-    "instances": [
-      {
-        "source": "known-invalid.json",
-        "index": 27,
-        "report": {
-          "id": "metabase-querying-517",
-          "name": "Snippet editor allows saving whitespace-only SQL code",
-          "summary": "Snippet editor allows saving whitespace-only SQL code.",
-          "expected": "Whitespace-only code should be rejected rather than saving a blank reusable snippet.",
-          "actual": "Save accepted three spaces and closed the dialog without error. After refresh and reopening, the snippet SQL field remains blank whitespace.",
-          "reproSteps": [
-            "Start a fresh SQL question on Sample Database and open SQL Snippets.",
-            "Create an own QA-REF snippet with SQL SELECT TITLE FROM PRODUCTS WHERE CATEGORY = 'Gizmo' and a unique QA-REF name.",
-            "Expand its sidebar entry and Edit. Clear all code: Save is disabled.",
-            "Enter exactly three spaces as the code and Save.",
-            "Refresh, reopen SQL Snippets and Edit the same snippet."
-          ],
-          "reason": "Works as intended: snippets may contain partial SQL, and Metabase's docs let authors save broken code at their own risk. The value is saved exactly as typed and shown accurately, and inserting it causes no error or data loss. This is a loose validation rule, not a breakage."
-        }
-      }
+    "reproductionPaths": [
+      "In Metabase, follow this workflow: Start a fresh SQL question on Sample Database and open SQL Snippets. Create an own QA-REF snippet with SQL SELECT TITLE FROM PRODUCTS WHERE CATEGORY = 'Gizmo' and a unique QA-REF name. Expand its sidebar entry and Edit. Clear all code: Save is disabled. Enter exactly three spaces as the code and Save. Refresh, reopen SQL Snippets and Edit the same snippet. The rejected report expected: Whitespace-only code should be rejected rather than saving a blank reusable snippet. It claimed this outcome: Save accepted three spaces and closed the dialog without error. After refresh and reopening, the snippet SQL field remains blank whitespace. Review concluded: Works as intended: snippets may contain partial SQL, and Metabase's docs let authors save broken code at their own risk. The value is saved exactly as typed and shown accurately, and inserting it causes no error or data loss. This is a loose validation rule, not a breakage."
     ]
   },
   {
     "id": "invalid-authored-configuration-treated-as-supported-failure",
     "explanation": "A configured query or workflow can be invalid because its author selected incompatible data types, references, relations or duplicate field names. This pattern matches a report that treats the resulting clear, recoverable error, or a failed test of an invalid draft, as failure of a valid supported configuration. First repair the stated configuration problem and run a valid control; the ability to edit or test a draft does not by itself promise that every invalid combination is blocked earlier. Corruption of a valid definition or loss of unrelated saved data is outside this rejection.",
-    "verificationGuidance": [
-      "Repair the invalid value, reference, relation or duplicate name and run a valid positive control.",
-      "Read the actual validation or execution error and distinguish invalid-draft testing from the normally activated supported flow.",
-      "Establish any promised earlier validation stage rather than inferring it from the ability to edit or save configuration."
-    ],
-    "instances": [
-      {
-        "source": "known-invalid.json",
-        "index": 28,
-        "report": {
-          "id": "metabase-querying-495",
-          "name": "Changing a custom column's type bypasses validation of dependent expressions and filters",
-          "summary": "Changing a custom column's type keeps dependent expressions and filters that no longer fit it, such as a text Contains filter on a column changed to a number, and the query fails when run.",
-          "expected": "Editing the upstream expression should revalidate dependent expressions and identify the incompatible dependency before allowing the question to remain apparently valid, consistent with validation when entering the same dependent expression.",
-          "actual": "Changing Upstream amount from [Total] * 2 to the string literal \"text\" is accepted while Downstream amount = [Upstream amount] / 2 is retained. Preview fails with 'Data conversion error converting \"text\"'. Opening the downstream editor initially enables Update; retyping the identical formula shows 'Types are incompatible.' and disables Update. The broken query can be saved and fails again after reload.",
-          "reproSteps": [
-            "Sign in and choose New → Question → Sample Database → Orders.",
-            "Add a Custom column with expression [Total] * 2 and name Upstream amount. Click Done.",
-            "Add another custom column with expression [Upstream amount] / 2 and name Downstream amount. Click Done. Preview to confirm numeric results.",
-            "Edit Upstream amount and replace its formula with the string literal \"text\" (including quotes). Click Update.",
-            "Click the Custom column step's play/Preview button. Observe a data conversion error instead of results.",
-            "Open Downstream amount. Observe that Update is initially enabled. Replace the formula with the identical [Upstream amount] / 2, and observe 'Types are incompatible.' with Update disabled.",
-            "Cancel editing and optionally save the question. Reload and run it to confirm that the invalid dependent expression persists and the query still fails."
-          ],
-          "reason": "Works as intended: the user made an incompatible change to the upstream column and the query then fails with a clear error. It can be fixed by editing the downstream formula or editing or removing the incompatible filter, unlike a column that silently disappears (querying-496).",
-          "matchingGuidance": {
-            "claimScope": "Covers both dependent custom-column formulas and filters on the changed column that become incompatible with its new type and fail at run time with an error. A column that silently disappears is querying-496."
-          }
-        }
-      },
-      {
-        "source": "known-invalid.json",
-        "index": 33,
-        "report": {
-          "id": "metabase-querying-589",
-          "name": "Numeric multiselect accepts nonnumeric custom choices that fail execution",
-          "summary": "Numeric multiselect accepts nonnumeric custom choices that fail execution.",
-          "expected": "A Number variable should reject or exclude nonnumeric custom values before they become executable dropdown choices.",
-          "actual": "The nonnumeric choice is accepted and selectable; running the query displays “An error occurred in your query” and “For input string: \"abc\"”.",
-          "reproSteps": [
-            "As Harbor Admin, use New > SQL query > Sample Database.",
-            "Enter SELECT n FROM (SELECT -2.5 AS n UNION ALL SELECT 1.25 UNION ALL SELECT 0 UNION ALL SELECT 3.5) values_table WHERE n IN ({{amount}}) ORDER BY n.",
-            "Set amount to Number, Dropdown list, Multiple values. Edit custom values to include -2.5,QA Negative then 1.25,QA Positive then abc,QA Malformed on separate lines; click Done.",
-            "Select QA Negative and QA Positive, apply, and run to see the two correct decimal results.",
-            "Open Amount, additionally select QA Malformed, update the filter, and run."
-          ],
-          "reason": "Works as intended: the admin entered a non-numeric value in a Number variable's custom list, and the server rejects it with a clear, recoverable error that names the bad value. The admin can fix the list."
-        }
-      }
+    "reproductionPaths": [
+      "In Metabase, follow this workflow: Sign in and choose New → Question → Sample Database → Orders. Add a Custom column with expression [Total] * 2 and name Upstream amount. Click Done. Add another custom column with expression [Upstream amount] / 2 and name Downstream amount. Click Done. Preview to confirm numeric results. Edit Upstream amount and replace its formula with the string literal \"text\" (including quotes). Click Update. Click the Custom column step's play/Preview button. Observe a data conversion error instead of results. Open Downstream amount. Observe that Update is initially enabled. Replace the formula with the identical [Upstream amount] / 2, and observe 'Types are incompatible.' with Update disabled. Cancel editing and optionally save the question. Reload and run it to confirm that the invalid dependent expression persists and the query still fails. The rejected report expected: Editing the upstream expression should revalidate dependent expressions and identify the incompatible dependency before allowing the question to remain apparently valid, consistent with validation when entering the same dependent expression. It claimed this outcome: Changing Upstream amount from [Total] * 2 to the string literal \"text\" is accepted while Downstream amount = [Upstream amount] / 2 is retained. Preview fails with 'Data conversion error converting \"text\"'. Opening the downstream editor initially enables Update; retyping the identical formula shows 'Types are incompatible.' and disables Update. The broken query can be saved and fails again after reload. Review concluded: Works as intended: the user made an incompatible change to the upstream column and the query then fails with a clear error. It can be fixed by editing the downstream formula or editing or removing the incompatible filter, unlike a column that silently disappears (querying-496).",
+      "In Metabase, follow this workflow: As Harbor Admin, use New > SQL query > Sample Database. Enter SELECT n FROM (SELECT -2.5 AS n UNION ALL SELECT 1.25 UNION ALL SELECT 0 UNION ALL SELECT 3.5) values_table WHERE n IN ({{amount}}) ORDER BY n. Set amount to Number, Dropdown list, Multiple values. Edit custom values to include -2.5,QA Negative then 1.25,QA Positive then abc,QA Malformed on separate lines; click Done. Select QA Negative and QA Positive, apply, and run to see the two correct decimal results. Open Amount, additionally select QA Malformed, update the filter, and run. The rejected report expected: A Number variable should reject or exclude nonnumeric custom values before they become executable dropdown choices. It claimed this outcome: The nonnumeric choice is accepted and selectable; running the query displays “An error occurred in your query” and “For input string: \"abc\"”. Review concluded: Works as intended: the admin entered a non-numeric value in a Number variable's custom list, and the server rejects it with a clear, recoverable error that names the bad value. The admin can fix the list."
     ]
   },
   {
     "id": "runtime-requirement-assumed-configuration-time-invariant",
     "explanation": "A value required when an item is used need not be required at every earlier setup stage. The reviewed examples allow an unfinished discount to be saved, a required query input to have no saved default, or an automated action to reach activation before its missing or invalid value is rejected during execution. This pattern matches a report that assumes Save or Active guarantees complete validation at that earlier stage without an applicable requirement. Lost valid inputs, concealed broken references or failure of a complete supported configuration remain independent claims.",
-    "verificationGuidance": [
-      "Identify the lifecycle stage where the value is required and any explicit promise of validation at save or activation.",
-      "Test the supported completion path or runtime validation, and distinguish a missing default from a missing required runtime value.",
-      "Evaluate loss of a valid saved value, misleadingly hidden broken references or failure of a complete valid configuration independently."
-    ],
-    "instances": [
-      {
-        "source": "known-invalid.json",
-        "index": 29,
-        "report": {
-          "id": "metabase-querying-546",
-          "name": "SQL variable settings save an empty default even when Default filter widget value is marked required",
-          "summary": "SQL variable settings save an empty default even when Default filter widget value is marked required.",
-          "expected": "With Always require a value enabled and the default field marked required, saving should require a default or clearly explain that an empty default is allowed.",
-          "actual": "Clearing fallback leaves the default field marked (required), but Save successfully replaces the question.",
-          "reproSteps": [
-            "Using the primary fixture, create a new SQL query on Sample Database: SELECT {{value}} AS PARAM_VALUE.",
-            "Set text variable default to fallback, save a fresh QA-PARAM question.",
-            "Enable Always require a value and save replacing the original.",
-            "Clear fallback using the x in Default filter widget value. The field shows (required).",
-            "Save and confirm replacement.",
-            "Refresh and open the editor's Variables settings."
-          ],
-          "reason": "Works as intended: Metabase treats a required SQL variable as an execution constraint, and its tests cover a required variable with no default. Running the question asks for a value, and entering one runs it normally."
-        }
-      }
+    "reproductionPaths": [
+      "In Metabase, follow this workflow: Using the primary fixture, create a new SQL query on Sample Database: SELECT {{value}} AS PARAM_VALUE. Set text variable default to fallback, save a fresh QA-PARAM question. Enable Always require a value and save replacing the original. Clear fallback using the x in Default filter widget value. The field shows (required). Save and confirm replacement. Refresh and open the editor's Variables settings. The rejected report expected: With Always require a value enabled and the default field marked required, saving should require a default or clearly explain that an empty default is allowed. It claimed this outcome: Clearing fallback leaves the default field marked (required), but Save successfully replaces the question. Review concluded: Works as intended: Metabase treats a required SQL variable as an execution constraint, and its tests cover a required variable with no default. Running the question asks for a value, and entering one runs it normally."
     ]
   },
   {
     "id": "claim-contradicted-by-controlled-verification",
     "explanation": "A report's specific factual claim is contradicted by a decisive observation or by a controlled repetition of the same setup. For example, the allegedly deleted value is still present, or the allegedly broken control performs the requested action when activated as described. Match this pattern only when that counterevidence addresses the same value, action and conditions; a vaguely similar successful workflow is insufficient. The finding rejects the checked allegation, not every related defect or every possible historical failure.",
-    "verificationGuidance": [
-      "Verify the actual displayed, submitted and persisted values, and the precise action target, instead of repeating the original interpretation.",
-      "Repeat the reported setup and a positive control; record what the decisive observation actually establishes.",
-      "Keep any different trigger, transient state or accepted neighboring defect separate from the contradicted claim."
-    ],
-    "instances": [
-      {
-        "source": "known-invalid.json",
-        "index": 30,
-        "report": {
-          "id": "metabase-querying-564",
-          "name": "Discarding an unsaved SQL edit via Back to previous results leaves the discarded query and zero-row results visible",
-          "summary": "Discarding an unsaved SQL edit via Back to previous results leaves the discarded query and zero-row results visible.",
-          "expected": "Discarding restores the saved question and its two-row results, rather than continuing to show discarded SQL.",
-          "actual": "Dialog closes and URL becomes the saved question's URL, but header still says New question, editor still contains ID = 999999 and No results/Showing 0 rows remain.",
-          "reproSteps": [
-            "Create a fresh SQL question on Sample Database using SELECT ID, TITLE, CATEGORY, PRICE FROM PRODUCTS WHERE ID <= 2 ORDER BY ID; run and save with a unique QALIFE name.",
-            "Reopen it and Open Editor; replace SQL with SELECT ID, TITLE FROM PRODUCTS WHERE ID = 999999 and run.",
-            "On No results, click Back to previous results.",
-            "In Discard your changes dialog, click Cancel; verify unsaved SQL remains.",
-            "Click Back to previous results again, then Discard changes."
-          ],
-          "reason": "Cannot reproduce on human review: 'Back to previous results' doesn't offer Discard a second time."
-        }
-      }
+    "reproductionPaths": [
+      "In Metabase, follow this workflow: Create a fresh SQL question on Sample Database using SELECT ID, TITLE, CATEGORY, PRICE FROM PRODUCTS WHERE ID <= 2 ORDER BY ID; run and save with a unique QALIFE name. Reopen it and Open Editor; replace SQL with SELECT ID, TITLE FROM PRODUCTS WHERE ID = 999999 and run. On No results, click Back to previous results. In Discard your changes dialog, click Cancel; verify unsaved SQL remains. Click Back to previous results again, then Discard changes. The rejected report expected: Discarding restores the saved question and its two-row results, rather than continuing to show discarded SQL. It claimed this outcome: Dialog closes and URL becomes the saved question's URL, but header still says New question, editor still contains ID = 999999 and No results/Showing 0 rows remain. Review concluded: Cannot reproduce on human review: 'Back to previous results' doesn't offer Discard a second time."
     ]
   },
   {
     "id": "visible-input-normalization-mistaken-for-save-corruption",
     "explanation": "An input can visibly change unsupported characters, dates or numeric precision while the user is still editing. This pattern matches a report that remembers the intended text and blames Save for a different result, although the field or preview already displayed that effective value before submission and the save preserved it. Observe the value immediately before saving and compare it with storage. A valid displayed value secretly replaced only during submission is a different failure.",
-    "verificationGuidance": [
-      "Record the input and preview immediately before blur, Apply or Save, then compare the submitted and persisted values.",
-      "Check the field-specific normalization contract and a supported-input control.",
-      "Do not use this rejection to dismiss hidden value substitution or corruption that first occurs during a completed save."
-    ],
-    "instances": [
-      {
-        "source": "known-invalid.json",
-        "index": 31,
-        "report": {
-          "id": "metabase-querying-561",
-          "name": "Relative date filter silently truncates interval 1.5 to 1 when applied",
-          "summary": "Relative date filter silently truncates interval 1.5 to 1 when applied.",
-          "expected": "Reject unsupported fractional intervals with validation, or preserve and correctly apply the entered value; do not silently replace 1.5 with 1.",
-          "actual": "The interval textbox accepts 1.5 and Update filter remains enabled. Applying it uses one month, and reopening shows 1. A whole-page AI assertion confirmed no validation error or rounding warning. In this session the result remained 264 rows in June 2026.",
-          "reproSteps": [
-            "Create a fresh question via New > Question > Sample Database > Orders.",
-            "Add a Created At relative date filter using Previous 1 month and the Starting from option set to 3 months ago; apply and Visualize. This session previewed June 1–30, 2026.",
-            "Open the date filter chip and replace Interval 1 with 1.5.",
-            "Click Update filter and reopen the filter chip.",
-            "Observe Interval is now 1, not the entered 1.5, with no validation warning."
-          ],
-          "reason": "Works as intended: the preview already shows the whole-number range before the filter is applied, as in dashboards-138."
-        }
-      },
-      {
-        "source": "known-invalid.json",
-        "index": 43,
-        "report": {
-          "id": "metabase-querying-notebook-date-range-impossible-date",
-          "name": "Notebook fixed date range silently rolls an impossible date into the next month",
-          "summary": "Typing an impossible date such as 02/30/2028 into a notebook fixed date range changes it to March 1, 2028 on blur, with no validation error.",
-          "expected": "An impossible calendar date is rejected with validation rather than silently used as a different day.",
-          "actual": "On leaving the input, 02/30/2028 changes to March 1, 2028, and Update filter applies it.",
-          "reproSteps": [
-            "Open a Sample Database Orders notebook query and add a Created At fixed date range.",
-            "Set both endpoints to February 11, 2028 and apply.",
-            "Reopen the filter, replace Start date with 02/30/2028 and blur the field.",
-            "Observe the start changes to March 1, 2028."
-          ],
-          "reason": "Works as intended per human review: the same calendar rollover as metabase-querying-402.",
-          "matchingGuidance": {
-            "relatedReference": {
-              "id": "metabase-querying-402",
-              "distinction": "The related reference covers a native SQL Date parameter. This one covers a notebook fixed date range filter."
-            }
-          }
-        }
-      }
+    "reproductionPaths": [
+      "In Metabase, follow this workflow: Create a fresh question via New > Question > Sample Database > Orders. Add a Created At relative date filter using Previous 1 month and the Starting from option set to 3 months ago; apply and Visualize. This session previewed June 1–30, 2026. Open the date filter chip and replace Interval 1 with 1.5. Click Update filter and reopen the filter chip. Observe Interval is now 1, not the entered 1.5, with no validation warning. The rejected report expected: Reject unsupported fractional intervals with validation, or preserve and correctly apply the entered value; do not silently replace 1.5 with 1. It claimed this outcome: The interval textbox accepts 1.5 and Update filter remains enabled. Applying it uses one month, and reopening shows 1. A whole-page AI assertion confirmed no validation error or rounding warning. In this session the result remained 264 rows in June 2026. Review concluded: Works as intended: the preview already shows the whole-number range before the filter is applied, as in dashboards-138.",
+      "In Metabase, follow this workflow: Open a Sample Database Orders notebook query and add a Created At fixed date range. Set both endpoints to February 11, 2028 and apply. Reopen the filter, replace Start date with 02/30/2028 and blur the field. Observe the start changes to March 1, 2028. The rejected report expected: An impossible calendar date is rejected with validation rather than silently used as a different day. It claimed this outcome: On leaving the input, 02/30/2028 changes to March 1, 2028, and Update filter applies it. Review concluded: Works as intended per human review: the same calendar rollover as metabase-querying-402."
     ]
   },
   {
     "id": "hidden-or-collapsed-ui-mistaken-for-lost-configuration",
     "explanation": "A viewing page can hide an empty folder or tab, collapse filter details, or omit a field on a specialized empty-state screen while keeping the saved configuration intact. This pattern matches a report that treats that absence from the viewing layout as deletion, even though reopening the editor, expanding the controls or adding content reveals the retained setting. Confirm the owning settings and applied behavior before claiming storage loss. The fact that data is intact does not by itself decide whether a separate promised display behavior is broken.",
-    "verificationGuidance": [
-      "Reopen configuration or inspect the same object in its owning settings surface before claiming deletion.",
-      "Expand collapsed controls or add content to a hidden empty container and check whether the retained configuration reappears.",
-      "Distinguish intact stored state from an independently promised view failing to display essential content."
-    ],
-    "instances": [
-      {
-        "source": "known-invalid.json",
-        "index": 32,
-        "report": {
-          "id": "metabase-querying-590",
-          "name": "Refreshing a saved nested builder question hides its active numeric filter chip",
-          "summary": "Refreshing a saved nested builder question hides its active numeric filter chip.",
-          "expected": "The saved question continues to show the active Double price between 100 and 150 filter description after refresh.",
-          "actual": "Filter retains badge 1 and results retain 55 rows. Editor retains the exact numeric filter; returning to Visualize still hides its chip.",
-          "reproSteps": [
-            "Own fixtures 119 QA-NEST2-ALT builder custom and 120 QA-NEST2-ALT downstream computed remain for reference. This alternate trigger requires neither SQL nor changing a source type, unlike the previously filed date-to-text case.",
-            "Create a new builder question using Sample Database > Products. Add custom column [Price] * 2 named Double price, visualize and save with a fresh QA-NEST2 name.",
-            "Create another new builder question using the saved question as its starting data.",
-            "Filter Double price Between 100 and 150, visualize, and observe the visible applied-filter chip and 55 rows.",
-            "Save the downstream question with a fresh QA-NEST2 name, then refresh.",
-            "Inspect results and open Editor to compare the retained filter."
-          ],
-          "reason": "Works as intended: saved questions open with filter chips collapsed by design, and the filter count button expands them. The query, results and editor all keep the filter."
-        }
-      }
+    "reproductionPaths": [
+      "In Metabase, follow this workflow: Own fixtures 119 QA-NEST2-ALT builder custom and 120 QA-NEST2-ALT downstream computed remain for reference. This alternate trigger requires neither SQL nor changing a source type, unlike the previously filed date-to-text case. Create a new builder question using Sample Database > Products. Add custom column [Price] * 2 named Double price, visualize and save with a fresh QA-NEST2 name. Create another new builder question using the saved question as its starting data. Filter Double price Between 100 and 150, visualize, and observe the visible applied-filter chip and 55 rows. Save the downstream question with a fresh QA-NEST2 name, then refresh. Inspect results and open Editor to compare the retained filter. The rejected report expected: The saved question continues to show the active Double price between 100 and 150 filter description after refresh. It claimed this outcome: Filter retains badge 1 and results retain 55 rows. Editor retains the exact numeric filter; returning to Visualize still hides its chip. Review concluded: Works as intended: saved questions open with filter chips collapsed by design, and the filter count button expands them. The query, results and editor all keep the filter."
     ]
   },
   {
     "id": "unsupported-input-syntax-assumed-valid",
     "explanation": "A setup helper can require a particular input format even when another notation looks equivalent. Reviewed Metabase examples include SQLite connection strings requiring sqlite:///, with four slashes for an absolute Unix path; 64-character embedding secret keys accepting lowercase hexadecimal; and a lone opening quote being incomplete filter syntax rather than a literal quote. A Spark connection string outside the form's advertised syntax was also rejected while supported input worked. This pattern matches assuming those unsupported forms must work; a failure for the promised format or an accepted value being overwritten is different.",
-    "verificationGuidance": [
-      "Compare the exact input, including slash counts, delimiters, quoting and accepted character case, with supported syntax.",
-      "Test the documented/canonical equivalent and inspect resulting field or saved values before claiming a supported input is rejected."
-    ],
-    "instances": [
-      {
-        "source": "known-invalid.json",
-        "index": 34,
-        "report": {
-          "id": "metabase-querying-599",
-          "name": "Text filter silently discards a double quote value",
-          "summary": "Text filter silently discards a double quote value.",
-          "expected": "A literal double quote can be used as a text search value, or unsupported input is explained without silently discarding it.",
-          "actual": "The double quote disappears on blur, leaving an empty value and disabled Update filter.",
-          "reproSteps": [
-            "Create a new notebook question using Sample Database Products; name any saved copy with QA-FILTER prefix.",
-            "Add Category Contains with a\"b and apply; run, then return to Editor and edit this filter.",
-            "Replace the text filter value with a single double quote character (\").",
-            "Blur the value input and inspect the editor."
-          ],
-          "reason": "Works as intended: a lone opening quote is unfinished quoting syntax, which the field's tooltip documents. The documented escaped form works, and Update filter stays disabled so nothing is overwritten."
-        }
-      }
+    "reproductionPaths": [
+      "In Metabase, follow this workflow: Create a new notebook question using Sample Database Products; name any saved copy with QA-FILTER prefix. Add Category Contains with a\"b and apply; run, then return to Editor and edit this filter. Replace the text filter value with a single double quote character (\"). Blur the value input and inspect the editor. The rejected report expected: A literal double quote can be used as a text search value, or unsupported input is explained without silently discarding it. It claimed this outcome: The double quote disappears on blur, leaving an empty value and disabled Update filter. Review concluded: Works as intended: a lone opening quote is unfinished quoting syntax, which the field's tooltip documents. The documented escaped form works, and Update filter stays disabled so nothing is overwritten."
     ]
   },
   {
     "id": "locked-visualization-assumed-missing-result",
     "explanation": "A saved chart can keep its selected chart type even when a changed query returns data that no longer fits that type. For example, a query returning one number may need a Number or Table display rather than a chart built for many categories. This pattern matches a report that treats the unsuitable chart's empty state as missing query data while the result is present in a compatible display. Verify the underlying rows and chart selection before alleging lost results or a query failure.",
-    "verificationGuidance": [
-      "Inspect the raw result rows and switch to Table or Number.",
-      "Distinguish the saved display preference from query execution and confirm whether automatic display switching is promised."
-    ],
-    "instances": [
-      {
-        "source": "known-invalid.json",
-        "index": 35,
-        "report": {
-          "id": "metabase-querying-593",
-          "name": "Saved second-stage summary reopens with an empty summarize prompt",
-          "summary": "Saved second-stage summary reopens with an empty summarize prompt.",
-          "expected": "The saved question should display its computed summary upon reloading.",
-          "actual": "The reloaded question displays an empty chart placeholder prompting the user to 'Click on Summarize at the top right corner. Then pick one or more metrics and a time column to group by.' instead of the summary.",
-          "reproSteps": [
-            "Create a question on Sample Database > Orders that summarizes Count, distinct User ID, a custom double average and Average of Total, grouped by Created At: Year.",
-            "Add a subsequent Count between 3000 and 6000 filter; verify years 2026 and 2027 remain.",
-            "Add another Summarize step, Sum of Count, and Visualize; observe 9,444.",
-            "Save it as a new question.",
-            "Reload the saved question."
-          ],
-          "reason": "Works as intended: Metabase keeps a saved question's display locked, so a one-row result stays on the line chart and shows the documented empty state. Switching to the table or Number view shows the value."
-        }
-      }
+    "reproductionPaths": [
+      "In Metabase, follow this workflow: Create a question on Sample Database > Orders that summarizes Count, distinct User ID, a custom double average and Average of Total, grouped by Created At: Year. Add a subsequent Count between 3000 and 6000 filter; verify years 2026 and 2027 remain. Add another Summarize step, Sum of Count, and Visualize; observe 9,444. Save it as a new question. Reload the saved question. The rejected report expected: The saved question should display its computed summary upon reloading. It claimed this outcome: The reloaded question displays an empty chart placeholder prompting the user to 'Click on Summarize at the top right corner. Then pick one or more metrics and a time column to group by.' instead of the summary. Review concluded: Works as intended: Metabase keeps a saved question's display locked, so a one-row result stays on the line chart and shows the documented empty state. Switching to the table or Number view shows the value."
     ]
   },
   {
     "id": "unpromised-ordering-assumed-incomplete-results",
     "explanation": "Two pickers can offer the same values in different orders without either list being incomplete. This pattern matches a report that calls a value list wrong solely because it is not sorted like another control, even though every value remains present and selectable and no ordering rule is promised. Compare the complete set separately from its order. A missing value or a documented sort order being violated would be a different claim.",
-    "verificationGuidance": [
-      "Compare complete value sets before comparing ordering.",
-      "Establish a sorting contract for that exact endpoint/widget rather than borrowing one from a different control."
-    ],
-    "instances": [
-      {
-        "source": "known-invalid.json",
-        "index": 36,
-        "report": {
-          "id": "metabase-querying-b31",
-          "name": "SQL Field Filter dropdown lists values in random (unsorted) order while writing/editing a SQL query",
-          "summary": "SQL Field Filter dropdown lists values in random (unsorted) order while writing/editing a SQL query.",
-          "expected": "Field Filter dropdown values are listed in sorted order (Doohickey, Gadget, Gizmo, Widget; AK, AL, AR, AZ, …), the same as the query-builder filter picker and the saved-question widget.",
-          "actual": "In the SQL editor, Products.Category is listed as Doohickey, Gizmo, Gadget, Widget. People.Source is listed as Twitter, Organic, Affiliate, Google, Facebook. People.State starts NY, ND, NH, TN, NC, MN, … POST /api/dataset/parameter/values (body {parameter:{type:'string/=',…}, field_ids:[18]}) returns [[\"Doohickey\"],[\"Gizmo\"],[\"Gadget\"],[\"Widget\"]]. For the same field, GET /api/field/18/values returns [[\"Doohickey\"],[\"Gadget\"],[\"Gizmo\"],[\"Widget\"]]. A saved SQL question with a State field filter (GET /api/card/45/params/…/values) returns AK, AL, AR, … in sorted order.",
-          "reproSteps": [
-            "Sign in as eval@momentic.ai.",
-            "Click + New → SQL query and choose Sample Database.",
-            "Type: select count(*) from products where {{cat}}",
-            "In the Variables sidebar, set Variable type = Field Filter, then Field to map to = Products → Category (the widget defaults to Dropdown list).",
-            "Click the 'Cat' filter widget above the editor.",
-            "Observe the order: Doohickey, Gizmo, Gadget, Widget (not alphabetical).",
-            "Change the SQL to select count(*) from people where {{cat}} and map the variable to People → State, then open the widget: the 50 states are shuffled (NY, ND, NH, TN, …).",
-            "For comparison, in a new query-builder question on Products, add a filter on Category: the values are alphabetical. After saving the SQL question and reopening it, the widget is alphabetical too."
-          ],
-          "reason": "Works as intended: no ordering is promised for field filter values, and every value is present and selectable."
-        }
-      }
+    "reproductionPaths": [
+      "In Metabase, follow this workflow: Sign in as eval@momentic.ai. Click + New → SQL query and choose Sample Database. Type: select count(*) from products where {{cat}}. In the Variables sidebar, set Variable type = Field Filter, then Field to map to = Products → Category (the widget defaults to Dropdown list). Click the 'Cat' filter widget above the editor. Observe the order: Doohickey, Gizmo, Gadget, Widget (not alphabetical). Change the SQL to select count(*) from people where {{cat}} and map the variable to People → State, then open the widget: the 50 states are shuffled (NY, ND, NH, TN, …). For comparison, in a new query-builder question on Products, add a filter on Category: the values are alphabetical. After saving the SQL question and reopening it, the widget is alphabetical too. The rejected report expected: Field Filter dropdown values are listed in sorted order (Doohickey, Gadget, Gizmo, Widget; AK, AL, AR, AZ, …), the same as the query-builder filter picker and the saved-question widget. It claimed this outcome: In the SQL editor, Products.Category is listed as Doohickey, Gizmo, Gadget, Widget. People.Source is listed as Twitter, Organic, Affiliate, Google, Facebook. People.State starts NY, ND, NH, TN, NC, MN, … POST /api/dataset/parameter/values (body {parameter:{type:'string/=',…}, field_ids:[18]}) returns [[\"Doohickey\"],[\"Gizmo\"],[\"Gadget\"],[\"Widget\"]]. For the same field, GET /api/field/18/values returns [[\"Doohickey\"],[\"Gadget\"],[\"Gizmo\"],[\"Widget\"]]. A saved SQL question with a State field filter (GET /api/card/45/params/…/values) returns AK, AL, AR, … in sorted order. Review concluded: Works as intended: no ordering is promised for field filter values, and every value is present and selectable."
     ]
   },
   {
     "id": "reversed-range-assumed-invalid-configuration",
     "explanation": "A range condition can deliberately allow a lower bound greater than its upper bound, even though no record can satisfy it. This pattern matches a report that assumes the form must reject or reorder those endpoints and calls the resulting empty query a filtering defect. Check whether the range control's accepted contract permits that impossible predicate. A normally ordered range returning incorrect records, or bounds secretly changing from what the user sees, is a different failure.",
-    "verificationGuidance": [
-      "Inspect the persisted endpoints and executed predicate.",
-      "Test an overlapping correctly ordered range and confirm its results before requesting extra validation as a bug fix."
-    ],
-    "instances": [
-      {
-        "source": "known-invalid.json",
-        "index": 37,
-        "report": {
-          "id": "metabase-querying-b39",
-          "name": "SQL date range accepts an end before its start",
-          "summary": "SQL date range accepts an end before its start.",
-          "expected": "The date-range control should reject or clearly explain a start date later than its end before applying the filter.",
-          "actual": "The filter applies as January 1, 2031 - December 31, 2030 and returns count0.",
-          "reproSteps": [
-            "As the primary account, choose New > SQL query > Sample Database.",
-            "Enter SELECT COUNT(*) AS matches FROM ORDERS WHERE {{created}}.",
-            "Set created to Field Filter, map to Orders > Created At, and set Filter widget type to Date Range.",
-            "Set the query filter to January 1, 2000 through December 31, 2030, apply, and run (observed count18,760).",
-            "Reopen the filter and replace Start date with January 1, 2031, leaving End date December 31, 2030.",
-            "Click Update filter and rerun."
-          ],
-          "reason": "Works as intended: a reversed date range is accepted and simply matches no rows, as with reversed number ranges."
-        }
-      }
+    "reproductionPaths": [
+      "In Metabase, follow this workflow: As the primary account, choose New > SQL query > Sample Database. Enter SELECT COUNT(*) AS matches FROM ORDERS WHERE {{created}}. Set created to Field Filter, map to Orders > Created At, and set Filter widget type to Date Range. Set the query filter to January 1, 2000 through December 31, 2030, apply, and run (observed count18,760). Reopen the filter and replace Start date with January 1, 2031, leaving End date December 31, 2030. Click Update filter and rerun. The rejected report expected: The date-range control should reject or clearly explain a start date later than its end before applying the filter. It claimed this outcome: The filter applies as January 1, 2031 - December 31, 2030 and returns count0. Review concluded: Works as intended: a reversed date range is accepted and simply matches no rows, as with reversed number ranges."
     ]
   }
 ]
