@@ -12,7 +12,24 @@ its own E2B sandbox. Areas live in [`fixtures/oss`](fixtures/oss).
 
 ## Results
 
-Results will be published in [`results/results.csv`](results/results.csv).
+Per-area results are in [`results/2026-10-30.csv`](results/2026-10-30.csv). This
+summary totals 20 product areas. Cost is for one run of every area. Medium effort
+Mo has a 30-minute budget and high effort has 60.
+
+| Time   | Agent                        | Findings | Correct | Incorrect | Unmatched | Dup. | Precision | Recall | Score  | Cost    | Cost per correct |
+| ------ | ---------------------------- | -------- | ------- | --------- | --------- | ---- | --------- | ------ | ------ | ------- | ---------------- |
+| 30 min | Mo                           | 161.98   | 114.34  | 26.34     | 17.66     | 3.65 | 81.3%     | 9.3%   | 249.65 | $287.92 | $2.52            |
+| 30 min | Other agents (mean)          | 59.08    | 43.25   | 8.87      | 6.79      | 0.00 | 83.6%     | 3.5%   | 103.50 | $43.24  | $1.55            |
+| 30 min | Lowest: Claude Sonnet 5.5    | 7.99     | 4.32    | 0.00      | 3.66      | 0.00 | 100.0%    | 0.5%   | 9.66   | $4.47   | $1.03            |
+| 30 min | Highest: Codex `gpt-6.1-sol` | 97.68    | 82.33   | 7.32      | 7.99      | 0.00 | 91.8%     | 6.7%   | 214.33 | $46.22  | $0.56            |
+| 60 min | Mo                           | 186.00   | 126.33  | 22.67     | 30.66     | 6.31 | 84.8%     | 10.3%  | 285.33 | $377.63 | $2.99            |
+| 60 min | Other agents (mean)          | 62.04    | 47.24   | 9.00      | 5.49      | 0.13 | 85.2%     | 3.9%   | 113.75 | $60.72  | $1.71            |
+| 60 min | Lowest: Claude Sonnet 5.5    | 8.30     | 4.64    | 0.33      | 3.33      | 0.00 | 93.4%     | 0.5%   | 8.99   | $5.99   | $1.29            |
+| 60 min | Highest: Codex `gpt-6.1-sol` | 106.00   | 89.67   | 9.34      | 7.00      | 0.00 | 90.6%     | 7.3%   | 232.32 | $52.61  | $0.59            |
+
+Lowest and highest are by Score, and both use Playwright MCP. Other agents covers
+every non-Mo configuration in the CSV. Sonnet has results for 16 to 17 areas, and
+some Codex configurations for 19, so their totals cover fewer areas.
 
 ## Run it
 
@@ -70,7 +87,8 @@ stop, each agent is told to save its work. Durations exclude fixture setup and
 grading.
 
 **Mo's budget.** `--effort low|medium|high|max` sets Mo's budget. It applies only
-to Mo.
+to Mo. Medium is 30 minutes and high is 60, compared with the other agents at
+`--minutes 30` and `--minutes 60`.
 
 **Agents.** Versions are pinned in [`package.json`](package.json).
 
@@ -80,6 +98,9 @@ to Mo.
 | Codex       | `gpt-6.1-sol`, medium        | Playwright MCP or agent-browser |
 | Claude Code | `claude-opus-5-5`, medium    | Playwright MCP or agent-browser |
 | Devin       | Devin's defaults             | Devin's native browser          |
+
+Results also include Codex with `gpt-6.1-terra` and Claude Code with
+`claude-sonnet-5-5`. Models are set in the agent adapters.
 
 **Browsers and subagents.**
 
