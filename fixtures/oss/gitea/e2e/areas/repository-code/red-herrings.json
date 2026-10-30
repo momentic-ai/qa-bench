@@ -2,301 +2,59 @@
   {
     "id": "incorrect-instance-configuration-attributed-to-product",
     "explanation": "The public address and network proxy settings of an installation affect generated links and redirects. A wrong public address can produce unreachable links, and a proxy that fails to tell the application the original request used HTTPS can cause a redirect loop. This pattern matches a report that attributes those demonstrated setup problems to application behavior under a correctly configured installation. Verify the external address and required forwarded scheme information; failures that remain with correct supported configuration require independent investigation.",
-    "verificationGuidance": [
-      "Verify the configured external URL, actual browser origin and required proxy forwarding headers.",
-      "Repeat with the supported configuration and inspect fresh requests, not only a page already affected by redirects.",
-      "Do not generalize an environment-specific rejection to incorrect application-generated links under valid configuration."
-    ],
-    "instances": [
-      {
-        "source": "known-invalid.json",
-        "index": 0,
-        "report": {
-          "name": "Generated pull request references and activity avatars use unreachable localhost URLs",
-          "summary": "Gitea generates absolute URLs with https://localhost:5503 in user-facing merge commit references and activity avatars on the Daytona site. The localhost pull request links cannot be opened from the hosted app, and contributor avatars fail to load.",
-          "expected": "Generated links and avatar image URLs should use the hosted site's reachable origin so users can open pull request references and see contributor avatars.",
-          "actual": "A merged pull request's commit shows Reviewed-on #3 linking to https://localhost:5503/admin/D-from-template/pulls/3; clicking the corresponding localhost reference in another merged PR led to a browser connection error. The Activity > Pulse contributor avatar in admin/D-from-template uses https://localhost:5503/avatars/51965088c5db83c3fd307f308d25198a and renders broken with ERR_CONNECTION_REFUSED.",
-          "reproSteps": [
-            "On a hosted fixture, sign in as eval and create and merge a pull request.",
-            "Open the merge commit and inspect its Reviewed-on pull-request link.",
-            "Open Activity → Pulse and inspect contributor avatar URLs.",
-            "Observe URLs using https://localhost:5503 rather than the hosted fixture origin."
-          ],
-          "reason": "Human review rejected this as a Gitea product bug. The unreachable localhost URLs are a fixture/configuration issue; correct the instance public URL instead of scoring this claim as a product defect."
-        }
-      }
+    "reproductionPaths": [
+      "In Gitea, follow this workflow: On a hosted fixture, sign in as eval and create and merge a pull request. Open the merge commit and inspect its Reviewed-on pull-request link. Open Activity → Pulse and inspect contributor avatar URLs. Observe URLs using https://localhost:5503 rather than the hosted fixture origin. The rejected report expected: Generated links and avatar image URLs should use the hosted site's reachable origin so users can open pull request references and see contributor avatars. It claimed this outcome: A merged pull request's commit shows Reviewed-on #3 linking to https://localhost:5503/admin/D-from-template/pulls/3; clicking the corresponding localhost reference in another merged PR led to a browser connection error. The Activity > Pulse contributor avatar in admin/D-from-template uses https://localhost:5503/avatars/51965088c5db83c3fd307f308d25198a and renders broken with ERR_CONNECTION_REFUSED. Review concluded: Human review rejected this as a Gitea product bug. The unreachable localhost URLs are a fixture/configuration issue; correct the instance public URL instead of scoring this claim as a product defect."
     ]
   },
   {
     "id": "search-scope-control-mistaken-for-immediate-filter",
     "explanation": "A search-scope selector can choose where the next text search will look without immediately filtering the currently displayed history. This pattern matches a report that changes the scope alone, does not submit a search, and calls the unchanged history evidence that the selected scope is ignored. Submit a matching query and inspect its results before judging the search behavior. A submitted search that omits eligible results is outside this rejection.",
-    "verificationGuidance": [
-      "Submit a distinctive matching query after selecting the scope.",
-      "Compare the same query under limited and expanded scopes and verify actual request state."
-    ],
-    "instances": [
-      {
-        "source": "known-invalid.json",
-        "index": 1,
-        "report": {
-          "id": "gitea-pass3-001",
-          "name": "All Branches commit history omits docs/release-owners-only commit",
-          "summary": "Selecting All Branches leaves the commit history at the single main-branch commit, while comparison confirms a distinct commit on docs/release-owners.",
-          "expected": "With All Branches selected, the history should include commits from all repository branches, including the commit unique to docs/release-owners.",
-          "actual": "The selected filter remained visibly set to All Branches, but after waiting the history still showed 1 commit: “Add engineering handbook and release checklist.” The compare page for main..docs/release-owners showed the separate “Document release captain and verification responsibilities” commit.",
-          "reproSteps": [
-            "Start signed in to the Gitea test account eval (the supplied authenticated session was already active; no credentials were entered).",
-            "Open /eval/harbor-handbook/commits/branch/main.",
-            "Open the commit-scope dropdown, currently showing This Branch, and select All Branches.",
-            "Wait six seconds. Observe the selected All Branches filter, the 1 Commits count, and the only row, “Add engineering handbook and release checklist.”",
-            "Open /eval/harbor-handbook/compare/main..docs/release-owners and observe the distinct “Document release captain and verification responsibilities” commit."
-          ],
-          "reason": "User rejected the claim because All Branches selects the scope of a commit-message search; it is not an immediately applied history filter. The recording changes only the scope dropdown without submitting a query. An independent normal-UI control submitted responsibilities with All Branches and found the docs/release-owners commit; the same query limited to This Branch returned no commits."
-        }
-      }
+    "reproductionPaths": [
+      "In Gitea, follow this workflow: Start signed in to the Gitea test account eval (the supplied authenticated session was already active; no credentials were entered). Open /eval/harbor-handbook/commits/branch/main. Open the commit-scope dropdown, currently showing This Branch, and select All Branches. Wait six seconds. Observe the selected All Branches filter, the 1 Commits count, and the only row, “Add engineering handbook and release checklist.”. Open /eval/harbor-handbook/compare/main..docs/release-owners and observe the distinct “Document release captain and verification responsibilities” commit. The rejected report expected: With All Branches selected, the history should include commits from all repository branches, including the commit unique to docs/release-owners. It claimed this outcome: The selected filter remained visibly set to All Branches, but after waiting the history still showed 1 commit: “Add engineering handbook and release checklist.” The compare page for main..docs/release-owners showed the separate “Document release captain and verification responsibilities” commit. Review concluded: User rejected the claim because All Branches selects the scope of a commit-message search; it is not an immediately applied history filter. The recording changes only the scope dropdown without submitting a query. An independent normal-UI control submitted responsibilities with All Branches and found the docs/release-owners commit; the same query limited to This Branch returned no commits."
     ]
   },
   {
     "id": "interaction-target-or-gesture-mismatch",
     "explanation": "A test must actually activate the control whose behavior it claims to measure. This pattern matches reports where the input reached a neighboring element or popup, a drag never reached the required threshold, the editor was in the wrong mode, or a simulated key combination differed from the real shortcut. A click timeout or text appearing elsewhere therefore does not establish failure of the intended link, input or command. Confirm the event target, focus and complete gesture, then repeat the same intended action correctly before alleging its failure.",
-    "verificationGuidance": [
-      "Confirm the actual event target, focus, editing mode and completed gesture from the rendered UI or recording.",
-      "Repeat using the precise anchor, input, drag threshold or real keyboard shortcut; check key and modifier details for simulated events.",
-      "Verify the intended control actually ran before attributing navigation failure or value loss to it."
-    ],
-    "instances": [
-      {
-        "source": "known-invalid.json",
-        "index": 2,
-        "report": {
-          "id": "gitea-pass2-016",
-          "name": "Code search matched line-number link does not open the source line",
-          "summary": "The matched README.md line-number link for line 8 leaves code search unchanged instead of opening the source at that line.",
-          "expected": "Clicking matched line 8 in README.md opens that file at line 8.",
-          "actual": "After two successful clicks on the displayed line-number link and a five-second wait, the browser remained on the same search URL and the search results were unchanged.",
-          "reproSteps": [
-            "Sign in as eval and open the seeded eval/harbor-handbook repository’s code-search page.",
-            "Enter issue, choose Regexp and submit the visible search form.",
-            "In the README.md result, click the actual line-number 8 link, rather than the code text or surrounding table cell.",
-            "Observe navigation to the correct commit’s README.md#L8. Use browser Back and click View file as a separate navigation control."
-          ],
-          "reason": "User-approved rejection of the reported no-navigation failure. The recorded no-op clicks targeted the surrounding table cell, not the anchor. Independent actual-browser checks, including a fresh fixture control, clicked the line-number link and opened the correct README. View file also worked.",
-          "matchingGuidance": {
-            "scope": "Reject the claim that clicking the actual link leaves search unchanged. Rendered Markdown does not automatically reveal or highlight source line 8; the live control needed View Source followed by clicking 8 to show that highlight. This rejection does not adjudicate that narrower Markdown line-targeting behavior."
-          }
-        }
-      }
+    "reproductionPaths": [
+      "In Gitea, follow this workflow: Sign in as eval and open the seeded eval/harbor-handbook repository’s code-search page. Enter issue, choose Regexp and submit the visible search form. In the README.md result, click the actual line-number 8 link, rather than the code text or surrounding table cell. Observe navigation to the correct commit’s README.md#L8. Use browser Back and click View file as a separate navigation control. The rejected report expected: Clicking matched line 8 in README.md opens that file at line 8. It claimed this outcome: After two successful clicks on the displayed line-number link and a five-second wait, the browser remained on the same search URL and the search results were unchanged. Review concluded: User-approved rejection of the reported no-navigation failure. The recorded no-op clicks targeted the surrounding table cell, not the anchor. Independent actual-browser checks, including a fresh fixture control, clicked the line-number link and opened the correct README. View file also worked."
     ]
   },
   {
     "id": "valid-emphasis-mistaken-for-missing-formatting",
     "explanation": "Text can be correctly marked and styled as bold even when the visual difference looks subtle under the current font. This pattern matches a report of missing bold based only on appearance when inspection confirms the intended emphasis markup and heavier rendered font weight. Check the actual formatting and compare a controlled font environment before asserting that the command had no effect. Correct markup alone does not prove every browser renders it correctly, so an independently demonstrated visual failure remains possible.",
-    "verificationGuidance": [
-      "Compare computed weights and actual rendered appearance with adjacent normal text in an independent browser.",
-      "Use a minimal font control when appearance remains ambiguous and preserve uncertainty about the original browser font."
-    ],
-    "instances": [
-      {
-        "source": "known-invalid.json",
-        "index": 3,
-        "report": {
-          "id": "gitea-pass3-003",
-          "name": "Markdown editor Preview does not render bold emphasis for unsaved text",
-          "summary": "The unsaved Markdown Preview correctly renders a heading but displays **Preview paragraph.** as regular-weight text instead of bold.",
-          "expected": "On the unsaved .md edit, Preview Changes should show the replacement diff, and Preview should render “# Preview heading” as a heading and “**Preview paragraph.**” as bold text without committing the edit.",
-          "actual": "Preview Changes showed the expected replacement diff. Preview rendered “Preview heading” as a heading but rendered “Preview paragraph.” in regular weight. The state remained unchanged after loading, and the edit was not committed.",
-          "reproSteps": [
-            "Start at /eval/harbor-handbook in the supplied authenticated browser session; verify the UI shows the signed-in account as eval. No sign-in form or credential variables were used.",
-            "Use the branch selector to create the fresh branch qa-verify76-preview-bold-20260522 from main.",
-            "Choose Add File > New File. Create qa-verify76-preview-bold-20260522.md with “# Original heading”, a blank line, and “Existing paragraph.”; commit this baseline fixture directly to the branch.",
-            "Open the new file and choose Edit. The observed edit URL is /eval/harbor-handbook/_edit/qa-verify76-preview-bold-20260522/qa-verify76-preview-bold-20260522.md.",
-            "Replace the contents with “# Preview heading”, a blank line, and “**Preview paragraph.**”.",
-            "Choose Preview Changes and confirm the displayed diff contains the unsaved replacement.",
-            "Choose Preview. Observe the heading rendered as a heading and the paragraph rendered in regular weight, not bold. Leave the edit uncommitted."
-          ],
-          "reason": "User explicitly rejected the reported absence of bold as a hallucination: the text is bold. The original native recording contains valid **Preview paragraph.** input and a rendered strong element. Independent UI inspection confirms strong uses the intended weight 600 while normal paragraph text uses 400. The evidence does not establish missing Markdown formatting.",
-          "matchingGuidance": {
-            "scope": "Reject the claim that this editor failed to render bold Markdown. This does not label unrelated Markdown parsing or preview-persistence failures as intended behavior."
-          }
-        }
-      }
+    "reproductionPaths": [
+      "In Gitea, follow this workflow: Start at /eval/harbor-handbook in the supplied authenticated browser session; verify the UI shows the signed-in account as eval. No sign-in form or credential variables were used. Use the branch selector to create the fresh branch qa-verify76-preview-bold-20260522 from main. Choose Add File > New File. Create qa-verify76-preview-bold-20260522.md with “# Original heading”, a blank line, and “Existing paragraph.”; commit this baseline fixture directly to the branch. Open the new file and choose Edit. The observed edit URL is /eval/harbor-handbook/_edit/qa-verify76-preview-bold-20260522/qa-verify76-preview-bold-20260522.md. Replace the contents with “# Preview heading”, a blank line, and “**Preview paragraph.**”. Choose Preview Changes and confirm the displayed diff contains the unsaved replacement. Choose Preview. Observe the heading rendered as a heading and the paragraph rendered in regular weight, not bold. Leave the edit uncommitted. The rejected report expected: On the unsaved .md edit, Preview Changes should show the replacement diff, and Preview should render “# Preview heading” as a heading and “**Preview paragraph.**” as bold text without committing the edit. It claimed this outcome: Preview Changes showed the expected replacement diff. Preview rendered “Preview heading” as a heading but rendered “Preview paragraph.” in regular weight. The state remained unchanged after loading, and the edit was not committed. Review concluded: User explicitly rejected the reported absence of bold as a hallucination: the text is bold. The original native recording contains valid **Preview paragraph.** input and a rendered strong element. Independent UI inspection confirms strong uses the intended weight 600 while normal paragraph text uses 400. The evidence does not establish missing Markdown formatting."
     ]
   },
   {
     "id": "search-matching-contract-assumed-from-phrase",
     "explanation": "Gitea's commit history is a list of recorded code changes, and its reviewed text search matches any entered word rather than requiring the whole phrase. A commit can therefore be a correct result for a multi-word query even if it contains only one of those words. This pattern matches a report that labels such results unrelated because it assumes phrase matching or matching only the commit's subject. Verify the search's documented word rules before judging the result; Exact mode's case rules are a separate issue.",
-    "verificationGuidance": [
-      "Verify selected mode, tooltip and matching semantics at the pinned revision.",
-      "Use individual words, phrases and case variants as controls and identify which term each returned record matches."
-    ],
-    "instances": [
-      {
-        "source": "known-invalid.json",
-        "index": 4,
-        "report": {
-          "name": "Commit search leaves unrelated commits visible for a specific matching query",
-          "summary": "Commit search for \"Document release captain\" also returns \"Add engineering handbook and release checklist\".",
-          "expected": "Only commits matching the full phrase appear.",
-          "actual": "Both commits appear because each matches at least one query word.",
-          "reproSteps": [
-            "Sign in as eval and open eval/harbor-handbook, branch docs/release-owners.",
-            "Open commit history and search for \"Document release captain\"."
-          ],
-          "reason": "Works as intended: commit search uses word-based OR matching. The second commit matches \"release\"; full-phrase matching is not required."
-        }
-      },
-      {
-        "source": "known-invalid.json",
-        "index": 6,
-        "report": {
-          "id": "mo-60m-gitea-0",
-          "name": "Commit history search leaves nonmatching commit visible",
-          "summary": "Searching the docs/release-owners commit history for “Document release captain” leaves both commits visible, including the nonmatching “Add engineering handbook and release checklist.”",
-          "expected": "Submitting the query “Document release captain” in the commit history should narrow the results to the matching commit, “Document release captain and verification responsibilities.”",
-          "actual": "After submitting with Enter and again with the search button, the query remained in the field and both commits remained visible for at least six seconds, including “Add engineering handbook and release checklist.”",
-          "reproSteps": [
-            "Load the provided saved administrator session; the browser shows the admin account signed in. No credentials were entered.",
-            "Navigate to /admin/harbor-handbook.",
-            "In the Code tab, open the branch selector and choose docs/release-owners.",
-            "Click the branch's “2 Commits” history link.",
-            "Type “Document release captain” into the “Search commits...” field and press Enter. Observe that both commits remain visible.",
-            "Click the search button, wait six seconds, and observe that both commits still remain visible, including “Add engineering handbook and release checklist.”"
-          ],
-          "reason": "The local reviewed evidence documents word-based OR commit search: the extra commit matches release in Document release captain. The assignment borrows a full-phrase/subject-exclusive search promise the product does not make. This exact observed result is intended under the recorded search contract; choose not_a_bug, independent of duplicate status.",
-          "severity": 3
-        }
-      }
+    "reproductionPaths": [
+      "In Gitea, follow this workflow: Sign in as eval and open eval/harbor-handbook, branch docs/release-owners. Open commit history and search for \"Document release captain\". The rejected report expected: Only commits matching the full phrase appear. It claimed this outcome: Both commits appear because each matches at least one query word. Review concluded: Works as intended: commit search uses word-based OR matching. The second commit matches \"release\"; full-phrase matching is not required.",
+      "In Gitea, follow this workflow: Load the provided saved administrator session; the browser shows the admin account signed in. No credentials were entered. Navigate to /admin/harbor-handbook. In the Code tab, open the branch selector and choose docs/release-owners. Click the branch's “2 Commits” history link. Type “Document release captain” into the “Search commits...” field and press Enter. Observe that both commits remain visible. Click the search button, wait six seconds, and observe that both commits still remain visible, including “Add engineering handbook and release checklist.”. The rejected report expected: Submitting the query “Document release captain” in the commit history should narrow the results to the matching commit, “Document release captain and verification responsibilities.”. It claimed this outcome: After submitting with Enter and again with the search button, the query remained in the field and both commits remained visible for at least six seconds, including “Add engineering handbook and release checklist.”. Review concluded: The local reviewed evidence documents word-based OR commit search: the extra commit matches release in Document release captain. The assignment borrows a full-phrase/subject-exclusive search promise the product does not make. This exact observed result is intended under the recorded search contract; choose not_a_bug, independent of duplicate status."
     ]
   },
   {
     "id": "claim-contradicted-by-controlled-verification",
     "explanation": "A report's specific factual claim is contradicted by a decisive observation or by a controlled repetition of the same setup. For example, the allegedly deleted value is still present, or the allegedly broken control performs the requested action when activated as described. Match this pattern only when that counterevidence addresses the same value, action and conditions; a vaguely similar successful workflow is insufficient. The finding rejects the checked allegation, not every related defect or every possible historical failure.",
-    "verificationGuidance": [
-      "Verify the actual displayed, submitted and persisted values, and the precise action target, instead of repeating the original interpretation.",
-      "Repeat the reported setup and a positive control; record what the decisive observation actually establishes.",
-      "Keep any different trigger, transient state or accepted neighboring defect separate from the contradicted claim."
-    ],
-    "instances": [
-      {
-        "source": "known-invalid.json",
-        "index": 5,
-        "report": {
-          "name": "Commit history no-match search shows Go formatting artifacts",
-          "summary": "Searching commit history for a term with no matches exposes Go formatting artifacts and an unrelated histories message.",
-          "expected": "A search with no matching commits should show a clear empty state without template artifacts.",
-          "actual": "Searching commit history for a term with no matches exposes Go formatting artifacts and an unrelated histories message.",
-          "reproSteps": [
-            "Open an authenticated repository and its Commits history.",
-            "Enter `no-such-commit-term-xyz` in Search commits and submit.",
-            "Observe the malformed no-results message above the populated search field."
-          ],
-          "reason": "Rejected for the pinned Gitea 1.24.7 fixture (source commit 99053ce4fa2b45f1bca5837418c0c57f793ca824): SearchCommits sets PageIsCommits and renders the commit-count branch, not the unrelated-histories translation that needs branch arguments. Searching the seeded main history for no-such-commit-term-xyz displayed 0 Commits and a clean empty area without Go formatting artifacts.",
-          "severity": 1
-        }
-      },
-      {
-        "source": "known-invalid.json",
-        "index": 7,
-        "report": {
-          "id": "gitea-commit-count-link-disappears-after-upload",
-          "name": "Repository commit count link disappears from the Code page after a second upload commit",
-          "summary": "The report claims that after a second commit that uploads new files, the commit count link above the branch selector disappears from the repository's Code page, leaving only the branch and tag counts.",
-          "expected": "The reporter expects the commit count link to stay visible in the repository statistics bar.",
-          "actual": "After a second upload commit, the statistics bar shows only '1 Branch' and '0 Tags'; the commit count link is gone.",
-          "reproSteps": [
-            "In a repository with an initial commit, use Add File > Upload File to commit new files.",
-            "Open the repository's Code page and look at the statistics bar above the branch selector."
-          ],
-          "reason": "Not reproduced: after an upload commit the statistics bar still shows the commit count link alongside the branch and tag counts, and the code always renders it from the cached count. What can happen is that the count is briefly stale until the cache refreshes, which is a different symptom covered by the commit-count cache entries.",
-          "matchingGuidance": {
-            "scope": "Only reports that the commit count link is missing from the Code page. Reports that the count shows an old number after a new commit are not covered here."
-          }
-        }
-      }
+    "reproductionPaths": [
+      "In Gitea, follow this workflow: Open an authenticated repository and its Commits history. Enter `no-such-commit-term-xyz` in Search commits and submit. Observe the malformed no-results message above the populated search field. The rejected report expected: A search with no matching commits should show a clear empty state without template artifacts. It claimed this outcome: Searching commit history for a term with no matches exposes Go formatting artifacts and an unrelated histories message. Review concluded: Rejected for the pinned Gitea 1.24.7 fixture (source commit 99053ce4fa2b45f1bca5837418c0c57f793ca824): SearchCommits sets PageIsCommits and renders the commit-count branch, not the unrelated-histories translation that needs branch arguments. Searching the seeded main history for no-such-commit-term-xyz displayed 0 Commits and a clean empty area without Go formatting artifacts.",
+      "In Gitea, follow this workflow: In a repository with an initial commit, use Add File > Upload File to commit new files. Open the repository's Code page and look at the statistics bar above the branch selector. The rejected report expected: The reporter expects the commit count link to stay visible in the repository statistics bar. It claimed this outcome: After a second upload commit, the statistics bar shows only '1 Branch' and '0 Tags'; the commit count link is gone. Review concluded: Not reproduced: after an upload commit the statistics bar still shows the commit count link alongside the branch and tag counts, and the code always renders it from the cached count. What can happen is that the count is briefly stale until the cache refreshes, which is a different symptom covered by the commit-count cache entries."
     ]
   },
   {
     "id": "unverified-failure-treated-as-established",
     "explanation": "The report describes a failure, but independent review did not recover the claimed failing state under the stated conditions. This group records that evidence limitation rather than an established explanation of why the behavior was correct or why the original event occurred. A future report must match the same trigger and outcome and still needs its own reliable reproduction; resemblance to a nearby accepted bug is insufficient. Nonreproduction does not prove the event impossible or intended.",
-    "verificationGuidance": [
-      "Reproduce the exact reported trigger and outcome in a fresh, isolated state, with the required permissions and completed saves.",
-      "Keep an unrecovered historical claim explicitly unverified; do not invent an intended-behavior or source-cause explanation.",
-      "Compare the exact claim with accepted nearby cases rather than borrowing their evidence."
-    ],
-    "instances": [
-      {
-        "source": "known-invalid.json",
-        "index": 8,
-        "report": {
-          "id": "gitea-select-all-nested-file-rename-concatenation-claim",
-          "name": "Renaming a nested file saves a concatenated root filename",
-          "owningArea": "gitea/repository-code",
-          "summary": "Replacing contributing.md with contributing-renamed.md in the editor filename field saved docscontributing-renamed.mdcontributing.md at the repository root instead of the requested filename in docs.",
-          "expected": "The file is renamed to docs/contributing-renamed.md with original contents retained.",
-          "actual": "Saved path is docscontributing-renamed.mdcontributing.md at the repository root. Original contents remain.",
-          "reproSteps": [
-            "On a disposable branch, open docs/contributing.md and choose Edit File.",
-            "Replace the filename text with contributing-renamed.md using select-all and typing.",
-            "Commit and inspect the resulting path."
-          ],
-          "reason": "User rejected this reported select-all-and-typing rename claim after being told independent verdicts and the exact editing trigger were unverified. The accepted Backspace-on-selected-filename folder-merging defect remains valid and is explicitly outside this rejection. No independent non-reproduction or intended-behavior conclusion is claimed.",
-          "reviewedBy": "hnhaefliger",
-          "reviewedAt": "2026-10-29T00:04:51.665Z",
-          "sourceReport": {
-            "sessionId": "ce18f231-c4c3-52f7-b8b2-292987ad9047",
-            "webUrl": "https://app.momentic.ai/mo/sessions/ce18f231-c4c3-52f7-b8b2-292987ad9047?tab=bug%3ARenaming%20a%20nested%20file%20saves%20a%20concatenated%20root%20filename",
-            "recording": {
-              "startedAt": 1793227938083,
-              "finishedAt": 1793227979500,
-              "agentId": "ce18f231-c4c3-52f7-b8b2-292987ad9047:sandbox-bugbash-v2:compare",
-              "windowId": "7aba94f2-45fb-4318-8455-7ec533d9459d",
-              "artifactId": "7bd4e3a5-2776-4fad-b3c9-a519c661359a"
-            }
-          },
-          "matchingGuidance": {
-            "scope": "Narrowly covers this unverified select-all-and-typing report. Do not apply this negative reference to a confirmed Backspace-triggered folder/filename merge.",
-            "relatedReference": {
-              "id": "gitea-editor-backspace-on-selected-name-merges-folder",
-              "distinction": "The accepted reference explicitly involves Backspace with the filename selected. That trigger was not established in this rejected report."
-            }
-          },
-          "reviewEvidence": {
-            "basis": "Explicit user rejection; independent verification pending at decision.",
-            "sourceRevision": "99053ce4fa2b45f1bca5837418c0c57f793ca824",
-            "limitations": [
-              "The rejection is a human labeling decision, not a demonstrated non-reproduction.",
-              "Original editing keystrokes and overlap with the accepted Backspace defect remain unverified."
-            ]
-          }
-        }
-      }
+    "reproductionPaths": [
+      "In Gitea, follow this workflow: On a disposable branch, open docs/contributing.md and choose Edit File. Replace the filename text with contributing-renamed.md using select-all and typing. Commit and inspect the resulting path. The rejected report expected: The file is renamed to docs/contributing-renamed.md with original contents retained. It claimed this outcome: Saved path is docscontributing-renamed.mdcontributing.md at the repository root. Original contents remain. Review concluded: User rejected this reported select-all-and-typing rename claim after being told independent verdicts and the exact editing trigger were unverified. The accepted Backspace-on-selected-filename folder-merging defect remains valid and is explicitly outside this rejection. No independent non-reproduction or intended-behavior conclusion is claimed."
     ]
   },
   {
     "id": "exact-search-assumed-case-insensitive",
     "explanation": "Different search modes can apply different rules to uppercase and lowercase letters. In the reviewed case, Exact search matches letter case for both a single word and a phrase, while the default mode ignores it. This pattern matches a report that compares those different modes or letter cases and infers that phrases are handled inconsistently. Keep mode and case constant and use matching controls before alleging a word-versus-phrase search defect.",
-    "verificationGuidance": [
-      "Verify the active mode and tooltip before every query.",
-      "Test the same single word and phrase in original, lower and upper case in each mode; do not combine results from different modes."
-    ],
-    "instances": [
-      {
-        "source": "known-invalid.json",
-        "index": 9,
-        "report": {
-          "id": "gitea-exact-code-search-case-sensitive-phrases",
-          "name": "Exact code search is case-sensitive for multi-word queries (single words are case-insensitive)",
-          "summary": "The report says that repository code search in Exact mode matches single words regardless of case (for example RELEASE finds Release) but matches multi-word phrases only when the case is exact.",
-          "expected": "The reported expectation is that Exact mode handles case the same way for single words and phrases, so 'release checklist' finds 'Release checklist'.",
-          "actual": "Exact mode was case-sensitive for both: 'Harbor' and 'Harbor Ledger' matched, while 'harbor', 'HARBOR', 'RELEASE' and 'harbor ledger' found nothing. The default (Fuzzy) mode matched regardless of case.",
-          "reproSteps": [
-            "Open a repository's code search and choose Exact.",
-            "Search for a single word and a phrase from a file, each in different case from the file.",
-            "Repeat in the default search mode and compare."
-          ],
-          "reason": "Not a bug: there's no single-word/phrase difference. Exact mode always searches case-sensitively for the literal text, however many words it has, while the default Fuzzy mode always ignores case; matching the exact term is what the Exact option's tooltip describes. A single word appearing to match case-insensitively most likely came from a search in the default mode."
-        }
-      }
+    "reproductionPaths": [
+      "In Gitea, follow this workflow: Open a repository's code search and choose Exact. Search for a single word and a phrase from a file, each in different case from the file. Repeat in the default search mode and compare. The rejected report expected: The reported expectation is that Exact mode handles case the same way for single words and phrases, so 'release checklist' finds 'Release checklist'. It claimed this outcome: Exact mode was case-sensitive for both: 'Harbor' and 'Harbor Ledger' matched, while 'harbor', 'HARBOR', 'RELEASE' and 'harbor ledger' found nothing. The default (Fuzzy) mode matched regardless of case. Review concluded: Not a bug: there's no single-word/phrase difference. Exact mode always searches case-sensitively for the literal text, however many words it has, while the default Fuzzy mode always ignores case; matching the exact term is what the Exact option's tooltip describes. A single word appearing to match case-insensitively most likely came from a search in the default mode."
     ]
   }
 ]
