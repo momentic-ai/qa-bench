@@ -12,8 +12,7 @@ its own E2B sandbox. Areas live in [`fixtures/oss`](fixtures/oss).
 
 ## Results
 
-Per-area results are in [`results/2026-10-30.csv`](results/2026-10-30.csv). Mo's
-medium effort has a 30-minute budget and high effort has 60.
+Per-area results are in [`results/2026-10-30.csv`](results/2026-10-30.csv).
 
 | Configuration                           | Areas   | Correct, 30 min | Correct, 60 min | Recall, 60 min | Precision, 60 min | Score, 60 min | Cost per correct, 60 min |
 | --------------------------------------- | ------- | --------------- | --------------- | -------------- | ----------------- | ------------- | ------------------------ |
@@ -90,8 +89,7 @@ exclude fixture setup and grading.
 ### Mo's budget
 
 `--effort low|medium|high|max` sets Mo's budget. It applies only
-to Mo. Medium is 30 minutes and high is 60, compared with the other agents at
-`--minutes 30` and `--minutes 60`.
+to Mo.
 
 ### Agents
 
