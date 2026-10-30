@@ -2742,22 +2742,12 @@
       "reproductionPaths": [
         {
           "id": "gitea-deadline-index-not-invalidated-issues-path-1",
-          "explanation": "Set or change issue due dates from the sidebar, then use a matching keyword with Nearest/Farthest due-date sorting on global Issues. Results use the previous indexed dates until an ordinary comment or other indexing update repairs them.",
+          "explanation": "On the global Issues page with a search term, sorting by Farthest or Nearest due date uses the due date from before the last edit. Changing an issue's due date never reindexes the issue, so the search index keeps the old date until something else, such as a comment, refreshes it.",
           "sourceBugs": [
             {
               "index": 45,
               "id": "gitea-issue-search-due-sort-stale-after-due-date-edit",
               "name": "Issue search sorted by due date keeps the old order after a due date is changed"
-            },
-            {
-              "index": 46,
-              "id": "gitea-issue-search-due-sort-ignores-new-due-dates",
-              "name": "Issue search sorted by due date ignores due dates set after an issue is created"
-            },
-            {
-              "index": 63,
-              "id": "gitea-repo-issue-search-due-sort-ignores-new-due-dates",
-              "name": "Repository issue search sorted by due date ignores due dates set after an issue is created"
             }
           ],
           "expected": "After a due date is set or changed, a search sorted by due date orders issues by their current due dates.",
@@ -2770,35 +2760,6 @@
             "Check whether the order reflects the new date; then post a comment on that issue and search again."
           ],
           "severity": 3,
-          "matchingGuidance": [
-            {
-              "sourceBugIndex": 45,
-              "guidance": {
-                "relatedReference": {
-                  "name": "Issue search sorted by due date ignores due dates set after an issue is created",
-                  "distinction": "Same cause (due-date updates never reindex the issue), but that entry is due dates first set on fresh issues; this entry is changing an existing due date on issues whose earlier date was already indexed."
-                }
-              }
-            },
-            {
-              "sourceBugIndex": 46,
-              "guidance": {
-                "relatedReference": {
-                  "name": "Issue search sorted by due date keeps the old order after a due date is changed",
-                  "distinction": "Same cause (due-date updates never reindex the issue), but that entry is changing an existing due date; this entry is due dates first set on new issues, which sort as if they had none."
-                }
-              }
-            },
-            {
-              "sourceBugIndex": 63,
-              "guidance": {
-                "relatedReference": {
-                  "name": "Issue search sorted by due date ignores due dates set after an issue is created",
-                  "distinction": "Same cause (setting a due date never reindexes the issue), but that entry is the global Issues page; this entry is a repository's Issues list."
-                }
-              }
-            }
-          ],
           "sourceConstraints": [
             {
               "sourceBugIndex": 45,
@@ -2810,7 +2771,29 @@
                   }
                 }
               }
-            },
+            }
+          ]
+        },
+        {
+          "id": "gitea-deadline-index-not-invalidated-issues-path-2",
+          "explanation": "On the global Issues page with a search term, sorting by Nearest or Farthest due date ignores due dates set from the sidebar after the issues were created, so issues come back in creation order instead of date order. Setting a due date never reindexes the issue.",
+          "sourceBugs": [
+            {
+              "index": 46,
+              "id": "gitea-issue-search-due-sort-ignores-new-due-dates",
+              "name": "Issue search sorted by due date ignores due dates set after an issue is created"
+            }
+          ],
+          "expected": "Issues given due dates after creation are ordered by those dates when a search is sorted by Nearest or Farthest due date.",
+          "actual": "With two new issues given due dates of November 1 and December 31 from the sidebar (both saved and shown on the issues), the searched list sorted by Nearest due date put December 31 first, following creation order rather than the dates.",
+          "reproSteps": [
+            "Create two issues whose titles share a unique word, without due dates.",
+            "From each issue's sidebar, set a due date, giving the older issue the earlier date.",
+            "On the global Issues page, search for the shared word and sort by Nearest due date.",
+            "Check whether the issue with the earlier due date is listed first."
+          ],
+          "severity": 3,
+          "sourceConstraints": [
             {
               "sourceBugIndex": 46,
               "constraints": {
@@ -2821,7 +2804,29 @@
                   }
                 }
               }
-            },
+            }
+          ]
+        },
+        {
+          "id": "gitea-deadline-index-not-invalidated-issues-path-3",
+          "explanation": "On a repository's Issues list, searching and sorting by Farthest or Nearest due date ignores due dates set from the sidebar after the issues were created, so a nearer date can be listed ahead of a farther one. Setting a due date never updates the search index, so a keyword search sorts by the index's stale due date.",
+          "sourceBugs": [
+            {
+              "index": 63,
+              "id": "gitea-repo-issue-search-due-sort-ignores-new-due-dates",
+              "name": "Repository issue search sorted by due date ignores due dates set after an issue is created"
+            }
+          ],
+          "expected": "A repository issue search sorted by Farthest due date lists issues from the latest due date to the earliest, including dates set after the issues were created.",
+          "actual": "After setting due dates of December 10 and November 10 on two new issues from the sidebar, searching their shared title word on the repository Issues list and sorting by Farthest due date listed the November issue first.",
+          "reproSteps": [
+            "In a repository, create two issues with a shared title word.",
+            "After they're created, set their due dates from the sidebar, giving the first-created issue the later date.",
+            "On the repository's Issues list, search for the shared word and sort by Farthest due date.",
+            "Check whether the later due date is listed first."
+          ],
+          "severity": 3,
+          "sourceConstraints": [
             {
               "sourceBugIndex": 63,
               "constraints": {
@@ -2832,125 +2837,6 @@
                   }
                 }
               }
-            }
-          ],
-          "sourceReproductions": [
-            {
-              "id": "gitea-deadline-index-not-invalidated-issues-path-1",
-              "explanation": "On the global Issues page with a search term, sorting by Farthest or Nearest due date uses the due date from before the last edit. Changing an issue's due date never reindexes the issue, so the search index keeps the old date until something else, such as a comment, refreshes it.",
-              "expected": "After a due date is set or changed, a search sorted by due date orders issues by their current due dates.",
-              "actual": "Each row shows the new due date, but the sorted search keeps the old order. Reloading or waiting doesn't help; posting a comment on the issue fixes its position.",
-              "reproSteps": [
-                "Create two issues whose titles share a unique word, and give them different due dates.",
-                "Post a comment on each issue.",
-                "On the global Issues page, search for the shared word and sort by Farthest due date; note the order.",
-                "Change the earlier issue's due date to later than the other's, then repeat the same sorted search.",
-                "Check whether the order reflects the new date; then post a comment on that issue and search again."
-              ],
-              "severity": 3,
-              "matchingGuidance": [
-                {
-                  "sourceBugIndex": 45,
-                  "guidance": {
-                    "relatedReference": {
-                      "name": "Issue search sorted by due date ignores due dates set after an issue is created",
-                      "distinction": "Same cause (due-date updates never reindex the issue), but that entry is due dates first set on fresh issues; this entry is changing an existing due date on issues whose earlier date was already indexed."
-                    }
-                  }
-                }
-              ],
-              "sourceConstraints": [
-                {
-                  "sourceBugIndex": 45,
-                  "constraints": {
-                    "matchingGuidance": {
-                      "relatedReference": {
-                        "name": "Issue search sorted by due date ignores due dates set after an issue is created",
-                        "distinction": "Same cause (due-date updates never reindex the issue), but that entry is due dates first set on fresh issues; this entry is changing an existing due date on issues whose earlier date was already indexed."
-                      }
-                    }
-                  }
-                }
-              ],
-              "sourceBugIndices": [
-                45
-              ]
-            },
-            {
-              "id": "gitea-deadline-index-not-invalidated-issues-path-2",
-              "explanation": "On the global Issues page with a search term, sorting by Nearest or Farthest due date ignores due dates set from the sidebar after the issues were created, so issues come back in creation order instead of date order. Setting a due date never reindexes the issue.",
-              "expected": "Issues given due dates after creation are ordered by those dates when a search is sorted by Nearest or Farthest due date.",
-              "actual": "With two new issues given due dates of November 1 and December 31 from the sidebar (both saved and shown on the issues), the searched list sorted by Nearest due date put December 31 first, following creation order rather than the dates.",
-              "reproSteps": [
-                "Create two issues whose titles share a unique word, without due dates.",
-                "From each issue's sidebar, set a due date, giving the older issue the earlier date.",
-                "On the global Issues page, search for the shared word and sort by Nearest due date.",
-                "Check whether the issue with the earlier due date is listed first."
-              ],
-              "severity": 3,
-              "matchingGuidance": [
-                {
-                  "sourceBugIndex": 46,
-                  "guidance": {
-                    "relatedReference": {
-                      "name": "Issue search sorted by due date keeps the old order after a due date is changed",
-                      "distinction": "Same cause (due-date updates never reindex the issue), but that entry is changing an existing due date; this entry is due dates first set on new issues, which sort as if they had none."
-                    }
-                  }
-                },
-                {
-                  "sourceBugIndex": 63,
-                  "guidance": {
-                    "relatedReference": {
-                      "name": "Issue search sorted by due date ignores due dates set after an issue is created",
-                      "distinction": "Same cause (setting a due date never reindexes the issue), but that entry is the global Issues page; this entry is a repository's Issues list."
-                    }
-                  }
-                }
-              ],
-              "sourceConstraints": [
-                {
-                  "sourceBugIndex": 46,
-                  "constraints": {
-                    "matchingGuidance": {
-                      "relatedReference": {
-                        "name": "Issue search sorted by due date keeps the old order after a due date is changed",
-                        "distinction": "Same cause (due-date updates never reindex the issue), but that entry is changing an existing due date; this entry is due dates first set on new issues, which sort as if they had none."
-                      }
-                    }
-                  }
-                },
-                {
-                  "sourceBugIndex": 63,
-                  "constraints": {
-                    "matchingGuidance": {
-                      "relatedReference": {
-                        "name": "Issue search sorted by due date ignores due dates set after an issue is created",
-                        "distinction": "Same cause (setting a due date never reindexes the issue), but that entry is the global Issues page; this entry is a repository's Issues list."
-                      }
-                    }
-                  }
-                }
-              ],
-              "sourceBugIndices": [
-                46,
-                63
-              ]
-            },
-            {
-              "sourceBugIndices": [
-                63
-              ],
-              "explanation": "On a repository's Issues list, searching and sorting by Farthest or Nearest due date ignores due dates set from the sidebar after the issues were created, so a nearer date can be listed ahead of a farther one. Setting a due date never updates the search index, so a keyword search sorts by the index's stale due date.",
-              "expected": "A repository issue search sorted by Farthest due date lists issues from the latest due date to the earliest, including dates set after the issues were created.",
-              "actual": "After setting due dates of December 10 and November 10 on two new issues from the sidebar, searching their shared title word on the repository Issues list and sorting by Farthest due date listed the November issue first.",
-              "reproSteps": [
-                "In a repository, create two issues with a shared title word.",
-                "After they're created, set their due dates from the sidebar, giving the first-created issue the later date.",
-                "On the repository's Issues list, search for the shared word and sort by Farthest due date.",
-                "Check whether the later due date is listed first."
-              ],
-              "severity": 3
             }
           ]
         }
