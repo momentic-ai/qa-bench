@@ -107,6 +107,19 @@
           "distinction": "Same retained text. That rejection is the tag page; this one is the New Release prefill."
         }
       }
+    },
+    {
+      "id": "gitea-release-notes-root-relative-image-repo-prefixed",
+      "name": "Root-relative release-note images resolve under the repository path and appear broken",
+      "summary": "The report says that a Markdown image in release notes written with a leading slash, such as /avatars/<hash>, is rewritten under the repository path and shows as a broken image in Preview and on the saved release, while the same image as a full URL loads.",
+      "expected": "The reported expectation is that a leading-slash image path resolves from the site root.",
+      "actual": "The image src became /<owner>/<repo>/avatars/<hash>, which 404s, so only the alt text and broken-image icon appeared.",
+      "reproSteps": [
+        "Open New Release in a repository.",
+        "Enter notes containing ![avatar](/avatars/<hash>?size=48) and the same image as a full URL.",
+        "Click Preview, then Save Draft, and compare the two images."
+      ],
+      "reason": "Intended: since Gitea 1.23 (go-gitea/gitea#34114), a leading-slash Markdown path is relative to the current render context, not the site root, so content stays portable when cloned, mirrored or served under a sub-path; /:root/... links to the site root. Release notes are rendered with renderhelper.NewRenderContextRepoComment (routers/web/repo/release.go), whose ResolveLink sends non-root links through ResolveLinkRelative with the repository link, and models/renderhelper/repo_comment_test.go asserts ![/image](/image) renders as /user2/repo1/image. Same rule as the known-invalid 'Root-relative links in issue Markdown are prefixed with the repository path' and the wiki root-relative image and link entries."
     }
   ]
 }
