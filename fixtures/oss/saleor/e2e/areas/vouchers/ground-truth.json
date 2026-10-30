@@ -1179,6 +1179,49 @@
           "distinction": "The related reference covers the product attribute filter. This one covers the collection publication filter."
         }
       }
+    },
+    {
+      "id": "saleor-vouchers-032",
+      "name": "Started lower filter excludes vouchers that started earlier",
+      "summary": "On the vouchers list, the filter \"Started lower 10/28/2026 12:00 AM\" returns \"No vouchers found\", even though the unfiltered list shows active vouchers. The reporter observed that seeded vouchers start August 8, 2026.",
+      "expected": "Vouchers that started before October 28, 2026 (for example, Percentage order discount and Big order discount, which start August 8, 2026) appear in the results.",
+      "actual": "The list shows \"No vouchers found\". The GraphQL vouchers query returns empty edges. Reopening Filters shows Started / lower / 10/28/2026, 12:00 AM.",
+      "reproSteps": [
+        "Signed in as primary admin (admin@example.com) via the saved session, open /discounts/vouchers. Ten active vouchers are listed.",
+        "Click Filters, choose Started in the Where field, and choose 'lower' as the operator.",
+        "Enter 10/28/2026 12:00 AM in the date field and click Apply (URL becomes ?0[s4.started]=2026-10-28T00:00).",
+        "Observe 'No vouchers found'. Reopen Filters and confirm it shows Started, lower, 10/28/2026 12:00 AM."
+      ],
+      "severity": 3
+    },
+    {
+      "id": "saleor-vouchers-034",
+      "name": "Code page-size menu opens below the viewport and hides its options",
+      "summary": "On a voucher with ten visible code rows, the page-size selector near the bottom of the screen opens downward without accounting for the viewport edge. The 50/100 options are offscreen.",
+      "expected": "The page-size dropdown should open upward or constrain itself to the available viewport so all options can be selected.",
+      "actual": "At 1440×1000 on Single Use Vouchers, No. of rows is at the bottom of the codes table. Its menu opens at y 934 with height 146; options 50 and 100 start at y 1007 and 1041, outside the viewport. Clicking 100 fails because it is outside the viewport. Staff must dismiss it and reposition the page before reopening it.",
+      "reproSteps": [
+        "Sign in at a 1440×1000 viewport and open /discounts/vouchers.",
+        "Open Single Use Vouchers, which contains 50 codes (or create a voucher and generate at least 10 codes).",
+        "With ten rows displayed, click the No. of rows selector at the bottom of the codes table while it is near the bottom of the viewport.",
+        "Observe the dropdown opens downward and the 50/100 options are below the screen instead of fitting above the selector."
+      ],
+      "severity": 1
+    },
+    {
+      "id": "saleor-vouchers-035",
+      "name": "Repeated filter fields ignore the earlier AND condition",
+      "summary": "The voucher filter builder allows two conditions on the same field joined by And, but results use only the final condition. Fixed AND Shipping returns shipping vouchers; reversing the conditions returns fixed vouchers.",
+      "expected": "Every displayed AND condition should constrain the results. A voucher cannot simultaneously be Fixed and Shipping, so this combination should return no results or be rejected as contradictory.",
+      "actual": "Discount type is Fixed AND Discount type is Shipping returns the Free shipping voucher. Swapping their values to Shipping AND Fixed returns Big order discount. Both conditions remain displayed and the Filters badge shows 2, although the first is ignored.",
+      "reproSteps": [
+        "Sign in and open /discounts/vouchers.",
+        "Open Filters. Set Discount type is Fixed.",
+        "Click Add condition. Set the second condition to Discount type is Shipping; leave the displayed And join.",
+        "Click Apply. Observe Free shipping is returned despite failing the first condition.",
+        "Reopen Filters, switch the first value to Shipping and the second to Fixed, and Apply. Observe Big order discount is returned instead of an empty result."
+      ],
+      "severity": 3
     }
   ]
 }
