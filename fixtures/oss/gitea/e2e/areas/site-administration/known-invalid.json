@@ -270,6 +270,25 @@
       "matchingGuidance": {
         "scope": "Only this active-filter presentation/clear-control claim with correctly applied filters; do not generalize to a failed filter operation or an explicit documented requirement."
       }
+    },
+    {
+      "id": "reviewed-g57-gitea-site-administration",
+      "name": "Diagnosis report ignores the requested profiling duration (empty CPU profile)",
+      "summary": "On Monitoring > Stacktrace, 'Download diagnosis report' with N seconds returns right away. The zip's cpu-profile.dat is basically empty, and the goroutine-before/after dumps are taken at the same moment, so the duration field has no effect.",
+      "expected": "The server profiles the CPU for the requested number of seconds (Gitea clamps this to 5–300) before it returns the zip. With seconds=10 the download takes about 10s, cpu-profile.dat holds real samples, and goroutine-after is taken after the window.",
+      "actual": "With seconds=10 (and seconds=1) the zip came back in 40–54 ms. cpu-profile.dat is 28 bytes (an empty profile), and goroutine-before.txt and goroutine-after.txt are the same size (55171 bytes) with the same timestamp.",
+      "reproSteps": [
+        "Open Site Administration > Monitoring > Stacktrace.",
+        "Request a diagnosis with the default ten-second CPU profile duration.",
+        "Wait for completion and inspect the profile.",
+        "For the reported short error-file signature, start two diagnosis downloads through separate normal UI tabs while profiling overlaps."
+      ],
+      "reason": "A single requested 10-second diagnosis completes in 10.265 seconds with a valid 2,151-byte gzip CPU profile. Two overlapping UI downloads reproduce an immediate 28-byte cpu-profile.dat containing the explicit text cpu profiling already in use, while the first request continues profiling for ten seconds. The reported signature does not establish that a successful profile ignores duration.",
+      "reviewEvidence": {
+        "basis": "Fresh targeted browser reproduction under delegated reviewer judgment.",
+        "analysis": "A single requested 10-second diagnosis completes in 10.265 seconds with a valid 2,151-byte gzip CPU profile. Two overlapping UI downloads reproduce an immediate 28-byte cpu-profile.dat containing the explicit text cpu profiling already in use, while the first request continues profiling for ten seconds. The reported signature does not establish that a successful profile ignores duration.",
+        "limitations": "Pinned fixture images and normal UI actions; read-only API/DOM diagnostics only. Gitea 1.24.7, Twenty 2.26.1, Saleor dashboard/API 3.23, Metabase 0.58.24. Metabase public source is adjacent to the unavailable private runtime; live image controls decide the outcome. No independent model-judge agreement is claimed."
+      }
     }
   ]
 }
