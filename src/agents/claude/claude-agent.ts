@@ -21,7 +21,12 @@ import { finished } from "node:stream/promises";
 import { promisify } from "node:util";
 import { z } from "zod";
 
-import { Browser, EvalAgentDefinition } from "../../evals/agent";
+import {
+  Browser,
+  CLAUDE_MODELS,
+  ClaudeModel,
+  EvalAgentDefinition,
+} from "../../evals/agent";
 import { combinedCost } from "../../evals/browser-cost";
 import { writeJson } from "../../evals/json-file";
 import { BrowserTool, validateAgentBrowser } from "../agent-browser";
@@ -240,7 +245,7 @@ export class ClaudeAgent extends CodexAgent {
       options: {
         pathToClaudeCodeExecutable: CLAUDE_COMMAND,
         cwd: workspace,
-        model: "claude-opus-5-5",
+        model: this.model,
         effort: "medium",
         systemPrompt: { type: "preset", preset: "claude_code" },
         settingSources: agentBrowser ? ["project"] : [],
@@ -529,12 +534,14 @@ export class ClaudeAgent extends CodexAgent {
 export function claudeAgent(
   browser: Browser,
   browserTool: BrowserTool = "playwright-mcp",
+  model: ClaudeModel = CLAUDE_MODELS[0],
 ): EvalAgentDefinition {
   return {
     name: `claude-${browserTool}`,
     reportSubdirectory: `claude-${browserTool}`,
     concurrency: browser === "local" ? 2 : Infinity,
     config: {
+      model,
       browser,
       ...(browserTool === "playwright-mcp"
         ? { subagents: browser !== "local" }
@@ -551,8 +558,8 @@ export function claudeAgent(
     },
     create(context) {
       return browser === "local"
-        ? new LocalClaudeAgent(context, browserTool)
-        : new ClaudeAgent(context, browserTool);
+        ? new LocalClaudeAgent(context, browserTool, model)
+        : new ClaudeAgent(context, browserTool, model);
     },
   };
 }

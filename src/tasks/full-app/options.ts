@@ -1,6 +1,14 @@
 import { parseArgs } from "node:util";
 
-import { Browser, MO_EFFORTS, MoEffort } from "../../evals/agent";
+import {
+  Browser,
+  CLAUDE_MODELS,
+  CODEX_MODELS,
+  ClaudeModel,
+  CodexModel,
+  MO_EFFORTS,
+  MoEffort,
+} from "../../evals/agent";
 import {
   executionOptions,
   parseExecutionOptions,
@@ -19,6 +27,7 @@ export type FullAppOptions = {
   maxConcurrentSubAgents?: number;
   timeLimitMs?: number;
   effort?: MoEffort;
+  model?: CodexModel | ClaudeModel;
   outputDirectory: string;
   browser: Browser;
 };
@@ -31,6 +40,7 @@ export function parseFullAppOptions(args: string[]): FullAppOptions {
       agent: { type: "string" },
       "max-concurrent-sub-agents": { type: "string" },
       effort: { type: "string" },
+      model: { type: "string" },
       fixtures: { type: "string" },
       "grade-only": { type: "boolean", default: false },
       "run-id": { type: "string", multiple: true },
@@ -77,10 +87,23 @@ export function parseFullAppOptions(args: string[]): FullAppOptions {
     maxConcurrentSubAgents,
     timeLimitMs,
     effort,
+    model: parseModel(values.agent, values.model),
     outputDirectory: outputDirectory ?? REPORTS_DIRECTORY,
     gradeOnly: values["grade-only"],
     runIds: parseRunIds(values["run-id"]),
   };
+}
+
+function parseModel(agent: string | undefined, model: string | undefined) {
+  if (model === undefined) return undefined;
+  let models: readonly (CodexModel | ClaudeModel)[];
+  if (agent?.startsWith("codex-")) models = CODEX_MODELS;
+  else if (agent?.startsWith("claude-")) models = CLAUDE_MODELS;
+  else throw new Error("--model applies only to Codex and Claude agents.");
+  const selected = models.find((candidate) => candidate === model);
+  if (!selected)
+    throw new Error(`--model must be one of ${models.join(", ")}.`);
+  return selected;
 }
 
 function parseBrowser(

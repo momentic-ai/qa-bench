@@ -13,6 +13,7 @@ import path from "node:path";
 import { setTimeout } from "node:timers/promises";
 import { isDeepStrictEqual } from "node:util";
 
+import { CLAUDE_MODELS, CODEX_MODELS } from "./agent";
 import { DurationSchema } from "./reports";
 import { Agent, reportDirectory } from "./scores";
 import { Fixture } from "./types";
@@ -295,6 +296,11 @@ export async function readOptionalCost(directory: string): Promise<unknown> {
   }
 }
 
+const OPTIONAL_MODELS: string[] = [
+  ...CODEX_MODELS.slice(1),
+  ...CLAUDE_MODELS.slice(1),
+];
+
 /** Agent name plus any non-default run settings recorded in duration.json. */
 export async function runLabel(agent: string, runDirectory: string) {
   const file = path.join(runDirectory, "duration.json");
@@ -302,6 +308,7 @@ export async function runLabel(agent: string, runDirectory: string) {
     ? JSON.parse(await readFile(file, "utf8"))
     : {};
   const settings: string[] = [];
+  if (OPTIONAL_MODELS.includes(config.model)) settings.push(config.model);
   if (config.browser === "local") settings.push("local browser");
   if (config.subagents === false) settings.push("no subagents");
   if (config.effort && config.effort !== "medium")
