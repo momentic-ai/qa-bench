@@ -806,6 +806,28 @@
           "distinction": "Same skipped default-branch fallback (template.go only generates Git content when Git Content is checked and the template has commits). That entry is Git Content unchecked on a template with commits; this entry is Git Content checked on an empty template."
         }
       }
+    },
+    {
+      "id": "gitea-protected-tag-delete-blocked-after-outsider-release",
+      "name": "An allowed user can't delete a protected tag after someone outside the rule published a release on it",
+      "summary": "Deleting a protected tag checks whether the tag's stored publisher is allowed by the protected-tag rule, not the person deleting it. Publishing a release on an existing tag makes the publisher that user, so after someone outside the rule publishes (and later deletes) a release on a tag, an allowlisted collaborator is refused with 'The tag name is protected.'",
+      "expected": "A user allowed by a protected-tag rule can delete any matching tag, whoever published a release on it.",
+      "actual": "With alex as the only allowed user on an exact-tag rule, the repository owner (not on the rule) published a release on the tag and deleted the release, leaving the tag. As alex, Delete Tag showed 'The tag name is protected.' and the tag stayed. When alex created the tag or published the release, alex could delete it.",
+      "reproSteps": [
+        "Add a protected-tag rule that allows a collaborator but not the repository owner.",
+        "Create a matching tag, then as the owner publish a release on that tag.",
+        "Delete the release, keeping the tag.",
+        "As the allowed collaborator, open Tags and click Delete Tag on it.",
+        "Observe 'The tag name is protected.' and that the tag stays."
+      ],
+      "severity": 3,
+      "sourceCause": "services/release/release.go DeleteReleaseByID passes rel.PublisherID instead of doer.ID to IsUserAllowedToControlTag, and routers/web/repo/release.go sets PublisherID to the user who publishes a release on an existing tag. Upstream later checks doer.ID.",
+      "matchingGuidance": {
+        "relatedReference": {
+          "id": "gitea-protected-tag-delete-checks-creator-not-deleter",
+          "distinction": "Same check of the stored publisher instead of the deleter. That entry is a tag created by someone outside the rule; this entry is a tag on which someone outside the rule published a release."
+        }
+      }
     }
   ]
 }
