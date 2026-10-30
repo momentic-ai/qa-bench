@@ -1986,6 +1986,101 @@
           "frontend/src/metabase/admin/permissions/selectors/collection-permissions.tsx:49-57"
         ]
       }
+    },
+    {
+      "id": "reviewed-m03-metabase-admin",
+      "name": "Localization: Instance language, Report timezone and First day of week dropdowns are blank even when values are saved",
+      "summary": "On Admin > Settings > Localization, the three Instance settings selects always render empty after page load, even though the settings have values stored on the server (and defaults exist).",
+      "expected": "Dropdowns show the saved (or default) value, e.g. 'Monday' for First day of the week, 'US/Pacific' for Report timezone, 'English' for Instance language.",
+      "actual": "All three dropdowns are empty after reload. GET /api/setting/start-of-week returns 'monday', report-timezone is 'US/Pacific', site-locale is 'en', but the UI shows blank inputs. The selection only displays transiently right after picking an option.",
+      "reproSteps": [
+        "Sign in as admin and open /admin/settings/localization",
+        "Open 'First day of the week' and choose Monday (toast 'Changes saved')",
+        "Reload the page",
+        "Observe 'First day of the week' (and Instance language / Report timezone) are blank, while GET /api/setting/start-of-week returns 'monday'"
+      ],
+      "severity": 1,
+      "owningArea": "metabase/admin",
+      "reviewEvidence": {
+        "basis": "User-approved manual retained-report and source review.",
+        "analysis": "Narrow approval: Localization instance controls display blank despite saved Monday and effective locale/timezone values. Retained reload readback confirms empty inputs while server returns monday. Source renders Select value from settings and explicitly defines supported Monday/locale/timezone options. Do not claim all settings values are lost.",
+        "limitations": "Retained browser/tool-result and API controls reviewed; public source is version-adjacent to unavailable private runtime. No proven shared root cause, fresh browser reproduction or independent judges. Distinct from existing custom-formatting state initialization label.",
+        "sourceLocations": [
+          "Metabase f42632893810325d9f74375a4cd29bd31d8daefa frontend/src/metabase/admin/settings/components/SettingsPages/LocalizationSettingsPage.tsx:27-88",
+          "Metabase f42632893810325d9f74375a4cd29bd31d8daefa frontend/src/metabase/admin/settings/components/widgets/AdminSettingInput.tsx:95-138,169-184"
+        ]
+      }
+    },
+    {
+      "id": "reviewed-m04-metabase-admin",
+      "name": "Model persistence: 'Refresh models every…' schedule selector never appears after enabling persistence",
+      "summary": "On Admin > Performance > Model persistence, turning the toggle on enables persistence (persisted-models-enabled=true) but the refresh schedule selector (Hour/2/3/6/12/24 hours/Custom) is never shown, so admins cannot view or change how often models refresh.",
+      "expected": "With persistence Enabled, a 'Refresh models every…' dropdown appears showing the current schedule (default 6 hours) and allows changing it.",
+      "actual": "Only the Enabled toggle is shown, even after reload and even after explicitly setting a schedule via POST /api/persist/set-refresh-schedule (setting value '0 0 0/3 * * ? *'). document.body.innerText contains no 'Refresh models'.",
+      "reproSteps": [
+        "Sign in as admin, open /admin/performance/models",
+        "Toggle Model persistence to Enabled (GET /api/setting/persisted-models-enabled → true)",
+        "Observe no 'Refresh models every…' control appears",
+        "Reload the page — still only the toggle is visible"
+      ],
+      "severity": 3,
+      "owningArea": "metabase/admin",
+      "reviewEvidence": {
+        "basis": "User-approved manual retained-report and source review.",
+        "analysis": "Retained UI output after enabling persistence and reload shows Enabled but no refresh selector; session-properties control returns valid 6-hour cron and enabled true. Source explicitly offers refresh schedule when both enabled and cron exist. Narrow to inaccessible UI schedule control, without claiming execution or the API schedule setter fails.",
+        "limitations": "Retained browser/tool-result and API controls reviewed; public source is version-adjacent to unavailable private runtime. No proven shared root cause, fresh browser reproduction or independent judges. Distinct from existing custom-formatting state initialization label.",
+        "sourceLocations": [
+          "Metabase f42632893810325d9f74375a4cd29bd31d8daefa frontend/src/metabase/admin/performance/components/ModelPersistenceConfiguration.tsx:65-72,154-170"
+        ]
+      }
+    },
+    {
+      "id": "reviewed-m05-metabase-admin",
+      "name": "Maps settings: 'Custom maps' section (Add a map / GeoJSON) is not rendered",
+      "summary": "Admin > Settings > Maps shows only the Map tile server URL field. The Custom maps section that lets admins add/edit/delete custom GeoJSON region maps is missing entirely, so custom region maps cannot be managed from the UI.",
+      "expected": "Below the tile server URL, a 'Custom maps' section with an 'Add a map' button and a list or 'No custom maps yet' empty state (the frontend bundle contains this component).",
+      "actual": "Only the 'Map tile server URL' textbox is rendered (and it is empty). No 'Custom maps' heading, no 'Add a map' button. The custom-geojson setting exists, is not set by an env var (is_env_setting=false), and has a value (built-in us_states/world_countries).",
+      "reproSteps": [
+        "Sign in as admin",
+        "Open /admin/settings/maps",
+        "Observe only the 'Map tile server URL' field; there is no 'Custom maps' section or 'Add a map' button",
+        "GET /api/setting shows custom-geojson with is_env_setting=false and a non-null value"
+      ],
+      "severity": 3,
+      "owningArea": "metabase/admin",
+      "reviewEvidence": {
+        "basis": "User-approved manual retained-report and source review.",
+        "analysis": "Retained Maps page output lacks Custom maps and Add a map; API control confirms custom-geojson exists with maps and is_env_setting false. Source unconditionally includes widget, whose gates require available map value/details and absence of environment control. Those conditions are supported; missing management UI prevents the documented offered map-management feature.",
+        "limitations": "Retained browser/tool-result and API controls reviewed; public source is version-adjacent to unavailable private runtime. No proven shared root cause, fresh browser reproduction or independent judges. Distinct from existing custom-formatting state initialization label.",
+        "sourceLocations": [
+          "Metabase f42632893810325d9f74375a4cd29bd31d8daefa frontend/src/metabase/admin/settings/components/SettingsPages/MapsSettingsPage.tsx:11-30",
+          "Metabase f42632893810325d9f74375a4cd29bd31d8daefa frontend/src/metabase/admin/settings/components/widgets/CustomGeoJSONWidget.tsx:102-134"
+        ]
+      }
+    },
+    {
+      "id": "reviewed-m06-metabase-admin",
+      "name": "Public sharing toggle shows 'Disabled' after reload even though public sharing is in effect enabled",
+      "summary": "On Admin > Settings > Public sharing, the 'Enable Public Sharing' switch reads Disabled after a page reload, but the effective setting is enabled (default true): session properties report enable-public-sharing=true and public links can be created.",
+      "expected": "The switch reflects the effective value (Enabled), matching session properties and server behaviour.",
+      "actual": "After toggling to Enabled and reloading, the switch shows 'Disabled' (unchecked). /api/setting lists enable-public-sharing value=null default=true; /api/session/properties returns true; POST /api/card/37/public_link succeeds (200, returns uuid). Admins are misled into thinking public links are off.",
+      "reproSteps": [
+        "Sign in as admin and open /admin/settings/public-sharing",
+        "Switch 'Enable Public Sharing' on (it shows Enabled)",
+        "Reload the page — switch shows 'Disabled'",
+        "Verify via API: GET /api/session/properties → enable-public-sharing: true; POST /api/card/<id>/public_link → 200 with uuid"
+      ],
+      "severity": 1,
+      "owningArea": "metabase/admin",
+      "reviewEvidence": {
+        "basis": "User-approved manual retained-report and source review.",
+        "analysis": "Retained UI snapshot shows Enable Public Sharing Disabled unchecked, while effective default is true and POST public_link returns uuid/200. Approval only for false displayed state, not unauthorized access or a failed attempt to disable sharing. No readback from malformed single-setting request is used.",
+        "limitations": "Retained browser/tool-result and API controls reviewed; public source is version-adjacent to unavailable private runtime. No proven shared root cause, fresh browser reproduction or independent judges. Distinct from existing custom-formatting state initialization label.",
+        "sourceLocations": [
+          "Metabase f42632893810325d9f74375a4cd29bd31d8daefa frontend/src/metabase/admin/settings/components/SettingsPages/PublicSharingSettingsPage.tsx:19-34",
+          "Metabase f42632893810325d9f74375a4cd29bd31d8daefa frontend/src/metabase/admin/settings/components/widgets/AdminSettingInput.tsx:184-199"
+        ]
+      }
     }
   ]
 }
