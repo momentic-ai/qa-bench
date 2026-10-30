@@ -2,1464 +2,226 @@
   {
     "id": "ignoring-card-query-and-dashboard-filter-intersection",
     "explanation": "A dashboard contains cards whose charts can each have their own saved query and restrictions. A dashboard-wide filter adds conditions to each card's existing conditions; it does not replace them or guarantee that every card still has matching records. This pattern matches a report that calls an empty card broken merely because a neighboring card shows data, without checking the first card's date window or calculation thresholds. Evaluate the combined conditions for that card before alleging that the dashboard filter was ignored or applied incorrectly.",
-    "verificationGuidance": [
-      "Inspect the exact executed query for the affected card, including saved filters, aggregation thresholds and dashboard predicates.",
-      "Compute the intersection of all date ranges and other restrictions using the fixture’s actual data dates.",
-      "Use a genuinely overlapping control filter rather than another card’s total as proof of expected rows."
-    ],
-    "instances": [
-      {
-        "source": "known-invalid.json",
-        "index": 0,
-        "report": {
-          "name": "Overview Revenue by product category chart returns no results with Previous 7 days filter despite revenue data",
-          "summary": "On the E-commerce Insights Overview, applying the Previous 7 days date filter leaves Revenue by product category showing “No results!” despite populated category orders and $4,778.46 in filtered revenue; clearing and reapplying the filter reproduces it.",
-          "expected": "With the Previous 7 days dashboard filter active and filtered revenue/category orders present, Revenue by product category should render the available category breakdown rather than report no results.",
-          "actual": "The chart displayed “No results!” while Revenue per quarter showed 4,778.46 for Q4 2026, Total orders by product category showed 87 orders distributed across four categories, and Orders according to sources per quarter showed a Q4 2026 row total of 4,778.46.",
-          "reproSteps": [
-            "Sign in with the fixture account and open Examples → E-commerce Insights → Overview.",
-            "Set dashboard Date Range to Previous 7 days with Include today off.",
-            "Observe Revenue by product category shows No results while other cards show revenue and orders.",
-            "Inspect the chart’s saved question: it filters to Previous 4 months, excluding the current month. On October 8 this has no overlap with October 1–7.",
-            "Clear the dashboard Date Range filter and observe the chart populates."
-          ],
-          "reason": "Human review rejected this as a product bug after inspecting the executed query. Revenue by product category already filters to Previous 4 months, excluding the current month. The dashboard Previous 7 days filter intersects with that saved filter; on October 8, October 1–7 has no overlap with June–September. Empty results are correct for the configured query; other cards lack this restriction."
-        }
-      },
-      {
-        "source": "known-invalid.json",
-        "index": 31,
-        "report": {
-          "id": "metabase-dashboards-386",
-          "name": "Mapping Date picker to Product breakdown Orders.Created At results in 'No results!' for previous 100 years including current year",
-          "summary": "Mapping Date picker to Product breakdown Orders.Created At results in 'No results!' for previous 100 years including current year.",
-          "expected": "Applying a relative date filter for the previous 100 years including the current year should display the product breakdown data",
-          "actual": "Setting the 'QA On Date' filter to 'Previous 100 years or this year' causes the Product breakdown card to display 'No results!', which persists after reloading the dashboard",
-          "reproSteps": [
-            "Duplicate seed dashboard1 with Only duplicate the dashboard into a fresh QA fixture.",
-            "Edit dashboard and add a Date picker with All Options; map it on Portfolio Performance to Product breakdown > ORDERS > Created At; save.",
-            "Clear date picker: Product breakdown renders2,852 total.",
-            "Open date picker Relative date range > Previous100years, enable Include this year, apply.",
-            "Refresh: Product breakdown shows No results while other portfolio cards retain data."
-          ],
-          "reason": "Works as intended: the sample data extends past the current year, and within the picked window no product meets the card's saved Count ≥ 105 condition, so the empty result is correct."
-        }
-      },
-      {
-        "source": "known-invalid.json",
-        "index": 48,
-        "report": {
-          "id": "metabase-dashboards-575",
-          "name": "Current-month category revenue chart shows no results despite populated dashboard data",
-          "summary": "Current-month category revenue chart shows no results despite populated dashboard data.",
-          "expected": "A mapped category revenue chart displays the current month's revenue when the dashboard's revenue and category-order charts contain data for that month.",
-          "actual": "Revenue by product category shows No results! while the October time-series revenue chart is populated and Total orders by product category shows 354.",
-          "reproSteps": [
-            "Open seed E-commerce Insights dashboard and duplicate it with a fresh QA-Filters name, checking Only duplicate the dashboard.",
-            "On the copy edit Product Category, turn off Always require a value and remove its default; save.",
-            "Apply Day in Date Grouping.",
-            "Edit Date Range, save Previous month as default and enable Always require a value.",
-            "Move Date Range into Revenue and orders over time card using Move filter; Done and Save.",
-            "Open the moved Date Range, choose Current, then Month.",
-            "Visit Portfolio Performance and return to Overview; inspect Revenue by product category and refresh."
-          ],
-          "reason": "Works as intended: the card's saved query already limits Created At to the previous four months, and the dashboard's This month filter adds a window that doesn't overlap it. No results is correct; overlapping ranges fill the chart."
-        }
-      }
+    "reproductionPaths": [
+      "In Metabase, follow this workflow: Sign in with the fixture account and open Examples → E-commerce Insights → Overview. Set dashboard Date Range to Previous 7 days with Include today off. Observe Revenue by product category shows No results while other cards show revenue and orders. Inspect the chart’s saved question: it filters to Previous 4 months, excluding the current month. On October 8 this has no overlap with October 1–7. Clear the dashboard Date Range filter and observe the chart populates. The rejected report expected: With the Previous 7 days dashboard filter active and filtered revenue/category orders present, Revenue by product category should render the available category breakdown rather than report no results. It claimed this outcome: The chart displayed “No results!” while Revenue per quarter showed 4,778.46 for Q4 2026, Total orders by product category showed 87 orders distributed across four categories, and Orders according to sources per quarter showed a Q4 2026 row total of 4,778.46. Review concluded: Human review rejected this as a product bug after inspecting the executed query. Revenue by product category already filters to Previous 4 months, excluding the current month. The dashboard Previous 7 days filter intersects with that saved filter; on October 8, October 1–7 has no overlap with June–September. Empty results are correct for the configured query; other cards lack this restriction.",
+      "In Metabase, follow this workflow: Duplicate seed dashboard1 with Only duplicate the dashboard into a fresh QA fixture. Edit dashboard and add a Date picker with All Options; map it on Portfolio Performance to Product breakdown > ORDERS > Created At; save. Clear date picker: Product breakdown renders2,852 total. Open date picker Relative date range > Previous100years, enable Include this year, apply. Refresh: Product breakdown shows No results while other portfolio cards retain data. The rejected report expected: Applying a relative date filter for the previous 100 years including the current year should display the product breakdown data. It claimed this outcome: Setting the 'QA On Date' filter to 'Previous 100 years or this year' causes the Product breakdown card to display 'No results!', which persists after reloading the dashboard. Review concluded: Works as intended: the sample data extends past the current year, and within the picked window no product meets the card's saved Count ≥ 105 condition, so the empty result is correct.",
+      "In Metabase, follow this workflow: Open seed E-commerce Insights dashboard and duplicate it with a fresh QA-Filters name, checking Only duplicate the dashboard. On the copy edit Product Category, turn off Always require a value and remove its default; save. Apply Day in Date Grouping. Edit Date Range, save Previous month as default and enable Always require a value. Move Date Range into Revenue and orders over time card using Move filter; Done and Save. Open the moved Date Range, choose Current, then Month. Visit Portfolio Performance and return to Overview; inspect Revenue by product category and refresh. The rejected report expected: A mapped category revenue chart displays the current month's revenue when the dashboard's revenue and category-order charts contain data for that month. It claimed this outcome: Revenue by product category shows No results! while the October time-series revenue chart is populated and Total orders by product category shows 354. Review concluded: Works as intended: the card's saved query already limits Created At to the previous four months, and the dashboard's This month filter adds a window that doesn't overlap it. No results is correct; overlapping ranges fill the chart."
     ]
   },
   {
     "id": "object-ownership-confused-with-global-discoverability",
     "explanation": "A saved item can belong to a dashboard or a private collection without being listed in every global catalog. In Metabase, saved questions, chart cards and folder-like collections have different ownership and browsing rules. This pattern matches a report that assumes an item must appear in a particular search or category listing merely because it opens correctly from its owning location. Verify that listing's inclusion rules before claiming the item was lost; lack of access through its supported owning location is a different issue.",
-    "verificationGuidance": [
-      "Determine the item’s owner and collection scope.",
-      "Inspect that browse surface’s inclusion/exclusion policy, including personal collections.",
-      "Use supported card duplicate/move or collection navigation instead of treating absent global discovery as lost persistence."
-    ],
-    "instances": [
-      {
-        "source": "known-invalid.json",
-        "index": 1,
-        "report": {
-          "id": "mo-30m-metabase-2",
-          "name": "Saved dashboard question is missing from Add a chart collection browser",
-          "summary": "A question saved as a chart on one dashboard tab remains visible after refresh, but the dashboard’s Add a chart collection browser cannot find it by its exact name on a second tab.",
-          "expected": "A saved question visible on the dashboard should be discoverable as an existing chart in Add a chart, consistent with the dashboard’s visible prompt to browse collections for an existing question.",
-          "actual": "The HarborQA question card remained on Tab 1 after saving and refreshing the dashboard, but searching its exact name from Add a chart on Tab 2 showed “Nothing here.” The same empty result persisted after rechecking the dashboard’s personal collection and Our analytics.",
-          "reproSteps": [
-            "Open the app using the Harbor account’s provided saved authenticated session.",
-            "Create a new dashboard named HarborQA-Dashboard-20260717-8472 in Harbor Admin’s Personal Collection and open it in edit mode.",
-            "Choose Add a chart > New Question, select Sample Database > Orders, and choose Visualize.",
-            "Save the question as HarborQA-Orders-Chart-20260717-8472, add it to the dashboard, save the dashboard, and refresh. Confirm the question card remains on Tab 1.",
-            "Re-enter dashboard edit mode, add Tab 2 using the plus beside the tab bar, choose Add a chart, and search the exact question name HarborQA-Orders-Chart-20260717-8472.",
-            "Observe “Nothing here” in the collection browser. Recheck the personal collection and Our analytics; the exact-name search remains empty."
-          ],
-          "reason": "The new question was saved inside the dashboard, not in a collection. Add a chart searches collection questions; dashboard-owned cards are reused through dashboard card duplicate/move controls instead."
-        }
-      }
+    "reproductionPaths": [
+      "In Metabase, follow this workflow: Open the app using the Harbor account’s provided saved authenticated session. Create a new dashboard named HarborQA-Dashboard-20260717-8472 in Harbor Admin’s Personal Collection and open it in edit mode. Choose Add a chart > New Question, select Sample Database > Orders, and choose Visualize. Save the question as HarborQA-Orders-Chart-20260717-8472, add it to the dashboard, save the dashboard, and refresh. Confirm the question card remains on Tab 1. Re-enter dashboard edit mode, add Tab 2 using the plus beside the tab bar, choose Add a chart, and search the exact question name HarborQA-Orders-Chart-20260717-8472. Observe “Nothing here” in the collection browser. Recheck the personal collection and Our analytics; the exact-name search remains empty. The rejected report expected: A saved question visible on the dashboard should be discoverable as an existing chart in Add a chart, consistent with the dashboard’s visible prompt to browse collections for an existing question. It claimed this outcome: The HarborQA question card remained on Tab 1 after saving and refreshing the dashboard, but searching its exact name from Add a chart on Tab 2 showed “Nothing here.” The same empty result persisted after rechecking the dashboard’s personal collection and Our analytics. Review concluded: The new question was saved inside the dashboard, not in a collection. Add a chart searches collection questions; dashboard-owned cards are reused through dashboard card duplicate/move controls instead."
     ]
   },
   {
     "id": "visible-input-normalization-mistaken-for-save-corruption",
     "explanation": "An input can visibly change unsupported characters, dates or numeric precision while the user is still editing. This pattern matches a report that remembers the intended text and blames Save for a different result, although the field or preview already displayed that effective value before submission and the save preserved it. Observe the value immediately before saving and compare it with storage. A valid displayed value secretly replaced only during submission is a different failure.",
-    "verificationGuidance": [
-      "Record the input and preview immediately before blur, Apply or Save, then compare the submitted and persisted values.",
-      "Check the field-specific normalization contract and a supported-input control.",
-      "Do not use this rejection to dismiss hidden value substitution or corruption that first occurs during a completed save."
-    ],
-    "instances": [
-      {
-        "source": "known-invalid.json",
-        "index": 2,
-        "report": {
-          "id": "metabase-dashboards-026",
-          "name": "Date inputs silently turn impossible dates into later real dates",
-          "summary": "Date inputs silently turn impossible dates into later real dates.",
-          "expected": "An impossible calendar date is rejected or preserves the prior valid date, allowing correction rather than filtering a different date.",
-          "actual": "In a dashboard Fixed date range filter, type February 30, 2026. On blur it silently becomes March 2, 2026; Update filter applies 2026-03-02~2026-12-31 and the range survives reload. Unparseable text (\"garbage\") restores the previous date; valid dates stay as typed (controls).",
-          "reproSteps": [
-            "Dashboards only; duplicate seed1 with Only duplicate the dashboard checked. Do not edit questions.",
-            "Duplicate E-commerce Insights as a fresh QA-Date2-prefixed dashboard, selecting Only duplicate the dashboard.",
-            "Open Date Range > Fixed date range > Between. Enter December 31, 2026 for both bounds, then Add filter.",
-            "Reopen Date Range and replace End date with February 30, 2026. Blur the field.",
-            "Click Update filter, refresh and reopen Date Range."
-          ],
-          "reason": "Works as intended: the date input shows the rolled-over date (March 2) as soon as focus leaves the field, before the filter is applied."
-        }
-      },
-      {
-        "source": "known-invalid.json",
-        "index": 3,
-        "report": {
-          "id": "metabase-dashboards-138",
-          "name": "Relative date interval turns a typed 1.5 into 15 days",
-          "summary": "Relative date interval turns a typed 1.5 into 15 days.",
-          "expected": "A fractional day interval is supported or rejected, not changed to a different number.",
-          "actual": "Typing 1.5 into the relative date interval shows 15; applying keeps Previous 15 days.",
-          "reproSteps": [
-            "On a dashboard with a date filter, open Relative date range and keep Previous and days.",
-            "Type 1.5 as the interval and move focus away.",
-            "Observe the interval shows 15."
-          ],
-          "reason": "Works as intended per human review: the interval shows the value it will use (15) before the filter is applied."
-        }
-      }
+    "reproductionPaths": [
+      "In Metabase, follow this workflow: Dashboards only; duplicate seed1 with Only duplicate the dashboard checked. Do not edit questions. Duplicate E-commerce Insights as a fresh QA-Date2-prefixed dashboard, selecting Only duplicate the dashboard. Open Date Range > Fixed date range > Between. Enter December 31, 2026 for both bounds, then Add filter. Reopen Date Range and replace End date with February 30, 2026. Blur the field. Click Update filter, refresh and reopen Date Range. The rejected report expected: An impossible calendar date is rejected or preserves the prior valid date, allowing correction rather than filtering a different date. It claimed this outcome: In a dashboard Fixed date range filter, type February 30, 2026. On blur it silently becomes March 2, 2026; Update filter applies 2026-03-02~2026-12-31 and the range survives reload. Unparseable text (\"garbage\") restores the previous date; valid dates stay as typed (controls). Review concluded: Works as intended: the date input shows the rolled-over date (March 2) as soon as focus leaves the field, before the filter is applied.",
+      "In Metabase, follow this workflow: On a dashboard with a date filter, open Relative date range and keep Previous and days. Type 1.5 as the interval and move focus away. Observe the interval shows 15. The rejected report expected: A fractional day interval is supported or rejected, not changed to a different number. It claimed this outcome: Typing 1.5 into the relative date interval shows 15; applying keeps Previous 15 days. Review concluded: Works as intended per human review: the interval shows the value it will use (15) before the filter is applied."
     ]
   },
   {
     "id": "supported-input-fallback-assumed-validation-failure",
     "explanation": "An input can deliberately handle blank or invalid text by clearing it, restoring the last valid value or applying a supported minimum instead of leaving an error. Reviewed Metabase examples include a relative date interval of zero becoming one day, invalid numeric text meaning no filter, and an empty required title or invalid typed date retaining the previous valid value. This pattern matches a demand for a different rejection style without evidence that a valid accepted value was lost. Check the field-specific rule and effective display; a valid value secretly replaced during submission is a different failure.",
-    "verificationGuidance": [
-      "Identify the control’s documented/tested invalid-input and blank-input policy.",
-      "Inspect the retained calendar selection, range bounds and applied chip rather than only transient typed text.",
-      "Test a supported valid value and verify it is preserved before inferring a general save failure."
-    ],
-    "instances": [
-      {
-        "source": "known-invalid.json",
-        "index": 4,
-        "report": {
-          "id": "metabase-dashboards-128",
-          "name": "Non-numeric text in a numeric dashboard filter clears the applied filter",
-          "summary": "Non-numeric text in a numeric dashboard filter clears the applied filter.",
-          "expected": "Non-numeric input in a number filter is rejected and the previous value kept.",
-          "actual": "Replacing an applied number filter value with abc and clicking Update filter clears the filter, and the mapped card recalculates without it.",
-          "reproSteps": [
-            "On a dashboard, add a Number filter mapped to a numeric field and apply a value.",
-            "Reopen the filter, replace the value with abc, and click Update filter.",
-            "Observe the filter is cleared."
-          ],
-          "reason": "Works as intended per human review: non-numeric text is treated as no value, which clears the filter."
-        }
-      },
-      {
-        "source": "known-invalid.json",
-        "index": 18,
-        "report": {
-          "id": "metabase-dashboards-217",
-          "name": "Clearing a saved dashboard title then Save silently restores the old title and exits editing",
-          "summary": "Clearing a saved dashboard title then Save silently restores the old title and exits editing.",
-          "expected": "An empty required dashboard name should receive clear validation while editing stays open, rather than silently ignoring the cleared value.",
-          "actual": "After clearing QA Lifecycle Bundle to empty and clicking Save, editing closed and QA Lifecycle Bundle reappeared unchanged. A whole-page multimodal assertion confirmed no validation error or explanation was shown.",
-          "reproSteps": [
-            "Open Edit dashboard and clear the title field completely so it shows Add title.",
-            "Click Save and inspect the title and editing state."
-          ],
-          "reason": "Works as intended: clearing a required title reverts to the last saved title, matching the control in dashboards-024."
-        }
-      },
-      {
-        "source": "known-invalid.json",
-        "index": 20,
-        "report": {
-          "id": "metabase-dashboards-288",
-          "name": "Number Between accepts Infinity but silently replaces it with an empty bound after applying",
-          "summary": "Number Between accepts Infinity but silently replaces it with an empty bound after applying.",
-          "expected": "Reject nonfinite input with validation while retaining it for correction, or retain the actual accepted value. Do not silently replace an accepted bound with an empty value.",
-          "actual": "Update filter was enabled for Infinity. After applying and reopening, the first bound was blank and second remained 100; the filter still showed 2 selections. A whole-page AI assertion confirmed no validation warning or error explained the removal.",
-          "reproSteps": [
-            "Create a disposable dashboard and add existing Release requests question, without editing the question.",
-            "Add Number filter mapped to Release Requests.Amount and choose Between.",
-            "Set bounds 200 and 100, save dashboard, refresh and open Number filter.",
-            "Replace first bound with literal Infinity, leaving second bound 100.",
-            "Click the enabled Update filter button and reopen Number filter."
-          ],
-          "reason": "Works as intended: Infinity is not a usable numeric bound, and the filter visibly treats it as empty."
-        }
-      }
+    "reproductionPaths": [
+      "In Metabase, follow this workflow: On a dashboard, add a Number filter mapped to a numeric field and apply a value. Reopen the filter, replace the value with abc, and click Update filter. Observe the filter is cleared. The rejected report expected: Non-numeric input in a number filter is rejected and the previous value kept. It claimed this outcome: Replacing an applied number filter value with abc and clicking Update filter clears the filter, and the mapped card recalculates without it. Review concluded: Works as intended per human review: non-numeric text is treated as no value, which clears the filter.",
+      "In Metabase, follow this workflow: Open Edit dashboard and clear the title field completely so it shows Add title. Click Save and inspect the title and editing state. The rejected report expected: An empty required dashboard name should receive clear validation while editing stays open, rather than silently ignoring the cleared value. It claimed this outcome: After clearing QA Lifecycle Bundle to empty and clicking Save, editing closed and QA Lifecycle Bundle reappeared unchanged. A whole-page multimodal assertion confirmed no validation error or explanation was shown. Review concluded: Works as intended: clearing a required title reverts to the last saved title, matching the control in dashboards-024.",
+      "In Metabase, follow this workflow: Create a disposable dashboard and add existing Release requests question, without editing the question. Add Number filter mapped to Release Requests.Amount and choose Between. Set bounds 200 and 100, save dashboard, refresh and open Number filter. Replace first bound with literal Infinity, leaving second bound 100. Click the enabled Update filter button and reopen Number filter. The rejected report expected: Reject nonfinite input with validation while retaining it for correction, or retain the actual accepted value. Do not silently replace an accepted bound with an empty value. It claimed this outcome: Update filter was enabled for Infinity. After applying and reopening, the first bound was blank and second remained 100; the filter still showed 2 selections. A whole-page AI assertion confirmed no validation warning or error explained the removal. Review concluded: Works as intended: Infinity is not a usable numeric bound, and the filter visibly treats it as empty."
     ]
   },
   {
     "id": "interaction-target-or-gesture-mismatch",
     "explanation": "A test must actually activate the control whose behavior it claims to measure. This pattern matches reports where the input reached a neighboring element or popup, a drag never reached the required threshold, the editor was in the wrong mode, or a simulated key combination differed from the real shortcut. A click timeout or text appearing elsewhere therefore does not establish failure of the intended link, input or command. Confirm the event target, focus and complete gesture, then repeat the same intended action correctly before alleging its failure.",
-    "verificationGuidance": [
-      "Confirm the actual event target, focus, editing mode and completed gesture from the rendered UI or recording.",
-      "Repeat using the precise anchor, input, drag threshold or real keyboard shortcut; check key and modifier details for simulated events.",
-      "Verify the intended control actually ran before attributing navigation failure or value loss to it."
-    ],
-    "instances": [
-      {
-        "source": "known-invalid.json",
-        "index": 5,
-        "report": {
-          "id": "metabase-dashboards-124",
-          "name": "New dashboard tab loses its typed name after pressing Enter",
-          "summary": "After replacing a new dashboard tab's name and pressing Enter, the typed name is lost.",
-          "expected": "A new tab stays in the tab bar with its new name.",
-          "actual": "After replacing the new tab's name and pressing Enter, the tab disappears and the first tab becomes active, or editing closes and the tab keeps its default name.",
-          "reproSteps": [
-            "Edit a dashboard and add a new tab.",
-            "Replace the tab name and press Enter.",
-            "Observe the tab is gone or still has its default name."
-          ],
-          "reason": "Cannot reproduce with a single click into the tab name; the reported sequence depends on a double-click, not the described flow.",
-          "matchingGuidance": {
-            "claimScope": "Credit any report that replacing a new tab's default name and pressing Enter loses the typed name, whether the tab disappears or stays under its default name, and whether or not editing closes. A report that explicitly double-clicks the tab name first is a different claim. Typing that exits editing before Enter is metabase-dashboards-196."
-          }
-        }
-      },
-      {
-        "source": "known-invalid.json",
-        "index": 15,
-        "report": {
-          "id": "metabase-dashboards-216",
-          "name": "Dragging a dashboard card above another card leaves its position unchanged",
-          "summary": "Dragging a dashboard card above another card leaves its position unchanged.",
-          "expected": "The dragged card moves above the preceding card in the dashboard layout.",
-          "actual": "When the 'Revenue per quarter' card is dragged above the table card and released, it snaps back to its original position below the table, leaving the dashboard layout unchanged.",
-          "reproSteps": [
-            "Duplicate the seeded dashboard with Only duplicate dashboard selected; use a separate QA Cards dashboard.",
-            "Add the existing Number of Orders question, save, then edit its visualization to Bar and resize it full width. Duplicate this card.",
-            "Move the duplicate to Portfolio Performance and replace it with the existing Revenue per quarter question. Save and reopen dashboard editing.",
-            "Scroll to Revenue per quarter below Customer survey responses. Drag its blank header area upward over the preceding table and release."
-          ],
-          "reason": "Cannot reproduce on human review: the card snaps back only when released below the upper card's top edge; dragging to that edge reorders and saves normally."
-        }
-      },
-      {
-        "source": "known-invalid.json",
-        "index": 16,
-        "report": {
-          "id": "metabase-dashboards-196",
-          "name": "Typing a new tab name exits dashboard editing and returns to view mode",
-          "summary": "Typing a new tab name exits dashboard editing and returns to view mode.",
-          "expected": "The new tab is renamed Details and remains in edit mode until the dashboard is saved or canceled.",
-          "actual": "Typing into the new tab name input triggers a reload that returns the dashboard to view mode, exiting edit mode and losing the new tab.",
-          "reproSteps": [
-            "Create a new dashboard with a unique TABS-prefixed name via New > Dashboard.",
-            "In the dashboard editor click Create new tab (+ beside Tab 1).",
-            "Replace the new tab's default name Tab 2 with Details using ordinary typing."
-          ],
-          "reason": "Works as intended: renaming a tab requires a double-click; the reported flow came from the agent typing without entering rename mode (same as dashboards-124)."
-        }
-      }
+    "reproductionPaths": [
+      "In Metabase, follow this workflow: Edit a dashboard and add a new tab. Replace the tab name and press Enter. Observe the tab is gone or still has its default name. The rejected report expected: A new tab stays in the tab bar with its new name. It claimed this outcome: After replacing the new tab's name and pressing Enter, the tab disappears and the first tab becomes active, or editing closes and the tab keeps its default name. Review concluded: Cannot reproduce with a single click into the tab name; the reported sequence depends on a double-click, not the described flow.",
+      "In Metabase, follow this workflow: Duplicate the seeded dashboard with Only duplicate dashboard selected; use a separate QA Cards dashboard. Add the existing Number of Orders question, save, then edit its visualization to Bar and resize it full width. Duplicate this card. Move the duplicate to Portfolio Performance and replace it with the existing Revenue per quarter question. Save and reopen dashboard editing. Scroll to Revenue per quarter below Customer survey responses. Drag its blank header area upward over the preceding table and release. The rejected report expected: The dragged card moves above the preceding card in the dashboard layout. It claimed this outcome: When the 'Revenue per quarter' card is dragged above the table card and released, it snaps back to its original position below the table, leaving the dashboard layout unchanged. Review concluded: Cannot reproduce on human review: the card snaps back only when released below the upper card's top edge; dragging to that edge reorders and saves normally.",
+      "In Metabase, follow this workflow: Create a new dashboard with a unique TABS-prefixed name via New > Dashboard. In the dashboard editor click Create new tab (+ beside Tab 1). Replace the new tab's default name Tab 2 with Details using ordinary typing. The rejected report expected: The new tab is renamed Details and remains in edit mode until the dashboard is saved or canceled. It claimed this outcome: Typing into the new tab name input triggers a reload that returns the dashboard to view mode, exiting edit mode and losing the new tab. Review concluded: Works as intended: renaming a tab requires a double-click; the reported flow came from the agent typing without entering rename mode (same as dashboards-124)."
     ]
   },
   {
     "id": "unverified-failure-treated-as-established",
     "explanation": "The report describes a failure, but independent review did not recover the claimed failing state under the stated conditions. This group records that evidence limitation rather than an established explanation of why the behavior was correct or why the original event occurred. A future report must match the same trigger and outcome and still needs its own reliable reproduction; resemblance to a nearby accepted bug is insufficient. Nonreproduction does not prove the event impossible or intended.",
-    "verificationGuidance": [
-      "Reproduce the exact reported trigger and outcome in a fresh, isolated state, with the required permissions and completed saves.",
-      "Keep an unrecovered historical claim explicitly unverified; do not invent an intended-behavior or source-cause explanation.",
-      "Compare the exact claim with accepted nearby cases rather than borrowing their evidence."
-    ],
-    "instances": [
-      {
-        "source": "known-invalid.json",
-        "index": 6,
-        "report": {
-          "id": "metabase-dashboards-130",
-          "name": "Undo on the deleted-tab toast does not restore the tab",
-          "summary": "Undo on the deleted-tab toast does not restore the tab.",
-          "expected": "Undo restores the deleted tab.",
-          "actual": "Clicking Undo on the Deleted tab toast leaves the tab missing.",
-          "reproSteps": [
-            "Edit a dashboard with a saved extra tab.",
-            "Delete that tab from its menu.",
-            "Click Undo on the toast."
-          ],
-          "reason": "Cannot reproduce on human review."
-        }
-      },
-      {
-        "source": "known-invalid.json",
-        "index": 14,
-        "report": {
-          "id": "metabase-dashboards-197",
-          "name": "Product Category reset-to-default icon leaves the changed filter and charts unchanged after fullscreen journey",
-          "summary": "Product Category reset-to-default icon leaves the changed filter and charts unchanged after fullscreen journey.",
-          "expected": "Reset filter to default state should restore the original four category selections and corresponding unfiltered totals.",
-          "actual": "Clicking the reset icon leaves 3 selections, orders 3,372 and revenue 53,898.26 unchanged. A full-page multimodal assertion confirmed no pending Apply/Update action or error is displayed.",
-          "reproSteps": [
-            "Duplicate dashboard 1 using Only duplicate the dashboard into a fresh VIEW-prefixed dashboard.",
-            "On Overview, open Product Category, uncheck Doohickey and click Update filter. Verify 3 selections, orders 3,372 and revenue 53,898.26 instead of defaults 4 selections, orders 4,354 and revenue 67,863.4.",
-            "Enter fullscreen, visit Portfolio Performance then return Overview, reload, and exit fullscreen.",
-            "Click circular-arrow Reset filter to default state icon inside Product Category.",
-            "Observe filter and rendered charts."
-          ],
-          "reason": "Cannot reproduce on human review."
-        }
-      },
-      {
-        "source": "known-invalid.json",
-        "index": 21,
-        "report": {
-          "id": "metabase-dashboards-289",
-          "name": "Refreshing after saving a duplicated tab switches back to Overview",
-          "summary": "Refreshing after saving a duplicated tab switches back to Overview.",
-          "expected": "The saved selected duplicate tab remains selected and displayed after refreshing the dashboard.",
-          "actual": "Refreshing the dashboard switches selection back to the Overview tab and displays its content instead of the duplicated tab.",
-          "reproSteps": [
-            "Duplicate E-commerce Insights as a uniquely named QA-Tabs dashboard, choosing Only duplicate the dashboard.",
-            "Edit the copy. Open a tab's dropdown and choose Duplicate.",
-            "Observe the new Copy of … tab selected with its cards; Save.",
-            "Refresh the dashboard."
-          ],
-          "reason": "Cannot reproduce on human review."
-        }
-      },
-      {
-        "source": "known-invalid.json",
-        "index": 24,
-        "report": {
-          "id": "metabase-dashboards-338",
-          "name": "Unicode tab rename stores first character at the end: 标签 🌿 Café العربية becomes 签 🌿 Café العربية标",
-          "summary": "Unicode tab rename stores first character at the end: 标签 🌿 Café العربية becomes 签 🌿 Café العربية标.",
-          "expected": "The saved tab name is exactly 标签 🌿 Café العربية.",
-          "actual": "Saved tab text is 签 🌿 Café العربية标, with the first Chinese character moved to the end.",
-          "reproSteps": [
-            "Duplicate E-commerce Insights into Harbor Admin's Personal Collection with a unique private QA-Tabs name and Only duplicate the dashboard selected.",
-            "Open Edit dashboard and select Rename from a saved tab's dropdown.",
-            "Replace its name with 标签 🌿 Café العربية.",
-            "Click Save and refresh."
-          ],
-          "reason": "Cannot reproduce on human review."
-        }
-      },
-      {
-        "source": "known-invalid.json",
-        "index": 25,
-        "report": {
-          "id": "metabase-dashboards-340",
-          "name": "Restoring a revision breaks existing links to a still-present custom dashboard tab",
-          "summary": "Restoring a revision breaks existing links to a still-present custom dashboard tab.",
-          "expected": "Navigating to a previously saved URL for QA Revision Added should open that tab when the restored dashboard contains that tab.",
-          "actual": "Navigating to the tab=35 URL opens the dashboard on the Overview tab instead of QA Revision Added.",
-          "reproSteps": [
-            "Duplicate E-commerce Insights into Harbor Admin personal collection under a unique QA name, with Only duplicate dashboard checked.",
-            "Edit dashboard; add tab QA Revision Added; add existing Revenue per quarter question card and Save.",
-            "Select QA Revision Added and keep its URL.",
-            "Edit dashboard and remove its Revenue per quarter card, then Save. Select QA Revision Added.",
-            "Open Info > History and restore the revision before the card removal.",
-            "Open the previously saved QA Revision Added URL."
-          ],
-          "reason": "Cannot reproduce on human review."
-        }
-      },
-      {
-        "source": "known-invalid.json",
-        "index": 26,
-        "report": {
-          "id": "metabase-dashboards-343",
-          "name": "Removing a saved chart click destination and saving still navigates to the removed dashboard destination",
-          "summary": "Removing a saved chart click destination and saving still navigates to the removed dashboard destination.",
-          "expected": "After clearing/removing the custom destination configuration, clicking Done, and saving, clicking a chart bar should no longer navigate to that dashboard.",
-          "actual": "After saving and refreshing, clicking a bar on the chart still navigates to the previously configured dashboard (E-commerce Insights, Portfolio Performance tab).",
-          "reproSteps": [
-            "Create a fresh dashboard prefixed CARDS; add existing Examples question Number of Orders.",
-            "In dashboard edit mode, change its visualization to Bar and save the visualization and dashboard.",
-            "Edit chart Click behavior > Go to a custom destination > Dashboard. Choose E-commerce Insights and Portfolio Performance tab. Click Done and save dashboard.",
-            "Reopen dashboard edit mode and Number of Orders Click behavior. Click the X on the blue Go to a custom destination header. The editor selects Open the Metabase drill-through menu.",
-            "Click Done and Save dashboard. Wait until viewing mode, then refresh.",
-            "Click a bar (December 2026)."
-          ],
-          "reason": "Cannot reproduce on human review."
-        }
-      },
-      {
-        "source": "known-invalid.json",
-        "index": 30,
-        "report": {
-          "id": "metabase-dashboards-385",
-          "name": "Dashboard editor crashes to a blank white screen after switching a linked filter to single value and navigating to Linked filters",
-          "summary": "Dashboard editor crashes to a blank white screen after switching a linked filter to single value and navigating to Linked filters.",
-          "expected": "The Linked filters settings load properly so the user can view and edit dependencies without crashing the dashboard editor.",
-          "actual": "The entire dashboard editor disappears and turns completely white and blank with no UI controls or error message displayed.",
-          "reproSteps": [
-            "Duplicate E-commerce Insights dashboard/1 using Only duplicate dashboard; name fresh copy QA-Filters-Repro.",
-            "On Website Analysis add ID filter QA ID, map Most recent subscription to ID, default1462; save.",
-            "Add Location filter QA Location, map Number of subscriptions to Account Country; default PK; save.",
-            "Edit QA Location > Linked filters; enable QA ID to limit its choices; save. Select HU for Location.",
-            "Edit dashboard > QA Location > Filter settings. Select A single value.",
-            "Click Edit beside Dropdown list (tooltip says cannot customize because linked), then click Linked filters tab. Attempt to toggle QA ID off."
-          ],
-          "reason": "Cannot reproduce on human review."
-        }
-      },
-      {
-        "source": "known-invalid.json",
-        "index": 34,
-        "report": {
-          "id": "metabase-dashboards-384",
-          "name": "Selecting Dashboard as a custom chart click destination blanks the entire dashboard editor",
-          "summary": "Selecting Dashboard as a custom chart click destination blanks the entire dashboard editor.",
-          "expected": "Dashboard selection picker opens while retaining the dashboard editor.",
-          "actual": "Entire page becomes blank white, with no picker or editor.",
-          "reproSteps": [
-            "Create a disposable dashboard and add existing Revenue by product category question.",
-            "Customize chart visualization to scatter, save visualization and dashboard.",
-            "Edit dashboard, open chart Click behavior.",
-            "Choose Go to a custom destination, then Dashboard."
-          ],
-          "reason": "Cannot reproduce on human review."
-        }
-      },
-      {
-        "source": "known-invalid.json",
-        "index": 37,
-        "report": {
-          "id": "metabase-dashboards-431",
-          "name": "Source dashboard public link stops working after dashboard duplication",
-          "summary": "Source dashboard public link stops working after dashboard duplication.",
-          "expected": "Duplicating a dashboard and sharing its copy leaves the original dashboard public link working independently.",
-          "actual": "The original dashboard's public link rendered before duplication, but showed Not found after duplicating it and generating the copy's public link. The original's Sharing menu then offered Create a public link.",
-          "reproSteps": [
-            "Duplicate E-commerce Insights into a fresh dashboard (the source) using Only duplicate the dashboard.",
-            "On the source, use Sharing > Create a public link. Open that URL, confirm the dashboard renders, and keep the exact URL.",
-            "Duplicate the source into a second dashboard (the copy) using Only duplicate the dashboard.",
-            "On the copy, create its own public link and open it.",
-            "Reload the source's public URL. It shows Not found, and the source's Sharing menu now offers Create a public link instead of the existing Public link."
-          ],
-          "reason": "Cannot reproduce on human review."
-        }
-      },
-      {
-        "source": "known-invalid.json",
-        "index": 40,
-        "report": {
-          "id": "metabase-dashboards-481",
-          "name": "Navigating back restores prior tab content but leaves the overflow tab highlighted",
-          "summary": "Navigating back restores prior tab content but leaves the overflow tab highlighted.",
-          "expected": "The tab bar updates to highlight and display the active tab corresponding to the loaded content.",
-          "actual": "Dashboard content returns to the prior tab, but Tab 8 remains highlighted blue in the tab bar.",
-          "reproSteps": [
-            "Duplicate seed dashboard with Only duplicate the dashboard checked into a uniquely named QA-TABS dashboard.",
-            "Create tabs until bar overflows; use a long tab name and eight tabs. Save.",
-            "Select a populated first tab, scroll tab bar right and select empty last Tab 8.",
-            "Press browser Back."
-          ],
-          "reason": "Cannot reproduce on human review."
-        }
-      },
-      {
-        "source": "known-invalid.json",
-        "index": 43,
-        "report": {
-          "id": "metabase-dashboards-530",
-          "name": "Undo after trashing a dashboard from the collection list does not restore its row",
-          "summary": "Undo after trashing a dashboard from the collection list does not restore its row.",
-          "expected": "Undo reverses the trash action and returns the dashboard to its original collection listing.",
-          "actual": "For Lifecycle-Mo-7c21 Renamed, Undo was clicked successfully while visible, but its row did not return.",
-          "reproSteps": [
-            "Using primary admin session, create a uniquely named dashboard from New > Dashboard in Our analytics and save it.",
-            "Return to Our analytics and open that dashboard row's Actions menu.",
-            "Choose Move to trash; verify its row disappears and the Trashed dashboard toast offers Undo.",
-            "Immediately click Undo while the toast is visible.",
-            "Observe that the dashboard row remains absent from the collection listing."
-          ],
-          "reason": "Cannot reproduce on human review."
-        }
-      },
-      {
-        "source": "known-invalid.json",
-        "index": 44,
-        "report": {
-          "id": "metabase-dashboards-532",
-          "name": "Saving dashboard after deleting empty text card results in 'Save failed' and stays in editing mode",
-          "summary": "Saving dashboard after deleting empty text card results in 'Save failed' and stays in editing mode.",
-          "expected": "Clicking Save saves the dashboard changes and exits editing mode.",
-          "actual": "The Save button changes to 'Saving...' and then persistently displays 'Save failed' from 00:11.000 onward, keeping the dashboard in editing mode.",
-          "reproSteps": [
-            "Create a uniquely named dashboard and text card containing Region: {{region}}; save.",
-            "Add Text or Category filter mapped to region variable, Input box style, and save.",
-            "Set filter to 東京 & West, refresh and clear filter value.",
-            "Edit text card, clear its complete contents and save; refresh.",
-            "Edit dashboard, hover empty text card and remove it using X.",
-            "Click Save and observe editor remains open rather than returning to dashboard view."
-          ],
-          "reason": "Cannot reproduce on human review."
-        }
-      },
-      {
-        "source": "known-invalid.json",
-        "index": 45,
-        "report": {
-          "id": "metabase-dashboards-533",
-          "name": "Resized chart changes from roughly 444×236 to full-width 1048×86 after saving and refreshing",
-          "summary": "Resized chart changes from roughly 444×236 to full-width 1048×86 after saving and refreshing.",
-          "expected": "Saved chart dimensions and tab layout remain consistent after refresh.",
-          "actual": "The resized revenue card rendered about 444×236 in editing, but after Save and refresh rendered full-width 1048×86. Text and link remained below.",
-          "reproSteps": [
-            "On a fresh independent dashboard add existing Revenue per quarter question, a text card to its right and a link below; save.",
-            "Duplicate the populated tab and save.",
-            "Edit the copied tab and drag the revenue card bottom-right resize area outward and down. In the performed journey a small initial resize was followed by a drag from (688,368) to (860,465), rendering the card about 444×236 with text beneath.",
-            "Save, then refresh the dashboard."
-          ],
-          "reason": "Cannot reproduce on human review."
-        }
-      },
-      {
-        "source": "known-invalid.json",
-        "index": 52,
-        "report": {
-          "id": "metabase-dashboards-606",
-          "name": "Linked Vendor filter does not narrow available state choices",
-          "summary": "Linked Vendor filter does not narrow available state choices.",
-          "expected": "Selecting a Vendor filter value should limit QA Location's dropdown choices to only the states associated with that vendor's orders",
-          "actual": "The QA Location dropdown still displays all state choices (including AK, AL, AR, AZ, CO, FL) despite the Alfredo Kuhlman Group vendor filter being applied",
-          "reproSteps": [
-            "Duplicate E-commerce Insights using Only duplicate the dashboard into an owned QA Filters fixture.",
-            "Add Location filter QA Location mapped to User.State in Revenue and orders over time; use dropdown values From connected fields.",
-            "Move QA Location into Revenue and orders over time using Move filter, save.",
-            "In QA Location Linked filters enable Vendor, then Done and Save.",
-            "Configure Vendor as single-value Input box if needed, then apply Alfredo Kuhlman Group.",
-            "Open QA Location and inspect the available states; reopen editing to verify Vendor linked-filter toggle remains enabled."
-          ],
-          "reason": "Cannot reproduce on human review."
-        }
-      }
+    "reproductionPaths": [
+      "In Metabase, follow this workflow: Edit a dashboard with a saved extra tab. Delete that tab from its menu. Click Undo on the toast. The rejected report expected: Undo restores the deleted tab. It claimed this outcome: Clicking Undo on the Deleted tab toast leaves the tab missing. Review concluded: Cannot reproduce on human review.",
+      "In Metabase, follow this workflow: Duplicate dashboard 1 using Only duplicate the dashboard into a fresh VIEW-prefixed dashboard. On Overview, open Product Category, uncheck Doohickey and click Update filter. Verify 3 selections, orders 3,372 and revenue 53,898.26 instead of defaults 4 selections, orders 4,354 and revenue 67,863.4. Enter fullscreen, visit Portfolio Performance then return Overview, reload, and exit fullscreen. Click circular-arrow Reset filter to default state icon inside Product Category. Observe filter and rendered charts. The rejected report expected: Reset filter to default state should restore the original four category selections and corresponding unfiltered totals. It claimed this outcome: Clicking the reset icon leaves 3 selections, orders 3,372 and revenue 53,898.26 unchanged. A full-page multimodal assertion confirmed no pending Apply/Update action or error is displayed. Review concluded: Cannot reproduce on human review.",
+      "In Metabase, follow this workflow: Duplicate E-commerce Insights as a uniquely named QA-Tabs dashboard, choosing Only duplicate the dashboard. Edit the copy. Open a tab's dropdown and choose Duplicate. Observe the new Copy of … tab selected with its cards; Save. Refresh the dashboard. The rejected report expected: The saved selected duplicate tab remains selected and displayed after refreshing the dashboard. It claimed this outcome: Refreshing the dashboard switches selection back to the Overview tab and displays its content instead of the duplicated tab. Review concluded: Cannot reproduce on human review.",
+      "In Metabase, follow this workflow: Duplicate E-commerce Insights into Harbor Admin's Personal Collection with a unique private QA-Tabs name and Only duplicate the dashboard selected. Open Edit dashboard and select Rename from a saved tab's dropdown. Replace its name with 标签 🌿 Café العربية. Click Save and refresh. The rejected report expected: The saved tab name is exactly 标签 🌿 Café العربية. It claimed this outcome: Saved tab text is 签 🌿 Café العربية标, with the first Chinese character moved to the end. Review concluded: Cannot reproduce on human review.",
+      "In Metabase, follow this workflow: Duplicate E-commerce Insights into Harbor Admin personal collection under a unique QA name, with Only duplicate dashboard checked. Edit dashboard; add tab QA Revision Added; add existing Revenue per quarter question card and Save. Select QA Revision Added and keep its URL. Edit dashboard and remove its Revenue per quarter card, then Save. Select QA Revision Added. Open Info > History and restore the revision before the card removal. Open the previously saved QA Revision Added URL. The rejected report expected: Navigating to a previously saved URL for QA Revision Added should open that tab when the restored dashboard contains that tab. It claimed this outcome: Navigating to the tab=35 URL opens the dashboard on the Overview tab instead of QA Revision Added. Review concluded: Cannot reproduce on human review.",
+      "In Metabase, follow this workflow: Create a fresh dashboard prefixed CARDS; add existing Examples question Number of Orders. In dashboard edit mode, change its visualization to Bar and save the visualization and dashboard. Edit chart Click behavior > Go to a custom destination > Dashboard. Choose E-commerce Insights and Portfolio Performance tab. Click Done and save dashboard. Reopen dashboard edit mode and Number of Orders Click behavior. Click the X on the blue Go to a custom destination header. The editor selects Open the Metabase drill-through menu. Click Done and Save dashboard. Wait until viewing mode, then refresh. Click a bar (December 2026). The rejected report expected: After clearing/removing the custom destination configuration, clicking Done, and saving, clicking a chart bar should no longer navigate to that dashboard. It claimed this outcome: After saving and refreshing, clicking a bar on the chart still navigates to the previously configured dashboard (E-commerce Insights, Portfolio Performance tab). Review concluded: Cannot reproduce on human review.",
+      "In Metabase, follow this workflow: Duplicate E-commerce Insights dashboard/1 using Only duplicate dashboard; name fresh copy QA-Filters-Repro. On Website Analysis add ID filter QA ID, map Most recent subscription to ID, default1462; save. Add Location filter QA Location, map Number of subscriptions to Account Country; default PK; save. Edit QA Location > Linked filters; enable QA ID to limit its choices; save. Select HU for Location. Edit dashboard > QA Location > Filter settings. Select A single value. Click Edit beside Dropdown list (tooltip says cannot customize because linked), then click Linked filters tab. Attempt to toggle QA ID off. The rejected report expected: The Linked filters settings load properly so the user can view and edit dependencies without crashing the dashboard editor. It claimed this outcome: The entire dashboard editor disappears and turns completely white and blank with no UI controls or error message displayed. Review concluded: Cannot reproduce on human review.",
+      "In Metabase, follow this workflow: Create a disposable dashboard and add existing Revenue by product category question. Customize chart visualization to scatter, save visualization and dashboard. Edit dashboard, open chart Click behavior. Choose Go to a custom destination, then Dashboard. The rejected report expected: Dashboard selection picker opens while retaining the dashboard editor. It claimed this outcome: Entire page becomes blank white, with no picker or editor. Review concluded: Cannot reproduce on human review.",
+      "In Metabase, follow this workflow: Duplicate E-commerce Insights into a fresh dashboard (the source) using Only duplicate the dashboard. On the source, use Sharing > Create a public link. Open that URL, confirm the dashboard renders, and keep the exact URL. Duplicate the source into a second dashboard (the copy) using Only duplicate the dashboard. On the copy, create its own public link and open it. Reload the source's public URL. It shows Not found, and the source's Sharing menu now offers Create a public link instead of the existing Public link. The rejected report expected: Duplicating a dashboard and sharing its copy leaves the original dashboard public link working independently. It claimed this outcome: The original dashboard's public link rendered before duplication, but showed Not found after duplicating it and generating the copy's public link. The original's Sharing menu then offered Create a public link. Review concluded: Cannot reproduce on human review.",
+      "In Metabase, follow this workflow: Duplicate seed dashboard with Only duplicate the dashboard checked into a uniquely named QA-TABS dashboard. Create tabs until bar overflows; use a long tab name and eight tabs. Save. Select a populated first tab, scroll tab bar right and select empty last Tab 8. Press browser Back. The rejected report expected: The tab bar updates to highlight and display the active tab corresponding to the loaded content. It claimed this outcome: Dashboard content returns to the prior tab, but Tab 8 remains highlighted blue in the tab bar. Review concluded: Cannot reproduce on human review.",
+      "In Metabase, follow this workflow: Using primary admin session, create a uniquely named dashboard from New > Dashboard in Our analytics and save it. Return to Our analytics and open that dashboard row's Actions menu. Choose Move to trash; verify its row disappears and the Trashed dashboard toast offers Undo. Immediately click Undo while the toast is visible. Observe that the dashboard row remains absent from the collection listing. The rejected report expected: Undo reverses the trash action and returns the dashboard to its original collection listing. It claimed this outcome: For Lifecycle-Mo-7c21 Renamed, Undo was clicked successfully while visible, but its row did not return. Review concluded: Cannot reproduce on human review.",
+      "In Metabase, follow this workflow: Create a uniquely named dashboard and text card containing Region: {{region}}; save. Add Text or Category filter mapped to region variable, Input box style, and save. Set filter to 東京 & West, refresh and clear filter value. Edit text card, clear its complete contents and save; refresh. Edit dashboard, hover empty text card and remove it using X. Click Save and observe editor remains open rather than returning to dashboard view. The rejected report expected: Clicking Save saves the dashboard changes and exits editing mode. It claimed this outcome: The Save button changes to 'Saving...' and then persistently displays 'Save failed' from 00:11.000 onward, keeping the dashboard in editing mode. Review concluded: Cannot reproduce on human review.",
+      "In Metabase, follow this workflow: On a fresh independent dashboard add existing Revenue per quarter question, a text card to its right and a link below; save. Duplicate the populated tab and save. Edit the copied tab and drag the revenue card bottom-right resize area outward and down. In the performed journey a small initial resize was followed by a drag from (688,368) to (860,465), rendering the card about 444×236 with text beneath. Save, then refresh the dashboard. The rejected report expected: Saved chart dimensions and tab layout remain consistent after refresh. It claimed this outcome: The resized revenue card rendered about 444×236 in editing, but after Save and refresh rendered full-width 1048×86. Text and link remained below. Review concluded: Cannot reproduce on human review.",
+      "In Metabase, follow this workflow: Duplicate E-commerce Insights using Only duplicate the dashboard into an owned QA Filters fixture. Add Location filter QA Location mapped to User.State in Revenue and orders over time; use dropdown values From connected fields. Move QA Location into Revenue and orders over time using Move filter, save. In QA Location Linked filters enable Vendor, then Done and Save. Configure Vendor as single-value Input box if needed, then apply Alfredo Kuhlman Group. Open QA Location and inspect the available states; reopen editing to verify Vendor linked-filter toggle remains enabled. The rejected report expected: Selecting a Vendor filter value should limit QA Location's dropdown choices to only the states associated with that vendor's orders. It claimed this outcome: The QA Location dropdown still displays all state choices (including AK, AL, AR, AZ, CO, FL) despite the Alfredo Kuhlman Group vendor filter being applied. Review concluded: Cannot reproduce on human review."
     ]
   },
   {
     "id": "relative-link-resolution-contract-assumed-from-url-text",
     "explanation": "An authored link can be resolved relative to the current content, the application's base address or an explicitly specified site root, depending on the product's rules. This pattern matches a report that assumes its familiar interpretation of a relative path, fragment or leading slash must apply everywhere and calls the documented result corrupted navigation. The reviewed products use different policies, so check the saved link, rendered destination and supported root-relative syntax in the relevant app. An application-generated link that violates its own policy is a different failure.",
-    "verificationGuidance": [
-      "Inspect the authored value, rendered href, document base and the product's context-relative or root-relative syntax.",
-      "Compare an explicitly qualified or product-generated canonical destination that follows the supported policy.",
-      "Do not assume the same relative-link policy across products or classify an independently incorrect generated link by this rejection."
-    ],
-    "instances": [
-      {
-        "source": "known-invalid.json",
-        "index": 7,
-        "report": {
-          "id": "metabase-dashboards-023",
-          "name": "Markdown link with an empty destination navigates from the dashboard to Home",
-          "summary": "Markdown link with an empty destination navigates from the dashboard to Home.",
-          "expected": "An empty Markdown destination should remain on the current document or be inert, rather than navigate to an unrelated Home page.",
-          "actual": "A text card with [x]() renders an empty link; clicking goes to Home. Hash and query-only links also resolve to the site root. /collection/root works (control).",
-          "reproSteps": [
-            "Use a fresh disposable dashboard with a Text card. This is Markdown text content, not the already-published empty 'Choose a link' card issue. Do not edit underlying questions.",
-            "Create or open an owned disposable dashboard and enter editing mode.",
-            "Add a Text card with Markdown [Empty destination](). Save the dashboard.",
-            "Click the rendered Empty destination link. If content overflows the card, scroll within the card to it."
-          ],
-          "reason": "Both reject at the bug bar: CommonMark renders [x]() as href=\"\", Metabase intentionally sets <base href> and same-tab relative links (unit test). The user wrote the broken link; Metabase didn't generate it."
-        }
-      },
-      {
-        "source": "known-invalid.json",
-        "index": 10,
-        "report": {
-          "id": "metabase-dashboards-021",
-          "name": "Unconfigured link card labeled Choose a link sends viewers to Home",
-          "summary": "Unconfigured link card labeled Choose a link sends viewers to Home.",
-          "expected": "An unconfigured link card does not navigate anywhere.",
-          "actual": "A saved link card with no URL shows Choose a link, and clicking it opens the Home page.",
-          "reproSteps": [
-            "Edit a dashboard and add a Link card without a destination.",
-            "Save and click the Choose a link card."
-          ],
-          "reason": "Works as intended per human review: an empty link card is a placeholder, and following its empty link to Home is an acceptable edge case."
-        }
-      },
-      {
-        "source": "known-invalid.json",
-        "index": 49,
-        "report": {
-          "id": "metabase-dashboards-b15",
-          "name": "Dashboard fragment link opens Home instead of the current dashboard",
-          "summary": "Dashboard fragment link opens Home instead of the current dashboard.",
-          "expected": "A fragment-only link should keep the current dashboard path and append #qa-section, not navigate to the application home page.",
-          "actual": "Clicking the card navigates to /#qa-section and shows Home with 'How’s it going, Harbor?' instead of the dashboard.",
-          "reproSteps": [
-            "As Harbor Admin, create a uniquely named dashboard in personal collection.",
-            "Edit dashboard; Add a link or iframe > Link.",
-            "Enter #qa-section and Save. Refresh and verify card retains #qa-section.",
-            "Click the #qa-section card."
-          ],
-          "reason": "Works as intended: Metabase sets <base href=\"/\"> app-wide on purpose, so relative link-card URLs, including fragment-only links like #section, resolve from the site root. Saving keeps the value, and an explicit dashboard-path link works."
-        }
-      }
+    "reproductionPaths": [
+      "In Metabase, follow this workflow: Use a fresh disposable dashboard with a Text card. This is Markdown text content, not the already-published empty 'Choose a link' card issue. Do not edit underlying questions. Create or open an owned disposable dashboard and enter editing mode. Add a Text card with Markdown [Empty destination](). Save the dashboard. Click the rendered Empty destination link. If content overflows the card, scroll within the card to it. The rejected report expected: An empty Markdown destination should remain on the current document or be inert, rather than navigate to an unrelated Home page. It claimed this outcome: A text card with [x]() renders an empty link; clicking goes to Home. Hash and query-only links also resolve to the site root. /collection/root works (control). Review concluded: Both reject at the bug bar: CommonMark renders [x]() as href=\"\", Metabase intentionally sets <base href> and same-tab relative links (unit test). The user wrote the broken link; Metabase didn't generate it.",
+      "In Metabase, follow this workflow: Edit a dashboard and add a Link card without a destination. Save and click the Choose a link card. The rejected report expected: An unconfigured link card does not navigate anywhere. It claimed this outcome: A saved link card with no URL shows Choose a link, and clicking it opens the Home page. Review concluded: Works as intended per human review: an empty link card is a placeholder, and following its empty link to Home is an acceptable edge case.",
+      "In Metabase, follow this workflow: As Harbor Admin, create a uniquely named dashboard in personal collection. Edit dashboard; Add a link or iframe > Link. Enter #qa-section and Save. Refresh and verify card retains #qa-section. Click the #qa-section card. The rejected report expected: A fragment-only link should keep the current dashboard path and append #qa-section, not navigate to the application home page. It claimed this outcome: Clicking the card navigates to /#qa-section and shows Home with 'How’s it going, Harbor?' instead of the dashboard. Review concluded: Works as intended: Metabase sets <base href=\"/\"> app-wide on purpose, so relative link-card URLs, including fragment-only links like #section, resolve from the site root. Saving keeps the value, and an explicit dashboard-path link works."
     ]
   },
   {
     "id": "inventing-restrictive-free-form-validation",
     "explanation": "An administrator-authored field can deliberately accept flexible text, including relative addresses, templates or partial reusable code. This pattern matches a report that assumes the form must reject every value that looks incomplete or unusable, without establishing a restrictive format requirement for that field. Saving the user's own free-form content is not sufficient evidence that the application generated or corrupted an invalid value. Test valid supported input and distinguish an explicit validation promise from a preferred restriction.",
-    "verificationGuidance": [
-      "Establish the documented accepted syntax and whether relative paths, templates or partial content are allowed.",
-      "Test valid configured content separately from an unusable value deliberately entered by the author.",
-      "Show a violated supported contract or concrete unintended effect rather than relying only on the absence of preferred validation."
-    ],
-    "instances": [
-      {
-        "source": "known-invalid.json",
-        "index": 8,
-        "report": {
-          "id": "metabase-dashboards-116",
-          "name": "Link card saves a malformed URL that opens a not-found page",
-          "summary": "Link card saves a malformed URL that opens a not-found page.",
-          "expected": "A malformed URL in a link card is rejected or flagged before saving.",
-          "actual": "A link card set to not a valid url saves, and clicking it opens the page-not-found screen.",
-          "reproSteps": [
-            "Edit a dashboard and add a Link card.",
-            "Enter not a valid url and save.",
-            "Click the card and observe the not-found page."
-          ],
-          "reason": "Works as intended per human review: link cards accept any text as a relative URL, so a malformed value leading to a not-found page is expected."
-        }
-      }
+    "reproductionPaths": [
+      "In Metabase, follow this workflow: Edit a dashboard and add a Link card. Enter not a valid url and save. Click the card and observe the not-found page. The rejected report expected: A malformed URL in a link card is rejected or flagged before saving. It claimed this outcome: A link card set to not a valid url saves, and clicking it opens the page-not-found screen. Review concluded: Works as intended per human review: link cards accept any text as a relative URL, so a malformed value leading to a not-found page is expected."
     ]
   },
   {
     "id": "scrollable-content-mistaken-for-missing-data",
     "explanation": "A menu, panel or narrow text field may show only part of its contents until the user scrolls, moves within the field or copies the complete value. This pattern matches a report that calls an option or value missing or incorrect from that initial visible slice, while the reviewed normal interaction reveals it in full and the control works. Inspect the complete content before alleging loss. Essential information that remains inaccessible through the supported interaction is a different failure.",
-    "verificationGuidance": [
-      "Inspect the full scroll container and input value, including content above or beyond the initial viewport.",
-      "Use normal scrolling, text navigation or copying to verify the complete value and the selectable control.",
-      "Retest the actual task after revealing the content; preserve a claim if normal access still fails."
-    ],
-    "instances": [
-      {
-        "source": "known-invalid.json",
-        "index": 9,
-        "report": {
-          "id": "metabase-dashboards-051",
-          "name": "Selected dashboard tab is scrolled out of view on narrow screens",
-          "summary": "Selected dashboard tab is scrolled out of view on narrow screens.",
-          "expected": "On a narrow screen, opening a dashboard on a later tab scrolls the tab bar so the selected tab is visible.",
-          "actual": "At phone width the right tab's content loads, but the tab bar stays scrolled to the start and the selected tab is under the scroll arrow.",
-          "reproSteps": [
-            "At 390px width, open a dashboard URL with ?tab= set to its last tab.",
-            "Observe the content of that tab loads while the tab bar shows only the first tabs."
-          ],
-          "reason": "Works as intended per human review: the selected tab's content is shown and the tab bar can be scrolled to it; only the highlight is off-screen."
-        }
-      }
+    "reproductionPaths": [
+      "In Metabase, follow this workflow: At 390px width, open a dashboard URL with ?tab= set to its last tab. Observe the content of that tab loads while the tab bar shows only the first tabs. The rejected report expected: On a narrow screen, opening a dashboard on a later tab scrolls the tab bar so the selected tab is visible. It claimed this outcome: At phone width the right tab's content loads, but the tab bar stays scrolled to the start and the selected tab is under the scroll arrow. Review concluded: Works as intended per human review: the selected tab's content is shown and the tab bar can be scrolled to it; only the highlight is off-screen."
     ]
   },
   {
     "id": "missing-template-value-assumed-automatic-fallback",
     "explanation": "A template or workflow expression can insert values from other fields, some of which may be absent. This pattern matches a report that assumes a missing optional value must automatically disappear or become friendly empty text, although the relevant resolver requires an explicit optional block, guard or default. Test that supported missing-value syntax rather than transferring a promise from a different editor or rich-text field. The rejection does not declare every unresolved token or literal undefined desirable or intended.",
-    "verificationGuidance": [
-      "Verify whether the referenced source can be absent and which missing-value behavior this resolver promises.",
-      "Use the supported optional-block, guard or default syntax and test both present and absent values.",
-      "Do not transfer fallback guarantees from a different rich-text or interpolation surface."
-    ],
-    "instances": [
-      {
-        "source": "known-invalid.json",
-        "index": 11,
-        "report": {
-          "id": "metabase-dashboards-121",
-          "name": "Clearing a filter mapped to a text card shows the raw variable token",
-          "summary": "Clearing a filter mapped to a text card shows the raw variable token.",
-          "expected": "A text card variable whose filter has no value shows a readable fallback.",
-          "actual": "With the mapped filter cleared, the text card shows {{category}} literally.",
-          "reproSteps": [
-            "Add a text card containing {{category}} and map an optional filter to it.",
-            "Clear the filter and observe the raw token."
-          ],
-          "reason": "Works as intended: text cards hide variables without values only inside optional [[ ]] blocks; a bare {{variable}} is left as typed."
-        }
-      }
+    "reproductionPaths": [
+      "In Metabase, follow this workflow: Add a text card containing {{category}} and map an optional filter to it. Clear the filter and observe the raw token. The rejected report expected: A text card variable whose filter has no value shows a readable fallback. It claimed this outcome: With the mapped filter cleared, the text card shows {{category}} literally. Review concluded: Works as intended: text cards hide variables without values only inside optional [[ ]] blocks; a bare {{variable}} is left as typed."
     ]
   },
   {
     "id": "claim-contradicted-by-controlled-verification",
     "explanation": "A report's specific factual claim is contradicted by a decisive observation or by a controlled repetition of the same setup. For example, the allegedly deleted value is still present, or the allegedly broken control performs the requested action when activated as described. Match this pattern only when that counterevidence addresses the same value, action and conditions; a vaguely similar successful workflow is insufficient. The finding rejects the checked allegation, not every related defect or every possible historical failure.",
-    "verificationGuidance": [
-      "Verify the actual displayed, submitted and persisted values, and the precise action target, instead of repeating the original interpretation.",
-      "Repeat the reported setup and a positive control; record what the decisive observation actually establishes.",
-      "Keep any different trigger, transient state or accepted neighboring defect separate from the contradicted claim."
-    ],
-    "instances": [
-      {
-        "source": "known-invalid.json",
-        "index": 12,
-        "report": {
-          "id": "metabase-dashboards-139",
-          "name": "Browser Back discards an unsaved dashboard title without warning",
-          "summary": "Browser Back discards an unsaved dashboard title without warning.",
-          "expected": "Leaving a dashboard with unsaved edits warns before discarding them.",
-          "actual": "Pressing browser Back after editing the title leaves without a warning and the draft is lost.",
-          "reproSteps": [
-            "Open a dashboard after visiting another one.",
-            "Edit the dashboard and change its title without saving.",
-            "Press browser Back."
-          ],
-          "reason": "Cannot reproduce on human review: a save-changes prompt appeared."
-        }
-      },
-      {
-        "source": "known-invalid.json",
-        "index": 50,
-        "report": {
-          "id": "metabase-dashboards-b41",
-          "name": "Cleared dashboard description returns after refresh",
-          "summary": "Cleared dashboard description returns after refresh.",
-          "expected": "Clearing the dashboard description persists after refreshing the page.",
-          "actual": "After clearing the description and refreshing the page, reopening Info restores the previous description ('Lifecycle baseline: café & <QA> — line one').",
-          "reproSteps": [
-            "As Harbor Admin, create a fresh QA Lifecycle dashboard through New > Dashboard with description 'Lifecycle baseline: café & <QA> — line one'. Save the dashboard.",
-            "Open More info and click the description to edit it.",
-            "Clear all description text and press Enter. Observe Add description.",
-            "Refresh the page, reopen More info, and inspect Description."
-          ],
-          "reason": "Cannot reproduce on human review: clearing the dashboard description persists after refresh."
-        }
-      },
-      {
-        "source": "known-invalid.json",
-        "index": 59,
-        "report": {
-          "id": "metabase-filter-default-button-label-contradicted-capture",
-          "name": "Filter button allegedly says Set to default while applying a custom value",
-          "summary": "The report claims the button says Set to default while a nondefault pending selection is applied.",
-          "expected": "The reported expectation is an Update filter label for a nondefault pending value.",
-          "actual": "The original pending-selection screenshot actually shows Update filter with Widget selected, contradicting the claimed label.",
-          "reproSteps": [
-            "Open a dashboard category filter at its default selection.",
-            "Change the pending selection to one nondefault category.",
-            "Inspect the button label before applying it."
-          ],
-          "reason": "The report’s own filter-pending-default.png shows Widget selected and the button labeled Update filter, contradicting its stated failure. Saved Set to default snapshots show all-default or empty pending selections instead. Approximate public source/tests also expect Update filter for a nondefault pending selection; the rejection rests on the original capture, not the source-version approximation."
-        }
-      },
-      {
-        "source": "known-invalid.json",
-        "index": 62,
-        "report": {
-          "id": "metabase-date-grouping-no-menu-contradicted-captures",
-          "name": "Date Grouping allegedly opens no options",
-          "summary": "The report claims clicking Date Grouping opens no choices on the original dashboard or its duplicate.",
-          "expected": "Clicking Date Grouping displays the available grouping units.",
-          "actual": "The retained screenshots visibly show Minute, Hour, Day, Week, Month, Quarter and Year on both dashboards.",
-          "reproSteps": [
-            "Open the sample dashboard and click Date Grouping.",
-            "Inspect the resulting visible menu.",
-            "Repeat on a duplicate dashboard."
-          ],
-          "reason": "Rejected because the assigned no-menu condition is contradicted by the report’s own original-dashboard and duplicate-dashboard screenshots. This rejection covers the alleged absence of the pointer-opened menu, not separately reported keyboard navigation."
-        }
-      }
+    "reproductionPaths": [
+      "In Metabase, follow this workflow: Open a dashboard after visiting another one. Edit the dashboard and change its title without saving. Press browser Back. The rejected report expected: Leaving a dashboard with unsaved edits warns before discarding them. It claimed this outcome: Pressing browser Back after editing the title leaves without a warning and the draft is lost. Review concluded: Cannot reproduce on human review: a save-changes prompt appeared.",
+      "In Metabase, follow this workflow: As Harbor Admin, create a fresh QA Lifecycle dashboard through New > Dashboard with description 'Lifecycle baseline: café & <QA> — line one'. Save the dashboard. Open More info and click the description to edit it. Clear all description text and press Enter. Observe Add description. Refresh the page, reopen More info, and inspect Description. The rejected report expected: Clearing the dashboard description persists after refreshing the page. It claimed this outcome: After clearing the description and refreshing the page, reopening Info restores the previous description ('Lifecycle baseline: café & <QA> — line one'). Review concluded: Cannot reproduce on human review: clearing the dashboard description persists after refresh.",
+      "In Metabase, follow this workflow: Open a dashboard category filter at its default selection. Change the pending selection to one nondefault category. Inspect the button label before applying it. The rejected report expected: The reported expectation is an Update filter label for a nondefault pending value. It claimed this outcome: The original pending-selection screenshot actually shows Update filter with Widget selected, contradicting the claimed label. Review concluded: The report’s own filter-pending-default.png shows Widget selected and the button labeled Update filter, contradicting its stated failure. Saved Set to default snapshots show all-default or empty pending selections instead. Approximate public source/tests also expect Update filter for a nondefault pending selection; the rejection rests on the original capture, not the source-version approximation.",
+      "In Metabase, follow this workflow: Open the sample dashboard and click Date Grouping. Inspect the resulting visible menu. Repeat on a duplicate dashboard. The rejected report expected: Clicking Date Grouping displays the available grouping units. It claimed this outcome: The retained screenshots visibly show Minute, Hour, Day, Week, Month, Quarter and Year on both dashboards. Review concluded: Rejected because the assigned no-menu condition is contradicted by the report’s own original-dashboard and duplicate-dashboard screenshots. This rejection covers the alleged absence of the pointer-opened menu, not separately reported keyboard navigation."
     ]
   },
   {
     "id": "conversion-tool-confused-with-settings-editor",
     "explanation": "Metabase's Visualize another way action opens an alternative tool for rebuilding a chart; it is different from editing the existing chart's settings. The alternative tool may not support the current chart type and can start with a bar chart or ask for axis choices. This pattern matches a report that interprets that deliberate conversion as the original visualization losing its saved configuration. Verify which operation was chosen and whether the original chart changed before claiming a settings-preservation failure.",
-    "verificationGuidance": [
-      "Identify which toolbar control was activated.",
-      "Compare supported types in the alternate visualizer with the separate Edit visualization/settings workflow.",
-      "Do not infer unintended conversion from a workflow explicitly offering another visualization."
-    ],
-    "instances": [
-      {
-        "source": "known-invalid.json",
-        "index": 13,
-        "report": {
-          "id": "metabase-dashboards-123",
-          "name": "Opening a Row chart card in Visualize another way converts it to a vertical bar chart",
-          "summary": "Opening a Row chart card in Visualize another way converts it to a vertical bar chart.",
-          "expected": "Editing a horizontal bar card keeps its orientation.",
-          "actual": "Opening a Row chart card with Visualize another way and saving changes it to a vertical Bar chart.",
-          "reproSteps": [
-            "Edit a dashboard with a Row (horizontal bar) chart card.",
-            "Open the card with Visualize another way and save.",
-            "Observe the card is now a vertical bar chart."
-          ],
-          "reason": "Works as intended: the visualizer has no Row type and documents converting unsupported cards; Show visualization options edits the card without converting it."
-        }
-      },
-      {
-        "source": "known-invalid.json",
-        "index": 53,
-        "report": {
-          "id": "metabase-dashboards-b61",
-          "name": "Waterfall visualization editor replaces cumulative bars with ordinary bars",
-          "summary": "Waterfall visualization editor replaces cumulative bars with ordinary bars.",
-          "expected": "The visualization editor initially preserves the existing waterfall steps and Total bar.",
-          "actual": "The editor immediately renders four independent baseline bars of 4,412, 4,249, 4,680, and 1,932, omitting the Total bar entirely.",
-          "reproSteps": [
-            "Duplicate dashboard 1 using the toolbar menu, give it a unique QA name, select Only duplicate the dashboard, and confirm Duplicate.",
-            "On the duplicate, open Website Analysis and observe Subscription seats over time: cumulative waterfall steps for 2023–2026 and a Total bar of 15,273.",
-            "Enter dashboard editing, hover Subscription seats over time, and open its Visualize another way chart icon.",
-            "Open Settings and compare the preview with the saved chart."
-          ],
-          "reason": "Works as intended: 'Visualize another way' converts chart types the visualizer doesn't support, such as waterfall, into a bar chart; 'Edit visualization' keeps the waterfall."
-        }
-      },
-      {
-        "source": "known-invalid.json",
-        "index": 54,
-        "report": {
-          "id": "metabase-dashboards-b62",
-          "name": "'Visualize another way' on a card type the visualizer doesn't support opens an empty bar chart",
-          "summary": "On dashboard cards whose type the visualizer doesn't support, such as detail-row cards, 'Visualize another way' opens a bar chart that asks for axes, with Save disabled until they're chosen.",
-          "expected": "Opening the existing detail-row visualization preserves a valid record-detail preview and offers relevant dashboard-specific visualization editing.",
-          "actual": "The editor opens with bar selected and the message 'Which fields do you want to use for the X and Y axes?' instead of record details. Save is disabled.",
-          "reproSteps": [
-            "Open dashboard 1 and use its toolbar menu to Duplicate into a fresh uniquely named QA dashboard, selecting Only duplicate the dashboard.",
-            "On the duplicate select Website Analysis, then Edit dashboard.",
-            "Scroll to Most recent subscription, which displays a single-record detail view including ID 1462, First Name America, Last Name Halvorson, and Plan Basic.",
-            "Hover that detail card and click its Visualize another way chart icon.",
-            "Inspect the visualization preview and available chart choices without changing data or underlying questions."
-          ],
-          "reason": "Works as intended: 'Visualize another way' converts an unsupported detail card into a bar chart and Save waits for axes; the card's settings editor is a separate button.",
-          "matchingGuidance": {
-            "relatedReference": {
-              "id": "metabase-dashboards-progress-card-visualize-bar-chart",
-              "distinction": "This reference covers detail-row cards. The related one covers Progress cards."
-            }
-          }
-        }
-      },
-      {
-        "source": "known-invalid.json",
-        "index": 58,
-        "report": {
-          "id": "metabase-dashboards-progress-card-visualize-bar-chart",
-          "name": "'Visualize another way' on a Progress card opens an empty bar chart",
-          "summary": "On a dashboard Progress card, 'Visualize another way' replaces the progress preview with a bar chart that asks for axes, and Save stays disabled.",
-          "expected": "The editor keeps the progress visualization and its settings, or does not offer an unusable editor.",
-          "actual": "The editor selects a bar chart, asks 'Which fields do you want to use for the X and Y axes?', offers no progress option, and disables Save.",
-          "reproSteps": [
-            "Duplicate dashboard 1 (Only duplicate the dashboard) and edit the copy.",
-            "Hover Revenue goal for this quarter, which shows a progress bar.",
-            "Click its visualization chart icon and inspect the editor."
-          ],
-          "reason": "Works as intended: 'Visualize another way' turns card types the visualizer doesn't support, like Progress, into a bar chart by design; the card's own settings editor is a separate button.",
-          "matchingGuidance": {
-            "relatedReference": {
-              "id": "metabase-dashboards-b62",
-              "distinction": "The related reference covers detail-row cards. This one covers Progress cards."
-            }
-          }
-        }
-      }
+    "reproductionPaths": [
+      "In Metabase, follow this workflow: Edit a dashboard with a Row (horizontal bar) chart card. Open the card with Visualize another way and save. Observe the card is now a vertical bar chart. The rejected report expected: Editing a horizontal bar card keeps its orientation. It claimed this outcome: Opening a Row chart card with Visualize another way and saving changes it to a vertical Bar chart. Review concluded: Works as intended: the visualizer has no Row type and documents converting unsupported cards; Show visualization options edits the card without converting it.",
+      "In Metabase, follow this workflow: Duplicate dashboard 1 using the toolbar menu, give it a unique QA name, select Only duplicate the dashboard, and confirm Duplicate. On the duplicate, open Website Analysis and observe Subscription seats over time: cumulative waterfall steps for 2023–2026 and a Total bar of 15,273. Enter dashboard editing, hover Subscription seats over time, and open its Visualize another way chart icon. Open Settings and compare the preview with the saved chart. The rejected report expected: The visualization editor initially preserves the existing waterfall steps and Total bar. It claimed this outcome: The editor immediately renders four independent baseline bars of 4,412, 4,249, 4,680, and 1,932, omitting the Total bar entirely. Review concluded: Works as intended: 'Visualize another way' converts chart types the visualizer doesn't support, such as waterfall, into a bar chart; 'Edit visualization' keeps the waterfall.",
+      "In Metabase, follow this workflow: Open dashboard 1 and use its toolbar menu to Duplicate into a fresh uniquely named QA dashboard, selecting Only duplicate the dashboard. On the duplicate select Website Analysis, then Edit dashboard. Scroll to Most recent subscription, which displays a single-record detail view including ID 1462, First Name America, Last Name Halvorson, and Plan Basic. Hover that detail card and click its Visualize another way chart icon. Inspect the visualization preview and available chart choices without changing data or underlying questions. The rejected report expected: Opening the existing detail-row visualization preserves a valid record-detail preview and offers relevant dashboard-specific visualization editing. It claimed this outcome: The editor opens with bar selected and the message 'Which fields do you want to use for the X and Y axes?' instead of record details. Save is disabled. Review concluded: Works as intended: 'Visualize another way' converts an unsupported detail card into a bar chart and Save waits for axes; the card's settings editor is a separate button.",
+      "In Metabase, follow this workflow: Duplicate dashboard 1 (Only duplicate the dashboard) and edit the copy. Hover Revenue goal for this quarter, which shows a progress bar. Click its visualization chart icon and inspect the editor. The rejected report expected: The editor keeps the progress visualization and its settings, or does not offer an unusable editor. It claimed this outcome: The editor selects a bar chart, asks 'Which fields do you want to use for the X and Y axes?', offers no progress option, and disables Save. Review concluded: Works as intended: 'Visualize another way' turns card types the visualizer doesn't support, like Progress, into a bar chart by design; the card's own settings editor is a separate button."
     ]
   },
   {
     "id": "missed-recovery-or-confirmation-step",
     "explanation": "An action may require confirmation, and a filtered display may offer a separate reset control to return to a visible state. This pattern matches a report that stops before that confirmation or ignores the working recovery control and then calls the operation broken or the hidden state unrecoverable. Reviewed examples include confirming a permissions change before opening details and using Reset all filters to reveal a card again. Complete the supported flow and verify its result; failure after those steps is a different claim.",
-    "verificationGuidance": [
-      "Inspect dialogs and page-level reset controls after the action.",
-      "Complete the confirmation or recovery and verify the resulting state.",
-      "Distinguish an extra required step from a control that fails after the complete supported workflow."
-    ],
-    "instances": [
-      {
-        "source": "known-invalid.json",
-        "index": 17,
-        "report": {
-          "id": "metabase-dashboards-218",
-          "name": "Hiding an empty card also hides its local filter, leaving no dashboard control to clear the filter",
-          "summary": "Hiding an empty card also hides its local filter, leaving no dashboard control to clear the filter.",
-          "expected": "The empty chart may hide, but its active local filter remains reachable or a dashboard clear control allows changing the range to recover the card.",
-          "actual": "Number of Orders and QA card month both disappear, while other cards remain. Default multimodal assertion confirmed no QA card month filter or control to clear that card-specific range anywhere on the dashboard. URL retains qa_card_month=2030-01-01~2030-01-31; dashboard viewers have no visible local-filter recovery control.",
-          "reproSteps": [
-            "Duplicate seeded dashboard to a fresh separate QA dashboard; add existing Number of Orders question.",
-            "In dashboard edit mode add a card-local Date picker named QA card month, map it to Orders Created At, Done and Save.",
-            "Edit that card visualization, Settings: enable Hide this card if there are no results. Save visualization and dashboard.",
-            "In view mode open QA card month, Fixed date range, enter January 1, 2030 through January 31, 2030 and Add filter.",
-            "Observe the card and its only filter control disappear; inspect dashboard for a way to clear that local range."
-          ],
-          "reason": "Works as intended: the card hides per its 'Hide this card if there are no results' setting, and Reset all filters restores the card and its filter."
-        }
-      }
+    "reproductionPaths": [
+      "In Metabase, follow this workflow: Duplicate seeded dashboard to a fresh separate QA dashboard; add existing Number of Orders question. In dashboard edit mode add a card-local Date picker named QA card month, map it to Orders Created At, Done and Save. Edit that card visualization, Settings: enable Hide this card if there are no results. Save visualization and dashboard. In view mode open QA card month, Fixed date range, enter January 1, 2030 through January 31, 2030 and Add filter. Observe the card and its only filter control disappear; inspect dashboard for a way to clear that local range. The rejected report expected: The empty chart may hide, but its active local filter remains reachable or a dashboard clear control allows changing the range to recover the card. It claimed this outcome: Number of Orders and QA card month both disappear, while other cards remain. Default multimodal assertion confirmed no QA card month filter or control to clear that card-specific range anywhere on the dashboard. URL retains qa_card_month=2030-01-01~2030-01-31; dashboard viewers have no visible local-filter recovery control. Review concluded: Works as intended: the card hides per its 'Hide this card if there are no results' setting, and Reset all filters restores the card and its filter."
     ]
   },
   {
     "id": "expired-transient-action-assumed-successful-undo",
     "explanation": "A temporary success notification can offer Undo only for a limited time. This pattern matches a report that clicks after that offer has expired and interprets the disappearing notification as proof that Undo was accepted but failed to restore the item. Confirm that the action was still active and actually ran before evaluating its result. An Undo request accepted while available that fails to restore state would be a separate defect.",
-    "verificationGuidance": [
-      "Record the click relative to the toast’s expiry and verify the action remained mounted/enabled.",
-      "Click while the toast is live and inspect the resulting restore request or state change."
-    ],
-    "instances": [
-      {
-        "source": "known-invalid.json",
-        "index": 19,
-        "report": {
-          "id": "metabase-dashboards-286",
-          "name": "Undo after removing a text card does not restore the card",
-          "summary": "Undo after removing a text card does not restore the card.",
-          "expected": "Clicking Undo in the 'Removed card' notification restores the removed text card.",
-          "actual": "The notification disappears after clicking Undo, but the removed text card does not reappear on the dashboard.",
-          "reproSteps": [
-            "Duplicate seed dashboard 1 into a fresh uniquely named dashboard using Only duplicate the dashboard.",
-            "In edit mode add a text card, save, then duplicate that card and edit the duplicate to '# QA Copy' followed by a blank line and 'Independent copy text.'. Save.",
-            "Edit again and move QA Copy to Portfolio Performance using its Move to tab toolbar control. Save and reload; verify QA Copy is displayed at the bottom of that tab.",
-            "Edit dashboard, scroll to QA Copy, hover card and click its close X.",
-            "Immediately click Undo in the Removed card notification; inspect the tab."
-          ],
-          "reason": "Cannot reproduce: Undo restores the card while the toast is shown; the original click landed after the toast's 5-second auto-close."
-        }
-      }
+    "reproductionPaths": [
+      "In Metabase, follow this workflow: Duplicate seed dashboard 1 into a fresh uniquely named dashboard using Only duplicate the dashboard. In edit mode add a text card, save, then duplicate that card and edit the duplicate to '# QA Copy' followed by a blank line and 'Independent copy text.'. Save. Edit again and move QA Copy to Portfolio Performance using its Move to tab toolbar control. Save and reload; verify QA Copy is displayed at the bottom of that tab. Edit dashboard, scroll to QA Copy, hover card and click its close X. Immediately click Undo in the Removed card notification; inspect the tab. The rejected report expected: Clicking Undo in the 'Removed card' notification restores the removed text card. It claimed this outcome: The notification disappears after clicking Undo, but the removed text card does not reappear on the dashboard. Review concluded: Cannot reproduce: Undo restores the card while the toast is shown; the original click landed after the toast's 5-second auto-close."
     ]
   },
   {
     "id": "concurrent-save-assumed-to-merge-fields",
     "explanation": "When the same saved item is open in two tabs, one tab can be editing an older copy of its settings. Under the reviewed last-write-wins contract, saving that older copy may replace another tab's changes rather than merge the two edits or display a conflict warning. This pattern matches a report that assumes merging or conflict detection is guaranteed, despite the submitted older copy explaining the overwrite. A promised conflict-protection feature failing, or data disappearing without a competing save, is outside this rejection.",
-    "verificationGuidance": [
-      "Check the documented or adjudicated concurrency contract before requiring automatic merging or conflict detection.",
-      "Inspect both editors' saved baselines and submitted fields, then repeat without another writer.",
-      "Distinguish an accepted stale full-object save from a completed value disappearing without an intervening write."
-    ],
-    "instances": [
-      {
-        "source": "known-invalid.json",
-        "index": 22,
-        "report": {
-          "id": "metabase-dashboards-281",
-          "name": "Saving a stale dashboard editor silently deletes another user's newly saved text card",
-          "summary": "Saving a stale dashboard editor silently deletes another user's newly saved text card.",
-          "expected": "Saving concurrent edits should retain the other user's newly saved card, or clearly warn about/reject the stale conflicting save before replacing saved work.",
-          "actual": "Maya's card B was saved and visible in a fresh primary view before the stale save. The primary Save left only the original cards, deleting B, and a refresh kept the loss. No conflict warning or error appeared.",
-          "reproSteps": [
-            "As an admin, create a dashboard with one text card ('card A') and save it.",
-            "Click Edit and leave this editor open.",
-            "In a separate session, sign in as maya@example.test, open the same dashboard, click Edit, add a text card 'card B', and save. Refresh and confirm cards A and B persist.",
-            "In a fresh admin tab, open the dashboard and confirm card B is visible.",
-            "Return to the still-open admin editor without refreshing and click Save.",
-            "Inspect the saved dashboard, then refresh and inspect again."
-          ],
-          "reason": "Works as intended for labeling: concurrent edits from a stale editor follow last-write-wins; the app is not expected to merge or detect conflicting saves."
-        }
-      }
+    "reproductionPaths": [
+      "In Metabase, follow this workflow: As an admin, create a dashboard with one text card ('card A') and save it. Click Edit and leave this editor open. In a separate session, sign in as maya@example.test, open the same dashboard, click Edit, add a text card 'card B', and save. Refresh and confirm cards A and B persist. In a fresh admin tab, open the dashboard and confirm card B is visible. Return to the still-open admin editor without refreshing and click Save. Inspect the saved dashboard, then refresh and inspect again. The rejected report expected: Saving concurrent edits should retain the other user's newly saved card, or clearly warn about/reject the stale conflicting save before replacing saved work. It claimed this outcome: Maya's card B was saved and visible in a fresh primary view before the stale save. The primary Save left only the original cards, deleting B, and a refresh kept the loss. No conflict warning or error appeared. Review concluded: Works as intended for labeling: concurrent edits from a stale editor follow last-write-wins; the app is not expected to merge or detect conflicting saves."
     ]
   },
   {
     "id": "incomplete-configuration-without-demonstrated-harm",
     "explanation": "A dashboard can let an unfinished optional click action be saved even when a more specific completion button is disabled. In the reviewed case no destination or filter target was connected, and the incomplete action caused no demonstrated harm. This pattern matches a report that treats the difference between those save controls as a functional failure without establishing a requirement to block that incomplete state. Do not infer a later runtime validation rule from this rejection; a harmful action or a lost valid configuration needs separate evidence.",
-    "verificationGuidance": [
-      "Test the resulting saved action and identify any broken supported behavior or unintended side effect.",
-      "Establish a requirement that the outer save reject the incomplete configuration rather than inferring it solely from an inner Done button."
-    ],
-    "instances": [
-      {
-        "source": "known-invalid.json",
-        "index": 23,
-        "report": {
-          "id": "metabase-dashboards-329",
-          "name": "Dashboard Save persists incomplete click actions despite disabled Done",
-          "summary": "Dashboard Save persists incomplete click actions despite disabled Done.",
-          "expected": "Prevent saving incomplete click behavior, or preserve the previous valid behavior until the configuration is completed.",
-          "actual": "With the click-behavior panel's Done button disabled, clicking the dashboard's main Save exits editing and persists the invalid action. Reopening the card's click behavior shows Region updates 0 filters, and Done remains disabled.",
-          "reproSteps": [
-            "Create a new dashboard from New > Dashboard and add the existing Release requests question.",
-            "Add a Text or Category dashboard filter named QA Region, click Done, and Save. The filter may remain unmapped for this validation check.",
-            "Edit dashboard, hover the question card, and open Click behavior.",
-            "Select the Region column, then Update a dashboard filter. Leave the action without a mapped target filter; observe Done is disabled.",
-            "Click the main Save button in the top dashboard editing bar.",
-            "Edit again and reopen the card's Click behavior. Region is listed under Update a dashboard filter as updates 0 filters; opening it still leaves Done disabled."
-          ],
-          "reason": "Works as intended: missing validation on incomplete click actions causes no harm."
-        }
-      }
+    "reproductionPaths": [
+      "In Metabase, follow this workflow: Create a new dashboard from New > Dashboard and add the existing Release requests question. Add a Text or Category dashboard filter named QA Region, click Done, and Save. The filter may remain unmapped for this validation check. Edit dashboard, hover the question card, and open Click behavior. Select the Region column, then Update a dashboard filter. Leave the action without a mapped target filter; observe Done is disabled. Click the main Save button in the top dashboard editing bar. Edit again and reopen the card's Click behavior. Region is listed under Update a dashboard filter as updates 0 filters; opening it still leaves Done disabled. The rejected report expected: Prevent saving incomplete click behavior, or preserve the previous valid behavior until the configuration is completed. It claimed this outcome: With the click-behavior panel's Done button disabled, clicking the dashboard's main Save exits editing and persists the invalid action. Reopening the card's click behavior shows Region updates 0 filters, and Done remains disabled. Review concluded: Works as intended: missing validation on incomplete click actions causes no harm."
     ]
   },
   {
     "id": "intended-behavior-rejection-without-recorded-rationale",
-    "explanation": "These instances were rejected by a reviewer as intended behavior, but the record does not explain why. This is a holding group, not an established reusable explanation of what the model misunderstood. A new report can be compared with the exact rejected action and outcome in the stored instance, but similar wording alone is insufficient to declare it intended. Recover the missing rationale or obtain new evidence before applying a more specific rejection rule.",
-    "verificationGuidance": [
-      "Preserve the exact rejected claim and human decision without inventing a causal explanation.",
-      "Do not use this holding group to dismiss a similar new report without checking its own trigger, contract and evidence.",
-      "Recover the missing review rationale before assigning the instance to a more specific reasoning-error pattern."
-    ],
-    "instances": [
-      {
-        "source": "known-invalid.json",
-        "index": 27,
-        "report": {
-          "id": "metabase-dashboards-344",
-          "name": "Long dashboard heading wraps into clipped lines instead of remaining readable",
-          "summary": "Long dashboard heading wraps into clipped lines instead of remaining readable.",
-          "expected": "The heading's saved text should remain readable, either by fitting within the card, allowing scrolling, or expanding the heading card's height.",
-          "actual": "The first line of the heading is readable, but subsequent wrapped text is vertically clipped at the bottom of the single-row card, leaving 'END HEADING' unreadable while the card below begins immediately underneath.",
-          "reproSteps": [
-            "Create a fresh dashboard named TEXTLINK heading boundary.",
-            "Edit dashboard and add a Heading. Enter: TEXTLINK long heading — A deliberately extended heading tests wrapping across the full dashboard width while preserving the following text card and keeping all words accessible to dashboard readers without overlap or lost content END HEADING",
-            "Add a Text card underneath the heading with any paragraph; keep the heading's default single-row height.",
-            "Save the dashboard and inspect the heading."
-          ],
-          "reason": "Works as intended per human review."
-        }
-      },
-      {
-        "source": "known-invalid.json",
-        "index": 28,
-        "report": {
-          "id": "metabase-dashboards-345",
-          "name": "Relative Date Range silently applies Yesterday after entering 0 previous days",
-          "summary": "Relative Date Range silently applies Yesterday after entering 0 previous days.",
-          "expected": "Reject an unsupported zero interval with clear feedback, or accurately retain the entered interval; do not silently substitute a different interval.",
-          "actual": "Input displayed 0, but applying produced 'Date Range: Yesterday' without any validation error or warning about replacement, and refreshing retained 'Yesterday'.",
-          "reproSteps": [
-            "Open E-commerce Insights dashboard as default account; use header menu Duplicate to create a distinct QA Filters copy, selecting Only duplicate the dashboard.",
-            "On the duplicate Overview tab open Date Range > Relative date range.",
-            "Leave Previous selected and days unit, replace interval 30 with 0; preview shows Oct 21, 2026 and Add filter remains enabled.",
-            "Click Add filter, then refresh."
-          ],
-          "reason": "Works as intended per human review."
-        }
-      },
-      {
-        "source": "known-invalid.json",
-        "index": 32,
-        "report": {
-          "id": "metabase-dashboards-389",
-          "name": "Number filter configured with 'Dropdown list' ignores setting and displays a text input box instead",
-          "summary": "Number filter configured with 'Dropdown list' ignores setting and displays a text input box instead.",
-          "expected": "Clicking the filter in the dashboard should display a dropdown list of selectable values as configured.",
-          "actual": "Clicking the filter opens a popover with a text input field containing '50.5' and a disabled 'Set to default' button rather than a dropdown list.",
-          "reproSteps": [
-            "As Harbor Admin, open E-commerce Insights dashboard 1 and Duplicate into a distinct private dashboard in personal collection, selecting Only duplicate the dashboard.",
-            "Edit duplicate. Add filter or parameter > Number. Name QA Order Total; choose Not equal to, map Revenue and orders over time to Orders.Total.",
-            "Choose A single value, default 50.5, Always require a value enabled. Select Dropdown list under How should people filter on this column.",
-            "Open Edit beside Dropdown list: From connected fields displays populated numeric selectable values. Done, Done and Save dashboard.",
-            "Reload, verify Dropdown list setting persisted in editor, exit editor and open QA Order Total filter."
-          ],
-          "reason": "Works as intended per human review."
-        }
-      },
-      {
-        "source": "known-invalid.json",
-        "index": 38,
-        "report": {
-          "id": "metabase-dashboards-433",
-          "name": "Editing a table card title converts its visualization to a bar chart",
-          "summary": "Editing a table card title converts its visualization to a bar chart.",
-          "expected": "Changing only the table title preserves the survey table and its displayed columns.",
-          "actual": "The editor opens a bar preview automatically. Saving only the title produces QA Survey as a Rating-versus-ID bar chart, replacing the table without selecting another chart type.",
-          "reproSteps": [
-            "Duplicate E-commerce Insights using dashboard menu Duplicate; name it QA-CardSettings-Repro and check Only duplicate the dashboard. Open the duplicate.",
-            "Edit dashboard, Add questions, search User flow diagram and select the existing question. Save dashboard.",
-            "Edit dashboard and replace that card using Replace question; search Customer survey responses and select it. Verify the replacement displays a table, then Save dashboard.",
-            "Edit dashboard, hover Customer survey responses and click Edit visualization. Change only its title to QA Survey, then Save in visualization dialog.",
-            "Inspect the resulting dashboard card."
-          ],
-          "reason": "Works as intended per human review."
-        }
-      },
-      {
-        "source": "known-invalid.json",
-        "index": 39,
-        "report": {
-          "id": "metabase-dashboards-437",
-          "name": "Renaming and moving Product Category leaves raw [[product_category]] in Portfolio description",
-          "summary": "Renaming and moving Product Category leaves raw [[product_category]] in Portfolio description.",
-          "expected": "The description should render a meaningful filter value or fallback text, not raw template syntax after the filter is renamed or moved.",
-          "actual": "Portfolio description reads 'Find below a breakdown of products and their performance, filtered now for [[product_category]]'.",
-          "reproSteps": [
-            "Duplicate dashboard 1 with Only duplicate dashboard into a fresh QA Filters copy.",
-            "Apply Product Category Widget.",
-            "Edit Product Category Label to QA Category Label, then Move filter to Total orders by product category and Save.",
-            "Switch to Portfolio Performance."
-          ],
-          "reason": "Works as intended per human review."
-        }
-      },
-      {
-        "source": "known-invalid.json",
-        "index": 56,
-        "report": {
-          "id": "metabase-dashboards-b88",
-          "name": "Link cards save incomplete HTTPS URLs that open a blank blocked page",
-          "summary": "Link cards save incomplete HTTPS URLs that open a blank blocked page.",
-          "expected": "An incomplete HTTPS target such as \"https://\" should be rejected with validation rather than saved as a broken link.",
-          "actual": "The \"https://\" target saves without validation and persists after refresh; clicking it navigates away from the dashboard to a blank white page.",
-          "reproSteps": [
-            "Add a Link card, or duplicate an existing Link card.",
-            "Enter https:// as the card target and Save the dashboard.",
-            "Refresh and click the saved https:// card."
-          ],
-          "reason": "Works as intended per human review."
-        }
-      },
-      {
-        "source": "known-invalid.json",
-        "index": 57,
-        "report": {
-          "id": "metabase-dashboards-b89",
-          "name": "Stale card save silently clears a separately saved dashboard description",
-          "summary": "Stale card save silently clears a separately saved dashboard description.",
-          "expected": "Saving a text-card change should not silently erase a separately saved description; if the older snapshot cannot be saved safely, warn before replacing newer saved metadata.",
-          "actual": "CARD-A-META-4826 saves, but META-B-4826 saved independently is replaced by an empty description. Whole-page multimodal assertions confirmed the saved text is absent and no conflict/overwrite warning or error appeared; empty description persisted after refresh.",
-          "reproSteps": [
-            "As Harbor Admin, use New > Dashboard in Our analytics to create a fresh uniquely named own dashboard; Save.",
-            "Edit dashboard > Add a heading or text box > Text; type BASELINE-4826 and Save. Refresh to confirm it persists.",
-            "In tab A, Edit dashboard, click the text card and change its text to CARD-A-META-4826 without saving.",
-            "Open that dashboard in tab B. More info > Overview > Description: enter META-B-4826 saved independently and blur the field.",
-            "Refresh tab B, wait for the dashboard, reopen More info and confirm the saved description persists.",
-            "Switch to tab A without refreshing and click Save for the text-card edit.",
-            "Open More info: Description is empty with Add description. Refresh and reopen More info to confirm the description remains empty."
-          ],
-          "reason": "Works as intended per human review."
-        }
-      }
+    "explanation": "These reports were rejected by a reviewer as intended behavior, but the record does not explain why. This is a holding group, not an established reusable explanation of what the model misunderstood. A new report can be compared with the exact rejected action and outcome in the example, but similar wording alone is insufficient to declare it intended. Recover the missing rationale or obtain new evidence before applying a more specific rejection rule.",
+    "reproductionPaths": [
+      "In Metabase, follow this workflow: Create a fresh dashboard named TEXTLINK heading boundary. Edit dashboard and add a Heading. Enter: TEXTLINK long heading — A deliberately extended heading tests wrapping across the full dashboard width while preserving the following text card and keeping all words accessible to dashboard readers without overlap or lost content END HEADING. Add a Text card underneath the heading with any paragraph; keep the heading's default single-row height. Save the dashboard and inspect the heading. The rejected report expected: The heading's saved text should remain readable, either by fitting within the card, allowing scrolling, or expanding the heading card's height. It claimed this outcome: The first line of the heading is readable, but subsequent wrapped text is vertically clipped at the bottom of the single-row card, leaving 'END HEADING' unreadable while the card below begins immediately underneath. Review concluded: Works as intended per human review.",
+      "In Metabase, follow this workflow: Open E-commerce Insights dashboard as default account; use header menu Duplicate to create a distinct QA Filters copy, selecting Only duplicate the dashboard. On the duplicate Overview tab open Date Range > Relative date range. Leave Previous selected and days unit, replace interval 30 with 0; preview shows Oct 21, 2026 and Add filter remains enabled. Click Add filter, then refresh. The rejected report expected: Reject an unsupported zero interval with clear feedback, or accurately retain the entered interval; do not silently substitute a different interval. It claimed this outcome: Input displayed 0, but applying produced 'Date Range: Yesterday' without any validation error or warning about replacement, and refreshing retained 'Yesterday'. Review concluded: Works as intended per human review.",
+      "In Metabase, follow this workflow: As Harbor Admin, open E-commerce Insights dashboard 1 and Duplicate into a distinct private dashboard in personal collection, selecting Only duplicate the dashboard. Edit duplicate. Add filter or parameter > Number. Name QA Order Total; choose Not equal to, map Revenue and orders over time to Orders.Total. Choose A single value, default 50.5, Always require a value enabled. Select Dropdown list under How should people filter on this column. Open Edit beside Dropdown list: From connected fields displays populated numeric selectable values. Done, Done and Save dashboard. Reload, verify Dropdown list setting persisted in editor, exit editor and open QA Order Total filter. The rejected report expected: Clicking the filter in the dashboard should display a dropdown list of selectable values as configured. It claimed this outcome: Clicking the filter opens a popover with a text input field containing '50.5' and a disabled 'Set to default' button rather than a dropdown list. Review concluded: Works as intended per human review.",
+      "In Metabase, follow this workflow: Duplicate E-commerce Insights using dashboard menu Duplicate; name it QA-CardSettings-Repro and check Only duplicate the dashboard. Open the duplicate. Edit dashboard, Add questions, search User flow diagram and select the existing question. Save dashboard. Edit dashboard and replace that card using Replace question; search Customer survey responses and select it. Verify the replacement displays a table, then Save dashboard. Edit dashboard, hover Customer survey responses and click Edit visualization. Change only its title to QA Survey, then Save in visualization dialog. Inspect the resulting dashboard card. The rejected report expected: Changing only the table title preserves the survey table and its displayed columns. It claimed this outcome: The editor opens a bar preview automatically. Saving only the title produces QA Survey as a Rating-versus-ID bar chart, replacing the table without selecting another chart type. Review concluded: Works as intended per human review.",
+      "In Metabase, follow this workflow: Duplicate dashboard 1 with Only duplicate dashboard into a fresh QA Filters copy. Apply Product Category Widget. Edit Product Category Label to QA Category Label, then Move filter to Total orders by product category and Save. Switch to Portfolio Performance. The rejected report expected: The description should render a meaningful filter value or fallback text, not raw template syntax after the filter is renamed or moved. It claimed this outcome: Portfolio description reads 'Find below a breakdown of products and their performance, filtered now for [[product_category]]'. Review concluded: Works as intended per human review.",
+      "In Metabase, follow this workflow: Add a Link card, or duplicate an existing Link card. Enter https:// as the card target and Save the dashboard. Refresh and click the saved https:// card. The rejected report expected: An incomplete HTTPS target such as \"https://\" should be rejected with validation rather than saved as a broken link. It claimed this outcome: The \"https://\" target saves without validation and persists after refresh; clicking it navigates away from the dashboard to a blank white page. Review concluded: Works as intended per human review.",
+      "In Metabase, follow this workflow: As Harbor Admin, use New > Dashboard in Our analytics to create a fresh uniquely named own dashboard; Save. Edit dashboard > Add a heading or text box > Text; type BASELINE-4826 and Save. Refresh to confirm it persists. In tab A, Edit dashboard, click the text card and change its text to CARD-A-META-4826 without saving. Open that dashboard in tab B. More info > Overview > Description: enter META-B-4826 saved independently and blur the field. Refresh tab B, wait for the dashboard, reopen More info and confirm the saved description persists. Switch to tab A without refreshing and click Save for the text-card edit. Open More info: Description is empty with Add description. Refresh and reopen More info to confirm the description remains empty. The rejected report expected: Saving a text-card change should not silently erase a separately saved description; if the older snapshot cannot be saved safely, warn before replacing newer saved metadata. It claimed this outcome: CARD-A-META-4826 saves, but META-B-4826 saved independently is replaced by an empty description. Whole-page multimodal assertions confirmed the saved text is absent and no conflict/overwrite warning or error appeared; empty description persisted after refresh. Review concluded: Works as intended per human review."
     ]
   },
   {
     "id": "dismissible-overlay-mistaken-for-broken-covered-action",
     "explanation": "An announcement, dropdown or active text editor can cover a button or consume the first click meant for another command. In the reviewed cases, dismissing that layer, finishing the edit, or clicking again after it closes makes the requested action work. This pattern matches a report that calls the covered command broken without completing that supported first step or establishing a requirement for one click to both dismiss and activate. It does not cover a layer that cannot be dismissed, edits lost during dismissal, or a command that still fails afterward.",
-    "verificationGuidance": [
-      "Identify whether an announcement, popup or editor is active and use its supported dismissal or completion action.",
-      "Retry the intended command once the layer has closed and verify the action and saved state.",
-      "Establish any requirement that one click both dismiss and activate; do not infer it solely from the first click doing no command work."
-    ],
-    "instances": [
-      {
-        "source": "known-invalid.json",
-        "index": 29,
-        "report": {
-          "id": "metabase-dashboards-412",
-          "name": "Filter search suggestions overlap the Update filter button",
-          "summary": "Filter search suggestions overlap the Update filter button.",
-          "expected": "Suggestion results should close or remain clear of the filter's apply button so users can click Update filter after selecting values.",
-          "actual": "At 1280×900, select Zip 01008, reopen and search 100, then select 31001. Remaining 81004 suggestion list stays open at x822,y278,size312×65, overlapping Update filter at x1073,y286,size112×40. Clicking the button center repeatedly times out because the listbox intercepts the click; URL remains location=01008. Tab dismisses suggestions and enables a successful click. Reproduced with a fresh no-default filter and separately in its default picker.",
-          "reproSteps": [
-            "Edit the copy. Add a Location filter. Leave Dropdown list, Multiple values, and No default selected.",
-            "Map the Revenue and orders over time card to User → Zip. Click Done, then save the dashboard.",
-            "Open Location, type 100 in Search the list, select 01008, and click Add filter.",
-            "Reopen Location, type 100, and select 31001.",
-            "Try clicking the center of Update filter. The remaining suggestion list covers it and intercepts the click. Press Tab to dismiss suggestions and observe that Update filter then works."
-          ],
-          "reason": "Works as intended: the open suggestion list is a dismissible dropdown; closing it exposes the Update filter button."
-        }
-      }
+    "reproductionPaths": [
+      "In Metabase, follow this workflow: Edit the copy. Add a Location filter. Leave Dropdown list, Multiple values, and No default selected. Map the Revenue and orders over time card to User → Zip. Click Done, then save the dashboard. Open Location, type 100 in Search the list, select 01008, and click Add filter. Reopen Location, type 100, and select 31001. Try clicking the center of Update filter. The remaining suggestion list covers it and intercepts the click. Press Tab to dismiss suggestions and observe that Update filter then works. The rejected report expected: Suggestion results should close or remain clear of the filter's apply button so users can click Update filter after selecting values. It claimed this outcome: At 1280×900, select Zip 01008, reopen and search 100, then select 31001. Remaining 81004 suggestion list stays open at x822,y278,size312×65, overlapping Update filter at x1073,y286,size112×40. Clicking the button center repeatedly times out because the listbox intercepts the click; URL remains location=01008. Tab dismisses suggestions and enables a successful click. Reproduced with a fresh no-default filter and separately in its default picker. Review concluded: Works as intended: the open suggestion list is a dismissible dropdown; closing it exposes the Update filter button."
     ]
   },
   {
     "id": "info-shortcut-assumed-history-shortcut",
     "explanation": "A saved item's Edited label can open a general information panel rather than jump directly to the list of earlier revisions. In the reviewed cases, the panel deliberately opened on Overview and still offered a separate History tab. This pattern matches a report that calls that shortcut broken solely because it expected History to open immediately. Verify the shortcut's intended destination and whether revision history remains accessible; missing history or a link to the wrong item is a different claim.",
-    "verificationGuidance": [
-      "Identify the intended destination of that specific shortcut.",
-      "Open the separate History tab to verify revisions are accessible before filing a navigation failure."
-    ],
-    "instances": [
-      {
-        "source": "known-invalid.json",
-        "index": 33,
-        "report": {
-          "id": "metabase-dashboards-390",
-          "name": "Dashboard edit-history shortcut opens Overview instead of revision History",
-          "summary": "Dashboard edit-history shortcut opens Overview instead of revision History.",
-          "expected": "Clicking the edit-history shortcut beneath the dashboard title should open the History tab so the user can review changes.",
-          "actual": "Clicking “Edited 7 minutes ago by you” opens Info with Overview selected and the description/creator displayed. The History tab must be selected separately. This repeated after first viewing and closing History.",
-          "reproSteps": [
-            "As Harbor Admin, open E-commerce Insights and duplicate it to a new QA View-prefixed dashboard; select Only duplicate the dashboard to avoid copying underlying questions.",
-            "In the new dashboard header menu, open Edit settings and toggle Auto-apply filters to generate a revision. Close settings.",
-            "Hover the dashboard title to reveal “Edited ... by you” and click that link.",
-            "Observe the Info panel opens on Overview, not History."
-          ],
-          "reason": "Works as intended: the Edited shortcut opens the Info panel on Overview by design, with History one click away."
-        }
-      }
+    "reproductionPaths": [
+      "In Metabase, follow this workflow: As Harbor Admin, open E-commerce Insights and duplicate it to a new QA View-prefixed dashboard; select Only duplicate the dashboard to avoid copying underlying questions. In the new dashboard header menu, open Edit settings and toggle Auto-apply filters to generate a revision. Close settings. Hover the dashboard title to reveal “Edited ... by you” and click that link. Observe the Info panel opens on Overview, not History. The rejected report expected: Clicking the edit-history shortcut beneath the dashboard title should open the History tab so the user can review changes. It claimed this outcome: Clicking “Edited 7 minutes ago by you” opens Info with Overview selected and the description/creator displayed. The History tab must be selected separately. This repeated after first viewing and closing History. Review concluded: Works as intended: the Edited shortcut opens the Info panel on Overview by design, with History one click away."
     ]
   },
   {
     "id": "assuming-type-change-clears-visible-applied-value",
     "explanation": "A filter chooses which records or results to show, and changing its type does not always clear the value that was already applied. In the reviewed case the old selection remained visible and could be removed or replaced normally. This pattern matches a report that assumes the type change must clear that recoverable selection, rather than demonstrating hidden incompatible data or an unusable filter. A value that is invisible, cannot be cleared, or is applied differently from what the control shows needs separate investigation.",
-    "verificationGuidance": [
-      "Inspect both the applied chip and the new default rather than equating them.",
-      "Clear or replace the retained selection and verify normal execution resumes.",
-      "Do not apply this rejection to invisible retained values or controls that cannot recover."
-    ],
-    "instances": [
-      {
-        "source": "known-invalid.json",
-        "index": 35,
-        "report": {
-          "id": "metabase-dashboards-391",
-          "name": "Changing a text filter to ID retains its incompatible applied text and breaks the mapped chart",
-          "summary": "Changing a text filter to ID retains its incompatible applied text and breaks the mapped chart.",
-          "expected": "Changing a filter to an incompatible filter type should clear the prior applied filter value along with its default setting.",
-          "actual": "The saved ID filter retains and applies the prior text value ('QA Order ID: Mueller'), causing the mapped 'Revenue and orders over time' card to fail with 'There was a problem displaying this chart.', despite the filter settings having reset the default to 'No default'.",
-          "reproSteps": [
-            "Duplicate E-commerce Insights into an owned QA dashboard without duplicating questions.",
-            "Add a Text or Category filter using Contains, map revenue/orders card to Product.Vendor and save default Mueller. Save dashboard and verify results.",
-            "Edit that filter and Disconnect from cards; save and reopen its settings.",
-            "Change filter type to ID. Observe default is cleared to No default. Rename QA Order ID and map revenue/orders card to Orders.ID.",
-            "Done and Save."
-          ],
-          "reason": "Works as intended: after a filter type change the previous value stays visibly applied and the user can clear or replace it."
-        }
-      }
+    "reproductionPaths": [
+      "In Metabase, follow this workflow: Duplicate E-commerce Insights into an owned QA dashboard without duplicating questions. Add a Text or Category filter using Contains, map revenue/orders card to Product.Vendor and save default Mueller. Save dashboard and verify results. Edit that filter and Disconnect from cards; save and reopen its settings. Change filter type to ID. Observe default is cleared to No default. Rename QA Order ID and map revenue/orders card to Orders.ID. Done and Save. The rejected report expected: Changing a filter to an incompatible filter type should clear the prior applied filter value along with its default setting. It claimed this outcome: The saved ID filter retains and applies the prior text value ('QA Order ID: Mueller'), causing the mapped 'Revenue and orders over time' card to fail with 'There was a problem displaying this chart.', despite the filter settings having reset the default to 'No default'. Review concluded: Works as intended: after a filter type change the previous value stays visibly applied and the user can clear or replace it."
     ]
   },
   {
     "id": "full-revision-restore-assumed-location-preserving",
     "explanation": "Restoring an older saved version can restore where the item was located as well as its content. In the reviewed cases, reverting a Metabase item also restored its former collection, which is the folder-like location used to organize saved items. This pattern matches a report that expects the item to stay in its current collection despite that full-version restore policy, including when the old location changes who can access it. Verify what the revision restores; the choices offered by a separate Move operation do not establish a different restore contract.",
-    "verificationGuidance": [
-      "Inspect the chosen revision’s stored collection and full restore payload.",
-      "Compare expected restore scope with the reviewed product contract rather than assuming a partial revert.",
-      "Do not generalize this rejection into permission-bypass claims without a separate demonstrated access-control violation."
-    ],
-    "instances": [
-      {
-        "source": "known-invalid.json",
-        "index": 36,
-        "report": {
-          "id": "metabase-dashboards-422",
-          "name": "Dashboard history lets a member move a shared dashboard into another user’s private collection",
-          "summary": "Dashboard history lets a member move a shared dashboard into another user’s private collection.",
-          "expected": "Restoring dashboard history must enforce destination collection permissions and reject a move into another user’s inaccessible personal collection.",
-          "actual": "Reproduced on two disposable dashboards (/4 and fresh /14 QA History Destination Proof). Maya’s normal Move picker offers Our analytics, Maya’s Personal Collection and Examples; Restoring succeeds with observed HTTP 200 and collection_id changing from null to 4 as Maya Chen.",
-          "reproSteps": [
-            "Sign in as eval@momentic.ai. From /collection/root create a disposable dashboard named History permissions test.",
-            "Use Move, trash, and more → Move to move it into Harbor Admin’s Personal Collection, then move it back to Our analytics.",
-            "In a separate browser session sign in as maya@example.test with password momentic-eval-1 and open the shared dashboard.",
-            "Open Move and confirm Harbor Admin’s Personal Collection is unavailable as a destination; cancel.",
-            "Open More info → History and restore the revision describing the move into Harbor Admin’s Personal Collection.",
-            "Reload: Maya is denied access. In the primary owner session, confirm the dashboard is now located in the owner’s private collection."
-          ],
-          "reason": "Works as intended: reverting restores the earlier version, including its collection location."
-        }
-      }
+    "reproductionPaths": [
+      "In Metabase, follow this workflow: Sign in as eval@momentic.ai. From /collection/root create a disposable dashboard named History permissions test. Use Move, trash, and more → Move to move it into Harbor Admin’s Personal Collection, then move it back to Our analytics. In a separate browser session sign in as maya@example.test with password momentic-eval-1 and open the shared dashboard. Open Move and confirm Harbor Admin’s Personal Collection is unavailable as a destination; cancel. Open More info → History and restore the revision describing the move into Harbor Admin’s Personal Collection. Reload: Maya is denied access. In the primary owner session, confirm the dashboard is now located in the owner’s private collection. The rejected report expected: Restoring dashboard history must enforce destination collection permissions and reject a move into another user’s inaccessible personal collection. It claimed this outcome: Reproduced on two disposable dashboards (/4 and fresh /14 QA History Destination Proof). Maya’s normal Move picker offers Our analytics, Maya’s Personal Collection and Examples; Restoring succeeds with observed HTTP 200 and collection_id changing from null to 4 as Maya Chen. Review concluded: Works as intended: reverting restores the earlier version, including its collection location."
     ]
   },
   {
     "id": "saved-filter-connections-assumed-automatic-rewiring",
     "explanation": "A dashboard filter affects chart cards through explicitly saved connections between that filter and each card's data field. Moving the filter control, placing it near a card or reading nearby explanatory text does not automatically create or remove those connections. This pattern matches a report that expects the response of particular cards to change from layout alone. Inspect the saved connections first; a card ignoring a correctly configured connection is a separate filter failure.",
-    "verificationGuidance": [
-      "Inspect each affected card’s saved parameter mapping.",
-      "Check whether a moved widget retained a Disconnect option and explicitly change mappings before comparing behavior.",
-      "Separate a fixture author’s configuration from the filter engine’s execution of that configuration."
-    ],
-    "instances": [
-      {
-        "source": "known-invalid.json",
-        "index": 41,
-        "report": {
-          "id": "metabase-dashboards-490",
-          "name": "Product category orders per age chart includes all categories when Widget alone is selected",
-          "summary": "Product category orders per age chart includes all categories when Widget alone is selected.",
-          "expected": "The category-orders-per-age chart should display Widget only, matching selected Product Category and dashboard's 'filtered now for Widget' text.",
-          "actual": "Widget is the sole selected category, and adjacent customer-satisfaction and order-discount charts reflect Widget, but Product category orders per age still has four-colored stacked bars and legend Doohickey, Gadget, Gizmo, Widget.",
-          "reproSteps": [
-            "Open E-commerce Insights, use title menu Duplicate, supply unique name, check Only duplicate the dashboard and submit.",
-            "On own copy Overview select Vendor Alfreda Konopelski II Group and Add filter.",
-            "Open Product Category, uncheck Select all, check Widget, and click Update filter.",
-            "Visit Portfolio Performance and scroll to Product category orders per age."
-          ],
-          "reason": "Works as intended: the example dashboard is user-editable, and a card only follows a dashboard filter once someone maps it; Metabase doesn't connect filters automatically."
-        }
-      },
-      {
-        "source": "known-invalid.json",
-        "index": 47,
-        "report": {
-          "id": "metabase-dashboards-536",
-          "name": "Card-local Date Grouping still changes another card after Move filter",
-          "summary": "Card-local Date Grouping still changes another card after Move filter.",
-          "expected": "As the editor states the card-local filter can only connect to its own card, changing it should not change Revenue per quarter's grouping/value.",
-          "actual": "The filter is only in Revenue and orders over time, yet Revenue per quarter changes from 67,863.4 Q4 2026 to 24,730.43 Dec 2026 with previous month comparison; refresh retains this.",
-          "reproSteps": [
-            "On QA-DATE duplicated from seed dashboard 1, clear Date Grouping to return Revenue per quarter to 67,863.4 for Q4 2026.",
-            "Edit dashboard, click Date Grouping, Move filter > Revenue and orders over time.",
-            "Observe other cards say “This filter can only connect to its own card.” Save.",
-            "In the card-local Date Grouping filter choose Month; inspect Revenue per quarter and refresh."
-          ],
-          "reason": "Works as intended: moving a filter widget deliberately keeps existing card connections so users can see and disconnect them. The card stays connected (its mapping shows Disconnect), so the result follows the saved configuration."
-        }
-      }
+    "reproductionPaths": [
+      "In Metabase, follow this workflow: Open E-commerce Insights, use title menu Duplicate, supply unique name, check Only duplicate the dashboard and submit. On own copy Overview select Vendor Alfreda Konopelski II Group and Add filter. Open Product Category, uncheck Select all, check Widget, and click Update filter. Visit Portfolio Performance and scroll to Product category orders per age. The rejected report expected: The category-orders-per-age chart should display Widget only, matching selected Product Category and dashboard's 'filtered now for Widget' text. It claimed this outcome: Widget is the sole selected category, and adjacent customer-satisfaction and order-discount charts reflect Widget, but Product category orders per age still has four-colored stacked bars and legend Doohickey, Gadget, Gizmo, Widget. Review concluded: Works as intended: the example dashboard is user-editable, and a card only follows a dashboard filter once someone maps it; Metabase doesn't connect filters automatically.",
+      "In Metabase, follow this workflow: On QA-DATE duplicated from seed dashboard 1, clear Date Grouping to return Revenue per quarter to 67,863.4 for Q4 2026. Edit dashboard, click Date Grouping, Move filter > Revenue and orders over time. Observe other cards say “This filter can only connect to its own card.” Save. In the card-local Date Grouping filter choose Month; inspect Revenue per quarter and refresh. The rejected report expected: As the editor states the card-local filter can only connect to its own card, changing it should not change Revenue per quarter's grouping/value. It claimed this outcome: The filter is only in Revenue and orders over time, yet Revenue per quarter changes from 67,863.4 Q4 2026 to 24,730.43 Dec 2026 with previous month comparison; refresh retains this. Review concluded: Works as intended: moving a filter widget deliberately keeps existing card connections so users can see and disconnect them. The card stays connected (its mapping shows Disconnect), so the result follows the saved configuration."
     ]
   },
   {
     "id": "markup-rendering-assumed-literal-source-roundtrip",
     "explanation": "Markup is source text interpreted into formatted output, so the displayed result need not reproduce every source character or line break literally. In the reviewed cases, ordinary Markdown line breaks were rendered as soft breaks, or restricted HTML was interpreted and sanitized while the saved source remained intact. This pattern matches a claim of text loss based only on that supported rendering behavior. Compare the saved source with the markup rules; actual stored-text deletion or incorrectly rendered supported syntax is a different failure.",
-    "verificationGuidance": [
-      "Compare the saved editor source with the rendered output before claiming content loss.",
-      "Check the supported markup and sanitization rules, including soft versus explicit line breaks.",
-      "Distinguish literal-source expectations from a rendering defect for correctly authored supported markup."
-    ],
-    "instances": [
-      {
-        "source": "known-invalid.json",
-        "index": 42,
-        "report": {
-          "id": "metabase-dashboards-485",
-          "name": "Dashboard description collapses entered line breaks to a single line after blur",
-          "summary": "Dashboard description collapses entered line breaks to a single line after blur.",
-          "expected": "The description display preserves the two separate lines entered in the multiline editor.",
-          "actual": "The editor visibly shows two lines, but after blur the description renders as one line: QA Lifecycle multiline first Second line café & <text>.",
-          "reproSteps": [
-            "As Harbor Admin, open New > Dashboard; create a fresh dashboard prefixed QA Lifecycle with any description and save/exit initial editing mode.",
-            "Open the dashboard's More info panel and click its Description to edit.",
-            "Replace description with QA Lifecycle multiline first, press Enter, then type Second line café & <text>.",
-            "Blur the Description field and inspect its rendered text."
-          ],
-          "reason": "Works as intended: descriptions render as Markdown, where a single newline is a soft break."
-        }
-      }
+    "reproductionPaths": [
+      "In Metabase, follow this workflow: As Harbor Admin, open New > Dashboard; create a fresh dashboard prefixed QA Lifecycle with any description and save/exit initial editing mode. Open the dashboard's More info panel and click its Description to edit. Replace description with QA Lifecycle multiline first, press Enter, then type Second line café & <text>. Blur the Description field and inspect its rendered text. The rejected report expected: The description display preserves the two separate lines entered in the multiline editor. It claimed this outcome: The editor visibly shows two lines, but after blur the description renders as one line: QA Lifecycle multiline first Second line café & <text>. Review concluded: Works as intended: descriptions render as Markdown, where a single newline is a soft break."
     ]
   },
   {
     "id": "unsupported-chart-shape-assumed-query-error",
     "explanation": "A chart can require a particular shape of data even when the underlying query is valid. For example, a trend display can need a chronological time sequence rather than categories containing only names of weekdays. This pattern matches a report that treats the chart's instruction to choose compatible grouping as a broken query, while a shared dashboard control offers options intended for other chart types. Inspect the actual query results and the chart's requirements before alleging query failure.",
-    "verificationGuidance": [
-      "Inspect raw query results separately from the visualization message.",
-      "Check the selected chart’s dimensional requirements and whether the dashboard author restricted grouping choices.",
-      "Use a compatible time grouping before alleging execution failure."
-    ],
-    "instances": [
-      {
-        "source": "known-invalid.json",
-        "index": 46,
-        "report": {
-          "id": "metabase-dashboards-535",
-          "name": "Day of week grouping replaces Revenue per quarter value with visualization error",
-          "summary": "Day of week grouping replaces Revenue per quarter value with visualization error.",
-          "expected": "An offered grouping should keep connected dashboard cards usable, or unsupported grouping choices should be prevented for incompatible cards.",
-          "actual": "Revenue and orders over time and revenue by product category group successfully by weekdays, but Revenue per quarter replaces its value with a warning icon and “Group only by a time field to see how this has changed over time.” The error persists after refresh.",
-          "reproSteps": [
-            "With Date Grouping options All, no default and not required, open Date Grouping and click More….",
-            "Select Day of week.",
-            "Inspect Revenue per quarter and refresh."
-          ],
-          "reason": "Works as intended: Trend needs a chronological time grouping, and Metabase deliberately shows its guidance message when a grouping such as day of week produces no insights. The dashboard filter offers every unit unless the author restricts it."
-        }
-      }
+    "reproductionPaths": [
+      "In Metabase, follow this workflow: With Date Grouping options All, no default and not required, open Date Grouping and click More…. Select Day of week. Inspect Revenue per quarter and refresh. The rejected report expected: An offered grouping should keep connected dashboard cards usable, or unsupported grouping choices should be prevented for incompatible cards. It claimed this outcome: Revenue and orders over time and revenue by product category group successfully by weekdays, but Revenue per quarter replaces its value with a warning icon and “Group only by a time field to see how this has changed over time.” The error persists after refresh. Review concluded: Works as intended: Trend needs a chronological time grouping, and Metabase deliberately shows its guidance message when a grouping such as day of week produces no insights. The dashboard filter offers every unit unless the author restricts it."
     ]
   },
   {
     "id": "compact-summary-mistaken-for-complete-stored-value",
     "explanation": "A short badge, selection count or secondary label often summarizes only part of an item's configuration. In the reviewed cases, a discount-type badge did not promise to show its amount, a selection count did not display both numeric bounds, or a shortened secondary label did not replace the full identity shown elsewhere. This pattern matches an inference of lost or wrong data from that abbreviated text while the full configuration and actual operation remain correct. Verify the detailed value or selected object before deciding that the summary proves corruption.",
-    "verificationGuidance": [
-      "Open the full configuration and compare the actual saved value, selected identity or applied predicate.",
-      "Determine whether the label describes type, count or a secondary display rather than the full value.",
-      "Keep incorrect selection, inaccessible essential identity or an explicitly promised missing summary separate."
-    ],
-    "instances": [
-      {
-        "source": "known-invalid.json",
-        "index": 51,
-        "report": {
-          "id": "metabase-dashboards-b53",
-          "name": "Numeric Between filter displays “2 selections” instead of its range",
-          "summary": "Numeric Between filter displays “2 selections” instead of its range.",
-          "expected": "The widget shows the active continuous range, such as “Amount range: 100–200” or “Between 100 and 200”.",
-          "actual": "The widget displays “Amount range: 2 selections” for every two-bound range. The popup correctly shows Between 100 and 200, and filtering works.",
-          "reproSteps": [
-            "Create a dashboard through New > Dashboard and add the existing Release requests question.",
-            "In edit mode add a Number filter; set Filter operator to Between, name it Amount range, and map it to Amount.",
-            "Set its value/default to lower bound 100 and upper bound 200. Click Done, then Save.",
-            "Read the Amount range widget in dashboard view; optionally enter fullscreen.",
-            "Open the widget to verify the retained bounds are 100 and 200. Existing reproduction: /dashboard/4?tab=8-tab-1."
-          ],
-          "reason": "Works as intended: filter widgets summarize any two-value setting as '2 selections'; the range is shown when the filter is opened."
-        }
-      }
+    "reproductionPaths": [
+      "In Metabase, follow this workflow: Create a dashboard through New > Dashboard and add the existing Release requests question. In edit mode add a Number filter; set Filter operator to Between, name it Amount range, and map it to Amount. Set its value/default to lower bound 100 and upper bound 200. Click Done, then Save. Read the Amount range widget in dashboard view; optionally enter fullscreen. Open the widget to verify the retained bounds are 100 and 200. Existing reproduction: /dashboard/4?tab=8-tab-1. The rejected report expected: The widget shows the active continuous range, such as “Amount range: 100–200” or “Between 100 and 200”. It claimed this outcome: The widget displays “Amount range: 2 selections” for every two-bound range. The popup correctly shows Between 100 and 200, and filtering works. Review concluded: Works as intended: filter widgets summarize any two-value setting as '2 selections'; the range is shown when the filter is opened."
     ]
   },
   {
     "id": "reversed-range-assumed-invalid-configuration",
     "explanation": "A range condition can deliberately allow a lower bound greater than its upper bound, even though no record can satisfy it. This pattern matches a report that assumes the form must reject or reorder those endpoints and calls the resulting empty query a filtering defect. Check whether the range control's accepted contract permits that impossible predicate. A normally ordered range returning incorrect records, or bounds secretly changing from what the user sees, is a different failure.",
-    "verificationGuidance": [
-      "Inspect the persisted endpoints and executed predicate.",
-      "Test an overlapping correctly ordered range and confirm its results before requesting extra validation as a bug fix."
-    ],
-    "instances": [
-      {
-        "source": "known-invalid.json",
-        "index": 55,
-        "report": {
-          "id": "metabase-dashboards-650",
-          "name": "Date range defaults accept an end date before the start date",
-          "summary": "Date range defaults accept an end date before the start date.",
-          "expected": "Reject an end date earlier than the start date with a clear validation message, or normalize the dates into a valid chronological range.",
-          "actual": "The filter saves and reloads the reversed range June 30, 2026 - June 1, 2026, and Revenue and orders over time displays No results.",
-          "reproSteps": [
-            "On a disposable dashboard duplicate, create or edit QA Date mapped to Revenue and orders over time → Orders.Created At.",
-            "Choose Date Range as operator and open its default value picker.",
-            "Enter June 30, 2026 in Start date and June 1, 2026 in End date; blur End date.",
-            "Click Add filter, Done and Save.",
-            "Refresh and reopen QA Date."
-          ],
-          "reason": "Works as intended: a reversed date range is accepted and simply matches no rows."
-        }
-      }
+    "reproductionPaths": [
+      "In Metabase, follow this workflow: On a disposable dashboard duplicate, create or edit QA Date mapped to Revenue and orders over time → Orders.Created At. Choose Date Range as operator and open its default value picker. Enter June 30, 2026 in Start date and June 1, 2026 in End date; blur End date. Click Add filter, Done and Save. Refresh and reopen QA Date. The rejected report expected: Reject an end date earlier than the start date with a clear validation message, or normalize the dates into a valid chronological range. It claimed this outcome: The filter saves and reloads the reversed range June 30, 2026 - June 1, 2026, and Revenue and orders over time displays No results. Review concluded: Works as intended: a reversed date range is accepted and simply matches no rows."
     ]
   },
   {
     "id": "benchmark-scope-mistaken-for-product-defect",
     "explanation": "This benchmark is a curated evaluation with rules about which kinds of findings count. A report matches this pattern when its only established issue falls outside those rules, such as an accessibility-tree-only label problem with no accepted visible or pointer-driven failure, an invalid state reachable only through an API, or an expressly excluded exotic input. The mistake is assuming that every technical imperfection is eligible for this evaluation. Scope exclusion does not establish that the underlying issue is imaginary, and a separately demonstrated in-scope functional failure must be assessed independently.",
-    "verificationGuidance": [
-      "Read the applicable benchmark eligibility rule and the exact recorded exclusion.",
-      "Establish the supported UI path, input domain and accepted observable impact for the new claim.",
-      "Evaluate a separately demonstrated functional failure independently; do not convert an exclusion into a universal product-correctness claim."
-    ],
-    "instances": [
-      {
-        "source": "known-invalid.json",
-        "index": 60,
-        "report": {
-          "id": "reproducer-excluded-m17-metabase-dashboards",
-          "name": "Date Grouping filter options cannot be selected with the keyboard",
-          "summary": "On the seeded dashboard, keyboard users can open Date Grouping but cannot focus or select any time-grouping option. Arrow keys and Enter have no effect, and Tab leaves focus trapped on the dropdown dialog. Mouse selection works.",
-          "expected": "Opening the filter with the keyboard allows focus to move among grouping options and Enter/Space selects an option.",
-          "actual": "Focus remains on the dialog; every option has tabindex=-1, no option is selected, and ArrowDown/Enter/Tab cannot choose a grouping. The URL retains an empty date_grouping value until mouse selection.",
-          "reproSteps": [
-            "Open /dashboard/1 on the Overview tab.",
-            "Press ArrowDown twice, Enter, then Tab.",
-            "As a control, click Month with the mouse: the dropdown closes and date_grouping=month is applied (grouping-mouse-control.png)."
-          ],
-          "reason": "Excluded by the browser bug-reproducer pure-accessibility rule. This report establishes only keyboard/focus/accessibility semantics or a generic contrast threshold, without an explicit supplied product requirement or documented promise for that behavior. Ordinary pointer functionality or visible setting values are not alleged to fail. This negative reference is scoped to the reported accessibility-only claim; it does not cover independently demonstrated data loss, pointer failures, or an explicitly documented keyboard action.",
-          "matchingGuidance": {
-            "distinction": "Match only this accessibility/keyboard/contrast claim. Independently observed pointer or saved-data failures, and explicitly promised keyboard shortcuts, are outside this negative reference."
-          }
-        }
-      },
-      {
-        "source": "known-invalid.json",
-        "index": 61,
-        "report": {
-          "id": "reproducer-excluded-m18-metabase-dashboards",
-          "name": "Dashboard tabs cannot be reached with keyboard navigation",
-          "summary": "In dashboard view, all dashboard tab controls are excluded from keyboard focus. Tab goes directly from the toolbar to the filters, preventing keyboard-only users from switching dashboard tabs.",
-          "expected": "The selected dashboard tab is reachable with Tab; arrow keys allow switching among tabs, or each tab is otherwise keyboard-operable.",
-          "actual": "No dashboard tab is reachable in the keyboard focus order, so users must click with a pointer to switch tabs.",
-          "reproSteps": [
-            "Open /dashboard/1 (E-commerce Insights) on desktop.",
-            "Press Shift+Tab: focus returns to the toolbar. Repeated on /dashboard/3. DOM observation confirms each dashboard role=tab and its role=button wrapper has tabIndex -1."
-          ],
-          "reason": "Excluded by the browser bug-reproducer pure-accessibility rule. This report establishes only keyboard/focus/accessibility semantics or a generic contrast threshold, without an explicit supplied product requirement or documented promise for that behavior. Ordinary pointer functionality or visible setting values are not alleged to fail. This negative reference is scoped to the reported accessibility-only claim; it does not cover independently demonstrated data loss, pointer failures, or an explicitly documented keyboard action.",
-          "matchingGuidance": {
-            "distinction": "Match only this accessibility/keyboard/contrast claim. Independently observed pointer or saved-data failures, and explicitly promised keyboard shortcuts, are outside this negative reference."
-          }
-        }
-      }
+    "reproductionPaths": [
+      "In Metabase, follow this workflow: Open /dashboard/1 on the Overview tab. Press ArrowDown twice, Enter, then Tab. As a control, click Month with the mouse: the dropdown closes and date_grouping=month is applied (grouping-mouse-control.png). The rejected report expected: Opening the filter with the keyboard allows focus to move among grouping options and Enter/Space selects an option. It claimed this outcome: Focus remains on the dialog; every option has tabindex=-1, no option is selected, and ArrowDown/Enter/Tab cannot choose a grouping. The URL retains an empty date_grouping value until mouse selection. Review concluded: Excluded by the browser bug-reproducer pure-accessibility rule. This report establishes only keyboard/focus/accessibility semantics or a generic contrast threshold, without an explicit supplied product requirement or documented promise for that behavior. Ordinary pointer functionality or visible setting values are not alleged to fail. This negative reference is scoped to the reported accessibility-only claim; it does not cover independently demonstrated data loss, pointer failures, or an explicitly documented keyboard action.",
+      "In Metabase, follow this workflow: Open /dashboard/1 (E-commerce Insights) on desktop. Press Shift+Tab: focus returns to the toolbar. Repeated on /dashboard/3. DOM observation confirms each dashboard role=tab and its role=button wrapper has tabIndex -1. The rejected report expected: The selected dashboard tab is reachable with Tab; arrow keys allow switching among tabs, or each tab is otherwise keyboard-operable. It claimed this outcome: No dashboard tab is reachable in the keyboard focus order, so users must click with a pointer to switch tabs. Review concluded: Excluded by the browser bug-reproducer pure-accessibility rule. This report establishes only keyboard/focus/accessibility semantics or a generic contrast threshold, without an explicit supplied product requirement or documented promise for that behavior. Ordinary pointer functionality or visible setting values are not alleged to fail. This negative reference is scoped to the reported accessibility-only claim; it does not cover independently demonstrated data loss, pointer failures, or an explicitly documented keyboard action."
     ]
   }
 ]
