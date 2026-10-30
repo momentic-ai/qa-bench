@@ -26,7 +26,13 @@
         "Reopen Editor, replace row limit 5 with 0 and blur the field.",
         "Click Visualize, then reopen Editor."
       ],
-      "reason": "Works as intended: the row limit deliberately ignores values below 1, as Metabase's own tests assert."
+      "reason": "Works as intended: the row limit deliberately ignores values below 1, as Metabase's own tests assert.",
+      "matchingGuidance": {
+        "relatedReference": {
+          "id": "metabase-querying-cleared-row-limit-returns-after-save",
+          "distinction": "This reference covers the previous limit still applying when the query runs. The related one covers a cleared limit returning after the question is saved and refreshed."
+        }
+      }
     },
     {
       "id": "metabase-querying-154",
@@ -311,7 +317,13 @@
         "Reopen Day filter, replace date with 02/29/2023 and leave the date input.",
         "Click Update filter and run the query."
       ],
-      "reason": "Works as intended per human review."
+      "reason": "Works as intended per human review.",
+      "matchingGuidance": {
+        "relatedReference": {
+          "id": "metabase-querying-notebook-date-range-impossible-date",
+          "distinction": "This reference covers a native SQL Date parameter. The related one covers a notebook fixed date range filter."
+        }
+      }
     },
     {
       "id": "metabase-querying-453",
@@ -650,6 +662,78 @@
         "Observe no picker opens; click Select... a second time."
       ],
       "reason": "Cannot reproduce on human review: switching to Field Filter opens the table list right away; clicking the box toggles it closed."
+    },
+    {
+      "id": "metabase-querying-notebook-date-range-impossible-date",
+      "name": "Notebook fixed date range silently rolls an impossible date into the next month",
+      "summary": "Typing an impossible date such as 02/30/2028 into a notebook fixed date range changes it to March 1, 2028 on blur, with no validation error.",
+      "expected": "An impossible calendar date is rejected with validation rather than silently used as a different day.",
+      "actual": "On leaving the input, 02/30/2028 changes to March 1, 2028, and Update filter applies it.",
+      "reproSteps": [
+        "Open a Sample Database Orders notebook query and add a Created At fixed date range.",
+        "Set both endpoints to February 11, 2028 and apply.",
+        "Reopen the filter, replace Start date with 02/30/2028 and blur the field.",
+        "Observe the start changes to March 1, 2028."
+      ],
+      "reason": "Works as intended per human review: the same calendar rollover as metabase-querying-402.",
+      "matchingGuidance": {
+        "relatedReference": {
+          "id": "metabase-querying-402",
+          "distinction": "The related reference covers a native SQL Date parameter. This one covers a notebook fixed date range filter."
+        }
+      }
+    },
+    {
+      "id": "metabase-querying-cleared-row-limit-returns-after-save",
+      "name": "Cleared row limit returns after saving the question and refreshing",
+      "summary": "Clearing Row limit and saving the question does not remove the limit; after refresh the Row limit field shows a previous value.",
+      "expected": "Saving a question with an empty Row limit removes the limit.",
+      "actual": "The editor shows an empty Row limit before saving, but after refresh it shows the previous value.",
+      "reproSteps": [
+        "Create and save a Sample Database Orders notebook question with a row limit.",
+        "Reopen Editor, clear Row limit and blur the field.",
+        "Save, replacing the original question.",
+        "Refresh the notebook and inspect Row limit."
+      ],
+      "reason": "Works as intended: the same deliberate row limit handling as metabase-querying-153.",
+      "matchingGuidance": {
+        "relatedReference": {
+          "id": "metabase-querying-153",
+          "distinction": "The related reference covers the previous limit still applying when the query runs. This one covers a cleared limit returning after the question is saved and refreshed."
+        }
+      }
+    },
+    {
+      "id": "metabase-querying-b104",
+      "name": "Replacing SQL text loses unchanged parameter default",
+      "summary": "Replacing SQL text loses unchanged parameter default.",
+      "expected": "Keeping the same variable while adding a selected column preserves its saved default Product ID 2, or clearly warns that variable settings will be reset.",
+      "actual": "Product ID is blank on refresh and fresh navigation; result shows IDs 1, 2, 3. A default MULTIMODAL AI assertion confirmed the blank control and three-row result.",
+      "reproSteps": [
+        "Question 48 was primary-authored and explicitly released for member editing. The edit replaced the entire SQL text, not a character-level insertion; variable recreation during replacement is a possible contributing condition.",
+        "Create a shared Sample Database SQL question: SELECT id, title FROM products WHERE id <= 3 [[AND id = {{product_id}}]] ORDER BY id; configure Product ID default 2 and save.",
+        "As Maya, reopen the shared question and verify default Product ID 2 returns Small Marble Shoes.",
+        "Open editor, select all SQL and replace it with SELECT id, title, category FROM products WHERE id <= 3 [[AND id = {{product_id}}]] ORDER BY id;",
+        "Run, save replacing original, then refresh and reopen without URL parameters."
+      ],
+      "reason": "Works as intended: replacing the SQL removes the variable before it is retyped, and a removed variable loses its settings."
+    },
+    {
+      "id": "reproducer-excluded-m24-metabase-querying",
+      "name": "Join type menu ignores Escape and arrow-key navigation",
+      "summary": "The query builder's join type menu opens from the keyboard but does not respond to Escape or Arrow Down. Focus remains on 'Change join type'; the menu remains open. Reproduced using mouse and keyboard opening on multiple Orders→Products queries. Evidence: dogfood-output/screenshots/issue-003-step-1.png, issue-003-step-2.png, and issue-003-focus.json.",
+      "expected": "Escape closes the join type menu and arrow keys navigate its menu items after opening it with the keyboard.",
+      "actual": "Escape does not dismiss the menu, arrow keys do not navigate its options, and focus remains on the trigger while the popup stays open.",
+      "reproSteps": [
+        "Create a Sample Database Orders question and join Products, or open saved question /question/42-qa-joined-custom-summary/notebook.",
+        "Focus the Change join type button and press Enter; Left outer join, Right outer join, and Inner join appear.",
+        "Press Escape; the menu stays open.",
+        "Press Arrow Down; focus stays on Change join type instead of moving into the menu options. Pressing Tab moves to the Products button behind the menu."
+      ],
+      "reason": "Excluded by the browser bug-reproducer pure-accessibility rule. This report establishes only keyboard/focus/accessibility semantics or a generic contrast threshold, without an explicit supplied product requirement or documented promise for that behavior. Ordinary pointer functionality or visible setting values are not alleged to fail. This negative reference is scoped to the reported accessibility-only claim; it does not cover independently demonstrated data loss, pointer failures, or an explicitly documented keyboard action.",
+      "matchingGuidance": {
+        "distinction": "Match only this accessibility/keyboard/contrast claim. Independently observed pointer or saved-data failures, and explicitly promised keyboard shortcuts, are outside this negative reference."
+      }
     }
   ]
 }

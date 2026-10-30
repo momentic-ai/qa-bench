@@ -56,16 +56,19 @@
     },
     {
       "id": "metabase-admin-012",
-      "name": "Map tile server URL accepts and saves not-a-url",
-      "summary": "Map tile server URL accepts and saves not-a-url.",
-      "expected": "A value that is not a URL is rejected with a validation message.",
-      "actual": "not-a-url saves with Changes saved and persists after reload; pin maps then show no basemap.",
+      "name": "Map tile server URL accepts and saves a malformed or incomplete URL",
+      "summary": "Map tile server URL accepts and saves a value that is not a complete URL, such as not-a-url or https://.",
+      "expected": "A value that is not a complete URL is rejected with a validation message.",
+      "actual": "not-a-url or a scheme-only https:// saves with Changes saved and persists after reload; pin maps then show no basemap.",
       "reproSteps": [
         "As an admin, open Admin > Settings > Maps.",
         "Replace Map tile server URL with not-a-url and move focus away.",
         "Observe Changes saved and reload."
       ],
-      "reason": "Works as intended: the setting has no validation, and the docs allow a relative path as well as an http(s) URL, so not-a-url is a legal value. A well-formed but unreachable URL breaks the map the same way."
+      "reason": "Works as intended: the setting has no validation, and the docs allow a relative path as well as an http(s) URL, so not-a-url is a legal value and https:// saves the same way. A well-formed but unreachable URL breaks the map the same way.",
+      "matchingGuidance": {
+        "claimScope": "Credit any report that Map tile server URL saves a malformed or incomplete value without validation, including not-a-url and a scheme-only https://."
+      }
     },
     {
       "id": "metabase-admin-090",
@@ -1040,6 +1043,105 @@
           "distinction": "The related reference covers a replacement string with no port. This one covers a string with a non-numeric port."
         }
       }
+    },
+    {
+      "id": "metabase-admin-logo-link-unnamed",
+      "name": "Metabase admin logo link lacks an accessible name",
+      "summary": "Metabase admin logo link lacks an accessible name.",
+      "expected": "The admin navigation logo link exposes an accessible name identifying its destination.",
+      "actual": "The focusable /admin logo link has an empty accessible name; the retained audit flags link-name.",
+      "reproSteps": [
+        "Open Metabase administration.",
+        "Inspect the navigation logo link in the accessibility tree or run a link-name audit."
+      ],
+      "reviewEvidence": {
+        "basis": "User-requested correction after rereading the browser bug-reproducer requirements.",
+        "userAccepted": true,
+        "analysis": [
+          "Pure accessibility: tab order/skips, keyboard-only reachability, focus traps/escape, roles or names and implementation details alone are not benchmark product bugs unless supplied requirements or product documentation explicitly demand that behavior.",
+          "Prior acceptance used severity guidance without first checking reproducer eligibility."
+        ],
+        "limitations": [
+          "No new browser reproduction is claimed. The correction concerns benchmark eligibility, not whether the application meets general accessibility standards."
+        ]
+      },
+      "reason": "Excluded by the browser bug-reproducer pure-accessibility rule. This report establishes only keyboard/focus/accessibility semantics or a generic contrast threshold, without an explicit supplied product requirement or documented promise for that behavior. Ordinary pointer functionality or visible setting values are not alleged to fail. This negative reference is scoped to the reported accessibility-only claim; it does not cover independently demonstrated data loss, pointer failures, or an explicitly documented keyboard action."
+    },
+    {
+      "id": "reproducer-excluded-m02-metabase-admin",
+      "name": "Create user Groups selector is skipped by keyboard navigation",
+      "summary": "The Groups selector in Admin > People > Invite someone is clickable with a mouse but cannot receive keyboard focus. Tabbing from Email goes directly to Cancel, so a keyboard-only admin cannot assign a new user to a group.",
+      "expected": "Groups should be a keyboard-focusable control that opens with Enter or Space and allows group selection without a mouse.",
+      "actual": "Groups is absent from the tab order. Focus moves directly from Email to Cancel, leaving group assignment inaccessible to keyboard-only users.",
+      "reproSteps": [
+        "Open /admin/people and click Invite someone.",
+        "Fill First name Keyboard, Last name Tester, and Email qa-keyboard@example.test.",
+        "Press Shift+Tab to return to Email, then Tab again; the selector is skipped again."
+      ],
+      "reason": "Excluded by the browser bug-reproducer pure-accessibility rule. This report establishes only keyboard/focus/accessibility semantics or a generic contrast threshold, without an explicit supplied product requirement or documented promise for that behavior. Ordinary pointer functionality or visible setting values are not alleged to fail. This negative reference is scoped to the reported accessibility-only claim; it does not cover independently demonstrated data loss, pointer failures, or an explicitly documented keyboard action.",
+      "matchingGuidance": {
+        "distinction": "Match only this accessibility/keyboard/contrast claim. Independently observed pointer or saved-data failures, and explicitly promised keyboard shortcuts, are outside this negative reference."
+      }
+    },
+    {
+      "id": "reproducer-excluded-m08-metabase-admin",
+      "name": "Admin navigation text has insufficient contrast",
+      "summary": "Admin navigation labels are difficult to read for users with low vision. Repeated axe checks report 3.13:1 for inactive top navigation labels and 2.98:1 for the selected Groups sidebar label.",
+      "expected": "Normal-size navigation text should meet a minimum 4.5:1 contrast ratio.",
+      "actual": "Top navigation text is #c8c8eb on #6363c5 at 13.6px normal weight (3.13:1); selected Groups text is #468bc7 on #daebf9 at 14px normal weight (2.98:1).",
+      "reproSteps": [
+        "Sign in as eval@momentic.ai and open /admin/people/groups.",
+        "Observe the inactive top navigation links (Settings, Databases, Table Metadata, Permissions, Performance, Tools) and selected Groups sidebar label."
+      ],
+      "reason": "Excluded by the browser bug-reproducer pure-accessibility rule. This report establishes only keyboard/focus/accessibility semantics or a generic contrast threshold, without an explicit supplied product requirement or documented promise for that behavior. Ordinary pointer functionality or visible setting values are not alleged to fail. This negative reference is scoped to the reported accessibility-only claim; it does not cover independently demonstrated data loss, pointer failures, or an explicitly documented keyboard action.",
+      "matchingGuidance": {
+        "distinction": "Match only this accessibility/keyboard/contrast claim. Independently observed pointer or saved-data failures, and explicitly promised keyboard shortcuts, are outside this negative reference."
+      }
+    },
+    {
+      "id": "reproducer-excluded-m10-metabase-admin",
+      "name": "API keys cannot be edited or deleted using keyboard navigation",
+      "summary": "In Admin Settings → Authentication → API keys, existing-key edit and delete actions are clickable images excluded from the tab order. Keyboard users can reach Create API key but cannot reach any row actions, preventing editing or revoking an API key without a pointer.",
+      "expected": "Each API-key edit and delete control is a keyboard-focusable button with an accessible action name and can be activated with Enter/Space.",
+      "actual": "The pencil and trash controls appear as clickable images, never receive Tab focus, and are skipped when focus wraps from Create API key to the page's first navigation link. Reproduced twice; screenshots issue-002-before-tab.png and issue-002-after-tab.png capture the focus transition.",
+      "reproSteps": [
+        "Open Settings → Authentication → API keys with at least one API key (tested with QA keyboard test in QA Analysts).",
+        "Use keyboard navigation to focus Create API key.",
+        "Press Tab twice.",
+        "Observe focus leaves the page content and wraps to the Metabase logo link (/admin), skipping the pencil and trash actions.",
+        "Repeat from Create API key; the same actions are skipped. Clicking the icons with a pointer does open the respective dialogs."
+      ],
+      "reason": "Excluded by the browser bug-reproducer pure-accessibility rule. This report establishes only keyboard/focus/accessibility semantics or a generic contrast threshold, without an explicit supplied product requirement or documented promise for that behavior. Ordinary pointer functionality or visible setting values are not alleged to fail. This negative reference is scoped to the reported accessibility-only claim; it does not cover independently demonstrated data loss, pointer failures, or an explicitly documented keyboard action.",
+      "matchingGuidance": {
+        "distinction": "Match only this accessibility/keyboard/contrast claim. Independently observed pointer or saved-data failures, and explicitly promised keyboard shortcuts, are outside this negative reference."
+      }
+    },
+    {
+      "id": "reproducer-excluded-m11-metabase-admin",
+      "name": "Collection access selectors cannot be reached or opened with the keyboard",
+      "summary": "The editable Collection access cells are clickable divs without a keyboard focus target or button role. Tabbing from the Search for a group input skips every access selector and leaves the page; keyboard-only administrators cannot change collection permissions.",
+      "expected": "Each editable access selector should be exposed as a named button or combobox, reachable by Tab and operable with Enter/Space and arrow keys.",
+      "actual": "The access selectors are omitted from keyboard navigation and expose no button/combobox role. Changing collection permissions requires a pointing device.",
+      "reproSteps": [
+        "Open /admin/permissions/collections/root as an administrator (or select Collections > Our analytics)."
+      ],
+      "reason": "Excluded by the browser bug-reproducer pure-accessibility rule. This report establishes only keyboard/focus/accessibility semantics or a generic contrast threshold, without an explicit supplied product requirement or documented promise for that behavior. Ordinary pointer functionality or visible setting values are not alleged to fail. This negative reference is scoped to the reported accessibility-only claim; it does not cover independently demonstrated data loss, pointer failures, or an explicitly documented keyboard action.",
+      "matchingGuidance": {
+        "distinction": "Match only this accessibility/keyboard/contrast claim. Independently observed pointer or saved-data failures, and explicitly promised keyboard shortcuts, are outside this negative reference."
+      }
+    },
+    {
+      "id": "metabase-uploads-loading-bounded-wait-indefinite-claim",
+      "name": "Uploads settings allegedly stays loading forever",
+      "summary": "The report infers an indefinite Uploads settings hang from a bounded wait and reloads.",
+      "expected": "The report expects the uploads configuration form to appear during its observation window.",
+      "actual": "The supplied observations show Loading after about twenty seconds and reloads; no terminal failure or explicit maximum loading duration is established.",
+      "reproSteps": [
+        "Open administration Settings → Uploads.",
+        "Wait about twenty seconds and inspect the loading indicator.",
+        "Reload and compare the observed state."
+      ],
+      "reason": "Rejected by the reviewer as reported. A bounded loading observation does not establish an indefinite hang, and no explicit maximum duration is supplied. The reproducer baseline would otherwise leave this investigation blocked; the reviewer explicitly instructed rejection. This does not assert that the form was observed to finish loading or rule out a separately demonstrated terminal failure."
     }
   ]
 }
