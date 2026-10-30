@@ -162,7 +162,7 @@ Costs:
 - Devin's cost isn't recorded by this repo. Its figures were calculated
   separately.
 
-E2B and grading aren't included.
+E2B and grading aren't included in cost.
 
 `scores.csv` uses `known_hits`, `known_invalid`, `unverified` and `duplicates`
 for Correct, Incorrect, Unmatched and Dup. Its `precision` field also counts
@@ -175,18 +175,3 @@ Each area in `fixtures/oss/<app>/e2e/areas/<area>/` has:
 - `fixture.json`: scope and entry points
 - `ground-truth.json`: confirmed bugs
 - `known-invalid.json`: rejected claims
-
-To add labels:
-
-1. Open `review.md` in a run's report folder. It lists every finding and its
-   result.
-2. Reproduce the finding. `pnpm start-fixture <fixture> --timeout 30m` starts an
-   app, and `pnpm stop-fixture <sandbox-id>` stops it.
-3. Add a confirmed bug to `ground-truth.json` with `name`, `summary`, `expected`,
-   `actual`, `reproSteps` and `severity`. Add a rejected claim to
-   `known-invalid.json` with those fields, minus `severity`, plus `reason`.
-4. Regrade every agent, since `merge` won't compare scores from different labels:
-
-```bash
-pnpm eval --agent mo --fixtures saleor/areas/vouchers --grade-only
-```
