@@ -1322,6 +1322,28 @@
       },
       "owningArea": "gitea/issues",
       "severity": 3
+    },
+    {
+      "id": "gitea-stale-dependency-removal-blank-page",
+      "name": "Removing an already removed dependency from a stale tab opens a blank page",
+      "summary": "If an issue's dependency is removed in one tab, confirming Remove for the same dependency in another tab that wasn't refreshed leaves the browser on a completely blank page at /issues/<n>/dependency/delete, with no issue, navigation or error message.",
+      "expected": "The stale removal returns to the issue, showing its current dependencies and a message that the dependency no longer exists.",
+      "actual": "With issue A open in two tabs, removing dependency X in the first tab returned to A with X gone. Confirming Remove for X in the second tab returned an empty HTTP 200 and left the browser on a blank /issues/<n>/dependency/delete page with no content or navigation.",
+      "reproSteps": [
+        "Add an issue as a dependency of another issue.",
+        "Open the second issue in two browser tabs.",
+        "In the first tab, remove the dependency and confirm.",
+        "In the second tab, without refreshing, remove the same dependency and confirm.",
+        "Observe the blank page."
+      ],
+      "severity": 5,
+      "sourceCause": "routers/web/repo/issue_dependency.go RemoveDependency sets a flash error and returns without a redirect or response when RemoveIssueDependency reports ErrDependencyNotExists (models/issues/dependency.go deleted no rows), so the plain form POST gets an empty page. AddDependency defers its redirect and doesn't have this problem.",
+      "matchingGuidance": {
+        "relatedReference": {
+          "id": "gitea-remove-inaccessible-dependency-blank-page",
+          "distinction": "Same error branch and blank page. That entry is removing a dependency on an issue the user can't read, where the delete always misses and the dependency stays; this entry is a stale tab retrying a removal that already happened."
+        }
+      }
     }
   ]
 }
