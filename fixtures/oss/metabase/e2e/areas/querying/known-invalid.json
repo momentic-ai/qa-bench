@@ -822,6 +822,28 @@
           "Retained report: post-aggregation filter/sort/limit suggestion; user-editable Name field."
         ]
       }
+    },
+    {
+      "id": "reviewed-r25-metabase-querying",
+      "name": "SQL string literals containing double braces are treated as required parameters",
+      "summary": "The native SQL editor interprets a double-braced sequence inside a quoted SQL string as a variable, preventing valid SQL that returns literal template text from running.",
+      "expected": "The query should execute as ordinary SQL and return the literal text `{{literal}}`; quoted string contents should not create a parameter.",
+      "actual": "The editor creates a Literal variable and execution fails with `missing required parameters: #{\"literal\"}`. Supplying a value still fails with a parameter-count error, so the literal cannot be queried as written.",
+      "reproSteps": [
+        "Choose New > SQL query and select Sample Database.",
+        "Enter `SELECT '{{literal}}' AS text_value` and run the query without filling the automatically created Literal field.",
+        "Optionally enter `example` in Literal and run again."
+      ],
+      "reason": "Metabase template grammar explicitly parses well-formed parameter tokens within quoted strings. The public source test tokens-in-strings-test asserts that quoted {{x}} becomes a parameter. Raw SQL quoting does not escape the outer template syntax; requiring that behavior is unsupported. Comments have a separate explicit skip rule. Rejected by the reviewer under the bug-reproducer rules. This does not reject a distinct demonstrated functional failure or a contradictory explicit product requirement.",
+      "reviewEvidence": {
+        "basis": "User-approved manual retained-report and source review.",
+        "analysis": "Metabase template grammar explicitly parses well-formed parameter tokens within quoted strings. The public source test tokens-in-strings-test asserts that quoted {{x}} becomes a parameter. Raw SQL quoting does not escape the outer template syntax; requiring that behavior is unsupported. Comments have a separate explicit skip rule.",
+        "limitations": "Public source adjacent to unavailable private runtime. Retained reports and explicit source tests reviewed, no fresh browser or independent judges.",
+        "sourceLocations": [
+          "Metabase f42632893810325d9f74375a4cd29bd31d8daefa test/metabase/driver/common/parameters/parse_test.clj:138-151",
+          "Metabase f42632893810325d9f74375a4cd29bd31d8daefa src/metabase/lib/parameters/parse.cljc:39-54"
+        ]
+      }
     }
   ]
 }
