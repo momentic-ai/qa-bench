@@ -41,11 +41,14 @@ Environment:
 | `OPENAI_API_KEY` | grading, `codex-playwright-mcp` |
 | `BROWSERBASE_API_KEY` | `codex-playwright-mcp`, `claude-playwright-mcp` (not with `--browser local`) |
 | `ANTHROPIC_API_KEY` | `claude-playwright-mcp` |
+| `MOMENTIC_API_KEY` | `mo` (or sign in with `qa`) |
 | `DEVIN_ORGANIZATION_ID`, `DEVIN_TOKEN` | `devin-qa` session and security-profile access |
 
-`mo` needs `qa` 0.27.0 exactly, signed in. Set `MO_EVAL_CLI` to use another
-executable. Use `--effort low|medium|high|max` to set Mo's effort preset
-(default: medium). An explicit `--effort` is recorded in `duration.json`.
+`mo` runs on Momentic's hosted service and needs a Momentic account. Install
+the CLI with `npm install -g qa@0.27.0` and sign in, or set
+`MOMENTIC_API_KEY`. Set `MO_EVAL_CLI` to use another executable. Use
+`--effort low|medium|high|max` to set Mo's effort preset (default: medium). An
+explicit `--effort` is recorded in `duration.json`.
 
 ## Development
 
@@ -71,6 +74,34 @@ Every agent sees the limit in its brief. Mo's own budget comes from `--effort`.
 
 Reports go to `reports/<agent>/<fixture>/<run-id>/`. Each run writes
 `scores.csv`, `grading.json` and a `review.md` queue of unmatched findings.
+
+Every agent gets the same brief, built in `src/evals/bugbash-brief.ts`: the app
+URL, test accounts, and the area's scope and entry points.
+
+## Scoring
+
+A judge model (GPT-6.1 Sol, high reasoning) matches each finding to the area's
+`ground-truth.json` (known bugs) or `known-invalid.json` (known false reports).
+Repeat reports of one bug count as duplicates. Anything else is unverified.
+Duplicates and unverified findings are listed in `review.md`.
+
+- Recall: known hits / known bugs in the area.
+- Precision: correct reports / adjudicated reports. Duplicates count, so a
+  repeat of a known bug is correct and a repeat of a known invalid finding is
+  not. Unverified findings are excluded.
+- Severity sum: each known bug has a severity of 1 (cosmetic), 3 (functional)
+  or 5 (broken page or error dump). The sum counts each bug once.
+- Score: severity sum minus known-invalid and duplicate findings.
+
+The judge is a model, so regrading the same findings can change a few matches.
+`--grade-only` regrades saved runs.
+
+## Cost
+
+Reported costs are directional. Codex and Claude costs are token estimates at
+list prices plus Browserbase time. Mo cost is Momentic's billed session spend.
+E2B sandbox time and grading calls are not included. Short test runs on one
+area cost $1 to $5 per agent; full runs cost much more.
 
 Start a fixture by hand with `pnpm start-fixture gitea --timeout 30m`; stop it
 with `pnpm stop-fixture <sandbox-id>`.

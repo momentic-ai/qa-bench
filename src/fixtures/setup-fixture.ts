@@ -31,7 +31,7 @@ export async function setupFixture(
     }))
   ) {
     throw new Error(
-      `${fixture.name}: E2B template ${template.name} is missing. Build the Docker resource template with build-snapshot first. See README.md.`,
+      `${fixture.name}: E2B template ${template.name} is missing. Build the Docker resource template with pnpm build-template first. See README.md.`,
     );
   }
   for (let attempt = 1; ; attempt++) {
