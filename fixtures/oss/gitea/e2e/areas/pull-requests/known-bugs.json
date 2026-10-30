@@ -259,11 +259,12 @@
     },
     {
       "id": "gitea-review-request-index-not-invalidated",
-      "description": "In Gitea, a newly requested reviewer can see a pull request (a proposed code change) in Review requested without a keyword, yet a matching title search hides it on repository or global pull request lists. Removed requests can likewise remain in keyword results; posting an ordinary comment makes the keyword filter catch up.",
+      "description": "In Gitea, a newly requested reviewer can see a pull request (a proposed code change) in Review requested without a keyword, yet a matching title search hides it on repository, global or organization pull request lists. Removed requests can likewise remain in keyword results; posting an ordinary comment makes the keyword filter catch up. This concerns review requests to an individual user; team-only requests that remain missing after reindexing have a separate cause.",
       "rootCause": "Request-review mutations emit a notification whose indexer implementation is inherited as a no-op. Requested reviewer IDs are rebuilt only during a later issue reindex such as an ordinary comment.",
       "reproductionPaths": [
         "On a Gitea repository's Pull Requests list, combining a text search with Type → Review requested shows No results, even though a matching pull request requests your review. Requesting a reviewer never refreshes the search index, so the search doesn't know about the request; Review requested without a search works.",
-        "On Gitea’s global Pull Requests dashboard, request a user’s review and then use a matching keyword under Review requested as that user. The request is visible without the keyword, but the same pull request is omitted when the matching text search is added."
+        "On Gitea’s global Pull Requests dashboard, request a user’s review and then use a matching keyword under Review requested as that user. The request is visible without the keyword, but the same pull request is omitted when the matching text search is added.",
+        "In Gitea, create a pull request without reviewers in an organization repository, then request an individual user’s review. As that user, open the organization’s Pull Requests page and choose Review requested: the pull request appears until a word from its title is added to the search, when it disappears. A request included at initial creation can be found, and an ordinary comment makes the later request searchable. This path concerns a direct request to the user rather than a request to their team."
       ]
     },
     {
@@ -303,7 +304,8 @@
       "description": "In Gitea, on global or organization Issues and Pull Requests, selecting an Author or Assignee and then clicking Open, Closed or an ownership sidebar link drops that user filter. Results and counts broaden to records excluded by the previously selected author/assignee, including when the ownership link was already active.",
       "rootCause": "The dashboard builds $queryLink without poster or assignee, then uses it for ownership and Open/Closed links. $queryLinkWithFilter contains those fields but is only used by the filter and sort controls. Global and organization dashboards share this template.",
       "reproductionPaths": [
-        "On a Gitea organization's Pull Requests page, switching between Open and Closed while an Author or Assignee filter is selected drops those filters, so pull requests by other authors or with other assignees appear."
+        "On a Gitea organization's Pull Requests page, switching between Open and Closed while an Author or Assignee filter is selected drops those filters, so pull requests by other authors or with other assignees appear.",
+        "On Gitea’s global Pull Requests page, choose an Author and then click the Open or Closed tab. The new address loses the selected author, and the list includes pull requests by other users instead of retaining the Author filter. Opening the corresponding address with both the author and state parameters still filters correctly; the failure is the tab link discarding the selection."
       ]
     },
     {
@@ -364,11 +366,12 @@
     },
     {
       "id": "gitea-review-submission-index-not-invalidated",
-      "description": "In Gitea, after approving another author’s pull request (a proposed code change), Reviewed by you can list it without a query but hide it under a matching title keyword on global or organization Pull Requests. Posting an ordinary comment makes the keyword search find the same persisted review.",
+      "description": "In Gitea, after approving another author’s pull request (a proposed code change), Reviewed by you can list it without a query but hide it under a matching title keyword on repository, global or organization Pull Requests pages. Posting an ordinary comment makes the keyword search find the same persisted review.",
       "rootCause": "SubmitReview emits PullRequestReview; indexerNotifier inherits its empty implementation. ReviewedIDs are rebuilt only on later reindex, so indexed keyword searches miss persisted approvals.",
       "reproductionPaths": [
         "In Gitea, approve another author’s pull request, then use Reviewed by you on the global Pull Requests dashboard with a matching title keyword. The persisted review is listed without a keyword but omitted from the matching keyword results until another indexing action occurs.",
-        "In Gitea, after reviewing another author’s pull request, search its matching title under Reviewed by you on an organization’s Pull Requests dashboard. The review exists, but the pull request disappears only when the matching keyword is combined with that review filter."
+        "In Gitea, after reviewing another author’s pull request, search its matching title under Reviewed by you on an organization’s Pull Requests dashboard. The review exists, but the pull request disappears only when the matching keyword is combined with that review filter.",
+        "In Gitea, approve another author’s pull request from Files Changed, then open that repository’s Pull Requests list as the reviewer. Reviewed by you lists the pull request without a search term, but adding a word from its title shows No results despite the approval remaining visible after reload. Posting an ordinary comment refreshes the search data and makes the same search find it."
       ]
     },
     {
