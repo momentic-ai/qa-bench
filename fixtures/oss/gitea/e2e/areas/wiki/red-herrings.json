@@ -128,6 +128,29 @@
           ],
           "reason": "Intended: a wiki image path starting with / (for example /avatars/<hash>) resolves to the wiki's own files (/<owner>/<repo>/wiki/raw/avatars/<hash>), not the site root, so it 404s. This is the same in every preview and on the saved page. Since 1.23 (go-gitea/gitea#34114), leading-slash paths are relative to the current content, so content stays portable when it's cloned, mirrored or served under a sub-path; /:root/... links to the site root, and a unit test asserts /image resolves to wiki/raw/image (models/renderhelper/repo_wiki_test.go:48). Same rule as the known-invalid 'Root-relative links in issue Markdown are prefixed with the repository path'."
         }
+      },
+      {
+        "source": "known-invalid.json",
+        "index": 11,
+        "report": {
+          "id": "gitea-wiki-root-relative-link-opens-pages-index",
+          "name": "Root-relative Markdown link to the wiki opens the Pages list instead of Home",
+          "summary": "The report claims that a wiki link written with a leading slash and the full repository path, such as [Home navigation](/owner/repo/wiki) in _Sidebar or a page, opens the wiki's Pages list instead of Home.",
+          "expected": "The reporter expects the link to open the wiki's Home page.",
+          "actual": "Clicking [Home navigation](/eval/harbor-handbook/wiki) opened /eval/harbor-handbook/wiki/?action=_pages.",
+          "reproSteps": [
+            "In a wiki with a Home page, save a page or _Sidebar containing [Home navigation](/<owner>/<repo>/wiki).",
+            "Click Home navigation."
+          ],
+          "reason": "Intended: since Gitea 1.23 (go-gitea/gitea#34114) a link starting with / in wiki content resolves relative to the wiki (models/renderhelper/repo_wiki.go ResolveLink; repo_wiki_test.go asserts /test renders as /user2/repo1/wiki/test). The link therefore renders as /<owner>/<repo>/wiki/<owner>/<repo>/wiki, a page that doesn't exist, and a missing wiki page redirects to the Pages list (routers/web/repo/wiki.go). /Home, Home, [[Home]], a full URL and /:root/<owner>/<repo>/wiki all open Home. Same rule as the known-invalid root-relative wiki image entry.",
+          "matchingGuidance": {
+            "scope": "Only links whose target starts with / and repeats the owner/repo/wiki path. Also not a defect when the wiki has no Home page, where every link to /wiki opens the Pages list.",
+            "relatedReference": {
+              "id": "gitea-wiki-root-relative-image-preview-broken",
+              "distinction": "Same leading-slash resolution rule. That rejection is an image path; this rejection is a navigation link."
+            }
+          }
+        }
       }
     ]
   },
@@ -231,6 +254,101 @@
             "Edit the page to add a heading, save, and check the sidebar again."
           ],
           "reason": "Not reproducible: the wiki page renders the Table of Contents and the _Sidebar content as two separate blocks that both use the wiki-content-sidebar class, and adding a heading only adds the Table of Contents block above the _Sidebar block. A check that reads just the first .wiki-content-sidebar element sees only the Table of Contents, which most likely explains the report."
+        }
+      }
+    ]
+  },
+  {
+    "id": "claim-contradicted-by-controlled-verification",
+    "explanation": "The claimed missing, changed or unusable state is contradicted by a decisive observation or controlled verification of that same claim. Examples include an allegedly lost value remaining intact or an allegedly broken action succeeding under the stated setup. This disproves the checked allegation, not every related workflow or the possibility of a different historical failure.",
+    "verificationGuidance": [
+      "Verify the actual displayed, submitted and persisted values, and the precise action target, instead of repeating the original interpretation.",
+      "Repeat the reported setup and a positive control; record what the decisive observation actually establishes.",
+      "Keep any different trigger, transient state or accepted neighboring defect separate from the contradicted claim."
+    ],
+    "instances": [
+      {
+        "source": "known-invalid.json",
+        "index": 8,
+        "report": {
+          "id": "gitea-wiki-anchor-link-click-does-not-scroll",
+          "name": "Clicking an in-page wiki heading link doesn't scroll to the heading",
+          "summary": "The report claims that clicking a Markdown link such as [Go](#heading) or a heading's anchor icon on a wiki page does not scroll to that heading.",
+          "expected": "The reporter expects the click to scroll the heading into view.",
+          "actual": "The reporter says the view stays in place after the click.",
+          "reproSteps": [
+            "Create a long wiki page with a link [Go Unicode](#日本語-café--punctuation) and the heading '## 日本語 café & punctuation!' far below it.",
+            "Click Go Unicode."
+          ],
+          "reason": "Not reproduced: clicking an in-page link scrolls to the heading, including Unicode headings, because anchors.ts handles link clicks and adds the 'user-content-' id prefix. Only same-tab fragment changes that are not clicks fail to scroll, which is the accepted gitea-wiki-fragment-change-does-not-scroll.",
+          "matchingGuidance": {
+            "scope": "Only reports whose trigger is clicking an in-page link or heading anchor icon.",
+            "relatedReference": {
+              "id": "gitea-wiki-fragment-change-does-not-scroll",
+              "distinction": "That accepted entry is a same-tab fragment change without a click, such as editing the address bar; this rejection is a link click."
+            }
+          }
+        }
+      },
+      {
+        "source": "known-invalid.json",
+        "index": 9,
+        "report": {
+          "id": "gitea-wiki-fragment-load-does-not-scroll",
+          "name": "Opening or reloading a wiki URL with a heading fragment doesn't scroll to the heading",
+          "summary": "The report claims that opening a wiki page URL that ends in a heading fragment, or reloading it, does not scroll to that heading, for example for a Unicode heading.",
+          "expected": "The reporter expects the page to load scrolled to the heading.",
+          "actual": "The reporter says the page loads at the top or at a different heading.",
+          "reproSteps": [
+            "Create a long wiki page with the heading '## 日本語 café & punctuation!' far down.",
+            "Open the page URL with #%E6%97%A5%E6%9C%AC%E8%AA%9E-caf%C3%A9--punctuation appended in a new tab, or reload it."
+          ],
+          "reason": "Not reproduced: on page load anchors.ts decodes the fragment and scrolls to the prefixed heading id, so a fresh load at an ASCII or Unicode fragment lands on the heading. A reload may restore the browser's previous scroll position, which is browser behavior. Only same-tab fragment changes that are not clicks fail to scroll, which is the accepted gitea-wiki-fragment-change-does-not-scroll.",
+          "matchingGuidance": {
+            "scope": "Only reports whose trigger is opening, reloading or sharing a URL with the fragment.",
+            "relatedReference": {
+              "id": "gitea-wiki-fragment-change-does-not-scroll",
+              "distinction": "That accepted entry is a same-tab fragment change on an already loaded page; this rejection is a page load or reload."
+            },
+            "otherRelatedReference": {
+              "id": "gitea-wiki-anchor-link-click-does-not-scroll",
+              "distinction": "That rejection is a link click; this one is a page load or reload."
+            }
+          }
+        }
+      }
+    ]
+  },
+  {
+    "id": "unsupported-shortcut-confused-with-undo-history",
+    "explanation": "Inferring broken Undo from an assumed keyboard shortcut that the editor does not implement. If the shortcut changes nothing, Undo acts on the earlier real toolbar edit, which can restore formatting that the user had just toggled off.",
+    "verificationGuidance": [
+      "Check the actual shortcut contract and literal editor value after each keypress.",
+      "Trace the real edit history one operation at a time, and compare toolbar changes with the unsupported shortcut before evaluating Undo."
+    ],
+    "instances": [
+      {
+        "source": "known-invalid.json",
+        "index": 10,
+        "report": {
+          "id": "gitea-simple-editor-bold-shortcut-undo",
+          "name": "Undo leaves bold markers applied with Ctrl+B in the simple Markdown editor",
+          "summary": "The report claims that in the default (simple textarea) Markdown editor, Ctrl+B wraps the selection in ** markers and Ctrl+Z then leaves those markers in place.",
+          "expected": "The reporter expects Ctrl+Z to remove the bold markers Ctrl+B added.",
+          "actual": "After applying bold with the toolbar, toggling it off with the toolbar, then pressing Ctrl+B and Ctrl+Z, the text read 'Harbor **middle** tail'.",
+          "reproSteps": [
+            "In a wiki page editor using the simple textarea editor, enter 'Harbor middle tail' and select 'middle'.",
+            "Click the Bold toolbar button twice to apply and remove bold.",
+            "Press Ctrl+B, then Ctrl+Z, and read the text."
+          ],
+          "reason": "Not a bug. The simple editor has no keyboard shortcuts: @github/markdown-toolbar-element 2.2.3 only handles Space/Enter on a focused toolbar button, Gitea's textarea keydown handler (web_src/js/features/comp/EditorMarkdown.ts) only handles Tab and Enter, and the Bold tooltip ('Add bold text') advertises no shortcut. Ctrl+B therefore changes nothing; the ** markers reappear because Ctrl+Z correctly undoes the earlier toolbar toggle-off, and a second Ctrl+Z removes them. Undo after the Bold button works.",
+          "matchingGuidance": {
+            "scope": "Simple (default textarea) Markdown editor only. Covers reports that undo fails after Ctrl+B or Cmd+B there, and reports that Ctrl+B or Cmd+B does nothing there, since that editor neither implements nor advertises shortcuts.",
+            "relatedReference": {
+              "id": "gitea-legacy-editor-shortcuts-do-nothing",
+              "distinction": "That accepted entry is the legacy (EasyMDE) editor, whose tooltips advertise 'Bold (Ctrl-B)' but the shortcuts do nothing; this rejection is the simple editor, which advertises no shortcuts."
+            }
+          }
         }
       }
     ]
