@@ -2,117 +2,29 @@
   {
     "id": "inclusion-toggle-assumed-exclusive-selection",
     "explanation": "A toggle can add or remove members of a set rather than choose one exclusive option. Clicking an already selected item may deselect it while leaving others selected, and turning on another eligible class may add results without removing the default class. This pattern matches a report that assumes radio-button behavior and judges the resulting records against that mistaken single-choice interpretation. Compare the complete selected set with the results; a real mismatch with that set remains a separate failure.",
-    "verificationGuidance": [
-      "Inspect the complete selected set before and after the toggle, not only the clicked option.",
-      "Check whether the control adds or removes members, or replaces the whole selection.",
-      "Compare results with the resulting union or selected set; actual mismatches remain separate."
-    ],
-    "instances": [
-      {
-        "source": "known-invalid.json",
-        "index": 0,
-        "report": {
-          "id": "gitea-pass2-004",
-          "name": "Global milestone repository filter shows milestones from other repositories",
-          "summary": "Selecting the highlighted eval/harbor-handbook repository filter shows only two milestones labeled with ORG-Milestones repositories, and the incorrect result persists after refresh.",
-          "expected": "Selecting eval/harbor-handbook in the global Milestones repository filter should show milestones labeled eval/harbor-handbook and preserve that filtered result after refresh.",
-          "actual": "Clicking eval/harbor-handbook highlighted it in the left filter, but the results showed only two ORG-Milestones-7264 repository milestones and no harbor-handbook rows. Refresh retained the same two rows and filter URL state.",
-          "reproSteps": [
-            "Sign in as eval and open /milestones with milestones in multiple accessible repositories.",
-            "Start with the default unfiltered repository selection, in which all listed repositories are active.",
-            "Click the already selected harbor-handbook repository in the left filter.",
-            "Observe harbor-handbook is deselected and the other selected repositories remain in the results. Refresh preserves those selections. The rejected report assumes this toggle is an exclusive selection."
-          ],
-          "reason": "User confirmed this is a known rejection. Global milestone repository filters are multi-select toggles. On an unfiltered list all three repositories are already selected. Clicking the active harbor-handbook entry deselects it, leaving repository IDs 2 and 3 selected. Native evidence shows harbor-handbook loses its active highlight and the two remaining repository milestones match the URL, including after refresh. The reported exclusive-selection expectation and claim that the click newly highlights harbor-handbook are incorrect."
-        }
-      }
+    "reproductionPaths": [
+      "In Gitea, follow this workflow: Sign in as eval and open /milestones with milestones in multiple accessible repositories. Start with the default unfiltered repository selection, in which all listed repositories are active. Click the already selected harbor-handbook repository in the left filter. Observe harbor-handbook is deselected and the other selected repositories remain in the results. Refresh preserves those selections. The rejected report assumes this toggle is an exclusive selection. The rejected report expected: Selecting eval/harbor-handbook in the global Milestones repository filter should show milestones labeled eval/harbor-handbook and preserve that filtered result after refresh. It claimed this outcome: Clicking eval/harbor-handbook highlighted it in the left filter, but the results showed only two ORG-Milestones-7264 repository milestones and no harbor-handbook rows. Refresh retained the same two rows and filter URL state. Review concluded: User confirmed this is a known rejection. Global milestone repository filters are multi-select toggles. On an unfiltered list all three repositories are already selected. Clicking the active harbor-handbook entry deselects it, leaving repository IDs 2 and 3 selected. Native evidence shows harbor-handbook loses its active highlight and the two remaining repository milestones match the URL, including after refresh. The reported exclusive-selection expectation and claim that the click newly highlights harbor-handbook are incorrect."
     ]
   },
   {
     "id": "role-badge-mistaken-for-account-identity",
     "explanation": "A badge such as admin can describe an account's privileges rather than its username. This pattern matches a report that mistakes that role badge for the signed-in identity and then claims another user's records leaked into the current user's view, even though the records belong to the actual signed-in account. Confirm the account's real identity and each record's author before making an authorship or permission claim. A demonstrated mismatch between those verified identities is a separate issue.",
-    "verificationGuidance": [
-      "Check the signed-in account menu and profile URL rather than relying on a role badge.",
-      "Compare item author identifiers with the authenticated account identifier before testing Created by you."
-    ],
-    "instances": [
-      {
-        "source": "known-invalid.json",
-        "index": 1,
-        "report": {
-          "id": "gitea-pass2-006",
-          "name": "Milestone Type filter Created by you retains items authored by another user",
-          "summary": "The milestone Type > Created by you filter updates the URL but leaves issue #4 and pull request #5, both opened by eval, visible to the signed-in admin viewer.",
-          "expected": "With the repository viewer signed in as admin, selecting Created by you should show only items created by admin. Since issue #4 and pull request #5 are both shown as opened by eval, neither should remain in the list.",
-          "actual": "Selecting Created by you changed the URL to /eval/harbor-handbook/milestone/13?type=created_by&state=open&milestone=13, but both issue #4 and pull request #5 remained visible. The reviewed browser recording shows they stayed visible without changing over time.",
-          "reproSteps": [
-            "Sign in as eval, which has the admin role, and open a milestone containing issues or pull requests authored by eval.",
-            "Open the Type filter and select Created by you.",
-            "Observe the eval-authored items remain listed. The rejected report misidentifies the admin role badge as a different signed-in username."
-          ],
-          "reason": "Known rejection authorized after an independent code and recording check. The browser remains signed in as eval, not a separate user named admin. Its account menu says Signed in as eval and its Profile link points to /eval. Both retained items also have author links to /eval. The blue admin label is a role badge. Created by you correctly retains items authored by the signed-in account; code sets PosterID to ctx.Doer.ID and filters issue.poster_id by that ID. This does not establish other-user leakage or an administrator bypass."
-        }
-      }
+    "reproductionPaths": [
+      "In Gitea, follow this workflow: Sign in as eval, which has the admin role, and open a milestone containing issues or pull requests authored by eval. Open the Type filter and select Created by you. Observe the eval-authored items remain listed. The rejected report misidentifies the admin role badge as a different signed-in username. The rejected report expected: With the repository viewer signed in as admin, selecting Created by you should show only items created by admin. Since issue #4 and pull request #5 are both shown as opened by eval, neither should remain in the list. It claimed this outcome: Selecting Created by you changed the URL to /eval/harbor-handbook/milestone/13?type=created_by&state=open&milestone=13, but both issue #4 and pull request #5 remained visible. The reviewed browser recording shows they stayed visible without changing over time. Review concluded: Known rejection authorized after an independent code and recording check. The browser remains signed in as eval, not a separate user named admin. Its account menu says Signed in as eval and its Profile link points to /eval. Both retained items also have author links to /eval. The blue admin label is a role badge. Created by you correctly retains items authored by the signed-in account; code sets PosterID to ctx.Doer.ID and filters issue.poster_id by that ID. This does not establish other-user leakage or an administrator bypass."
     ]
   },
   {
     "id": "claim-contradicted-by-controlled-verification",
     "explanation": "A report's specific factual claim is contradicted by a decisive observation or by a controlled repetition of the same setup. For example, the allegedly deleted value is still present, or the allegedly broken control performs the requested action when activated as described. Match this pattern only when that counterevidence addresses the same value, action and conditions; a vaguely similar successful workflow is insufficient. The finding rejects the checked allegation, not every related defect or every possible historical failure.",
-    "verificationGuidance": [
-      "Verify the actual displayed, submitted and persisted values, and the precise action target, instead of repeating the original interpretation.",
-      "Repeat the reported setup and a positive control; record what the decisive observation actually establishes.",
-      "Keep any different trigger, transient state or accepted neighboring defect separate from the contradicted claim."
-    ],
-    "instances": [
-      {
-        "source": "known-invalid.json",
-        "index": 2,
-        "report": {
-          "name": "Milestone due dates display one calendar day earlier than entered",
-          "summary": "Date-only milestone values display one day early in lists and detail pages: 2026-09-30 becomes Sep 29, 2026, and 2030-12-31 becomes Dec 30, 2030. One report compared the list directly with the unchanged edit-form value; another confirmed the create request sent the intended date.",
-          "expected": "Milestone list and detail dates should match the date entered in the form.",
-          "actual": "Date-only milestone values display one day early in lists and detail pages: 2026-09-30 becomes Sep 29, 2026, and 2030-12-31 becomes Dec 30, 2030. One report compared the list directly with the unchanged edit-form value; another confirmed the create request sent the intended date.",
-          "reproSteps": [
-            "Sign in to Gitea with the fixture account and create a fresh private repository.",
-            "Open Issues → Milestones → New Milestone.",
-            "Enter a unique title and set Due Date to 2026-09-30; verify the form displays 09/30/2026.",
-            "Create the milestone. Observe Sep 29, 2026 on the milestone list instead of Sep 30.",
-            "Compare the displayed date with the edit form. Another observed fixture had 12/31/2030 in Edit and Dec 30, 2030 in the list."
-          ],
-          "reason": "Rejected for the pinned Gitea 1.24.7 fixture (source commit 99053ce4fa2b45f1bca5837418c0c57f793ca824): the date-only source flow preserves the entered calendar date and renders local midnight rather than parsing it as UTC. A fresh private-repository browser check in America/Los_Angeles displayed Sep 30, 2026 for 2026-09-30 and Dec 31, 2030 for 2030-12-31; the edit form retained the entered value and the detail page agreed. The reported one-day shift was not reproduced.",
-          "severity": 3
-        }
-      }
+    "reproductionPaths": [
+      "In Gitea, follow this workflow: Sign in to Gitea with the fixture account and create a fresh private repository. Open Issues → Milestones → New Milestone. Enter a unique title and set Due Date to 2026-09-30; verify the form displays 09/30/2026. Create the milestone. Observe Sep 29, 2026 on the milestone list instead of Sep 30. Compare the displayed date with the edit form. Another observed fixture had 12/31/2030 in Edit and Dec 30, 2030 in the list. The rejected report expected: Milestone list and detail dates should match the date entered in the form. It claimed this outcome: Date-only milestone values display one day early in lists and detail pages: 2026-09-30 becomes Sep 29, 2026, and 2030-12-31 becomes Dec 30, 2030. One report compared the list directly with the unchanged edit-form value; another confirmed the create request sent the intended date. Review concluded: Rejected for the pinned Gitea 1.24.7 fixture (source commit 99053ce4fa2b45f1bca5837418c0c57f793ca824): the date-only source flow preserves the entered calendar date and renders local midnight rather than parsing it as UTC. A fresh private-repository browser check in America/Los_Angeles displayed Sep 30, 2026 for 2026-09-30 and Dec 31, 2030 for 2030-12-31; the edit form retained the entered value and the detail page agreed. The reported one-day shift was not reproduced."
     ]
   },
   {
     "id": "desktop-emulation-assumed-to-prove-mobile-failure",
     "explanation": "A narrow desktop browser is not always an accurate reproduction of a phone browser, even at the same viewport width. Desktop scrollbars can take up layout space while the target phone browser draws them over the content. This pattern matches a report of mobile overflow that occurs only under the different desktop scrollbar conditions and does not reproduce in the actual target environment. Match the browser and scrollbar behavior before generalizing the result to mobile users.",
-    "verificationGuidance": [
-      "Record scrollbar behavior and available content width, not only outer viewport dimensions.",
-      "Recheck in the target browser environment and preserve any desktop-only observation without relabeling it as a reproduced mobile failure."
-    ],
-    "instances": [
-      {
-        "source": "known-invalid.json",
-        "index": 3,
-        "report": {
-          "id": "gitea-milestone-progress-bar-scrollbar-overflow",
-          "name": "Milestone progress bar forces horizontal scrolling on mobile",
-          "summary": "On a milestone detail page tall enough to scroll, at about 390px wide, the progress bar is reported to be a few pixels wider than the content area and to add a horizontal scrollbar.",
-          "expected": "The reported expectation is that the milestone progress bar fits the mobile content width without horizontal scrolling.",
-          "actual": "In a browser that draws a 15px classic scrollbar, a 390×844 window leaves 375px of content, and the progress bar (width min(420px, 96vw)) extends to about x=382, so the page scrolls sideways about 7px. With overlay scrollbars the bar fits.",
-          "reproSteps": [
-            "Create a milestone with a long enough description that its detail page scrolls vertically.",
-            "Open the milestone detail page in a browser window about 390px wide.",
-            "Check whether the progress bar extends past the content edge and the page scrolls sideways."
-          ],
-          "reason": "User-rejected. The overflow happens only when the browser draws a classic scrollbar that takes up width (96vw counts the scrollbar). Phone browsers and Mo's browser use overlay scrollbars, where the bar fits; Mo did not reproduce it at 390px. What remains is a desktop window dragged below about 437px wide, not a mobile bug.",
-          "matchingGuidance": {
-            "scope": "Reject reports of the milestone progress bar overflowing at phone widths because of scrollbar width. Do not generalize to other milestone layout bugs or to overflow that happens with overlay scrollbars."
-          }
-        }
-      }
+    "reproductionPaths": [
+      "In Gitea, follow this workflow: Create a milestone with a long enough description that its detail page scrolls vertically. Open the milestone detail page in a browser window about 390px wide. Check whether the progress bar extends past the content edge and the page scrolls sideways. The rejected report expected: The reported expectation is that the milestone progress bar fits the mobile content width without horizontal scrolling. It claimed this outcome: In a browser that draws a 15px classic scrollbar, a 390×844 window leaves 375px of content, and the progress bar (width min(420px, 96vw)) extends to about x=382, so the page scrolls sideways about 7px. With overlay scrollbars the bar fits. Review concluded: User-rejected. The overflow happens only when the browser draws a classic scrollbar that takes up width (96vw counts the scrollbar). Phone browsers and Mo's browser use overlay scrollbars, where the bar fits; Mo did not reproduce it at 390px. What remains is a desktop window dragged below about 437px wide, not a mobile bug."
     ]
   }
 ]
