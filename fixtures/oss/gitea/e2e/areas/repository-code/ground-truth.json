@@ -1096,6 +1096,31 @@
         ],
         "limitations": ["No fresh reproduction or independent judge run."]
       }
+    },
+    {
+      "id": "reviewed-n26-gitea-repository-code",
+      "name": "File editor disables valid filename-only changes until content is touched",
+      "summary": "Commit Changes only becomes enabled after the content editor changes, blocking both a rename with unchanged content and creation of an empty file.",
+      "expected": "Changing an existing file's path or specifying a new empty file should enable Commit Changes without requiring a meaningless content edit.",
+      "actual": "Both valid filename-only operations are blocked until the user edits the content at least once, even if the content is then returned to its original value.",
+      "reproSteps": [
+        "On a writable branch of /eval/harbor-handbook, open an existing file and select Edit File.",
+        "Change only its filename, leaving the content unchanged; observe that Commit Changes remains disabled.",
+        "Type a character in the content editor and delete it again; Commit Changes becomes enabled and successfully commits the rename.",
+        "The same issue occurs with Add File > New File: entering a valid filename with empty content leaves Commit Changes disabled until a character is typed and deleted, after which an empty-file confirmation appears."
+      ],
+      "severity": 3,
+      "owningArea": "gitea/repository-code",
+      "reviewEvidence": {
+        "basis": "User-approved manual retained-report and source review.",
+        "analysis": "Retained Playwright outputs confirm filename-only rename leaves Commit Changes disabled. Typing then deleting one character enables commit and successfully renames the file with unchanged content. New empty file has the same reported blocking behavior and a successful edit-and-delete control. Existing editable filename and successful unchanged-content commit establish support.",
+        "limitations": "Retained UI tool outputs reviewed. Source establishes dirty-state gate, but precise event-order defect is not closed. No fresh browser reproduction or independent judges.",
+        "sourceLocations": [
+          "Gitea 99053ce4fa2b45f1bca5837418c0c57f793ca824 web_src/js/features/repo-editor.ts:145-193",
+          "Gitea 99053ce4fa2b45f1bca5837418c0c57f793ca824 templates/repo/editor/edit.tmpl:20-30",
+          "Gitea 99053ce4fa2b45f1bca5837418c0c57f793ca824 web_src/js/vendor/jquery.are-you-sure.ts:34-40,78-126"
+        ]
+      }
     }
   ]
 }

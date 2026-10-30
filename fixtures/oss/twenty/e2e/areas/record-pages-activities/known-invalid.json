@@ -322,6 +322,50 @@
           "packages/twenty-front/src/modules/command-menu-item/engine-command/constants/EngineComponentKeyHeadlessComponentMap.tsx:106"
         ]
       }
+    },
+    {
+      "id": "reviewed-r38-twenty-record-pages-activities",
+      "name": "Company timeline rewrites earlier updates and loses intermediate values",
+      "summary": "Later changes to company fields are merged into an older timeline entry without updating its timestamp; repeated edits overwrite the earlier value and omit the previous value.",
+      "expected": "The timeline accurately records when each edit occurred and the before/after values, so the intermediate owner change remains auditable.",
+      "actual": "The owner change is added to the earlier revenue entry, which still says it happened several minutes ago. Changing the owner back replaces Jony Ive with Phil Schiler in that same entry; the prior owner and intermediate Jony Ive change are absent.",
+      "reproSteps": [
+        "Open a company record and change a field such as Annual Revenue, then wait several minutes.",
+        "Change Account Owner from Phil Schiler to Jony Ive and inspect the Timeline.",
+        "Change Account Owner back to Phil Schiler and inspect the same timeline entry again, including after reload."
+      ],
+      "reason": "The pinned timeline repository deliberately coalesces updates for the same record, actor and action within ten minutes. It updates the existing entry properties while keeping the original creation time. Its diff merger explicitly retains the first before value and final after value, not each intermediate transition. The report requires immutable per-edit audit records or last-edit timestamps for a grouped activity; no applicable contract establishes either requirement. This does not reject edits to another actor/record, merging beyond the window, failed data persistence or a contradictory explicit audit requirement. Rejected by the reviewer under the bug-reproducer rules. This does not reject a distinct demonstrated functional failure or a contradictory explicit product requirement.",
+      "reviewEvidence": {
+        "basis": "User-approved manual retained-report and source review.",
+        "analysis": "The pinned timeline repository deliberately coalesces updates for the same record, actor and action within ten minutes. It updates the existing entry properties while keeping the original creation time. Its diff merger explicitly retains the first before value and final after value, not each intermediate transition. The report requires immutable per-edit audit records or last-edit timestamps for a grouped activity; no applicable contract establishes either requirement. This does not reject edits to another actor/record, merging beyond the window, failed data persistence or a contradictory explicit audit requirement.",
+        "limitations": "Pinned source and retained reports, no fresh browser or independent judges. Not matched to Gitea aggregate-history negative because underlying-event preservation differs.",
+        "sourceLocations": [
+          "Twenty 35c645064f72bc4e3180a2c6c506cbbfee170007 packages/twenty-server/src/modules/timeline/repositories/timeline-activity.repository.ts:66-87,115-134",
+          "Twenty 35c645064f72bc4e3180a2c6c506cbbfee170007 packages/twenty-server/src/engine/core-modules/event-emitter/utils/object-record-diff-merge.ts:11-35"
+        ]
+      }
+    },
+    {
+      "id": "reviewed-r42-twenty-record-pages-activities",
+      "name": "Task timeline overwrites later status changes in an old activity",
+      "summary": "The task timeline merges later edits into the first update event, replaces earlier status values, and keeps the old timestamp. A status changed just now therefore appears to have changed several minutes earlier, and prior transitions disappear.",
+      "expected": "The timeline records the status changes with their correct times and preserves the earlier transitions.",
+      "actual": "Only one older update activity remains; its Status value changes to the latest value and its timestamp still says several minutes ago. The previous In progress and Done changes are no longer visible.",
+      "reproSteps": [
+        "Create a task from a company's Tasks tab and set its status to In progress.",
+        "Wait several minutes, then change its status to Done and open the task's Timeline tab.",
+        "Change the status again to To do, then return to Timeline."
+      ],
+      "reason": "The pinned timeline repository deliberately coalesces updates for the same record, actor and action within ten minutes. It updates the existing entry properties while keeping the original creation time. Its diff merger explicitly retains the first before value and final after value, not each intermediate transition. The report requires immutable per-edit audit records or last-edit timestamps for a grouped activity; no applicable contract establishes either requirement. This does not reject edits to another actor/record, merging beyond the window, failed data persistence or a contradictory explicit audit requirement. Rejected by the reviewer under the bug-reproducer rules. This does not reject a distinct demonstrated functional failure or a contradictory explicit product requirement.",
+      "reviewEvidence": {
+        "basis": "User-approved manual retained-report and source review.",
+        "analysis": "The pinned timeline repository deliberately coalesces updates for the same record, actor and action within ten minutes. It updates the existing entry properties while keeping the original creation time. Its diff merger explicitly retains the first before value and final after value, not each intermediate transition. The report requires immutable per-edit audit records or last-edit timestamps for a grouped activity; no applicable contract establishes either requirement. This does not reject edits to another actor/record, merging beyond the window, failed data persistence or a contradictory explicit audit requirement.",
+        "limitations": "Pinned source and retained reports, no fresh browser or independent judges. Not matched to Gitea aggregate-history negative because underlying-event preservation differs.",
+        "sourceLocations": [
+          "Twenty 35c645064f72bc4e3180a2c6c506cbbfee170007 packages/twenty-server/src/modules/timeline/repositories/timeline-activity.repository.ts:66-87,115-134",
+          "Twenty 35c645064f72bc4e3180a2c6c506cbbfee170007 packages/twenty-server/src/engine/core-modules/event-emitter/utils/object-record-diff-merge.ts:11-35"
+        ]
+      }
     }
   ]
 }
