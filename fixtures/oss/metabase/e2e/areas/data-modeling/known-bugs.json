@@ -1209,7 +1209,7 @@
             }
           ],
           "expected": "A column set to Detail views only should appear in the record detail view and be absent from the model's List rows.",
-          "actual": "A fresh native model's List rows display ADDRESS and its values even after ADDRESS is saved as Detail views only. It persists after reload. Reopening metadata confirms the setting is checked; changing default to Table correctly hides ADDRESS, leaving ID/NAME. No custom List layout was used.",
+          "actual": "A fresh native model's List rows display ADDRESS and its values even after ADDRESS is saved as Detail views only. It persists after reload. Reopening metadata confirms the setting is checked; changing default to Table correctly hides ADDRESS, leaving ID/NAME. This also happens when the List layout was customized and still includes the column.",
           "reproSteps": [
             "Go to /browse/models → Create a new model → Use a native query.",
             "Select Sample Database and enter SELECT ID, NAME, ADDRESS FROM PEOPLE LIMIT 3, then run it.",
@@ -1383,7 +1383,7 @@
     },
     {
       "id": "metabase-card-history-noise",
-      "explanation": "Description-only model edit produces History claiming pin-position and metadata edits.",
+      "explanation": "Editing only a model’s or metric’s title or description can create History text claiming unrelated pin-position or metadata changes even though no pin operation was performed.",
       "rootCause": {
         "explanation": "Card revision comparison includes collection_position/result_metadata normalization fields even when only descriptive metadata changed, producing unrelated revision diffs.",
         "sourceReferences": [
@@ -1400,15 +1400,15 @@
       "reproductionPaths": [
         {
           "id": "metabase-card-history-noise-data-modeling-path-1",
-          "explanation": "Description-only model edit produces History claiming pin-position and metadata edits.",
+          "explanation": "Editing only a model's or metric's title or description records History text such as 'changed pin position and changed the description', though no pin action was performed.",
           "sourceBugs": [
             {
               "index": 27,
               "id": "metabase-data-modeling-228",
-              "name": "Description-only model edit produces History claiming pin-position and metadata edits"
+              "name": "Title-only or description-only model or metric edit produces History claiming pin-position changes"
             }
           ],
-          "expected": "History should accurately describe the description-only change, not claim unrelated pin-position changes.",
+          "expected": "History should accurately describe the description-only change, not claim unrelated pin-position or metadata changes.",
           "actual": "History attributes the edit correctly to 'You' but says 'edited the metadata, changed pin position and changed the description.' Only the description was edited in this coordinated flow.",
           "reproSteps": [
             "As Harbor Admin, open a shared notebook model created by another user (for example one Maya created).",
@@ -1887,9 +1887,9 @@
     },
     {
       "id": "metabase-copy-card-dashboard-name-placeholder",
-      "explanation": "Duplicating a saved question or metric asks “What is the name of your dashboard?” in the Name field, despite creating a copy of the selected card.",
+      "explanation": "Duplicating a saved question, model or metric asks “What is the name of your dashboard?” in the Name field despite creating a copy of the selected card.",
       "rootCause": {
-        "explanation": "CopyCardForm uses an unconditional dashboard-specific Name placeholder for card copies, regardless of whether the card is a question or metric.",
+        "explanation": "CopyCardForm uses an unconditional dashboard-specific Name placeholder for card copies, regardless of whether the card is a question, model or metric.",
         "sourceReferences": [
           {
             "repository": "metabase/metabase",
@@ -1919,7 +1919,52 @@
             "Open the detail menu and choose Duplicate.",
             "Clear the Name field to reveal its placeholder."
           ],
-          "severity": 1
+          "severity": 1,
+          "sourceConstraints": [
+            {
+              "sourceBugIndex": 41,
+              "constraints": {
+                "matchingGuidance": {
+                  "relatedReference": {
+                    "id": "metabase-data-modeling-model-duplicate-dashboard-placeholder",
+                    "distinction": "This reference covers metrics. The related one covers models."
+                  }
+                }
+              }
+            }
+          ]
+        },
+        {
+          "expected": "The Name placeholder refers to the model being duplicated, not a dashboard.",
+          "actual": "In the Duplicate model dialog, the Name placeholder reads “What is the name of your dashboard?”",
+          "reproSteps": [
+            "Open a model.",
+            "Open the top-right menu and choose Duplicate.",
+            "Clear the Name field to reveal its placeholder."
+          ],
+          "severity": 1,
+          "id": "metabase-copy-card-dashboard-name-placeholder-data-modeling-path-2",
+          "explanation": "Model duplication Name field asks for a dashboard name.",
+          "sourceBugs": [
+            {
+              "index": 112,
+              "id": "metabase-data-modeling-model-duplicate-dashboard-placeholder",
+              "name": "Model duplication Name field asks for a dashboard name"
+            }
+          ],
+          "sourceConstraints": [
+            {
+              "sourceBugIndex": 112,
+              "constraints": {
+                "matchingGuidance": {
+                  "relatedReference": {
+                    "id": "metabase-data-modeling-227",
+                    "distinction": "The related reference covers metrics. This one covers models."
+                  }
+                }
+              }
+            }
+          ]
         }
       ]
     },
@@ -1964,7 +2009,7 @@
     },
     {
       "id": "metabase-glossary-save-closes-early",
-      "explanation": "When a glossary term create or edit fails on the server, for example a duplicate term or a term longer than 255 characters, the row briefly shows the new values and then silently reverts, with no error and the entered definition lost.",
+      "explanation": "A rejected glossary create or edit closes its editor without reporting the error or retaining the draft: duplicate-term creation loses its new definition, while an overlong edited term can appear saved and revert after refresh.",
       "rootCause": {
         "explanation": "GlossaryRowEditor.save invokes void onSave(term.trim(), definition.trim()) then immediately onCancel(), closing the editor before the asynchronous save outcome is known.",
         "sourceReferences": [
@@ -1981,12 +2026,12 @@
       "reproductionPaths": [
         {
           "id": "metabase-glossary-save-closes-early-data-modeling-path-1",
-          "explanation": "When a glossary term create or edit fails on the server, for example a duplicate term or a term longer than 255 characters, the row briefly shows the new values and then silently reverts, with no error and the entered definition lost.",
+          "explanation": "When creating a glossary term that duplicates an existing term, the save fails on the server, the editor closes with no error, and the entered definition is lost.",
           "sourceBugs": [
             {
               "index": 44,
               "id": "metabase-data-modeling-179",
-              "name": "A failed glossary save (duplicate or over-255-character term) silently discards the edit"
+              "name": "A failed duplicate glossary term save silently discards the draft"
             }
           ],
           "expected": "Show duplicate-term validation and retain the entered draft so the user can choose another name.",
@@ -1997,7 +2042,53 @@
             "Click New term again, enter the identical term QA duplicate term and a different definition New draft definition, then Save.",
             "Inspect the glossary and reopen New term."
           ],
-          "severity": 3
+          "severity": 3,
+          "sourceConstraints": [
+            {
+              "sourceBugIndex": 44,
+              "constraints": {
+                "matchingGuidance": {
+                  "relatedReference": {
+                    "id": "metabase-data-modeling-glossary-long-term-edit-reverts",
+                    "distinction": "This reference covers creating a duplicate term. The related one covers editing a term past the 255-character limit."
+                  }
+                }
+              }
+            }
+          ]
+        },
+        {
+          "expected": "Show a length validation message and keep the unsaved input, or save the edit.",
+          "actual": "The row shows the long name and new definition after Save. After a refresh, both previous values are back.",
+          "reproSteps": [
+            "Open Data Reference > Glossary and create a term with a short name and definition.",
+            "Click the term to edit it.",
+            "Replace the name with a string longer than 255 characters and change the definition, then Save.",
+            "Observe the saved row, then refresh."
+          ],
+          "severity": 3,
+          "id": "metabase-glossary-save-closes-early-data-modeling-path-2",
+          "explanation": "Editing an existing glossary term to a name longer than 255 characters shows the new name and definition as saved, but the server rejects it and a refresh restores the old values. No error is shown.",
+          "sourceBugs": [
+            {
+              "index": 110,
+              "id": "metabase-data-modeling-glossary-long-term-edit-reverts",
+              "name": "Editing a glossary term past 255 characters appears saved, then reverts"
+            }
+          ],
+          "sourceConstraints": [
+            {
+              "sourceBugIndex": 110,
+              "constraints": {
+                "matchingGuidance": {
+                  "relatedReference": {
+                    "id": "metabase-data-modeling-179",
+                    "distinction": "The related reference covers creating a duplicate term. This one covers editing a term past the 255-character limit."
+                  }
+                }
+              }
+            }
+          ]
         }
       ]
     },
@@ -2330,7 +2421,7 @@
     },
     {
       "id": "metabase-xray-fk-geography",
-      "explanation": "User ID field X-ray generates geographic charts that require manual chart configuration.",
+      "explanation": "Automatically generated field X-rays can contain charts with missing region/metric or axis selections, showing manual chart-configuration guidance instead of a usable chart.",
       "rootCause": {
         "explanation": "X-ray generation follows linked field/table metadata and geographic heuristics without ensuring that the selected visualization has compatible latitude/longitude/state fields.",
         "sourceReferences": [
@@ -2347,12 +2438,12 @@
       "reproductionPaths": [
         {
           "id": "metabase-xray-fk-geography-data-modeling-path-1",
-          "explanation": "User ID field X-ray generates geographic charts that require manual chart configuration.",
+          "explanation": "Opening an X-ray for a field (for example User ID or ID) generates cards such as maps or 'ID by Region' that show 'Which fields do you want to use for the X and Y axes?' instead of a chart.",
           "sourceBugs": [
             {
               "index": 56,
               "id": "metabase-data-modeling-346",
-              "name": "User ID field X-ray generates geographic charts that require manual chart configuration"
+              "name": "Field X-ray generates charts that require manual axis configuration"
             }
           ],
           "expected": "The automatically generated section labeled 'How the User ID fields is distributed geographically' renders its geographic charts without requiring chart settings changes.",
@@ -2805,9 +2896,9 @@
     },
     {
       "id": "metabase-search-date-ranges-server-timezone",
-      "explanation": "Search Creation date and Last edit filters can include or exclude recently created items on the wrong calendar day near midnight: browser-local fixed-date choices or relative-date previews disagree with the server-clock search boundary.",
+      "explanation": "Search Creation date and Last edit filters can disagree on which items belong to Today or a fixed calendar day, excluding models, metrics or questions whose displayed creation/edit date is today. A browser/server day boundary is one trigger; reports can also involve seeded items never edited since creation.",
       "rootCause": {
-        "explanation": "Search date-range-filter-clause calls date-string->range without a viewer timezone. Relative decoding obtains t/local-date-time on the server, while the search comparison casts stored timestamps to date; browser-local date picks and previews therefore need not describe the same day near a timezone boundary. Exact fixture timezone configuration remains a prerequisite of each report.",
+        "explanation": "Search date-range-filter-clause calls date-string->range without a viewer timezone. Relative decoding obtains t/local-date-time on the server, while the search comparison casts stored timestamps to date; browser-local date picks and previews therefore need not describe the same day near a timezone boundary. Exact fixture timezone configuration remains a prerequisite of each report. Seeded or never-edited item variants are now accepted by the source matching scope; the supplied evidence does not establish that each such exclusion has the same timezone cause rather than missing last-edit metadata. Attribution of those broader symptoms remains provisional.",
         "sourceReferences": [
           {
             "repository": "metabase/metabase",
@@ -2850,7 +2941,7 @@
         },
         {
           "id": "metabase-search-date-ranges-server-timezone-data-modeling-path-2",
-          "explanation": "Search's Creation date and Last edit date filters for models and metrics resolve dates on the server's GMT clock, so items created or edited in the evening in a timezone behind UTC are filtered as the next day.",
+          "explanation": "Search's Creation date and Last edit date filters for models and metrics resolve dates on the server's GMT clock, so items created or edited in the evening in a timezone behind UTC are filtered as the next day. Reports may show only the symptom: Last edit date: Today leaves out a model or metric that was created or edited today, even one never edited since it was created, while Creation date: Today or its displayed date shows today.",
           "sourceBugs": [
             {
               "index": 107,
@@ -2867,7 +2958,17 @@
             "Set Creation date to Fixed date range > On today's date as shown in the picker; the metric appears.",
             "Open Last edit date, select Current then Day. Observe no results instead of the metric edited minutes ago."
           ],
-          "severity": 3
+          "severity": 3,
+          "sourceConstraints": [
+            {
+              "sourceBugIndex": 107,
+              "constraints": {
+                "matchingGuidance": {
+                  "claimScope": "Credit any report that Last edit date: Today (or Current day) leaves out a model or metric whose creation or last edit is today, including seeded items never edited since creation, while Creation date or the item's displayed date shows today. The report does not need a fresh edit, the time of day, or the GMT cause."
+                }
+              }
+            }
+          ]
         }
       ]
     },
@@ -3982,19 +4083,19 @@
     },
     {
       "id": "metabase-deleted-model-search-index",
-      "explanation": "Permanently deleted model remains in search when Search items in trash is enabled.",
+      "explanation": "Permanently deleting a model or metric removes it from Trash but leaves a stale result in trash-enabled search, whose link opens a missing page.",
       "rootCause": {
-        "explanation": "The model-index search hooks are disabled, leaving search ingestion lifecycle dependent on explicit updates. A permanently deleted model can retain its ingested search record; the exact model deletion event path still needs confirmation.",
+        "explanation": "The source report demonstrates a stale search document after permanent deletion of a Card (model or metric). Card deletion and search-index removal must agree; the available prior model-index hook reference is not sufficient to establish the deletion path for either card type. The exact ingestion/deletion event responsible remains unresolved, so these equivalent Card deletion workflows form a provisional common lifecycle cluster without claiming disabled ModelIndex hooks explain metric deletion.",
         "sourceReferences": [
           {
             "repository": "metabase/metabase",
             "revision": "f42632893810325d9f74375a4cd29bd31d8daefa",
-            "path": "src/metabase/indexed_entities/models/model_index.clj",
-            "line": 210,
-            "url": "https://github.com/metabase/metabase/blob/f42632893810325d9f74375a4cd29bd31d8daefa/src/metabase/indexed_entities/models/model_index.clj#L210"
+            "path": "src/metabase/queries/models/card.clj",
+            "line": 845,
+            "url": "https://github.com/metabase/metabase/blob/f42632893810325d9f74375a4cd29bd31d8daefa/src/metabase/queries/models/card.clj#L845"
           }
         ],
-        "analysisStatus": "inferred"
+        "analysisStatus": "source-version-unresolved"
       },
       "reproductionPaths": [
         {
@@ -4016,7 +4117,53 @@
             "Verify its Trash row disappears, including after refresh.",
             "Search the model name using top search, open Search everything, and enable Search items in trash."
           ],
-          "severity": 3
+          "severity": 3,
+          "sourceConstraints": [
+            {
+              "sourceBugIndex": 70,
+              "constraints": {
+                "matchingGuidance": {
+                  "relatedReference": {
+                    "id": "metabase-data-modeling-deleted-metric-in-trash-search",
+                    "distinction": "This reference covers models. The related one covers metrics."
+                  }
+                }
+              }
+            }
+          ]
+        },
+        {
+          "expected": "A permanently deleted metric is removed from searchable items, including Trash search.",
+          "actual": "The metric is gone from Trash and its URL is not found, but trash-enabled search still returns 1 result with its name, labeled Trash and 'Deleted 2 minutes ago by you'.",
+          "reproSteps": [
+            "Create a disposable metric in your personal collection with a unique name.",
+            "Move it to trash.",
+            "Open Trash, choose Delete permanently in its row menu, and confirm.",
+            "Search the metric name, open Search everything, and enable Search items in trash."
+          ],
+          "severity": 3,
+          "id": "metabase-deleted-model-search-index-data-modeling-path-2",
+          "explanation": "A permanently deleted metric disappears from Trash, but trash-enabled search still returns it.",
+          "sourceBugs": [
+            {
+              "index": 111,
+              "id": "metabase-data-modeling-deleted-metric-in-trash-search",
+              "name": "Permanently deleted metric remains in search when Search items in trash is enabled"
+            }
+          ],
+          "sourceConstraints": [
+            {
+              "sourceBugIndex": 111,
+              "constraints": {
+                "matchingGuidance": {
+                  "relatedReference": {
+                    "id": "metabase-data-modeling-400",
+                    "distinction": "The related reference covers models. This one covers metrics."
+                  }
+                }
+              }
+            }
+          ]
         }
       ]
     },
@@ -4062,6 +4209,106 @@
           "severity": 3
         }
       ]
+    },
+    {
+      "id": "metabase-model-rename-history-extra-viz-metadata-diff",
+      "explanation": "Renaming only a model’s title can add History text claiming visualization-settings and metadata changes that the user did not make.",
+      "rootCause": {
+        "explanation": "Card revision serialization retains visualization_settings and model result_metadata. The rename save and revision comparison can therefore record normalized/expanded metadata as additional changes. The exact fields changed by this title-only save have not been captured, so the mechanism remains inferred and is kept separate from the pin-position history-noise report rather than asserting both need the same normalization fix.",
+        "sourceReferences": [
+          {
+            "repository": "metabase/metabase",
+            "revision": "f42632893810325d9f74375a4cd29bd31d8daefa",
+            "path": "src/metabase/revisions/impl/card.clj",
+            "line": 38,
+            "url": "https://github.com/metabase/metabase/blob/f42632893810325d9f74375a4cd29bd31d8daefa/src/metabase/revisions/impl/card.clj#L38"
+          }
+        ],
+        "analysisStatus": "inferred"
+      },
+      "reproductionPaths": [
+        {
+          "expected": "History accurately describes the title rename without claiming unrelated visualization or metadata edits.",
+          "actual": "History says 'changed the visualization settings, renamed it from \"QA Models Created 1029\" to \"QA Models Created 1029 Renamed\" and edited the metadata.' Only the title was edited.",
+          "reproSteps": [
+            "As Harbor Admin, create a model using notebook editor with People as the source and save under a unique QA name in Our analytics.",
+            "Reopen it from Models, click its header title, append Renamed, and press Enter.",
+            "Refresh and open More info > History."
+          ],
+          "severity": 3,
+          "id": "metabase-model-rename-history-extra-viz-metadata-diff-data-modeling-path-1",
+          "explanation": "Model rename history claims unrelated changes.",
+          "sourceBugs": [
+            {
+              "index": 113,
+              "id": "metabase-data-modeling-b99",
+              "name": "Model rename history claims unrelated changes"
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "id": "metabase-duplicate-model-retains-pin-position",
+      "explanation": "Duplicating a pinned model pins the copy in the original’s first position and shifts existing pinned items; a later save can misleadingly attribute that earlier position shift to the original model’s current edit.",
+      "rootCause": {
+        "explanation": "The copy flow builds a new card from the source Question while changing name, collection and description without clearing collection_position. create-card! accepts collection_position from input and explicitly reconciles existing collection positions before inserting the new card. Carrying the source’s pin into creation therefore places the duplicate there and moves the original. The later history pin diff reflects a real earlier shift, unlike a purely spurious history comparison.",
+        "sourceReferences": [
+          {
+            "repository": "metabase/metabase",
+            "revision": "f42632893810325d9f74375a4cd29bd31d8daefa",
+            "path": "frontend/src/metabase/query_builder/components/QueryModals/QueryModals.tsx",
+            "line": 251,
+            "url": "https://github.com/metabase/metabase/blob/f42632893810325d9f74375a4cd29bd31d8daefa/frontend/src/metabase/query_builder/components/QueryModals/QueryModals.tsx#L251"
+          },
+          {
+            "repository": "metabase/metabase",
+            "revision": "f42632893810325d9f74375a4cd29bd31d8daefa",
+            "path": "frontend/src/metabase/query_builder/actions/core/core.ts",
+            "line": 400,
+            "url": "https://github.com/metabase/metabase/blob/f42632893810325d9f74375a4cd29bd31d8daefa/frontend/src/metabase/query_builder/actions/core/core.ts#L400"
+          },
+          {
+            "repository": "metabase/metabase",
+            "revision": "f42632893810325d9f74375a4cd29bd31d8daefa",
+            "path": "src/metabase/queries/models/card.clj",
+            "line": 976,
+            "url": "https://github.com/metabase/metabase/blob/f42632893810325d9f74375a4cd29bd31d8daefa/src/metabase/queries/models/card.clj#L976"
+          },
+          {
+            "repository": "metabase/metabase",
+            "revision": "f42632893810325d9f74375a4cd29bd31d8daefa",
+            "path": "src/metabase/queries/models/card.clj",
+            "line": 999,
+            "url": "https://github.com/metabase/metabase/blob/f42632893810325d9f74375a4cd29bd31d8daefa/src/metabase/queries/models/card.clj#L999"
+          }
+        ],
+        "analysisStatus": "source-supported"
+      },
+      "reproductionPaths": [
+        {
+          "expected": "A duplicate is created unpinned, or at least does not displace the original. The original's pin position stays the same, and its history does not show a pin change the user never made.",
+          "actual": "GET /api/collection/2/items?pinned_state=is_pinned returns Duplicate at position 1, Orders + People at 2, and the E-commerce Insights dashboard at 3. Later, adding a row limit to the original model and saving records 'modified the query, edited the metadata and changed pin position.' (collection_position 1 -> 2).",
+          "reproSteps": [
+            "Log in",
+            "Open model 'Orders + People' (/model/1-orders-people), which is pinned in Examples",
+            "Click '...' > Duplicate > Duplicate",
+            "Open the Examples collection (or GET /api/collection/2/items?pinned_state=is_pinned): the duplicate is pinned first and the original has moved to position 2",
+            "Open the original model > Edit query definition, add a Row limit of 500, and click Save changes",
+            "Open Info > History: the entry says '...and changed pin position.'"
+          ],
+          "severity": 3,
+          "id": "metabase-duplicate-model-retains-pin-position-data-modeling-path-1",
+          "explanation": "Duplicating pinned model takes position 1.",
+          "sourceBugs": [
+            {
+              "index": 114,
+              "id": "metabase-data-modeling-b100",
+              "name": "Duplicating pinned model takes position 1"
+            }
+          ]
+        }
+      ]
     }
   ],
   "sourceContext": {
@@ -4071,5 +4318,5 @@
     "runtimeRevision": "03d994f",
     "limitation": "fixture.json identifies the public revision as approximate; the actual runtime build revision is unavailable publicly. source-supported means the cited public source supports the mechanism, not that the private runtime implementation was independently verified. Inferred causes are hypotheses requiring additional source or runtime evidence."
   },
-  "sourceGroundTruthSha256": "50404780cd2d29278048ecde988c00f6c1631902ee0771978505e3655292960f"
+  "sourceGroundTruthSha256": "a57ad3feaf37b4569487a1afb6c6f2bad93c2f1ab6a7b190f4d5b02e03924847"
 }
