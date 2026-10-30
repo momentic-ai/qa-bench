@@ -349,7 +349,7 @@
     },
     {
       "id": "gitea-wiki-title-controls-overlap",
-      "explanation": "At a 320px width, a long wiki-page title covers the Code button and intercepts normal clicks.",
+      "explanation": "On narrow wiki pages, a long page title makes the closed Page selector extend beyond the viewport and can cover the adjacent Code button. The selector retains the full title width instead of truncating it, introducing horizontal scrolling that pushes article content and actions out of view.",
       "rootCause": {
         "explanation": "The wiki header renders its title within a flex dropdown trigger beside action controls without a narrow-width truncation constraint. Long title text retains its width and overlaps the Code control.",
         "sourceReferences": [
@@ -384,6 +384,42 @@
             "After the row settles, observe that the title stretches across the row and covers the adjacent Code control."
           ],
           "severity": 3
+        },
+        {
+          "id": "gitea-wiki-title-controls-overlap-wiki-path-2",
+          "explanation": "At phone width, the closed 'Page: <title>' selector above a wiki page with a long title is not truncated. It runs past the right edge with its dropdown arrow off screen, and scrolling sideways to reach it pushes the article and the Edit/New/Delete buttons off the left side.",
+          "sourceBugs": [
+            {
+              "index": 25,
+              "id": "gitea-wiki-closed-page-selector-overflows-mobile",
+              "name": "Long wiki page title stretches the closed mobile 'Page:' selector past the screen edge"
+            }
+          ],
+          "expected": "The closed Page selector fits the mobile viewport, truncating the title the way the page heading does, with its arrow visible.",
+          "actual": "At 390×844, on a page titled Responsive-Operational-handbook-for-onboarding-and-release-coordination-across-mobile-and-tablet-layouts-Mo1, the 'Page:' selector extended hundreds of pixels past the viewport and the page scrolled sideways. Scrolling right showed the selector's arrow but moved the article and the Edit/New/Delete buttons off the left side. The page heading below it was truncated with an ellipsis.",
+          "reproSteps": [
+            "At 390×844, create a wiki page with a long hyphenated title such as Responsive-Operational-handbook-for-onboarding-and-release-coordination-across-mobile-and-tablet-layouts.",
+            "On the saved page, look at the closed 'Page:' selector above the title: it is cut off at the right edge with no arrow visible.",
+            "Scroll the page sideways to the right and observe the article and controls move off the left side."
+          ],
+          "severity": 1,
+          "sourceConstraints": [
+            {
+              "sourceBugIndex": 25,
+              "constraints": {
+                "matchingGuidance": {
+                  "relatedReference": {
+                    "id": "gitea-wiki-page-picker-long-title-overflows-mobile",
+                    "distinction": "Same long-title trigger. That entry is the open Page picker menu overflowing; this entry is the closed 'Page:' selector itself running past the screen edge."
+                  },
+                  "otherRelatedReference": {
+                    "id": "gitea-novel-012",
+                    "distinction": "That entry is the long title covering the Code button at 320px; this entry is the closed selector overflowing the viewport and making the page scroll sideways."
+                  }
+                }
+              }
+            }
+          ]
         }
       ]
     },
@@ -1244,9 +1280,223 @@
           "severity": 3
         }
       ]
+    },
+    {
+      "id": "gitea-markdown-hashchange-not-handled",
+      "explanation": "On a rendered wiki page, editing the URL fragment in the address bar to another heading's anchor changes the URL but leaves the view where it was. This happens for ASCII and Unicode headings alike.",
+      "rootCause": {
+        "explanation": "web_src/js/markup/anchors.ts scrolls to a heading only on page load and on clicks of in-page links, adding the 'user-content-' prefix that rendered heading ids carry. There is no hashchange handler, and the browser cannot find the unprefixed fragment itself.",
+        "sourceReferences": [
+          {
+            "repository": "go-gitea/gitea",
+            "revision": "99053ce4fa2b45f1bca5837418c0c57f793ca824",
+            "path": "web_src/js/markup/anchors.ts",
+            "line": 60,
+            "url": "https://github.com/go-gitea/gitea/blob/99053ce4fa2b45f1bca5837418c0c57f793ca824/web_src/js/markup/anchors.ts#L60"
+          }
+        ],
+        "analysisStatus": "source-supported"
+      },
+      "reproductionPaths": [
+        {
+          "id": "gitea-markdown-hashchange-not-handled-wiki-path-1",
+          "explanation": "On a rendered wiki page, editing the URL fragment in the address bar to another heading's anchor changes the URL but leaves the view where it was. This happens for ASCII and Unicode headings alike.",
+          "sourceBugs": [
+            {
+              "index": 23,
+              "id": "gitea-wiki-fragment-change-does-not-scroll",
+              "name": "Changing a wiki page's URL fragment in the same tab doesn't scroll to the heading"
+            }
+          ],
+          "expected": "Navigating to a heading fragment on the page already open scrolls that heading into view, as opening the same URL fresh does.",
+          "actual": "At 390×844 with the page open at #ascii-target, changing the address bar to the '日本語 café & punctuation!' heading's fragment left 'ASCII target' at the top. Going the other way, from the Unicode fragment to #ascii-target, also left the view unchanged. Opening either URL in a new tab, or clicking an in-page link, scrolls correctly.",
+          "reproSteps": [
+            "Create a long wiki page with headings '## ASCII target' and '## 日本語 café & punctuation!' separated by enough text to scroll.",
+            "Open the page with #ascii-target appended and confirm ASCII target is at the top.",
+            "In the same tab, change the fragment in the address bar to the other heading's anchor and press Enter.",
+            "Observe the URL changes but the page does not scroll."
+          ],
+          "severity": 1,
+          "sourceConstraints": [
+            {
+              "sourceBugIndex": 23,
+              "constraints": {
+                "matchingGuidance": {
+                  "scope": "Only same-tab fragment changes that are not link clicks, such as editing the address bar or setting location.hash. Not specific to Unicode headings; a report attributing it to Unicode matches if the trigger is a same-tab fragment change. Reports that clicking an in-page link, or loading or reloading a URL with a fragment, fails to scroll are the known-invalid entries."
+                }
+              }
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "id": "gitea-markdown-table-insert-clears-undo",
+      "explanation": "In the simple Markdown editor, inserting a table with the toolbar's Add table button puts the table template in the text, but Ctrl+Z (Cmd+Z on macOS) leaves it in place. Undo works for typed text and for the Bold button.",
+      "rootCause": {
+        "explanation": "web_src/js/features/comp/EditorMarkdown.ts textareaInsertText inserts by assigning textarea.value, which clears the browser's native undo history, whereas the Bold button (@github/markdown-toolbar-element) inserts through the browser's editing commands and stays undoable.",
+        "sourceReferences": [
+          {
+            "repository": "go-gitea/gitea",
+            "revision": "99053ce4fa2b45f1bca5837418c0c57f793ca824",
+            "path": "web_src/js/features/comp/EditorMarkdown.ts",
+            "line": 7,
+            "url": "https://github.com/go-gitea/gitea/blob/99053ce4fa2b45f1bca5837418c0c57f793ca824/web_src/js/features/comp/EditorMarkdown.ts#L7"
+          },
+          {
+            "repository": "go-gitea/gitea",
+            "revision": "99053ce4fa2b45f1bca5837418c0c57f793ca824",
+            "path": "web_src/js/features/comp/ComboMarkdownEditor.ts",
+            "line": 272,
+            "url": "https://github.com/go-gitea/gitea/blob/99053ce4fa2b45f1bca5837418c0c57f793ca824/web_src/js/features/comp/ComboMarkdownEditor.ts#L272"
+          }
+        ],
+        "analysisStatus": "source-supported"
+      },
+      "reproductionPaths": [
+        {
+          "id": "gitea-markdown-table-insert-clears-undo-wiki-path-1",
+          "explanation": "In the simple Markdown editor, inserting a table with the toolbar's Add table button puts the table template in the text, but Ctrl+Z (Cmd+Z on macOS) leaves it in place. Undo works for typed text and for the Bold button.",
+          "sourceBugs": [
+            {
+              "index": 24,
+              "id": "gitea-markdown-table-insert-cannot-be-undone",
+              "name": "Undo doesn't remove a table inserted from the Markdown editor toolbar"
+            }
+          ],
+          "expected": "Undo right after inserting a table removes the inserted table, like undo after other toolbar formatting.",
+          "actual": "On a wiki page editor with 'intro ' typed, Add table > Add inserted a 3×3 table template; pressing Ctrl+Z left the table in the textarea. With 'hello world' and 'world' selected, the Bold button produced 'hello **world**' and Ctrl+Z restored 'hello world'.",
+          "reproSteps": [
+            "Open a wiki page editor in the default (simple textarea) Markdown editor.",
+            "Type some text, then click the Add table toolbar button and insert the default 3×3 table.",
+            "Press Ctrl+Z (Cmd+Z on macOS) in the textarea and observe the table remains."
+          ],
+          "severity": 1,
+          "sourceConstraints": [
+            {
+              "sourceBugIndex": 24,
+              "constraints": {
+                "matchingGuidance": {
+                  "relatedReference": {
+                    "id": "gitea-markdown-table-rows-zero-clamped-silently",
+                    "distinction": "Both are the Markdown editor's table insertion. That entry is Rows 0 silently becoming one row; this entry is the inserted table not being undoable."
+                  }
+                }
+              }
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "id": "gitea-wiki-delete-confirmation-unbroken-title",
+      "explanation": "At phone width, the Delete Page confirmation for a wiki page with a long title is pushed past the right edge, clipping the page name and the Yes button. Scrolling sideways reveals Yes but clips the dialog's left side.",
+      "rootCause": {
+        "explanation": "The delete modal interpolates the entire wiki title into an ordinary paragraph without a wiki-specific break or width constraint. A long unbroken title can impose an intrinsic width beyond the phone viewport; the exact modal centering/overflow contribution has not been independently reproduced here.",
+        "sourceReferences": [
+          {
+            "repository": "go-gitea/gitea",
+            "revision": "99053ce4fa2b45f1bca5837418c0c57f793ca824",
+            "path": "templates/repo/wiki/view.tmpl",
+            "line": 107,
+            "url": "https://github.com/go-gitea/gitea/blob/99053ce4fa2b45f1bca5837418c0c57f793ca824/templates/repo/wiki/view.tmpl#L107"
+          }
+        ],
+        "analysisStatus": "source-informed"
+      },
+      "reproductionPaths": [
+        {
+          "id": "gitea-wiki-delete-confirmation-unbroken-title-wiki-path-1",
+          "explanation": "At phone width, the Delete Page confirmation for a wiki page with a long title is pushed past the right edge, clipping the page name and the Yes button. Scrolling sideways reveals Yes but clips the dialog's left side.",
+          "sourceBugs": [
+            {
+              "index": 26,
+              "id": "gitea-wiki-delete-dialog-long-title-overflows-mobile",
+              "name": "Delete Page confirmation for a long wiki title runs off the mobile screen"
+            }
+          ],
+          "expected": "The deletion confirmation, the page name and both buttons fit within the mobile viewport.",
+          "actual": "At 390px, on a page titled RESP-Stress-Long-title-with-many-headings-wide-table-and-long-code-content, Delete Page opened a dialog starting about 93px from the left and extending past the right edge. The Yes label and part of the page name were cut off; scrolling sideways showed the right side while clipping the left.",
+          "reproSteps": [
+            "Create a wiki page with a long hyphenated title such as RESP-Stress-Long-title-with-many-headings-wide-table-and-long-code-content.",
+            "At a 390px-wide viewport, open the page and click Delete Page.",
+            "Observe the confirmation is clipped on the right; scroll sideways to reach Yes."
+          ],
+          "severity": 1,
+          "sourceConstraints": [
+            {
+              "sourceBugIndex": 26,
+              "constraints": {
+                "matchingGuidance": {
+                  "relatedReference": {
+                    "id": "gitea-wiki-closed-page-selector-overflows-mobile",
+                    "distinction": "Same long-title mobile overflow. That entry is the closed 'Page:' selector on the page; this entry is the Delete Page confirmation dialog."
+                  }
+                }
+              }
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "id": "gitea-markdown-hidden-required-state-not-cleared",
+      "explanation": "In the wiki editor, a blank save from Write shows 'Please fill out this field.' If the user then switches to Preview and clicks Save Page again, nothing happens: no message and no navigation, so the user isn't told why the page won't save.",
+      "rootCause": {
+        "explanation": "web_src/js/features/comp/ComboMarkdownEditor.ts validateTextareaNonEmpty sets textarea.required = true when the blank textarea is visible and never clears it. In Preview the textarea is hidden, so the browser's native required check blocks the submit silently (a hidden control cannot show its bubble) before the submit handler in web_src/js/features/repo-wiki.ts can run and show the 'Require non-empty content' toast.",
+        "sourceReferences": [
+          {
+            "repository": "go-gitea/gitea",
+            "revision": "99053ce4fa2b45f1bca5837418c0c57f793ca824",
+            "path": "web_src/js/features/comp/ComboMarkdownEditor.ts",
+            "line": 35,
+            "url": "https://github.com/go-gitea/gitea/blob/99053ce4fa2b45f1bca5837418c0c57f793ca824/web_src/js/features/comp/ComboMarkdownEditor.ts#L35"
+          },
+          {
+            "repository": "go-gitea/gitea",
+            "revision": "99053ce4fa2b45f1bca5837418c0c57f793ca824",
+            "path": "web_src/js/features/repo-wiki.ts",
+            "line": 63,
+            "url": "https://github.com/go-gitea/gitea/blob/99053ce4fa2b45f1bca5837418c0c57f793ca824/web_src/js/features/repo-wiki.ts#L63"
+          }
+        ],
+        "analysisStatus": "source-supported"
+      },
+      "reproductionPaths": [
+        {
+          "id": "gitea-markdown-hidden-required-state-not-cleared-wiki-path-1",
+          "explanation": "In the wiki editor, a blank save from Write shows 'Please fill out this field.' If the user then switches to Preview and clicks Save Page again, nothing happens: no message and no navigation, so the user isn't told why the page won't save.",
+          "sourceBugs": [
+            {
+              "index": 27,
+              "id": "gitea-wiki-blank-save-from-preview-silent",
+              "name": "Saving blank wiki content from Preview does nothing after an earlier blank save from Write"
+            }
+          ],
+          "expected": "A blank save from Preview explains that content is required, for example with the 'Require non-empty content' alert Gitea shows from Preview when no Write save was attempted first.",
+          "actual": "On a new wiki page with a title and empty content, Save Page in Write showed 'Please fill out this field.' After switching to Preview, Save Page produced no message, no alert and no navigation. Without the earlier Write attempt, the same Preview save shows a red 'Require non-empty content' alert.",
+          "reproSteps": [
+            "Open New Page in a wiki, enter a title and leave the content empty (or clear an existing page's content).",
+            "Click Save Page in the Write tab and see 'Please fill out this field.'",
+            "Switch to the Preview tab and click Save Page.",
+            "Observe that nothing happens and no message explains why."
+          ],
+          "severity": 1,
+          "sourceConstraints": [
+            {
+              "sourceBugIndex": 27,
+              "constraints": {
+                "matchingGuidance": {
+                  "scope": "Reports that a blank Save Page from Preview gives no feedback match this entry, including ones that don't mention the earlier Write save."
+                }
+              }
+            }
+          ]
+        }
+      ]
     }
   ],
-  "sourceGroundTruthSha256": "f3866af58ec74371529748f4f246de578e111e6b44238ec3888c0decd5192ca5",
+  "sourceGroundTruthSha256": "a697843e14440e767cba7acfa90e31d0db25a6fda01789c7c9dd3619117c00b5",
   "sourceContext": {
     "repositories": [
       {
