@@ -1362,6 +1362,27 @@
       "matchingGuidance": {
         "scope": "A report that a bulk Label action on a mixed selection removes the label instead of adding it to all selected issues counts toward this entry, even if it doesn't mention the Alt+click convention. The removal is the upstream toggle rule; this entry accepts it as a sev 1 inconsistency with Gitea's plain-click-adds, Alt-click-removes convention."
       }
+    },
+    {
+      "id": "gitea-org-issues-team-filter-clears-filters",
+      "name": "Changing the organization team filter clears the search and switches closed issues back to open",
+      "summary": "On an organization's Issues page, choosing a team under 'Filter by team repositories' in the Teams menu throws away the current search, Open/Closed state, sort and other list filters, so the page returns to open issues with an empty search instead of narrowing the current results to that team's repositories.",
+      "expected": "Choosing a team keeps the current search, state, sort and filters and only narrows the results to the team's repositories, as every other filter control on the page does.",
+      "actual": "With Closed selected and the search 'excluded' applied (one closed issue shown), choosing a team from the Teams menu opened /org/<org>/issues/<team> with no query: the state was back to Open, the search box was empty, and an open issue outside the previous filter was listed. Opening the team URL with the original query string added filters correctly.",
+      "reproSteps": [
+        "Open an organization's Issues dashboard (/org/<org>/issues) where the organization has a team with access to specific repositories.",
+        "Select Closed and enter a search term that matches a closed issue.",
+        "Open the Teams menu ('Filter by team repositories') and choose a team.",
+        "Observe that the state is back to Open and the search box is empty."
+      ],
+      "severity": 3,
+      "sourceCause": "templates/user/dashboard/navbar.tmpl builds the All and team links in the 'Filter by team repositories' menu as bare paths ({OrgLink}/issues and {OrgLink}/issues/{team}) with no query string. Every other filter control on the page (templates/user/dashboard/issues.tmpl) builds its link from $queryLink via QueryBuild with type, sort, state, q, labels and search_mode, so only the team filter discards them. routers/web/user/home.go combines a team with those parameters correctly when they're present. The same menu on the organization Pull Requests and Milestones dashboards behaves the same. Unchanged in latest upstream.",
+      "matchingGuidance": {
+        "relatedReference": {
+          "id": "gitea-org-issues-state-switch-drops-assignee-filter",
+          "distinction": "Same 'one filter control discards the others' symptom on the organization Issues page, but that entry is the Open/Closed switch dropping the Assignee filter. This entry is the Teams 'Filter by team repositories' menu dropping the search, state and sort."
+        }
+      }
     }
   ]
 }
