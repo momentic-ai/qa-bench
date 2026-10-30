@@ -219,6 +219,23 @@
           "distinction": "Same leading-slash resolution rule. That rejection is an image path; this rejection is a navigation link."
         }
       }
+    },
+    {
+      "id": "reviewed-g60-gitea-wiki",
+      "name": "Wiki pages with non-ASCII/special-character titles are stored with percent-encoded git filenames, allowing duplicate pages that shadow existing ones",
+      "summary": "Creating a wiki page through the web UI stores the file in the wiki git repo under its URL-escaped name (e.g. 'Caf%C3%A9-%C3%9Cn%C3%AFcode.md', 'What%3F-%231.md', '%3Cimg-src...%3E.md') instead of the decoded title ('Café-Ünïcode.md'). Because of this, the duplicate-page check fails: creating 'Über Seite' or 'Why?' in the web UI when 'Über-Seite.md' / 'Why?.md' already exist succeeds, the Pages list shows the title twice, and the original page can no longer be opened (the URL resolves to the new duplicate).",
+      "expected": "The web path should be decoded into the git filename (e.g. 'Über-Seite.md', 'Why?.md'), as upstream Gitea does. Creating a page whose title already exists should be rejected with 'A wiki page with the same name already exists' (as it is for 'Home').",
+      "actual": "Files are saved as '%C3%9Cber-Seite.md' and 'Why%3F.md' next to the existing 'Über-Seite.md' and 'Why?.md'. Creating them succeeds (303), the Pages list (?action=_pages) shows 'Über Seite' twice and 'Why?' twice, and /wiki/%C3%9Cber-Seite now shows 'web dup' while the original content 'pushed unicode' can't be reached anywhere in the UI.",
+      "reproSteps": [
+        "Populate raw Unicode or punctuation-containing wiki filenames through an external Git push.",
+        "Create the matching titles through the wiki UI and inspect duplicate entries."
+      ],
+      "reason": "Explicit reviewer decision: reject this report under the browser-only benchmark rules. The duplicate-page prerequisite requires committing and pushing raw wiki files through external Git operations, so the submitted flow is outside the permitted UI reproduction scope. This is a scope rejection, not a claim that the underlying Git behavior was disproved; a separate eligible browser-only failure is not rejected by this reference.",
+      "reviewEvidence": {
+        "basis": "Explicit user rejection after the fresh evidence review.",
+        "analysis": "The decisive prerequisite/action cannot be reproduced through the permitted browser-only workflow.",
+        "limitations": "No new reproduction or factual disproof of the underlying Git behavior is claimed."
+      }
     }
   ]
 }
