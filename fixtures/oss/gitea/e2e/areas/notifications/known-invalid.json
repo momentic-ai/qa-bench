@@ -93,6 +93,46 @@
         "Click Mark as read and open the Read tab."
       ],
       "reason": "Intended: pinned is a third notification status, and Mark as read is the designed way to unpin, since it sets the status to read. templates/user/notification/notification_div.tmpl shows Pin for non-pinned rows, Mark as read for unread or pinned rows, and Mark as unread for read rows; there is no Unpin action, unchanged on upstream main."
+    },
+    {
+      "id": "gitea-pinned-notifications-visible-on-read-tab",
+      "name": "Pinned notifications show up in the Read tab",
+      "summary": "A pinned notification remains visible when viewing Read notifications.",
+      "expected": "The reported expectation is that Read excludes pinned notifications.",
+      "actual": "Pinned notifications appear in the Read tab as well as the Unread tab.",
+      "reproSteps": [
+        "Pin an issue notification.",
+        "Open Notifications > Read.",
+        "Observe that the pinned notification remains listed."
+      ],
+      "reason": "Intended: the notification list explicitly includes NotificationStatusPinned alongside the requested Read or Unread status. Pins remain visible in both views. Mere presence in Read is not a failure.",
+      "matchingGuidance": "Match claims that pinned notifications should be excluded from Read. Do not match the accepted pagination defects where pinned rows consume page slots without being counted, hide other notifications, or produce an unreachable page.",
+      "sourceCause": {
+        "revision": "99053ce4fa2b45f1bca5837418c0c57f793ca824",
+        "path": "routers/web/user/notification.go",
+        "lines": "88-95",
+        "description": "The query unions the selected status with NotificationStatusPinned."
+      }
+    },
+    {
+      "id": "gitea-unread-notification-retains-first-unread-comment",
+      "name": "Unread notification link stays on the first comment",
+      "summary": "Later comments reorder an unread issue notification without changing its link to the earliest unread comment.",
+      "expected": "The reported expectation is that every new comment changes the unread notification link to the newest comment.",
+      "actual": "While the notification stays unread, its link continues to target the earlier comment.",
+      "reproSteps": [
+        "Receive a notification for a comment on a subscribed issue and leave it unread.",
+        "Have another user add another comment to the same issue.",
+        "Inspect the unread notification link; it still targets the earlier unread comment."
+      ],
+      "reason": "Intended: updateIssueNotification changes CommentID only when the previous notification is Read. Its explicit rationale is to avoid missing older unread comments. Later comments update the actor and ordering while retaining the first unread target.",
+      "matchingGuidance": "Match ordinary notifications that remain unread between comments. Exclude the accepted gitea-notification-pinned-update-keeps-earlier-comment case: a notification was already read, then pinned, and a later comment leaves its target on an already-read comment. Retaining an unread target does not reject that pinned stale-target bug.",
+      "sourceCause": {
+        "revision": "99053ce4fa2b45f1bca5837418c0c57f793ca824",
+        "path": "models/activities/notification.go",
+        "lines": "176-186",
+        "description": "Only Read notifications get a new CommentID; unread notifications preserve their existing target."
+      }
     }
   ]
 }
