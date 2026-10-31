@@ -21,9 +21,36 @@ import {
   validateLocalChromium,
 } from "../local-browser";
 import { BrowserbaseSessions } from "./browserbase";
-import { CodexRunner } from "./codex-runner";
+import { CodexRunner, CodexSetup } from "./codex-runner";
 
 const require = createRequire(import.meta.url);
+// Code hosts, the published dataset, and search engines that lead to them. Host
+// patterns match only that host or its subdomains, so fixture assets elsewhere still load.
+const ANSWER_SOURCES = [
+  "github.com",
+  "*.github.com",
+  "githubusercontent.com",
+  "*.githubusercontent.com",
+  "gitlab.com",
+  "*.gitlab.com",
+  "codeberg.org",
+  "gitea.com",
+  "bitbucket.org",
+  "huggingface.co",
+  "*.huggingface.co",
+  "hf.co",
+  "sourcegraph.com",
+  "grep.app",
+  "deepwiki.com",
+  "google.com",
+  "www.google.com",
+  "bing.com",
+  "www.bing.com",
+  "duckduckgo.com",
+  "html.duckduckgo.com",
+  "search.brave.com",
+  "kagi.com",
+];
 
 type BrowserConnection = {
   args: string[];
@@ -41,11 +68,12 @@ export class CodexAgent extends CodexRunner {
     context: AgentContext,
     protected browserTool: BrowserTool = "playwright-mcp",
     model: string = CODEX_MODELS[0],
+    protected preventCheating = false,
   ) {
     super(context, model);
   }
 
-  protected async prepare() {
+  protected async prepare(): Promise<CodexSetup> {
     if (this.browserTool === "agent-browser") {
       if (!this.temporaryWorkspace)
         throw new Error("Agent workspace is missing.");
@@ -58,12 +86,18 @@ export class CodexAgent extends CodexRunner {
         mcpServers: {},
         env: this.browserEnvironment,
         sandbox: "workspace-write" as const,
+        ...this.cheatingSetup(),
       };
     }
     return {
       mcpServers: await this.prepareBrowserMcp(),
       subagents: !this.localBrowser,
+      ...this.cheatingSetup(),
     };
+  }
+
+  private cheatingSetup() {
+    return this.preventCheating ? { webSearch: "disabled" as const } : {};
   }
 
   protected async collectBrowserCost() {
@@ -95,6 +129,10 @@ export class CodexAgent extends CodexRunner {
     this.browsers = new BrowserbaseSessions(
       path.join(this.context.runDirectory, "browser-sessions"),
       process.env.BROWSERBASE_API_KEY || "",
+      undefined,
+      this.preventCheating && this.context.targetUrl
+        ? [this.context.targetUrl.hostname]
+        : undefined,
     );
     return {
       args: [],
@@ -126,6 +164,9 @@ export class CodexAgent extends CodexRunner {
           ...browser.args,
           "--output-dir",
           browserOutputDirectory,
+          ...(this.preventCheating
+            ? ["--blocked-origins", ANSWER_SOURCES.join(";")]
+            : []),
         ],
         env: { ...browser.env, TMPDIR: browserTemporaryDirectory },
         startup_timeout_sec: 60,
@@ -142,6 +183,7 @@ export function codexAgent(
   browser: Browser,
   browserTool: BrowserTool = "playwright-mcp",
   model: CodexModel = CODEX_MODELS[0],
+  preventCheating = false,
 ): EvalAgentDefinition {
   return {
     name: `codex-${browserTool}`,
@@ -153,6 +195,7 @@ export function codexAgent(
       ...(browserTool === "playwright-mcp"
         ? { subagents: browser !== "local" }
         : {}),
+      ...(preventCheating ? { preventCheating } : {}),
     },
     async validateEnvironment() {
       if (!process.env.OPENAI_API_KEY)
@@ -164,8 +207,8 @@ export function codexAgent(
     },
     create(context) {
       return browser === "local"
-        ? new LocalCodexAgent(context, browserTool, model)
-        : new CodexAgent(context, browserTool, model);
+        ? new LocalCodexAgent(context, browserTool, model, preventCheating)
+        : new CodexAgent(context, browserTool, model, preventCheating);
     },
   };
 }

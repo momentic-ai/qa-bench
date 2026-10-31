@@ -20,11 +20,12 @@ const GOAL_OBJECTIVE =
   "Complete the evaluation task given in full in this thread's first user message: test the assigned target end to end, save findings with the reporting tools, and follow any later finalization instructions.";
 const require = createRequire(import.meta.url);
 
-type CodexSetup = {
+export type CodexSetup = {
   mcpServers: Record<string, unknown>;
   env?: Record<string, string>;
   sandbox?: "workspace-write";
   subagents?: boolean;
+  webSearch?: "disabled";
 };
 
 export abstract class CodexRunner implements EvalAgent {
@@ -110,6 +111,7 @@ export abstract class CodexRunner implements EvalAgent {
           dynamicTools: FINDINGS_TOOLS,
           config: {
             model_reasoning_effort: "medium",
+            ...(setup.webSearch ? { web_search: setup.webSearch } : {}),
             ...(setup.sandbox
               ? { sandbox_workspace_write: { network_access: true } }
               : {}),

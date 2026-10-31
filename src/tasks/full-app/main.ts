@@ -28,6 +28,7 @@ export async function runFullAppEval(options: FullAppOptions): Promise<void> {
           options.browser,
           "playwright-mcp",
           options.codexModel,
+          options.preventCheating,
         ),
         "claude-playwright-mcp": claudeAgent(
           options.browser,
@@ -38,6 +39,7 @@ export async function runFullAppEval(options: FullAppOptions): Promise<void> {
           options.browser,
           "agent-browser",
           options.codexModel,
+          options.preventCheating,
         ),
         "claude-agent-browser": claudeAgent(
           options.browser,

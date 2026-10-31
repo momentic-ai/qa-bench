@@ -32,6 +32,8 @@ export class BrowserbaseSessions {
     private directory: string,
     private apiKey: string,
     private baseUrl = "https://api.browserbase.com",
+    /** Browserbase blocks top-level navigation elsewhere; subresources still load. */
+    private allowedDomains?: string[],
   ) {}
 
   private async request(resource: string, body?: unknown) {
@@ -67,6 +69,9 @@ export class BrowserbaseSessions {
               userMetadata: {
                 moEvalRun: path.basename(path.dirname(this.directory)),
               },
+              ...(this.allowedDomains
+                ? { browserSettings: { allowedDomains: this.allowedDomains } }
+                : {}),
             }),
           );
           this.sessions.set(session.id, session.projectId);
