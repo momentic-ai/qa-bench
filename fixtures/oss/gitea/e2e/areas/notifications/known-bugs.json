@@ -96,6 +96,15 @@
       "reproductionPaths": [
         "In Gitea, after a user reads an issue notification and pins it, a new comment on the issue moves the pinned notification to the top with a new time, but opening it still scrolls to and highlights the earlier comment the user already read instead of the new comment."
       ]
+    },
+    {
+      "id": "gitea-subscriptions-watch-row-id-used-as-repository-id",
+      "description": "Gitea’s Subscriptions page should list issues the user follows through direct subscription, participation or watching their repository. Instead, it can include an issue from a repository the user never watched or has unwatched, even though that issue’s sidebar offers Subscribe and its subscription check is false. It can also omit issues from watched repositories. The incorrect results persist independently of the sidebar’s separate stale-button issue and depend on how database record IDs happen to line up.",
+      "rootCause": "The Subscriptions query’s watched-repository condition compares issue.repo_id with SELECT id FROM watch instead of SELECT repo_id FROM watch. A watch record’s own identifier is not its repository identifier, so accidental numeric matches include unrelated repositories while nonmatching IDs omit watched ones. Direct subscription checks and notification delivery use repo_id correctly, explaining their disagreement with the list.",
+      "reproductionPaths": [
+        "In Gitea, open Subscriptions after another user creates an issue in a repository you never watched, or after you unwatch its repository. The issue can appear there while its sidebar offers Subscribe and its subscription check is false, with no notification. Whether it appears depends on watch-row and repository ID collisions, so one correctly behaving repository is not a sufficient negative control.",
+        "In Gitea, watch a repository and confirm that an issue there is effectively subscribed through that watch. The issue can be missing from Subscriptions when the watch row’s own ID differs from the repository ID, even though the subscription check and notification behavior recognize the repository watch."
+      ]
     }
   ]
 }
