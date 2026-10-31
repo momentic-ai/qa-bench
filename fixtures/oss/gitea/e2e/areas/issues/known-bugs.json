@@ -10,11 +10,11 @@
     },
     {
       "id": "gitea-issue-reference-tags-unbound",
-      "description": "In a Gitea issue’s Branch/Tag sidebar picker, choosing a tag does not save the reference, and Clear current reference also does nothing when used from the Tags tab. The same controls work from the Branches tab.",
+      "description": "In a Gitea issue’s Branch/Tag sidebar picker, choosing a tag does not save the reference, and Clear current reference also does nothing when used from the Tags tab. The same controls work from the Branches tab. A report that Clear leaves the reference set can match even if it omits the tab used; an explicit Branches-tab failure is outside this bug.",
       "rootCause": "initBranchSelector queries only the first .reference-list-menu (Branches) and binds its items. The separate Tags menu, including its Clear item, receives no update handler.",
       "reproductionPaths": [
         "In Gitea, open an issue’s Branch/Tag sidebar picker, choose Tags and select an existing tag. The picker closes but the issue still has no saved reference, rather than displaying and retaining the selected tag.",
-        "In a Gitea issue’s Branch/Tag selector, set a branch reference and then use Clear current reference from the Tags tab. The menu closes but the branch remains saved, with no change event; the same Clear action works from the Branches tab."
+        "In a Gitea issue’s Branch/Tag selector, set a branch reference and then use Clear current reference from the Tags tab. The menu closes but the branch remains saved, with no change event; the same Clear action works from the Branches tab. The finding need not name the active tab, but a report explicitly reproducing the failure from Branches does not match."
       ]
     },
     {
@@ -176,10 +176,11 @@
     },
     {
       "id": "gitea-farthest-due-zero-milestone",
-      "description": "In Gitea, when issues (tracked work items) with different due dates are assigned to an existing milestone (a named group of work items) with no due date, Farthest due date sorts them by creation order instead of their issue dates. Without the milestone, or with Nearest due date, the issue-date order is correct.",
+      "description": "In Gitea, Farthest due date can ignore an issue’s saved deadline when that issue belongs to a milestone, a named group of work items, with no due date. If several differently dated issues share that undated milestone, they can fall back to creation order; if only one belongs to it, that issue can fall below earlier deadlines and undated issues. Nearest due date works. The milestone assignment must be established by the report or its retained evidence; wrong ordering alone or the mere existence of an undated milestone is insufficient.",
       "rootCause": "The DESC CASE handles NULL milestone deadlines but not 0. The next branch selects milestone.deadline_unix=0 over a positive issue deadline; the ASC implementation explicitly handles zero and works.",
       "reproductionPaths": [
-        "In Gitea, when issues with different due dates are assigned to an existing milestone with no due date, Farthest due date sorts them by creation order instead of their issue dates. Without the milestone, or with Nearest due date, the issue-date order is correct."
+        "In Gitea, assign several issues with distinct positive due dates to the same existing milestone whose due date is empty, with creation order different from deadline order. Farthest due date falls back to creation order instead of latest deadline first; Nearest due date still orders them correctly. Retained run evidence can establish the shared milestone even when the finding text omits it.",
+        "In a Gitea repository or global Issues list, give several issues different deadlines and put only the latest-due issue in an undated milestone. Farthest due date can place that issue behind earlier deadlines and among undated issues. This mixed-membership case does not require every issue to share the milestone or a new remove/re-add experiment when retained evidence already establishes the affected issue’s assignment. Keyword-search stale-index sorting is a separate cause."
       ]
     },
     {
@@ -201,7 +202,7 @@
     {
       "id": "gitea-fetch-action-non-json-errors",
       "description": "In Gitea, issue and pull request (a proposed code change) form actions can expose a raw JSON-parsing SyntaxError labelled Network error when the server rejects an unavailable or unauthorized action. Confirmed triggers include stale deleted/locked/archived comment or issue (a tracked work item) forms, deleted milestone (a named group of work items)/time-entry targets and rejected review actions; the UI does not explain the actual refusal.",
-      "rootCause": "fetchActionDoRequest unconditionally calls resp.json() for HTTP 4xx and labels parsing exceptions Network error. Plain-text missing-issue/permission responses therefore expose SyntaxError rather than the rejection reason. Deleted comment inline edits use a separate parser and are kept separate.",
+      "rootCause": "The shared form-action handler expects JSON both for HTTP 200 success and for HTTP 4xx rejection. Some server guards instead return plain-text errors or redirect to an HTML page, which fetch follows before the handler tries to parse it. The resulting JSON-parsing exception is caught and mislabeled Network error, hiding the actual refusal. Deleted comment inline edits use a separate parser and are kept separate.",
       "reproductionPaths": [
         "In Gitea, if another user locks an issue while a non-collaborator has a comment draft open, clicking Comment shows a 'Network error SyntaxError … is not valid JSON' toast instead of saying the conversation is locked.",
         "In Gitea, submitting a comment from an issue tab left open before deletion shows an internal JSON parsing exception mislabeled as a network error rather than explaining that the issue no longer exists.",
@@ -389,10 +390,11 @@
     },
     {
       "id": "gitea-unreadable-dependency-removal-reversed",
-      "description": "On a Gitea issue (a tracked work item) that depends on an issue the user can't read, the sidebar shows a lock and says the user can still remove the dependency. Confirming Remove opens a completely blank page, and the dependency is not removed.",
-      "rootCause": "Locked Depends-on rows emit dependency-type blocking instead of blockedBy. RemoveDependency attempts to delete the reversed edge; ErrDependencyNotExists sets a flash error then returns without a redirect/body, producing a blank 200 page.",
+      "description": "In Gitea, removing an issue dependency can open a completely blank dependency/delete page instead of returning to the issue with feedback when the requested relationship no longer exists. This happens when a stale tab retries a removal already completed in another tab, and when an unreadable dependency’s Remove control submits the relationship in the wrong direction. In the unreadable-dependency case, the relationship remains; in the stale-tab case, it was already removed.",
+      "rootCause": "RemoveDependency handles ErrDependencyNotExists by setting a flash error and returning without a redirect or response body, so the ordinary form POST receives an empty HTTP 200 page. A stale tab can naturally hit this missing-edge branch. Locked Depends-on rows also emit dependency-type blocking instead of blockedBy, so they try to remove the reversed edge and reach the same empty-response branch while the real dependency stays.",
       "reproductionPaths": [
-        "On a Gitea issue that depends on an issue the user can't read, the sidebar shows a lock and says the user can still remove the dependency. Confirming Remove opens a completely blank page, and the dependency is not removed."
+        "On a Gitea issue that depends on an issue the user can't read, the sidebar shows a lock and says the user can still remove the dependency. Confirming Remove opens a completely blank page, and the dependency is not removed.",
+        "In Gitea, open an issue with the same dependency visible in two tabs. Remove the dependency successfully in the first tab, then confirm Remove for that stale dependency in the second. The second form submission opens a blank /issues/<n>/dependency/delete page with no content or navigation, rather than returning to the issue and explaining that the relationship is already gone."
       ]
     },
     {
@@ -409,6 +411,22 @@
       "rootCause": "handleSettingsPostAdvanced handles invalid tracker URLs/formats by flashing an error and redirecting to settings. That GET renders persisted unit settings instead of the submitted draft, resetting other entered values.",
       "reproductionPaths": [
         "In a Gitea repository's Settings > Advanced Settings, submitting the external issue tracker with an invalid URL shows the error, but the form reloads with Built-In issue tracker selected, the URL Format empty and no number style chosen, discarding everything the user entered."
+      ]
+    },
+    {
+      "id": "gitea-bulk-label-mixed-selection-detaches",
+      "description": "Gitea’s issue list lets a user select several issues and change their labels together. If a nonexclusive label is already on only some selected issues, a plain click on that label in the bulk Label menu removes it from the labelled issues and adds it to none. A plain click adds the label when none of the selected issues has it, and scoped exclusive labels are added across a mixed selection. The accepted issue is this surprising plain-click removal and its lack of explanation, not a claim that label assignments failed to save.",
+      "rootCause": "UpdateIssueLabel implements toggle for non-scoped labels as detach if any selected issue already has the label, otherwise attach. The client reserves toggle-alt for explicit Alt-click removal, but the bulk menu gives no hint that an ordinary click on a mixed selection also removes. This is an intentional upstream toggle rule accepted here as an inconsistency with the rest of the plain-click-adds, Alt-click-removes label UI.",
+      "reproductionPaths": [
+        "In Gitea, give one issue an ordinary label such as documentation and leave another without it. Select both on the Issues list, open the bulk Label menu and click documentation without holding Alt. The first issue loses the label and the second remains unlabelled, instead of both receiving it. Compare two initially unlabelled issues, or a scoped exclusive label, where the plain click adds it to both."
+      ]
+    },
+    {
+      "id": "gitea-org-team-navigation-drops-query",
+      "description": "A Gitea organization dashboard can narrow issues by a team’s repositories while also applying a search, Open/Closed state or sort. Changing the team through Filter by team repositories discards the other selections: a closed, searched issue list can return to open issues with an empty search and default ordering. The server supports combining these filters when the URL carries them; the loss occurs in the team-navigation links.",
+      "rootCause": "The shared organization dashboard navbar builds All and team choices as bare organization/issues, pulls or milestones paths without the current query string. Other dashboard filter controls preserve those parameters. Following a team link therefore omits search, state and sort before the handler can combine them with the team.",
+      "reproductionPaths": [
+        "On Gitea’s organization Issues dashboard, choose Closed and submit a keyword that leaves a narrow result list. Select a team in Filter by team repositories. The new team URL has no query string, the search becomes empty and the list switches to Open, showing issues outside the previous selection. Adding the original query parameters to the team URL applies the combined filters correctly."
       ]
     }
   ]
