@@ -7,6 +7,10 @@ human-reviewed labels.
 
 Momentic builds Mo and maintains this benchmark.
 
+The labeled fixtures are published as the
+[momentic/qa-bench](https://huggingface.co/datasets/momentic/qa-bench) dataset
+on Hugging Face, synced from `main` by `.github/workflows/huggingface-sync.yml`.
+
 Each run gets a fresh copy of the app at a pinned commit, with seeded data, in
 its own E2B sandbox. Areas live in [`fixtures/oss`](fixtures/oss).
 
