@@ -972,6 +972,26 @@
           "distinction": "Same unescaped LIKE search on a different page and model. This entry is the repository Tags list (/tags?q=, release.lower_tag_name); the related entry is milestone search."
         }
       }
+    },
+    {
+      "id": "gitea-tag-search-trailing-percent-misses",
+      "name": "Tag search for text ending in % misses matching tags",
+      "summary": "Searching the Tags page for a term that ends with '%' (for example '100%') finds nothing even when a tag contains that text, because the query is passed to SQL LIKE unescaped and a trailing '%' makes it a starts-with pattern.",
+      "expected": "Tag search for '100%' lists tags whose names contain '100%', such as pct-100%-done.",
+      "actual": "With tags pct-100%-done, plain-100 and rel-100x, searching 100 listed all three, but searching 100% listed none. Searching 100%-done or the full name found pct-100%-done, and %100 listed only plain-100.",
+      "reproSteps": [
+        "In a repository, create tags pct-100%-done, plain-100 and rel-100x.",
+        "Open the repository's Tags page and search for 100; all three tags are listed.",
+        "Search for 100% and check whether pct-100%-done is listed."
+      ],
+      "severity": 3,
+      "sourceCause": "models/repo/release.go builds builder.Like{\"lower_tag_name\", pattern} without escaping. xorm builder v0.3.13 Like.WriteTo wraps the value in %...% only when it neither starts nor ends with '%'; otherwise it uses the value as the raw LIKE pattern, so '100%' means 'starts with 100'.",
+      "matchingGuidance": {
+        "relatedReference": {
+          "id": "gitea-milestone-search-trailing-percent-misses",
+          "distinction": "Same unescaped LIKE handling on a different page and model. This entry is the repository Tags list (/tags?q=); the related entry is milestone search. gitea-tag-search-like-wildcards covers '_' and '%' over-matching on the same page."
+        }
+      }
     }
   ]
 }
