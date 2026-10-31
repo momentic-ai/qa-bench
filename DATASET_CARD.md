@@ -12,6 +12,7 @@ tags:
   - web-apps
   - agent-evaluation
 license: mit
+viewer: false
 ---
 
 # QA-Bench
