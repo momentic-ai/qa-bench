@@ -325,6 +325,23 @@
       "reproductionPaths": [
         "Opening a Releases (or Tags) list page number beyond the last page, for example going back to page 2 after its only release was deleted, shows the release count but no releases and no pagination controls, so there's no way from the list to reach the pages that do have releases. Gitea queries the requested page without moving it to the last page, and hides the pager when only one page exists."
       ]
+    },
+    {
+      "id": "gitea-draft-release-tag-message-not-persisted",
+      "description": "In Gitea, a release describes a named code version, and its tag can optionally store the release title and notes as an annotated Git tag message. Choosing “Use the title and content of release as tag message” and saving a draft loses that choice. The draft’s Edit page provides no way to select it again, and publishing creates a lightweight tag without the requested message. Publishing directly from New Release with the option checked creates the expected annotated tag.",
+      "rootCause": "Saving a draft postpones Git tag creation but the release record has no field that preserves the tag-message choice. The Edit form always submits add_tag_msg=false, and publishing through UpdateRelease calls tag creation with an empty message. Git therefore creates a lightweight tag. This missing persistence across Save Draft is separate from the New Release validation error that merely clears the checkbox when redrawing that form.",
+      "reproductionPaths": [
+        "In Gitea, start a New Release with a new tag name, title and notes, select “Use the title and content of release as tag message” and click Save Draft. Reopen Edit: the option is absent. Publish the draft, then inspect the tag: it points directly to a commit and contains no annotated tag message. Compare with publishing directly from New Release with that same option selected, which creates a tag object containing the title and notes."
+      ]
+    },
+    {
+      "id": "gitea-tag-search-unescaped-like-pattern",
+      "description": "On a Gitea repository’s Tags page, searching by tag name treats underscores and percent signs as database search operators instead of literal characters. An underscore can match any one character, so “a_b” also finds “a-b” and “axb”; a percent sign can match arbitrary text. A query ending or beginning with percent can also miss a tag containing the exact text because it becomes a starts-with or ends-with pattern instead of a contains search. This concerns the Tags list, rather than milestone or issue searches.",
+      "rootCause": "The tag-list database query passes the lowercased search text directly to builder.Like on lower_tag_name without escaping the underscore and percent wildcard characters. The locked xorm builder also adds surrounding percent wildcards only when the supplied pattern neither starts nor ends with percent. The same unescaped query therefore causes both overly broad matches and missing substring matches at those edges.",
+      "reproductionPaths": [
+        "In Gitea, create tags rel-a_b, rel-a-b and rel-axb and search the repository’s Tags page for a_b. All three appear, while a-b finds only rel-a-b. Searching percent or underscore alone likewise returns tags that contain neither literal character, because the search treats those characters as wildcards.",
+        "In Gitea, create tags pct-100%-done, plain-100 and rel-100x. On the Tags page, searching 100 finds all three, but searching 100% finds none, including the tag that contains that exact text. Searching 100%-done or the full tag name finds pct-100%-done. The trailing percent caused a starts-with pattern rather than a literal substring search."
+      ]
     }
   ]
 }
