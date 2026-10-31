@@ -59,10 +59,11 @@
     },
     {
       "id": "gitea-wiki-title-normalization-unreported",
-      "description": "In Gitea, edit a wiki (repository documentation) page’s title to a value that normalizes to no filename, such as spaces or a single dot. Save reports success and silently renames the page to unnamed instead of rejecting or explaining the normalized title.",
+      "description": "In Gitea’s repository wiki, creating or renaming a page with a dot-only title silently saves it as unnamed, without explaining that its title changed or offering validation feedback. Editing a title to spaces can reach the same normalization. The replacement itself is intentional; the accepted defect is missing notice or validation, including reports that also ask to preserve the original title.",
       "rootCause": "UserTitleToWebPath trims whitespace and normalizes path segments, then substitutes unnamed for an empty result. EditWikiPost lacks the new-page whitespace-title validation and neither create nor edit tells the user when dot-only input normalizes to unnamed.",
       "reproductionPaths": [
-        "In Gitea, edit a wiki page’s title to a value that normalizes to no filename, such as spaces or a single dot. Save reports success and silently renames the page to unnamed instead of rejecting or explaining the normalized title."
+        "In Gitea, edit a wiki page’s title to a value that normalizes to no filename, such as spaces or a single dot. Save reports success and silently renames the page to unnamed instead of rejecting or explaining the normalized title.",
+        "In Gitea, create a wiki page with the title . and some body content, then save. The content opens under unnamed with no warning that the entered title was replaced. A complaint about missing notice or validation matches even if it also says the original title should have been retained; a complaint solely about retaining the reserved dot title does not."
       ]
     },
     {
@@ -169,6 +170,22 @@
       "rootCause": "web_src/js/features/comp/ComboMarkdownEditor.ts validateTextareaNonEmpty sets textarea.required = true when the blank textarea is visible and never clears it. In Preview the textarea is hidden, so the browser's native required check blocks the submit silently (a hidden control cannot show its bubble) before the submit handler in web_src/js/features/repo-wiki.ts can run and show the 'Require non-empty content' toast.",
       "reproductionPaths": [
         "In Gitea’s wiki editor, a blank save from Write shows 'Please fill out this field.' If the user then switches to Preview and clicks Save Page again, nothing happens: no message and no navigation, so the user isn't told why the page won't save."
+      ]
+    },
+    {
+      "id": "gitea-markdown-preview-response-order-unchecked",
+      "description": "Gitea’s wiki editor can show an older draft in Preview even while Write contains newer text. If an earlier slow render finishes after a later quick render, its response replaces the newer preview and remains visible until Preview is requested again. This is a race between overlapping preview requests; saving does not lose the current text, and briefly seeing old content while a single request is still loading is not this failure.",
+      "rootCause": "The shared Markdown editor sends the current text on every Preview click and renders each response unconditionally. It has no request sequence, cancellation or current-text check, so an earlier request that finishes last can overwrite the response for a later draft.",
+      "reproductionPaths": [
+        "In Gitea’s New Wiki Page editor, enter a long draft starting VERSION_A and request Preview. Before it finishes, return to Write, replace it with a short VERSION_B draft and request Preview again. If VERSION_B finishes first and VERSION_A last, Preview settles on VERSION_A while Write still contains VERSION_B. Wait for both responses to distinguish the race from normal loading; a later Preview click corrects it."
+      ]
+    },
+    {
+      "id": "gitea-wiki-footnote-anchor-context-collision",
+      "description": "A Gitea wiki can render its main page together with shared _Sidebar or _Footer content. If those separate blocks use the same footnote label, such as [^1], clicking a sidebar footnote reference can jump to the main page’s definition instead of its own. The text and definitions exist, but duplicate document anchors send the link to the wrong block.",
+      "rootCause": "Footnote processing adds a block-specific suffix only when footnoteContextId is set. Wiki rendering uses one wiki render context for the body, sidebar and footer without setting that identifier. Each block can therefore produce the same fn:user-content-1 anchor, and the browser resolves the sidebar link to the first matching element, which is in the main body. This is distinct from release heading collisions: wiki footnotes lack a context the footnote processor already supports.",
+      "reproductionPaths": [
+        "In a Gitea wiki, give the main page a [^1] reference and definition. Create _Sidebar using its own [^1] reference with a visibly different definition. Open the main page and click the sidebar reference: the browser scrolls to the main body’s footnote instead of the nearby sidebar definition because both rendered blocks use the same anchor ID."
       ]
     }
   ]
