@@ -125,11 +125,11 @@ Results also include Codex with `gpt-6.1-terra` and Claude Code with
 
 ### Web access
 
-We recommend `--prevent-cheating` for every `codex-playwright-mcp` run. Without
-it, we've seen Codex search the web and find examples of the bugs online instead
-of testing the fixture against its intended behavior. The flag is off by default
-so new runs stay comparable with saved ones, and `merge` labels runs that use it
-separately.
+Coding agents can search the web and find examples of these bugs online instead
+of testing the fixture against its intended behavior. We recommend
+`--prevent-cheating` for every `codex-playwright-mcp` run. The flag is off by
+default so new runs stay comparable with saved ones, and `merge` labels runs
+that use it separately.
 
 The flag turns off Codex web search, makes Playwright MCP refuse the sites in
 `ANSWER_DOMAINS` ([`codex-agent.ts`](src/agents/codex/codex-agent.ts)), limits
