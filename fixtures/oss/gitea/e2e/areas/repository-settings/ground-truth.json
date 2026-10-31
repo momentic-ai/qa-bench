@@ -844,6 +844,50 @@
       ],
       "severity": 5,
       "sourceCause": "models/repo/repo.go IsUsableRepoName rejects two or more consecutive dots with ErrNameCharsNotAllowed before the reserved-name check, and the settings rename handler (routers/web/repo/setting/setting.go) has no case for that error, so it falls through to ctx.ServerError. The New Repository form strips the dots client-side, so this is reached through Settings rename."
+    },
+    {
+      "id": "gitea-push-allowlist-keeps-removed-principals-hidden",
+      "name": "Branch push allowlist hides removed principals and preserves their permissions on save",
+      "severity": 3,
+      "owningArea": "gitea/repository-settings",
+      "summary": "Removing an allowlisted collaborator or team from a repository leaves its saved branch-protection ID hidden in an apparently empty editor. Saving retains that undisclosed entry; re-adding repository access makes the old push allowance effective again.",
+      "expected": "The rule editor exposes saved allowlist entries so administrators can remove them, or clears ineligible entries. Saving an apparently empty allowlist should not silently retain undisclosed permissions.",
+      "actual": "After removal of a Write collaborator and team, the protection editor shows no selected users or teams but submits their retained hidden IDs. Saving succeeds without clearing them. Re-adding the collaborator/team restores the selected entries without a rule edit, and the collaborator can push to the protected branch.",
+      "reproSteps": [
+        "In a disposable organization repository, grant a collaborator Write access and add a team with Write access.",
+        "Protect main with Allowlist Restricted Push, select that collaborator and team, and save.",
+        "Remove both the collaborator and the team from the repository. Reopen the protection rule and observe that its selected user/team lists look empty.",
+        "Save the rule, reload and confirm that the selections still look empty.",
+        "Re-add the collaborator and team with Write access without changing the protection rule. Observe that their selected entries return; as the collaborator, confirm a push to main succeeds."
+      ],
+      "sourceCause": "The editor stores complete saved allowlist IDs in hidden inputs but renders choices only from current repository readers and teams. updateUserWhitelist and updateTeamWhitelist return saved IDs without filtering when the submitted list is unchanged. Protected-branch authorization later consults those stored IDs.",
+      "matchingGuidance": {
+        "relatedReference": {
+          "id": "gitea-push-allowlist-drops-read-collaborator",
+          "distinction": "That case changes the allowlist and silently drops a visible Read collaborator during eligibility filtering. This case preserves unchanged hidden IDs for removed principals and misrepresents the saved rule."
+        },
+        "scope": "Requires an apparently empty editor/save retaining undisclosed allowlist entries. Do not claim the removed principal can push while lacking repository access, or treat all dormant permission retention as unintended."
+      },
+      "reviewEvidence": {
+        "basis": "Explicit user acceptance at severity 3 after the supplied recorded reproduction and coordinator inspection of the pinned editor, save, authorization and collaborator-removal code. No fresh coordinator browser reproduction or independent Claude/Codex verdict pair is claimed.",
+        "userAccepted": true,
+        "sourceRevision": "99053ce4fa2b45f1bca5837418c0c57f793ca824",
+        "severityReason": "A supported branch-protection edit misleadingly retains undisclosed permissions that become effective when repository access is re-granted.",
+        "sourceReferences": [
+          "https://github.com/go-gitea/gitea/blob/99053ce4fa2b45f1bca5837418c0c57f793ca824/routers/web/repo/setting/protected_branch.go#L77-L102",
+          "https://github.com/go-gitea/gitea/blob/99053ce4fa2b45f1bca5837418c0c57f793ca824/templates/repo/settings/protected_branch.tmpl#L56-L81",
+          "https://github.com/go-gitea/gitea/blob/99053ce4fa2b45f1bca5837418c0c57f793ca824/routers/web/repo/setting/protected_branch.go#L173-L181",
+          "https://github.com/go-gitea/gitea/blob/99053ce4fa2b45f1bca5837418c0c57f793ca824/models/git/protected_branch.go#L482-L531",
+          "https://github.com/go-gitea/gitea/blob/99053ce4fa2b45f1bca5837418c0c57f793ca824/models/git/protected_branch.go#L143-L159",
+          "https://github.com/go-gitea/gitea/blob/99053ce4fa2b45f1bca5837418c0c57f793ca824/services/repository/collaboration.go#L68-L112",
+          "https://github.com/go-gitea/gitea/blob/99053ce4fa2b45f1bca5837418c0c57f793ca824/services/convert/convert.go#L115-L154"
+        ],
+        "limitations": [
+          "The observed effect follows re-granting repository access, not an immediate access bypass after removal.",
+          "A deliberate choice to retain dormant IDs would not by itself establish a bug; the accepted defect is the misleading editable representation and save.",
+          "No newer-runtime verification or independent verdict pair is claimed."
+        ]
+      }
     }
   ]
 }

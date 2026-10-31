@@ -180,6 +180,29 @@
         "Check the timeline entries, then repeat with the removal more than a minute after the additions."
       ],
       "reason": "Intended display merging, not lost history. The issue view combines label events by the same user less than 60 seconds apart into one timeline line (combineLabelComments in routers/web/repo/issue_view.go), so an add followed quickly by a remove cancels out in the summary. Every add and remove event is still stored and returned by the API, and events further apart are shown separately. Same reasoning as the rejected 'Clear labels' timeline reports."
+    },
+    {
+      "id": "gitea-label-edit-bypassed-client-validation",
+      "name": "Editing a label saves empty or oversized values after bypassing form validation",
+      "summary": "The label edit endpoint saves empty or oversized names/descriptions submitted through a hand-built request, although normal UI validation prevents those submissions.",
+      "expected": "The report expects the edit endpoint to reject the invalid values as the create form does.",
+      "actual": "A forged edit POST saves invalid label values. The normal dialog blocks an empty name and limits the name to 50 characters.",
+      "reproSteps": [
+        "Open a repository or organization Labels page and edit a label. Confirm an empty name is blocked by form validation.",
+        "Bypass required/maxlength validation with a hand-built POST to the edit endpoint containing an empty or oversized name or description.",
+        "Reload and inspect the saved label."
+      ],
+      "reason": "Rejected for the UI benchmark: the demonstrated server validation gap requires bypassing the rendered form. The normal edit dialog uses required/maxlength constraints and form.checkValidity(). This does not reject the separate UI-reachable whitespace-only name failures or claim the server gap is nonexistent.",
+      "reviewedBy": "hnhaefliger",
+      "reviewedAt": "2026-10-31T01:53:06.424Z",
+      "reviewEvidence": {
+        "basis": "Explicit user rejection after supplied packet review and coordinator check of the pinned LabelEdit form validation. No fresh browser reproduction or independent verdict pair claimed.",
+        "userAccepted": false,
+        "sourceRevision": "99053ce4fa2b45f1bca5837418c0c57f793ca824",
+        "sourceReferences": [
+          "https://github.com/go-gitea/gitea/blob/99053ce4fa2b45f1bca5837418c0c57f793ca824/web_src/js/features/comp/LabelEdit.ts#L67-L71"
+        ]
+      }
     }
   ]
 }
