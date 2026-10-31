@@ -1379,6 +1379,36 @@
         },
         "scope": "Submitting a conversation comment on a pull request after it was locked, from a page loaded before the lock, showing a JSON SyntaxError or network error instead of a locked message. Review-panel submissions are a separate entry."
       }
+    },
+    {
+      "id": "gitea-deleted-line-comment-moves-to-next-line",
+      "name": "Deleting a reviewed line moves its inline comment onto the next line without marking it outdated",
+      "summary": "When a later commit deletes a line that has an inline review comment, Files Changed shows the comment on whatever line now has that line number, as a current comment. It isn't marked Outdated and stays visible with outdated comments hidden.",
+      "expected": "A comment on a deleted line is marked outdated and hidden along with other outdated comments, and is never shown as current on a different line.",
+      "actual": "A comment on line 2 ('Second review line') of a three-line file was left in a review. After a commit deleted that line, Files Changed with outdated comments hidden showed the comment under 'Third review line' (now line 2) with no Outdated tag.",
+      "reproSteps": [
+        "Open a pull request that adds a file with three lines.",
+        "In Files Changed, comment on line 2 and submit the review.",
+        "Push a commit to the pull request branch that deletes line 2.",
+        "Reload Files Changed with outdated comments hidden: the comment now sits under the former line 3 with no Outdated tag."
+      ],
+      "severity": 1,
+      "sourceCause": "services/pull/review.go checkInvalidation blames the comment's stored line number at the new head and only invalidates it if that line's commit changed or the line no longer exists; the stored line is never shifted for deleted lines (FIXME 'differentiate between previous and proposed line'). services/gitdiff/gitdiff.go then attaches comments by the raw stored line. Unfixed on upstream main; the fix PR go-gitea/gitea#35077 is still open."
+    },
+    {
+      "id": "gitea-closed-pr-delete-branch-used-by-open-pr-silent-404",
+      "name": "Delete Branch on a closed pull request silently fails when an open pull request uses the same branch",
+      "summary": "A closed, unmerged pull request still offers Delete Branch even when another open pull request uses the same source branch. Confirming sends the cleanup request, which is refused with a 404, and the page shows nothing: the button stays and the branch still exists.",
+      "expected": "When another open pull request uses the source branch, the closed pull request doesn't offer Delete Branch (as merged pull requests already don't), or deleting shows an error explaining why.",
+      "actual": "After confirming Delete Branch on the closed pull request, POST .../pulls/<n>/cleanup returned 404. The dialog closed with no message, the Delete Branch button stayed, and the Branches page still listed the branch, linked to the open pull request.",
+      "reproSteps": [
+        "Open a pull request from a branch, then close it without merging.",
+        "Open a new pull request from the same branch and leave it open.",
+        "Open the closed pull request, click Delete Branch and confirm.",
+        "Observe that nothing happens and the branch still exists."
+      ],
+      "severity": 3,
+      "sourceCause": "routers/web/repo/issue_view.go preparePullViewDeleteBranch checks HasUnmergedPullRequestsByHeadInfo only for merged pull requests, so a closed unmerged one shows the button. routers/web/repo/pull.go CleanUpPullRequest runs that check for every pull request and returns a bare NotFound, and web_src/js/features/common-button.ts ignores non-OK responses. Fixed upstream in go-gitea/gitea#39193."
     }
   ]
 }
