@@ -1394,6 +1394,21 @@
       ],
       "severity": 1,
       "sourceCause": "services/pull/review.go checkInvalidation blames the comment's stored line number at the new head and only invalidates it if that line's commit changed or the line no longer exists; the stored line is never shifted for deleted lines (FIXME 'differentiate between previous and proposed line'). services/gitdiff/gitdiff.go then attaches comments by the raw stored line. Unfixed on upstream main; the fix PR go-gitea/gitea#35077 is still open."
+    },
+    {
+      "id": "gitea-closed-pr-delete-branch-used-by-open-pr-silent-404",
+      "name": "Delete Branch on a closed pull request silently fails when an open pull request uses the same branch",
+      "summary": "A closed, unmerged pull request still offers Delete Branch even when another open pull request uses the same source branch. Confirming sends the cleanup request, which is refused with a 404, and the page shows nothing: the button stays and the branch still exists.",
+      "expected": "When another open pull request uses the source branch, the closed pull request doesn't offer Delete Branch (as merged pull requests already don't), or deleting shows an error explaining why.",
+      "actual": "After confirming Delete Branch on the closed pull request, POST .../pulls/<n>/cleanup returned 404. The dialog closed with no message, the Delete Branch button stayed, and the Branches page still listed the branch, linked to the open pull request.",
+      "reproSteps": [
+        "Open a pull request from a branch, then close it without merging.",
+        "Open a new pull request from the same branch and leave it open.",
+        "Open the closed pull request, click Delete Branch and confirm.",
+        "Observe that nothing happens and the branch still exists."
+      ],
+      "severity": 3,
+      "sourceCause": "routers/web/repo/issue_view.go preparePullViewDeleteBranch checks HasUnmergedPullRequestsByHeadInfo only for merged pull requests, so a closed unmerged one shows the button. routers/web/repo/pull.go CleanUpPullRequest runs that check for every pull request and returns a bare NotFound, and web_src/js/features/common-button.ts ignores non-OK responses. Fixed upstream in go-gitea/gitea#39193."
     }
   ]
 }
