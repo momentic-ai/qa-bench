@@ -829,6 +829,21 @@
         },
         "scope": "Reports that an allowlisted user is refused when deleting a matching protected tag ('The tag name is protected.') after a release was published on it and deleted match this entry, even if they say the allowlisted user created the tag, since the refusal only happens when the stored publisher is outside the rule."
       }
+    },
+    {
+      "id": "gitea-repo-settings-double-dot-rename-500",
+      "name": "Renaming a repository to a name with two consecutive dots returns HTTP 500",
+      "summary": "In repository Settings, changing the Repository Name to '..', '...' or a name containing '..' (such as 'release..notes') and clicking Update Settings replaces the settings page with a full-page 500 instead of a validation message.",
+      "expected": "The rename is rejected with an inline validation error on the settings form, as '.' is ('The repository name \".\" is reserved.').",
+      "actual": "Update Settings with the name '.' showed 'The repository name \".\" is reserved.' With '..' it returned 500 Internal Server Error showing 'ChangeRepositoryName, name is invalid [..]: must be valid alpha or numeric or dash(-_) or dot characters', and the repository kept its old name.",
+      "reproSteps": [
+        "Open Settings for a repository you own.",
+        "Change Repository Name to '.' and click Update Settings; note the inline reserved-name message.",
+        "Change Repository Name to '..' and click Update Settings.",
+        "Observe the full-page 500 Internal Server Error."
+      ],
+      "severity": 5,
+      "sourceCause": "models/repo/repo.go IsUsableRepoName rejects two or more consecutive dots with ErrNameCharsNotAllowed before the reserved-name check, and the settings rename handler (routers/web/repo/setting/setting.go) has no case for that error, so it falls through to ctx.ServerError. The New Repository form strips the dots client-side, so this is reached through Settings rename."
     }
   ]
 }
