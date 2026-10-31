@@ -1064,6 +1064,20 @@
       ],
       "severity": 1,
       "sourceCause": "routers/web/repo/view_file.go sets NumLines to the newline count plus one and leaves the empty line after the final newline unrendered. Its comment says the extra count is meant to signal a trailing newline and suggests an icon for that, but no icon or other marker exists, so to a user or agent the header simply disagrees with the numbered lines."
+    },
+    {
+      "id": "gitea-editor-dotdot-path-raw-git-error",
+      "name": "New file path '..' shows a raw git error exposing the server's temporary repository path",
+      "summary": "In the web editor, committing a new file whose path is '..' (typed as the file name), or a submitted path containing a leading '../' segment, fails with a flash that contains raw git ls-files output, including the server's /data/gitea/tmp/local-repo/... directory. The server cleans the path for validation but runs git with the uncleaned path.",
+      "expected": "The path is rejected with 'The filename is invalid' (as '.git/config' is) or normalized, without showing git output or server filesystem paths.",
+      "actual": "Committing a new file named '..' showed 'Failed to update/create file \"..\"' with Error Message 'UpdateRepoFile: Unable to run git ls-files for temporary repo of: eval/<repo> Error: exit status 128 ... fatal: ..: '..' is outside repository at '/data/gitea/tmp/local-repo/upload.git<N>/.''. A submitted tree_path of '../escape.txt' gave the same error.",
+      "reproSteps": [
+        "Open a repository branch and choose Add File > New File.",
+        "Type '..' as the file name, enter some content, and click Commit Changes.",
+        "Expand Error Message in the flash and check whether it shows git stderr and a server temp path."
+      ],
+      "severity": 5,
+      "sourceCause": "services/repository/files/update.go cleans the tree path for validation but CreateOrUpdateFile runs git ls-files with the raw path, so git's stderr (including the server temp repo path) reaches the flash via routers/web/repo/editor.go. A '../x' path typed in the UI is normalized client-side; the file name '..' is not."
     }
   ]
 }
