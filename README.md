@@ -140,10 +140,12 @@ sandbox, which has no network access.
 The flag doesn't stop fixtures that fetch from code hosts on the server, such
 as Gitea's "New Migration" from GitHub.
 
-**`codex-agent-browser` does not support `--prevent-cheating`, and the flag is
-rejected for it.** Its shell keeps network access, so the agent could still
-`curl` GitHub or the dataset. To run it without answer lookups, restrict the
-network outside qa-bench. On Linux, run `pnpm eval` under
+**`codex-agent-browser` does not support `--prevent-cheating`.** There the flag
+only turns off web search and, on Browserbase, limits page navigation to the
+fixture host. With `--browser local` its browser isn't restricted, and its
+shell keeps network access on any browser, so the agent can still `curl` GitHub
+or the dataset. To run it without answer lookups, restrict the network outside
+qa-bench. On Linux, run `pnpm eval` under
 [nsjail](https://github.com/google/nsjail) or a similar sandbox with egress
 limited to the hosts the run needs (the fixture, OpenAI, E2B and Browserbase).
 On macOS, where nsjail doesn't run, do the same inside a Linux VM or container

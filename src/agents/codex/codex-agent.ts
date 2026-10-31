@@ -146,6 +146,7 @@ export class CodexAgent extends CodexRunner {
         mcpServers: {},
         env: this.browserEnvironment,
         sandbox: "workspace-write" as const,
+        ...this.cheatingSetup(),
       };
     }
     return {
