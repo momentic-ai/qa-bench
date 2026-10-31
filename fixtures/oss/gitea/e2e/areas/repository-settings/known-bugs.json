@@ -35,10 +35,11 @@
     },
     {
       "id": "gitea-template-metadata-default-branch-missing",
-      "description": "In Gitea, generating a template with only metadata selected creates an empty default branch. The setup commands omit the branch, and the visible New File and Upload File links lead to 404 pages.",
-      "rootCause": "Generate repository setup initializes the default branch in the Git-content path rather than supplying one for metadata-only generation, so the empty repository links and quick guide interpolate an empty branch.",
+      "description": "In Gitea, creating a repository from a template can leave its default branch blank when Git Content is unchecked, or when Git Content is checked but the template itself has no commits. The new repository’s Quick Guide then omits the branch name from checkout and push commands, and New File or Upload File links open 404 pages with an empty branch segment. A normal empty repository or a repository generated with actual template Git content has a usable default branch.",
+      "rootCause": "The template-generation request does not supply a default branch. Its fallback to the template’s branch is applied only while generating Git content, and that step runs only when Git Content is selected and the template contains commits. Both skipping Git Content and using an empty template bypass the fallback, leaving setup commands and file-creation links to interpolate a blank branch.",
       "reproductionPaths": [
-        "In Gitea, generating a template with only metadata selected creates an empty default branch. The setup commands omit the branch, and the visible New File and Upload File links lead to 404 pages."
+        "In Gitea, generating a template with only metadata selected creates an empty default branch. The setup commands omit the branch, and the visible New File and Upload File links lead to 404 pages.",
+        "Create a template repository without initializing it, so it has no commits. Generate a new repository from it with Git Content checked. The resulting Quick Guide shows checkout and push commands without a branch name, and New File and Upload File open addresses containing empty branch segments and return 404. A generated repository from a template with commits uses a normal branch name."
       ]
     },
     {
@@ -188,11 +189,12 @@
     },
     {
       "id": "gitea-tag-delete-checks-publisher",
-      "description": "In Gitea, protected-tag deletion follows the tag creator’s allowlist status instead of the person deleting it. A non-allowed Write collaborator can delete a tag created by an allowed user, while an allowed user can be refused deletion of a tag created outside the rule.",
+      "description": "In Gitea, a protected-tag rule names who may control matching version tags. Deleting a tag checks the stored publisher’s eligibility instead of the person requesting deletion: an unlisted writer can delete a tag attributed to an allowed publisher, while an allowed user can be refused if its publisher is outside the rule. Publishing a release on an existing tag can replace that publisher, so an allowed creator may lose the ability to delete their own tag after someone else publishes and removes a release on it.",
       "rootCause": "DeleteReleaseByID passes rel.PublisherID to IsUserAllowedToControlTag rather than doer.ID; unauthorized users can delete allowed publishers tags and allowed users cannot delete other publishers tags.",
       "reproductionPaths": [
         "In Gitea, with a protected-tag rule (for example release-*) that allows only certain users, a Write collaborator who isn't allowed is correctly blocked from creating a matching tag but can still delete an existing one from the Tags page or the API. The delete check uses the tag's original publisher instead of the person deleting it, so deleting a tag published by an allowed user always passes.",
-        "In Gitea, deleting a tag that matches a protected-tag rule checks whether the tag's creator is allowed by the rule, not the person deleting it. So a collaborator on the rule's allowlist is refused (\"The tag name is protected.\") when deleting a matching tag created by a user who isn't on it."
+        "In Gitea, deleting a tag that matches a protected-tag rule checks whether the tag's creator is allowed by the rule, not the person deleting it. So a collaborator on the rule's allowlist is refused (\"The tag name is protected.\") when deleting a matching tag created by a user who isn't on it.",
+        "Create a protected-tag rule allowing a collaborator but not the repository owner. On a matching tag, have the owner publish a release and then delete the release while keeping the tag. As the allowed collaborator, choose Delete Tag: Gitea refuses with The tag name is protected and leaves the tag, even if that collaborator originally created it. The intervening release publication changed the stored publisher used by the delete check."
       ]
     },
     {
@@ -238,7 +240,7 @@
     {
       "id": "gitea-fetch-action-non-json-errors",
       "description": "In Gitea, issue and pull request (a proposed code change) form actions can expose a raw JSON-parsing SyntaxError labelled Network error when the server rejects an unavailable or unauthorized action. Confirmed triggers include stale deleted/locked/archived comment or issue (a tracked work item) forms, deleted milestone (a named group of work items)/time-entry targets and rejected review actions; the UI does not explain the actual refusal.",
-      "rootCause": "fetchActionDoRequest unconditionally calls resp.json() for HTTP 4xx and labels parsing exceptions Network error. Plain-text missing-issue/permission responses therefore expose SyntaxError rather than the rejection reason. Deleted comment inline edits use a separate parser and are kept separate.",
+      "rootCause": "The shared form-action handler expects JSON both for HTTP 200 success and for HTTP 4xx rejection. Some server guards instead return plain-text errors or redirect to an HTML page, which fetch follows before the handler tries to parse it. The resulting JSON-parsing exception is caught and mislabeled Network error, hiding the actual refusal. Deleted comment inline edits use a separate parser and are kept separate.",
       "reproductionPaths": [
         "In Gitea, if a repository is archived while a New Issue (or comment) form is open, submitting the form shows a red \"Network error SyntaxError: Unexpected token 'N', \\\"Not found.\\\" is not valid JSON\" instead of saying the repository is archived and read-only.",
         "Open a mergeable pull request, which proposes changes to a repository, and leave its Merge control visible. Archive the repository from another tab, then submit Merge from the stale page. Instead of explaining that an archived repository is read-only, Gitea shows a raw Network error SyntaxError saying Not found. is not valid JSON. The merge is refused.",
@@ -291,6 +293,32 @@
       "rootCause": "The collaborator Remove button uses the legacy delete-button handler, which waits for the request but only handles successful HTTP responses. When the administrator permission guard returns an error response, the handler has no error branch, so the confirmation dialog closes without reporting the refusal. This is separate from the role-dropdown handler’s optimistic label update.",
       "reproductionPaths": [
         "As a repository administrator who is not its owner, open Settings > Collaborators. Lower your own role to Read without reloading, or have another administrator remove your administrator permission. Click Remove beside a different collaborator and confirm. The dialog closes without an error while the collaborator remains; the same action before losing administrator access removes them and shows a success message."
+      ]
+    },
+    {
+      "id": "gitea-repository-packages-unit-permission-unchecked",
+      "description": "Gitea repository settings can disable the Packages section or give a person no Packages access, hiding its tab. The repository’s direct /packages address still opens the Packages page for a user who can access the repository through other permissions. The accepted mismatch is that the repository-level section and its configured unit permissions are not enforced at that address, including an empty listing. This alone does not prove disclosure to someone with no repository or package-owner access.",
+      "rootCause": "The repository Packages route checks general repository access but has no enabled-Packages-unit or Packages-read-permission guard. Navigation uses those settings to hide the tab, while direct navigation still reaches the handler. Package ownership and download permissions are separate checks; the missing repository-unit guard explains the accepted page-access inconsistency.",
+      "reproductionPaths": [
+        "In a repository’s Advanced Settings, disable Enable Repository Packages Registry and save. The Packages tab disappears, but entering that repository’s /packages address still opens the page, even if it contains only There are no packages yet.",
+        "Give an organization team access to a private repository while setting Packages to No Access. As a member of that team, confirm the Packages tab is hidden and open the repository’s /packages address directly. The page still opens and can list linked packages that the user’s organization-level access permits them to open and download.",
+        "On a private repository, set Public Access for Code to Everyone Read but leave Packages Not set. As a signed-in person with no repository membership, confirm there is no Packages tab, then open the repository’s /packages address directly. The repository Packages page and its empty-state message still appear despite the absent Packages grant."
+      ]
+    },
+    {
+      "id": "gitea-repository-rename-invalid-characters-server-error",
+      "description": "In Gitea repository Settings, renaming a repository to a name containing two consecutive dots, such as .., ... or release..notes, replaces the form with a full-page 500 Internal Server Error. The name is correctly refused and the repository retains its old name, but the user receives an internal failure instead of a validation message. The single-dot name is handled with a readable reserved-name error, and the New Repository form’s client-side cleanup is a different entry point.",
+      "rootCause": "The repository-name validator rejects consecutive dots as a disallowed-character error before checking reserved names. The Settings rename handler handles reserved names and several other validation errors but omits this error type, so the rejected input falls through to the server-error response.",
+      "reproductionPaths": [
+        "Open Settings for a repository you own, set Repository Name to .. or a name containing consecutive dots, and choose Update Settings. The response is a full-page 500 naming ChangeRepositoryName and invalid characters, rather than an inline validation error. Reopen the repository: its original name is unchanged. Using . as a control produces the normal reserved-name message."
+      ]
+    },
+    {
+      "id": "gitea-branch-push-allowlist-hidden-stale-principals",
+      "description": "In Gitea, a protected branch’s push allowlist can appear empty after its selected collaborator or team is removed from the repository. Saving that apparently empty rule silently keeps the hidden selections. Re-granting repository access makes the old selections appear and restores the corresponding push allowance without another rule edit. The accepted failure is a misleading editable representation and save; it does not establish that a removed user can push while lacking repository access, or that retaining any dormant permission is inherently wrong.",
+      "rootCause": "The rule editor puts all saved user and team IDs into hidden inputs but builds visible choices only from current repository readers and eligible teams. Removed entries therefore remain submitted without a visible selection. When submitted IDs are unchanged, the save helpers return them without rechecking eligibility, so a save preserves the hidden grants later used by push authorization.",
+      "reproductionPaths": [
+        "On an organization repository, grant a collaborator and team Write access, select both in a protected branch’s Allowlist Restricted Push rule and save. Remove both from repository access, reopen the rule and observe that no users or teams appear selected. Save that apparently empty rule. Re-add the same collaborator and team with Write access without editing the rule: the old selections return and the collaborator can push to the protected branch."
       ]
     }
   ]
