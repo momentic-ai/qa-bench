@@ -1409,6 +1409,21 @@
       ],
       "severity": 3,
       "sourceCause": "routers/web/repo/issue_view.go preparePullViewDeleteBranch checks HasUnmergedPullRequestsByHeadInfo only for merged pull requests, so a closed unmerged one shows the button. routers/web/repo/pull.go CleanUpPullRequest runs that check for every pull request and returns a bare NotFound, and web_src/js/features/common-button.ts ignores non-OK responses. Fixed upstream in go-gitea/gitea#39193."
+    },
+    {
+      "id": "gitea-squash-default-merge-commit-squash-title",
+      "name": "With squash as the default merge style, Create merge commit uses the squash commit title",
+      "summary": "When a repository's Default Merge Style is Create squash commit, choosing Create merge commit or Rebase then create merge commit on a pull request still pre-fills the squash-format title '<title> (#N)'. Merging without editing creates a two-parent merge commit with that subject. In a repository whose default is Create merge commit, the same styles pre-fill the 'Merge pull request ...' title.",
+      "expected": "Create merge commit and Rebase then create merge commit pre-fill \"Merge pull request '<title>' (#N) from <branch> into <base>\" whatever the repository's default merge style is, as they do when the default is Create merge commit.",
+      "actual": "With the default set to squash, choosing Create merge commit pre-filled 'Add getting started guide (#1)'. Merging created a two-parent merge commit with that subject. In a control repository with the default set to Create merge commit, the same choice pre-filled \"Merge pull request 'Add getting started guide' (#1) from docs-guide into main\".",
+      "reproSteps": [
+        "In a repository's Settings > Pull Requests, set Default Merge Style to Create squash commit and save.",
+        "Open a pull request that can be merged and cannot fast-forward.",
+        "In the merge box dropdown, choose Create merge commit and click the merge button.",
+        "Check the pre-filled title, then merge and open the new commit on the base branch."
+      ],
+      "severity": 1,
+      "sourceCause": "routers/web/repo/issue_view.go computes DefaultMergeMessage once for the repository's default merge style, and templates/repo/issue/view_content/pull_merge_box.tmpl uses that single title for both merge and rebase-merge; only squash gets a title computed for its own style. The merge handler only regenerates a title when the submitted one is empty. Unchanged on upstream main (routers/web/repo/pull_merge_form.go)."
     }
   ]
 }
