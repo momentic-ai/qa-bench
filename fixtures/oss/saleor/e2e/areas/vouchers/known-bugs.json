@@ -18,7 +18,7 @@
     },
     {
       "id": "saleor-detail-section-scroll-wrong-responsive-root",
-      "description": "In Saleor, on phone/tablet voucher (a discount redeemed using codes) forms, setup shortcuts and section navigation fail to reveal their destination. Add codes, Set value, Usage limits, Codes and Requirements can leave the viewport unchanged or jump to the page top, requiring manual scrolling despite an available section target.",
+      "description": "A Saleor voucher is a discount redeemed using codes. On phone or tablet voucher forms, setup shortcuts and section navigation can highlight a section without bringing it into view, or jump to the page top instead. Affected destinations include codes, discount value, usage limits, requirements, eligible products and countries, leaving manual scrolling necessary even though the requested section exists.",
       "rootCause": "All setup and navigation actions call scrollElementIntoDetailContent, which selects the marked detail root and computes scrolling only within it. At mobile/tablet breakpoints where the effective document scroll owner differs, scrolling that root cannot reveal the requested section.",
       "reproductionPaths": [
         "In Saleor, at phone width on a new voucher (a discount redeemed using codes), click Add codes in the setup checklist. The view stays on the checklist instead of scrolling to the existing Voucher codes section, requiring manual scrolling to reach it.",
@@ -26,7 +26,8 @@
         "In Saleor, at tablet width while creating a voucher (a discount redeemed using codes), click Codes in the section navigation. The page jumps to its top instead of bringing the Voucher codes section into view.",
         "In Saleor, at tablet width on a saved voucher (a discount redeemed using codes), select Requirements in the section navigation. Earlier sections remain visible and Minimum Requirements stays offscreen instead of becoming the visible destination.",
         "In Saleor, at phone width on the voucher (a discount redeemed using codes) setup checklist, click the Usage limits shortcut under Worth reviewing. The screen stays on the checklist while the Usage limits section remains farther down the form.",
-        "In Saleor, at tablet width on a Products-scope voucher (a discount redeemed using codes), return to the top after saving and refreshing, then click Eligible products in the section navigation. That item becomes highlighted but the page still shows Details and Voucher codes instead of scrolling to the eligibility section."
+        "At tablet width on a saved Saleor Products-scope voucher, return to the top after saving and refreshing, then choose Eligible products in the section navigation. Its indicator becomes active while Details and Voucher codes remain in view instead of scrolling to the eligible-item section.",
+        "At tablet width on a saved Saleor Free shipping voucher, click Countries in the section navigation. Countries becomes highlighted but the page stays on Details and Voucher codes rather than revealing the country-assignment section. This is the Countries destination, separately from tablet Codes, Requirements and Eligible products navigation."
       ]
     },
     {
@@ -270,7 +271,7 @@
     {
       "id": "saleor-date-between-incomplete-query",
       "description": "In Saleor, choosing a date-between filter in the voucher (a discount redeemed using codes) list and leaving one bound incomplete can break the list/query instead of keeping the filter incomplete and allowing correction. A half-entered date interval is submitted as though it were a valid filter.",
-      "rootCause": "Voucher date filtering calls joinDateTime for each optional bound and passes the pair onward without ensuring both bounds are a complete valid between expression; a half-entered condition reaches the API as an invalid filter.",
+      "rootCause": "The active voucher conditional-filter builder accepts a Between tuple and buildRangeObject forwards its gte/lte endpoints without requiring both strings to be complete valid datetimes. BaseMappableQueryVarsBuilder flattens this into the API started range. An empty/partial endpoint can therefore reach DateTimeRangeInput instead of keeping the filter in an incomplete editable state. The older getFilterVariables/joinDateTime helper is not the active path for the reported numeric conditional-filter URL.",
       "reproductionPaths": [
         "In Saleor’s Vouchers list, choose a date-between filter but leave one bound incomplete before applying it. The list/query fails instead of keeping the unfinished interval available for correction, so an incomplete date range is submitted as a complete filter."
       ]
@@ -349,11 +350,12 @@
     },
     {
       "id": "saleor-partial-date-treated-as-unset",
-      "description": "In Saleor, clearing one segment of an explicitly configured voucher (a discount redeemed using codes) start or end date can save an empty native date value as if the entire optional date were unset. A future start can become immediate activation, or a saved expiration can be removed, without asking the admin to complete the partial date.",
-      "rootCause": "DiscountDates forwards date input onChange values without retaining the distinction between an incomplete native date and an intentionally empty date. joinDateTime returns null for a falsy date; the update handler sends that null for startDate/endDate, invoking the API default or clearing expiry. No partial-date validity guard is visible at this boundary. This is a source-informed hypothesis; the exact mechanism has not been confirmed in execution.",
+      "description": "A Saleor voucher schedule has a start and an optional expiry controlled by Set end date. Clearing part of an entered start/end date, or fully clearing a saved End Date while its expiry switch remains on, can save as if the date were intentionally unset. A future start can become immediate activation, or expiration can be removed without asking for the missing date. This does not classify a genuinely unset optional start date’s normal default as a failure.",
+      "rootCause": "DiscountDates forwards native date input values without a completeness guard and does not mark the enabled End Date required. createVoucherUpdateHandler only gates channel-amount validation; the update handler uses hasEndDate ? joinDateTime(endDate,endTime) : null, and joinDateTime returns null for an empty date. Thus both an incomplete native end date and a completely cleared enabled End Date can submit null and clear expiry; an incomplete start can similarly invoke the API default. Enforcing date validity/completeness before this common save boundary addresses these missing-date paths.",
       "reproductionPaths": [
         "In Saleor, on a saved voucher (a discount redeemed using codes) with an enabled expiry, clear one segment of End Date while leaving other date segments visible, then Save. The expiry is removed and Set end date turns off instead of rejecting the visibly incomplete date.",
-        "In Saleor, on a saved voucher (a discount redeemed using codes) with a future start, clear one segment of Start Date and Save. The incomplete date is treated as unset and replaced with the current start date/time, activating the voucher instead of requiring the partial date to be completed."
+        "In Saleor, on a saved voucher (a discount redeemed using codes) with a future start, clear one segment of Start Date and Save. The incomplete date is treated as unset and replaced with the current start date/time, activating the voucher instead of requiring the partial date to be completed.",
+        "On a saved Saleor voucher, enable Set end date, fill a future expiry and save. Fully clear End Date while leaving the switch enabled, with End Hour either filled or cleared, and save again. Save succeeds, sends a null expiry and turns the setting off instead of requiring a date or an explicit switch-off action. This is a fully cleared field, separately from clearing only one date segment."
       ]
     },
     {
@@ -414,10 +416,11 @@
     },
     {
       "id": "saleor-started-filter-discards-time",
-      "description": "Saleor’s Vouchers list offers a Started greater-than filter with a date and time cutoff. A voucher (a discount redeemed using codes) that started just before that cutoff can remain listed, even though it should be excluded by the chosen time. The failure concerns the time-of-day boundary, rather than a voucher merely sharing the selected calendar date.",
-      "rootCause": "getFilterVariables constructs started.gte/lte using joinDateTime(params.startedFrom/startedTo) without a time argument, which defaults to midnight. This can reduce a date-time cutoff to a date-only boundary; the exact serialized URL input in the report remains unverified. This is a source-informed hypothesis; the exact mechanism has not been confirmed in execution.",
+      "description": "Saleor’s Vouchers list can restrict discounts by when they started. A Started greater-than cutoff can retain a voucher whose start is earlier than the selected time, and a complete narrow Between interval can omit a voucher whose start lies inside it while a wider interval includes it. These are incorrect date/time boundaries for saved start values, separately from submitting an incomplete interval.",
+      "rootCause": "The active VoucherList uses createVoucherQueryVariables and the default conditional-filter builder, not the older getFilterVariables/joinDateTime helper. RightOperator uses datetime-local inputs; buildRangeObject in FiltersQueryBuilder/utils.ts forwards their offset-free strings into gte/lte, and BaseMappableQueryVarsBuilder flattens the range into VoucherFilterInput.started. In contrast, voucher schedule saves use moment.format with an offset. This inconsistent timezone normalization is a source-informed common explanation for greater and narrow-Between boundary errors; the exact request/response timing and timezone in the reports have not been independently reproduced. It is not proven that the filter simply truncates time to midnight.",
       "reproductionPaths": [
-        "In Saleor, give a voucher (a discount redeemed using codes) a verified start time, then filter the Vouchers list for Started greater than a time one minute later. The voucher remains in the results even though its start is before the chosen cutoff instead of after it."
+        "In Saleor, give a voucher (a discount redeemed using codes) a verified start time, then filter the Vouchers list for Started greater than a time one minute later. The voucher remains in the results even though its start is before the chosen cutoff instead of after it.",
+        "Save a Saleor voucher with a known start time, then search for it and apply Started > between using a complete interval just before and after that start. The list becomes empty even though the voucher starts within the range; expanding the interval to surrounding days brings it back. Both bounds are filled, unlike the separate incomplete-range error."
       ]
     },
     {
@@ -450,6 +453,30 @@
       "rootCause": "The assignment dialog serializes its conditional filters through useModalFilters and passes the generated product where or collection filter/channel variables to the parent search query. The accepted crash occurs at this filter-application boundary, but no recorded stack or independently confirmed failing statement establishes its exact cause. Keep the product-attribute and collection-publication crashes separate until a common source failure is demonstrated. The exact cause remains unresolved.",
       "reproductionPaths": [
         "In Saleor, in a code-redeemable discount voucher’s collection-assignment dialog, set Is published to Yes, select a sales channel (a storefront/currency configuration) and apply the filter. The entire editor changes to an unexpected-error page instead of showing matching collections or an empty result. This is the collection-publication filter path, separately from the product-attribute filter crash."
+      ]
+    },
+    {
+      "id": "saleor-started-lower-omits-earlier-vouchers",
+      "description": "In Saleor’s Vouchers list, Started > lower is meant to keep discount vouchers that started before the chosen date and time. Applying it can return no vouchers even though the unfiltered list contains vouchers reported as starting well before that cutoff. This is omission by a lower bound, distinct from a greater-than cutoff retaining a slightly earlier voucher or a complete Between interval omitting an interior start.",
+      "rootCause": "The precise cause remains unresolved. VoucherList routes this condition through createVoucherQueryVariables; buildRangeObject maps lower to lte and the API filter_started applies it to start_date. The UI forwards datetime-local text without offset normalization, but that alone does not explain an alleged months-wide exclusion. No independently verified persisted starts and submitted GraphQL variables establish a more specific failing statement for this report.",
+      "reproductionPaths": [
+        "In Saleor, compare saved voucher start dates with a later cutoff, then apply Started > lower using that date and time in the Vouchers list. The list shows No vouchers found and the query returns no edges instead of listing the vouchers with earlier starts; reopening the filter retains the chosen lower condition."
+      ]
+    },
+    {
+      "id": "saleor-code-page-size-menu-viewport-overflow",
+      "description": "Saleor vouchers contain redeemable codes in a paginated table. When the No. of rows selector is near the bottom of the viewport, its menu can open below the screen and hide its larger page-size options. Staff must dismiss the menu and reposition the page before choosing them, instead of the menu fitting above the selector or within the available space.",
+      "rootCause": "VoucherCodesDatagrid uses the shared TablePagination, which renders PaginationRowNumberSelect from @saleor/macaw-ui 0.7.4. That component delegates its menu to Material UI Select without application-level viewport placement overrides. This identifies the popup/layout boundary, but does not prove the exact failing positioning or CSS rule: the dependency can normally reposition menus, and no live DOM trace confirms why it fails here. The specific root cause remains unresolved.",
+      "reproductionPaths": [
+        "Open a Saleor voucher with enough code rows to put No. of rows near the bottom of the screen. Open that selector while it is near the viewport edge: the menu extends downward, leaving the larger page-size options offscreen and unclickable until the menu is dismissed and the page repositioned."
+      ]
+    },
+    {
+      "id": "saleor-repeated-filter-field-overwrites-and-condition",
+      "description": "In Saleor’s Vouchers list, filters joined with And should all restrict the returned discounts. Adding two conditions for the same field keeps both visible, but only the final one affects results. For example, Fixed AND Shipping returns shipping vouchers rather than no matches, and reversing the displayed order returns fixed vouchers.",
+      "rootCause": "FiltersQueryBuilder.build iterates valid FilterElement objects while discarding string join tokens. For default legacy-filter fields, BaseMappableQueryVarsBuilder.updateFilterQueryVariables writes {...query, [fieldName]: value}; a later condition on the same field overwrites the previous key instead of preserving both predicates. createVoucherQueryVariables uses this flat legacy builder, so two displayed discountType conditions cannot both reach the API.",
+      "reproductionPaths": [
+        "In the Saleor Vouchers filter panel, add Discount type is Fixed and a second Discount type is Shipping, leaving the displayed And join. Apply: shipping vouchers appear even though they fail the first condition. Reverse the two values and apply again: fixed vouchers appear instead, showing that the last repeated field condition replaces the first while both remain displayed."
       ]
     }
   ]
