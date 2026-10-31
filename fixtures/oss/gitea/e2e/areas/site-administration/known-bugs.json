@@ -174,6 +174,30 @@
         "In Gitea, as a site administrator, create a user with a short email address. At a 390px-wide viewport, open that user from Site Administration > User Accounts. User Details stays beside User Emails in a very narrow column; labels such as Authentication and Restricted break mid-word and the panel becomes unusually tall. The seeded users can stack normally, so use a fresh short-email account.",
         "On Gitea’s individual user page in Site Administration, use an account with a long email address at phone width. The User Details and User Emails panels can stack, but status badges such as Primary or Activated in the email panel are cut off instead of displaying their complete labels."
       ]
+    },
+    {
+      "id": "gitea-admin-trace-default-view-no-instructions",
+      "description": "Gitea’s Site Administration > Monitoring > Trace initially displays a Goroutines count, meaning the number of running lightweight execution tasks, but no trace list and no explanation of how to display one. Neither Running Processes nor Stacktrace appears selected. Choosing one loads the diagnostic details. The missing guidance is the accepted defect; the deliberate decision not to collect traces on the initial page is not itself a failed load.",
+      "rootCause": "Stacktrace deliberately avoids loading process data until a show parameter is supplied, keeping the diagnostic entry page usable under server stress. The template displays the count without an empty-state instruction, and the tab bar marks neither diagnostic view active, leaving the administrator uninformed about the required next action.",
+      "reproductionPaths": [
+        "As a Gitea site administrator, open Monitoring > Trace from the sidebar. The page shows a Goroutines count with no list and no hint that Running Processes or Stacktrace must be chosen. Click Running Processes to see the available diagnostic list; the problem is the unexplained initial view, not a claim that those tabs fail."
+      ]
+    },
+    {
+      "id": "gitea-diagnosis-duration-coercion-unreported",
+      "description": "Gitea’s diagnosis report downloads a ZIP containing a timed performance profile. Entering zero, a negative number, blank text or nonnumeric text in its duration field silently produces an approximately one-second report without validation or notice that the value was corrected. The intended minimum in this version is one second; a demand for a five-second minimum is a different, rejected expectation.",
+      "rootCause": "MonitorDiagnosis parses seconds as an integer, yielding zero for blank or invalid input, and clamps values at or below one to one without reporting a correction. The plain text field provides no range hint or validation. The one-second floor is intentional; the missing explanation for silently coerced input is the defect.",
+      "reproductionPaths": [
+        "On Gitea’s Site Administration > Monitoring > Stacktrace, enter 0, a negative value, blank text or abc as the Download diagnosis report duration. Download it and observe an approximately one-second ZIP response with no correction message or allowed-range hint. Match complaints about missing feedback, rather than assertions that valid 1- or 3-second requests must last at least five seconds."
+      ]
+    },
+    {
+      "id": "gitea-performance-trace-hidden-tab-served-page",
+      "description": "In production mode, Gitea deliberately hides Performance Trace from the administrator’s Monitoring > Trace tabs. Its direct address still serves the page of HTTP and database timings, with no active tab and no navigation entry leading there. The accepted inconsistency is serving a page whose navigation is intentionally hidden, not unauthorized access by an ordinary user or a claim that merely hiding the tab is wrong.",
+      "rootCause": "monitorTraceCommon disables ShowAdminPerformanceTraceTab in production and the tab template obeys it. The performance-trace route is registered unconditionally and PerfTrace does not check that production visibility condition, so it serves records while selecting a tab that was never rendered.",
+      "reproductionPaths": [
+        "As a Gitea site administrator in production mode, open Monitoring > Trace and see only Running Processes and Stacktrace. Open /-/admin/monitor/perftrace directly: performance trace records render, but the tab bar has no Performance Trace entry and no active tab. Reports of this page being reachable only by a typed address or lacking its navigation entry match this inconsistency."
+      ]
     }
   ]
 }
