@@ -26,10 +26,11 @@
     },
     {
       "id": "gitea-empty-upload-writes-probe-buffer",
-      "description": "In Gitea, Add File > Upload File accepts a genuinely empty file, but committing it stores 1,024 zero bytes instead of an empty file. The file page consequently shows 1.0 KiB and View Raw rather than 0 B and The file is empty; downloading can confirm the incorrect stored bytes. A report of the wrong size after committing a zero-byte upload matches even without downloading the file. Creating an empty file through New File works normally.",
+      "description": "In Gitea, Add File > Upload File accepts a genuinely empty file, but committing it stores 1,024 zero bytes instead of an empty file. The file page shows 1.0 KiB and View Raw rather than 0 B and The file is empty, and commit or branch comparisons show BIN and Binary file not shown. Downloading can confirm the incorrect stored bytes. Reports of either downstream presentation after a zero-byte upload match without proving a separate rendering defect: the stored bytes actually are binary. Creating an empty file through New File works normally.",
       "rootCause": "UploadFileToServer allocates a 1024-byte probe and slices it only when n>0; NewUpload writes the entire unsliced zero buffer for an empty file.",
       "reproductionPaths": [
-        "In Gitea, upload File accepts a genuinely empty text file, but committing it stores a nonempty binary file containing a fixed-size buffer instead of zero bytes. Downloading confirms that the content was changed, and the file also acquires the wrong size and loses ordinary text editability."
+        "In Gitea, upload File accepts a genuinely empty text file, but committing it stores a nonempty binary file containing a fixed-size buffer instead of zero bytes. Downloading confirms that the content was changed, and the file also acquires the wrong size and loses ordinary text editability.",
+        "Upload a genuine zero-byte text file through Add File > Upload File and confirm it is staged as 0 B. Commit it on a new branch, then open its commit diff or compare that branch with its base. The uploaded file is labelled BIN with Binary file not shown, unlike an empty file created through New File. Its file page also shows 1.0 KiB, and downloading reveals 1,024 zero bytes: the binary label describes the corrupted upload correctly."
       ]
     },
     {
@@ -392,6 +393,38 @@
       "rootCause": "The comparison handler passes the head fork’s owner but the base repository’s name into the shared source-path builder. That mismatched owner/name pair is then used for both the changed-file source links and the before-change source links, instead of using the head fork’s own repository name.",
       "reproductionPaths": [
         "Fork a repository under a different name, add a file on a branch in the fork, and compare that branch against upstream. Open the changed file’s menu and click View File. Its address uses the fork owner with the upstream repository name and returns 404 when that repository does not exist. Two-dot and three-dot comparisons are affected, including links for deleted files."
+      ]
+    },
+    {
+      "id": "gitea-code-search-rendered-file-missing-line-target",
+      "description": "In Gitea, clicking a matched line number in repository code search navigates to the file, but Markdown opens as formatted text instead of numbered source. The address contains a line fragment such as #L9, yet that rendered view has no corresponding target, so the matched line is neither selected nor scrolled into view. This is a missing line target after successful navigation; an allegation that clicking does not navigate is a different claim.",
+      "rootCause": "Search-result line links include a commit, file path and line fragment but omit the display=source option. The file viewer renders Markdown by default, and that rendered output lacks the source view’s numbered line targets. Existing source-line permalinks supply the missing option, but code-search links do not.",
+      "reproductionPaths": [
+        "Search a repository’s code for text present in a Markdown file and click the number beside a matching line. The file opens at a commit-specific address ending in #L followed by the line number, but the page displays formatted Markdown with no numbered or highlighted target line. Switching to View Source reveals the numbered text; equivalent links to ordinary text files work."
+      ]
+    },
+    {
+      "id": "gitea-file-line-count-includes-unrendered-final-line",
+      "description": "In Gitea’s source-file view, a text file ending with a newline has a header line count one greater than the last numbered line displayed. For example, two lines each terminated by a newline produce a 3 lines header but only lines 1 and 2 in the body. Files without a final newline have matching counts. No explanatory trailing-newline marker makes the extra count clear; the report need not claim any saved content is missing.",
+      "rootCause": "The file header counts newline characters plus one, intentionally counting the empty line after a final newline. The source renderer omits that final empty line, and the page does not implement the suggested explanatory marker, so two different counting conventions appear together without explanation.",
+      "reproductionPaths": [
+        "Create a text file containing first line, a newline, second line and a final newline, then open its source view. Compare the 3 lines header with numbered lines ending at 2. Remove the final newline as a control and the header and displayed numbering agree."
+      ]
+    },
+    {
+      "id": "gitea-editor-parent-name-raw-git-validation-error",
+      "description": "In Gitea, the complete filename .. can be entered in Add File > New File. Committing it is refused, but the banner’s expandable Error Message exposes raw Git failure output and the server’s temporary repository path instead of the usual invalid-filename message. This accepted path requires the filename .. through the rendered editor; a handcrafted ../escape.txt request is outside it, and ordinary UI entry of ../escape.txt is normalized. No successful traversal or access outside the repository is established.",
+      "rootCause": "File validation checks a cleaned version of the requested path, but the later Git index lookup receives the original path. The complete name .. therefore reaches git ls-files, which rejects it as outside the repository. The resulting wrapped Git error, including its temporary working-directory path, is rendered through the generic file-update failure message instead of being classified as invalid input.",
+      "reproductionPaths": [
+        "Open a repository branch and choose Add File > New File. Enter exactly .. as the complete filename, supply content and submit Commit Changes. Expand Error Message in the failure banner: it contains a Git ls-files error and a temporary server repository path. The commit is refused and the form remains; this is not a full-page crash or evidence of successful path traversal."
+      ]
+    },
+    {
+      "id": "gitea-code-search-default-mode-label-mismatch",
+      "description": "In Gitea repository code search without a code indexer, an initial search that supplies no search mode can show Exact selected while actually running case-insensitive Words matching. Clicking Search again without changing the displayed query or mode then explicitly selects Exact and can change the results. This matches disagreement between the displayed mode and the first search’s effective mode; Exact mode’s normal case-sensitive behavior is not itself the failure.",
+      "rootCause": "The Git-based search backend defaults an absent search mode to Words, while the search-type selector defaults its displayed value to the first supported mode, Exact. Because the absent-mode request and the unchanged resubmitted form use different effective modes, identical-looking searches yield different results.",
+      "reproductionPaths": [
+        "With the repository code indexer disabled, use the repository home’s Search code box to search for a lowercase word that appears only with an initial capital in a file. The results page shows Exact selected but still finds the capitalized text. Click Search again without changing anything: the address now includes search_mode=exact and that result disappears. A direct code-search address containing only the query reproduces the same initial mismatch."
       ]
     }
   ]
