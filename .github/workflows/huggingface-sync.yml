@@ -1,0 +1,72 @@
+name: Hugging Face sync
+
+# Run manually from main, or from a v* tag at main's head to also tag the dataset.
+on:
+  workflow_dispatch:
+
+permissions:
+  contents: read
+  # Exchanged for a short-lived Hugging Face token (Trusted Publishers).
+  id-token: write
+
+# Serialize syncs so an older commit never overwrites a newer one.
+concurrency:
+  group: huggingface-sync
+  cancel-in-progress: false
+
+jobs:
+  sync:
+    # Runs from other branches must not publish their contents.
+    if: >-
+      github.repository == 'momentic-ai/qa-bench' &&
+      (github.ref == 'refs/heads/main' || github.ref_type == 'tag')
+    runs-on: ubuntu-latest
+    env:
+      HF_REPO: momentic/qa-bench
+      HF_OIDC_RESOURCE: datasets/momentic/qa-bench
+    steps:
+      - uses: actions/checkout@v4
+      # A tag uploads its tree to Hugging Face main, so it must not roll back newer data.
+      - name: Require tag at main
+        if: github.ref_type == 'tag'
+        run: |
+          git fetch --depth=1 origin main
+          if [ "$(git rev-parse FETCH_HEAD)" != "$(git rev-parse HEAD)" ]; then
+            echo "::error::Tag $GITHUB_REF_NAME must point at the head of main."
+            exit 1
+          fi
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+      - run: pip install huggingface_hub==2.4.0
+      # The dataset root holds the app folders, with the card as README.md.
+      - name: Stage dataset
+        run: |
+          mkdir dataset
+          cp -R fixtures/oss/. dataset/
+          cp DATASET_CARD.md dataset/README.md
+      - name: Upload and tag
+        shell: python
+        run: |
+          import os
+          from huggingface_hub import HfApi
+
+          api = HfApi()
+          repo = os.environ["HF_REPO"]
+          sha = os.environ["GITHUB_SHA"]
+          commit = api.upload_folder(
+              repo_id=repo,
+              repo_type="dataset",
+              folder_path="dataset",
+              # Remove files deleted on GitHub; .gitattributes is always kept.
+              delete_patterns="*",
+              commit_message=f"Sync momentic-ai/qa-bench@{sha[:7]}",
+              commit_description=f"https://github.com/momentic-ai/qa-bench/commit/{sha}",
+          )
+          if os.environ["GITHUB_REF_TYPE"] == "tag":
+              api.create_tag(
+                  repo,
+                  repo_type="dataset",
+                  tag=os.environ["GITHUB_REF_NAME"],
+                  revision=commit.oid,
+              )
