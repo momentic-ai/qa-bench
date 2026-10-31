@@ -175,6 +175,43 @@
         "Repeat in the default search mode and compare."
       ],
       "reason": "Not a bug: there's no single-word/phrase difference. Exact mode always searches case-sensitively for the literal text, however many words it has, while the default Fuzzy mode always ignores case; matching the exact term is what the Exact option's tooltip describes. A single word appearing to match case-insensitively most likely came from a search in the default mode."
+    },
+    {
+      "id": "gitea-editor-parent-path-forged-form-only",
+      "name": "A directly posted parent-directory filename exposes a raw Git error",
+      "summary": "The report submits tree_path ../escape.txt directly to the New File endpoint, bypassing the rendered editor's parent-segment normalization, and receives a raw Git error.",
+      "expected": "The report expects a directly submitted ../escape.txt path to be normalized or rejected without exposing Git stderr or the server temporary path.",
+      "actual": "The hand-built form submission with tree_path ../escape.txt returns an expandable Git error. Typing ../escape.txt in the rendered editor instead normalizes the name to escape.txt. The separate UI-reachable complete filename .. has an accepted label.",
+      "reproSteps": [
+        "Open Add File > New File.",
+        "Submit a hand-built form POST with tree_path ../escape.txt, content and a commit summary, bypassing the normal filename control.",
+        "Observe the raw Git error and temporary path. Compare typing ../escape.txt through the normal control, which normalizes the parent segment."
+      ],
+      "reason": "Rejected for the UI benchmark: the demonstrated reproduction explicitly posts a crafted form value and bypasses normal editor normalization. This does not deny the endpoint behavior. It does not reject the accepted UI-entered complete filename .., and should not absorb a future report demonstrating a genuine rendered-UI path to the error.",
+      "matchingGuidance": {
+        "scope": "Match the original report New file with ../ in its path shows a raw git error that exposes a server temp directory when its steps explicitly post the page form with tree_path ../escape.txt. A shared raw-error symptom is insufficient to credit the accepted .. UI path."
+      },
+      "reviewEvidence": {
+        "basis": "Archived original report explicitly says to submit/post the form with tree_path ../escape.txt. The reviewed packet establishes normal UI normalization and the separately approved .. reproduction. Applies the existing UI-bypass exclusion; no new browser run claimed.",
+        "sourceRevision": "99053ce4fa2b45f1bca5837418c0c57f793ca824"
+      }
+    },
+    {
+      "id": "gitea-compare-header-shortens-long-branch-name",
+      "name": "Fork comparison commit header truncates a long head branch name",
+      "summary": "On a New Pull Request comparison from a fork, the commit-list header shows the head branch shortened to its first 10 characters (for example forks-draf for forks-draft/path), while the branch selectors show the full name.",
+      "expected": "The reported expectation is that the comparison commit header shows the full head branch name.",
+      "actual": "With head branch alex:forks-draft/path, the selectors show the full name but the commit-list header reads main … forks-draf. Any branch name longer than 10 characters is shortened the same way, slash or not.",
+      "reproSteps": [
+        "From a fork, push a branch whose name is longer than 10 characters, such as forks-draft/path.",
+        "Open New Pull Request comparing the base repository's main with that fork branch.",
+        "Compare the branch shown in the 'pull from' selector with the name in the commits header on the right."
+      ],
+      "reason": "User-rejected after reviewing the Mo reproduction and a screenshot. The full branch name stays visible in the branch selectors directly above, so the shortened label in the commit-list header is not treated as a product bug for this eval.",
+      "matchingGuidance": {
+        "scope": "Reject reports that the comparison commit header shortens a long head branch name while the selectors show it in full. Do not generalize to comparisons that use the wrong branch or commits.",
+        "entryPoints": "The same comparison commit header is used for a same-repository Compare commits page and a fork New Pull Request comparison. Fork origin, branch slashes, two-dot versus three-dot URLs and the absence of a ref-type icon do not create a separate claim when the reported failure is only the ten-character label shortening and the selected ref remains identifiable."
+      }
     }
   ]
 }
