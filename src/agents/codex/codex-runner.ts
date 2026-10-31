@@ -26,6 +26,8 @@ export type CodexSetup = {
   sandbox?: "workspace-write";
   subagents?: boolean;
   webSearch?: "disabled";
+  /** Appended to the task brief. */
+  instructions?: string;
 };
 
 export abstract class CodexRunner implements EvalAgent {
@@ -127,7 +129,13 @@ export abstract class CodexRunner implements EvalAgent {
       ),
     );
     this.threadId = thread.id;
-    const task = `${message}\n\nUse submit_bug to save each bug with a stable ID, remove_bug to retract it, and record_coverage for areas explored and limitations.`;
+    const task = [
+      message,
+      setup.instructions,
+      "Use submit_bug to save each bug with a stable ID, remove_bug to retract it, and record_coverage for areas explored and limitations.",
+    ]
+      .filter(Boolean)
+      .join("\n\n");
     process.stdout.write(
       `${this.context.fixture.name}: Codex session ${thread.id}\n`,
     );

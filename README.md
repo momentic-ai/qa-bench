@@ -127,11 +127,12 @@ Results also include Codex with `gpt-6.1-terra` and Claude Code with
 
 Codex can search the web and browse anywhere by default, so it can look up
 upstream issues and fixes. `--prevent-cheating` makes that harder for Codex
-agents. It turns off Codex web search, makes Playwright MCP refuse code hosts,
-the Hugging Face dataset and search engines, and limits Browserbase pages to the
-fixture host. `codex-agent-browser` gets only the Browserbase limit, so with
-`--browser local` its browser isn't restricted, and its shell keeps network
-access either way. `merge` labels these runs separately.
+agents. It turns off Codex web search, makes Playwright MCP refuse the sites in
+`ANSWER_DOMAINS` ([`codex-agent.ts`](src/agents/codex/codex-agent.ts)), limits
+Browserbase pages to the fixture host, and tells Codex to record a blocked site
+as a coverage limitation. `codex-agent-browser` gets only the Browserbase limit,
+so with `--browser local` its browser isn't restricted, and its shell keeps
+network access either way. `merge` labels these runs separately.
 
 ## Scoring
 
