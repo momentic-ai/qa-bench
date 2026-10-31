@@ -146,24 +146,28 @@ export class CodexAgent extends CodexRunner {
         mcpServers: {},
         env: this.browserEnvironment,
         sandbox: "workspace-write" as const,
-        ...this.cheatingSetup(),
+        // A local agent-browser has no site limits, so don't tell Codex otherwise.
+        ...this.cheatingSetup(!this.localBrowser),
       };
     }
     return {
       mcpServers: await this.prepareBrowserMcp(),
       subagents: !this.localBrowser,
-      ...this.cheatingSetup(),
+      ...this.cheatingSetup(true),
     };
   }
 
-  private cheatingSetup() {
-    return this.preventCheating
-      ? {
-          webSearch: "disabled" as const,
-          instructions:
-            "Some external sites are blocked. Record flows that need one as coverage limitations, not bugs.",
-        }
-      : {};
+  private cheatingSetup(sitesBlocked: boolean) {
+    if (!this.preventCheating) return {};
+    return {
+      webSearch: "disabled" as const,
+      ...(sitesBlocked
+        ? {
+            instructions:
+              "Some external sites are blocked. Record flows that need one as coverage limitations, not bugs.",
+          }
+        : {}),
+    };
   }
 
   protected async collectBrowserCost() {
