@@ -157,6 +157,20 @@
         "Look at the control before saving."
       ],
       "reason": "Not reproducible: repeated attempts (merge to squash and back, all five styles, keyboard selection, a 390px viewport, toggling pull requests off and on, fresh repositories) always showed exactly one label matching the selected value, and saving persisted it. templates/repo/settings/options.tmpl renders a single default-text element inside a Fomantic dropdown whose native select is hidden, and choosing an item rewrites that one element, so there is no second label to go stale. The original screenshot was likely taken while the menu was open or closing, with the highlighted menu item beside the new text."
+    },
+    {
+      "id": "gitea-rereview-marks-earlier-review-dismissed",
+      "name": "A reviewer's earlier approval is marked 'Dismissed' when they submit a new review",
+      "summary": "The report says that when a reviewer submits a second Approve or Request changes review, their earlier approval is marked Dismissed in the timeline and returns dismissed=true from the API, although nobody dismissed it and there is no dismissal event.",
+      "expected": "The reported expectation is that the earlier review is only superseded, not marked Dismissed, since dismissal is a separate explicit action.",
+      "actual": "The earlier APPROVED review showed a 'Dismissed' label on the Conversation tab, and GET /api/v1/repos/{owner}/{repo}/pulls/{index}/reviews returned dismissed=true for it.",
+      "reproSteps": [
+        "Request review on a pull request from a collaborator.",
+        "As that collaborator, submit an Approve review.",
+        "As the same collaborator, submit another Approve or Request changes review.",
+        "Open the Conversation tab and check the first review."
+      ],
+      "reason": "Intended: Gitea deliberately dismisses a reviewer's earlier Approve or Request changes review when the same reviewer re-reviews. models/issues/review.go CreateReview sets dismissed=true on that reviewer's previous Approve/Reject reviews ('make sure if the created review gets dismissed no old review surface'), so a superseded approval can't resurface and count toward branch protection if the new review is later dismissed (added for go-gitea/gitea#28542). tests/integration/api_pull_review_test.go TestAPIPullReviewStayDismissed asserts it ('now add a change request witch should dismiss the approval'), and templates/repo/issue/view_content/comments.tmpl shows the Dismissed label for any dismissed review. A later Comment review or another reviewer's approval doesn't dismiss anything. Unchanged in latest upstream."
     }
   ]
 }

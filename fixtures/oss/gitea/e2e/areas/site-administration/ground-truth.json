@@ -576,6 +576,39 @@
           "distinction": "That rejection is the claim that the empty default list is itself broken; this entry is the page not communicating how to see traces."
         }
       }
+    },
+    {
+      "id": "gitea-diagnosis-report-silently-clamps-low-duration",
+      "name": "Diagnosis report silently turns a duration below 1 second into a 1-second report",
+      "summary": "On Monitoring > Stacktrace, entering a diagnosis-report duration below the 1-second minimum (0, a negative number, an empty value or non-numeric text) gives no error or notice. The report is quietly collected for 1 second, producing a nearly empty CPU profile.",
+      "expected": "A duration below the minimum, or one that isn't a number, is rejected with a message stating the allowed range, or the user is told it was raised to 1 second.",
+      "actual": "seconds=0, an empty value and abc each returned a zip after about 1 second with a CPU profile of a few hundred bytes, with no message. The field shows no allowed range.",
+      "reproSteps": [
+        "Sign in as a site administrator and open Site Administration > Monitoring > Stacktrace.",
+        "Replace the 10 in the Download diagnosis report field with 0 (or abc, or clear it).",
+        "Click Download diagnosis report.",
+        "Observe that the report downloads after about 1 second with no message about the invalid duration."
+      ],
+      "severity": 1,
+      "sourceCause": "routers/web/admin/diagnosis.go MonitorDiagnosis reads ctx.FormInt64(\"seconds\"), which returns 0 for empty or non-numeric input, then clamps with if seconds <= 1 { seconds = 1 } (and caps at 300) without reporting it. templates/admin/trace_tabs.tmpl renders the field as a plain text input (maxlength 3, default 10) with no range, hint or validation. The 1-second floor itself is intended (go-gitea/gitea#32973 lowered it from 5); the defect is that out-of-range input is coerced silently."
+    },
+    {
+      "id": "gitea-perftrace-page-reachable-when-tab-hidden",
+      "name": "Performance Trace page is still served in production although its tab is hidden",
+      "summary": "In production mode Gitea hides the Performance Trace tab from Monitoring > Trace on purpose, but the page itself isn't hidden: /-/admin/monitor/perftrace still renders the full trace records (HTTP and SQL timings) when opened by URL. Because the tab doesn't exist, the page shows the trace tab bar with no active tab and nothing in the admin UI links to it.",
+      "expected": "When the Performance Trace tab is hidden (production mode), the page is hidden too, for example by returning 404 or redirecting to Stacktrace. Where the page is available, its tab is shown and highlighted.",
+      "actual": "The tab bar on Monitoring > Trace showed only Running Processes and Stacktrace. Opening /-/admin/monitor/perftrace directly rendered about 100 trace records with neither tab highlighted, and no admin page linked to it.",
+      "reproSteps": [
+        "Sign in as a site administrator on a production-mode instance and open Site Administration > Monitoring > Trace.",
+        "Observe that the tab bar has only Running Processes and Stacktrace.",
+        "Open /-/admin/monitor/perftrace directly.",
+        "Observe that the performance trace records render and no tab is active."
+      ],
+      "severity": 1,
+      "sourceCause": "routers/web/admin/stacktrace.go monitorTraceCommon sets ShowAdminPerformanceTraceTab = !setting.IsProd, with a maintainer comment that the tab is hidden in production so end users don't see it and use 'download diagnosis report' instead; templates/admin/trace_tabs.tmpl renders the tab only when that flag is set. But routers/web/web.go registers /-/admin/monitor/perftrace unconditionally and routers/web/admin/perftrace.go PerfTrace never checks the flag or setting.IsProd, so the hidden page is still served, with PageIsAdminMonitorPerfTrace marking a tab that isn't rendered.",
+      "matchingGuidance": {
+        "scope": "A report that the Performance Trace page has no navigation entry or tab, is reachable only by typing its URL, or opens with no active tab counts toward this entry. Hiding the tab in production is intended; the accepted defect is that the page behind the hidden tab is still served."
+      }
     }
   ]
 }

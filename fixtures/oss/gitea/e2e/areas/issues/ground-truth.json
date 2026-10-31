@@ -1344,6 +1344,45 @@
           "distinction": "Same error branch and blank page. That entry is removing a dependency on an issue the user can't read, where the delete always misses and the dependency stays; this entry is a stale tab retrying a removal that already happened."
         }
       }
+    },
+    {
+      "id": "gitea-bulk-label-click-removes-on-mixed-selection",
+      "name": "Bulk Label menu removes a label on a plain click when only some selected issues have it",
+      "summary": "In the issue list's bulk Label menu, a plain click on a label removes it from every selected issue whenever any of them already has it, so on a mixed selection the label is stripped from the issues that had it and added to none. This breaks Gitea's own click convention: elsewhere a plain click adds or includes a label and Alt+click removes or excludes it (the label filter says 'Use alt + click/enter to exclude labels', and the bulk menu's own Alt+click is the always-remove action), and the bulk menu gives no hint that a plain click may remove.",
+      "expected": "A plain click on a label in the bulk Label menu adds it to all selected issues that lack it, and removal uses the Alt+click modifier, matching the label filter; or the menu at least indicates that a plain click will remove the label.",
+      "actual": "With one selected issue labelled documentation and one unlabelled, clicking documentation in the bulk Label menu removed the label from the labelled issue and did not add it to the other. Two unlabelled issues get the label added to both, and a scoped (exclusive) label on a mixed selection is added to both.",
+      "reproSteps": [
+        "In a repository's issue list, make sure one issue has a non-scoped label and another doesn't.",
+        "Tick both issues and open the bulk Label menu.",
+        "Click the label without holding Alt.",
+        "Open both issues: the label is gone from the one that had it and wasn't added to the other."
+      ],
+      "severity": 1,
+      "sourceCause": "routers/web/repo/issue_label.go UpdateIssueLabel handles action=toggle as 'detach if any issues already have label, otherwise attach' for non-scoped labels, and upstream's TestUpdateIssueLabel_Toggle asserts that a mixed selection detaches. web_src/js/features/repo-issue-list.ts sends toggle-alt (always detach) only when Alt is held. In the label filter (web_src/js/features/repo-issue.ts, templates/repo/issue/filter_item_label.tmpl) Alt+click is the exclude modifier and the dropdown shows the hint, while templates/repo/issue/filter_actions.tmpl renders the bulk Label menu with no hint, so a plain click that removes is inconsistent with the rest of the label UI.",
+      "matchingGuidance": {
+        "scope": "A report that a bulk Label action on a mixed selection removes the label instead of adding it to all selected issues counts toward this entry, even if it doesn't mention the Alt+click convention. The removal is the upstream toggle rule; this entry accepts it as a sev 1 inconsistency with Gitea's plain-click-adds, Alt-click-removes convention."
+      }
+    },
+    {
+      "id": "gitea-org-issues-team-filter-clears-filters",
+      "name": "Changing the organization team filter clears the search and switches closed issues back to open",
+      "summary": "On an organization's Issues page, choosing a team under 'Filter by team repositories' in the Teams menu throws away the current search, Open/Closed state, sort and other list filters, so the page returns to open issues with an empty search instead of narrowing the current results to that team's repositories.",
+      "expected": "Choosing a team keeps the current search, state, sort and filters and only narrows the results to the team's repositories, as every other filter control on the page does.",
+      "actual": "With Closed selected and the search 'excluded' applied (one closed issue shown), choosing a team from the Teams menu opened /org/<org>/issues/<team> with no query: the state was back to Open, the search box was empty, and an open issue outside the previous filter was listed. Opening the team URL with the original query string added filters correctly.",
+      "reproSteps": [
+        "Open an organization's Issues dashboard (/org/<org>/issues) where the organization has a team with access to specific repositories.",
+        "Select Closed and enter a search term that matches a closed issue.",
+        "Open the Teams menu ('Filter by team repositories') and choose a team.",
+        "Observe that the state is back to Open and the search box is empty."
+      ],
+      "severity": 3,
+      "sourceCause": "templates/user/dashboard/navbar.tmpl builds the All and team links in the 'Filter by team repositories' menu as bare paths ({OrgLink}/issues and {OrgLink}/issues/{team}) with no query string. Every other filter control on the page (templates/user/dashboard/issues.tmpl) builds its link from $queryLink via QueryBuild with type, sort, state, q, labels and search_mode, so only the team filter discards them. routers/web/user/home.go combines a team with those parameters correctly when they're present. The same menu on the organization Pull Requests and Milestones dashboards behaves the same. Unchanged in latest upstream.",
+      "matchingGuidance": {
+        "relatedReference": {
+          "id": "gitea-org-issues-state-switch-drops-assignee-filter",
+          "distinction": "Same 'one filter control discards the others' symptom on the organization Issues page, but that entry is the Open/Closed switch dropping the Assignee filter. This entry is the Teams 'Filter by team repositories' menu dropping the search, state and sort."
+        }
+      }
     }
   ]
 }
