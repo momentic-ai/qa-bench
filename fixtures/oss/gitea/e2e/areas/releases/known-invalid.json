@@ -133,6 +133,19 @@
         "Check how many files attach and whether an error is shown."
       ],
       "reason": "Not reproducible as reported / intended limit: the fixture uses Gitea's default [attachment] MAX_FILES=5 (modules/setting/attachment.go), passed to the dropzone as data-max-file. Dropzone rejects the sixth file and web_src/js/features/dropzone.ts shows a persistent error toast and removes its preview, so the file is not silently dropped."
+    },
+    {
+      "id": "gitea-release-external-asset-unsupported",
+      "name": "External release asset is shown as a 0 B file and its link serves an empty file instead of going to the external URL",
+      "summary": "The report says posting external_url=https://example.com/doc.pdf to the release-assets API creates a 0 B attachment served from /attachments/<uuid> instead of a link to the external URL.",
+      "expected": "The reported expectation is that the asset links to the external URL.",
+      "actual": "A form-urlencoded POST of external_url to .../releases/<id>/assets?name=extdoc.pdf returned 201 with size 0. The release page listed 'extdoc.pdf 0 B' and its link served an empty file.",
+      "reproSteps": [
+        "Open the release-assets endpoint in the instance's API docs and note its accepted parameters.",
+        "POST external_url=https://example.com/doc.pdf as a form-urlencoded body to /api/v1/repos/<owner>/<repo>/releases/<id>/assets?name=extdoc.pdf.",
+        "Open the release page and the asset link."
+      ],
+      "reason": "Unsupported feature: Gitea 1.24.7 has no external (link) release assets; external_url is a Forgejo API field. Gitea's API docs list only a multipart 'attachment' or an octet-stream body, and the New/Edit Release UI offers only file uploads. routers/api/v1/repo/release_attachment.go treats a non-multipart body as the file content, so the empty body that was sent was stored as received."
     }
   ]
 }
