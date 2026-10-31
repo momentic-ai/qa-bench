@@ -2,11 +2,11 @@
   "logicalBugs": [
     {
       "id": "gitea-dashboard-milestone-title-badge-overflow",
-      "description": "In Gitea, at phone width, a row on the global or organization Milestones page cannot keep a milestone title and its repository badge separate. A long milestone title or repository name makes text overlap the neighboring badge, milestone icon or title instead of fitting or truncating within the row. Repository names around 31–38 characters can already trigger the badge overlap; an exceptionally long name is not required.",
-      "rootCause": "The dashboard header places a repository badge and title in the same flex row without wrapping/truncation constraints for long text. At phone width a shrinking badge/title box still paints its nowrap text across the neighboring item.",
+      "description": "Gitea’s global and organization Milestones pages list named groups of work items alongside repository badges. At narrow phone or tablet widths, a long milestone title or repository name can squeeze the badge so its text paints over the milestone icon and title instead of fitting or truncating. Moderately long repository names can trigger this; an exceptionally long name is not required. The title can still open normally despite the visual overlap.",
+      "rootCause": "templates/user/dashboard/milestones.tmpl puts the repository .ui.large.label and milestone title in the same flex heading. web_src/css/modules/label.css makes .ui.label shrinkable with min-width:0 and white-space:nowrap, but does not clip its text, allowing a squeezed badge to paint across the neighboring icon/title.",
       "reproductionPaths": [
         "On Gitea’s global Milestones page at phone width, a long milestone title runs into the badge identifying its repository. The title and badge overlap instead of staying separately readable within the row.",
-        "In Gitea, open the global or organization Milestones page at a 390px-wide viewport with a milestone in a repository whose full owner/repository name is around 35 characters or longer. The repository badge shrinks, but its text keeps painting past the badge over the milestone icon and title. Short repository names and wider viewports can display correctly, and the milestone title remains clickable."
+        "On Gitea’s global or organization Milestones page, use a narrow phone or tablet viewport with a repository badge squeezed by a moderately long owner/repository name or milestone title. The badge’s text extends past its shrunken box over the milestone icon/title. Short names and wider views can render correctly, and the title remains clickable."
       ]
     },
     {
@@ -46,10 +46,10 @@
     },
     {
       "id": "gitea-milestone-close-state-misspelled",
-      "description": "In Gitea, closing a milestone, a named group of work items, from its details page or the milestone list redirects to a list URL with state=close. The page treats that value as the Open view, so the just-closed milestone is absent even though the Closed count includes it; selecting Closed changes the URL to state=closed and displays it. The defect is the wrong or empty milestone list, not disappearance of the repository header or navigation tabs.",
+      "description": "In Gitea, a milestone groups related work items under a title and optional due date. Closing one from its detail page or the milestone list can open the wrong list state: the closed count includes it, but the row is missing because the page displays the Open view. Selecting Closed displays it correctly. The repository header and tabs remain visible; a claim that the whole page goes blank is a separate rejected report.",
       "rootCause": "ChangeMilestoneStatus uses the action path segment as the state query. The close route therefore produces close, while the milestone list recognizes only closed; the resulting state-dependent data and controls disagree.",
       "reproductionPaths": [
-        "In Gitea, close a milestone from its details page or from the milestone list, however that page was reached. The redirect opens /milestones?state=close and shows the Open view, which can be empty, instead of showing the closed milestone. The repository header and navigation remain visible. Click the Closed filter to reach state=closed and see the milestone."
+        "Close a Gitea milestone from its detail page or the milestone list. The redirect uses state=close instead of the recognized state=closed, so it opens the Open list, which may be empty, without the just-closed milestone. Repository navigation remains intact, and clicking Closed reveals that milestone."
       ]
     },
     {
@@ -104,10 +104,12 @@
     },
     {
       "id": "gitea-milestone-name-sort-descending",
-      "description": "In Gitea, choosing Sort > Name on the repository or global Milestones list orders milestones (named groups of work items) in reverse alphabetical order, with no option for A to Z. Nothing breaks and the order is consistent, but a plain Name sort running Z to A is unintuitive.",
+      "description": "A Gitea milestone is a named group of work items. Choosing Sort > Name on a repository, global or organization Milestones list orders the titles from Z to A instead of the expected A-to-Z order, with no ascending-name choice. The list remains functional, but the plain Name label does not indicate that its ordering is reversed.",
       "rootCause": "FindMilestoneOptions.ToOrders maps name to name DESC and provides no ascending name alternative. The UI labels it only Name, so its Z-to-A behavior is not signaled.",
       "reproductionPaths": [
-        "In Gitea, choosing Sort > Name on the repository or global Milestones list orders milestones in reverse alphabetical order, with no option for A to Z. Nothing breaks and the order is consistent, but a plain Name sort running Z to A is unintuitive."
+        "On a repository’s Gitea Milestones list, create or find titles with a clear alphabetical order and choose Sort > Name. Later-alphabet titles appear before earlier ones, and the menu has no ascending-name alternative.",
+        "On Gitea’s global Milestones page, search for milestones sharing a prefix and choose Sort > Name. The matching titles are listed from Z to A instead of A to Z.",
+        "On an organization’s Gitea Milestones page, choose Sort > Name with several alphabetically distinct milestone titles. The list changes to Z-to-A ordering even when the previous order was A to Z."
       ]
     },
     {
@@ -121,7 +123,7 @@
     {
       "id": "gitea-fetch-action-non-json-errors",
       "description": "In Gitea, issue and pull request (a proposed code change) form actions can expose a raw JSON-parsing SyntaxError labelled Network error when the server rejects an unavailable or unauthorized action. Confirmed triggers include stale deleted/locked/archived comment or issue (a tracked work item) forms, deleted milestone (a named group of work items)/time-entry targets and rejected review actions; the UI does not explain the actual refusal.",
-      "rootCause": "fetchActionDoRequest unconditionally calls resp.json() for HTTP 4xx and labels parsing exceptions Network error. Plain-text missing-issue/permission responses therefore expose SyntaxError rather than the rejection reason. Deleted comment inline edits use a separate parser and are kept separate.",
+      "rootCause": "The shared form-action handler expects JSON both for HTTP 200 success and for HTTP 4xx rejection. Some server guards instead return plain-text errors or redirect to an HTML page, which fetch follows before the handler tries to parse it. The resulting JSON-parsing exception is caught and mislabeled Network error, hiding the actual refusal. Deleted comment inline edits use a separate parser and are kept separate.",
       "reproductionPaths": [
         "In Gitea, if the milestone selected on an unsaved New Issue draft is deleted elsewhere, clicking Create Issue shows a 'Network error SyntaxError … is not valid JSON' toast instead of saying the milestone no longer exists.",
         "In Gitea, when a user who isn't a member or collaborator creates an issue from a public repository milestone's New Issue button, submitting fails with a red \"Network error SyntaxError: Unexpected token 'N', \\\"Not found.\\\" is not valid JSON\" banner, which doesn't explain what went wrong or what to do."
@@ -162,10 +164,11 @@
     },
     {
       "id": "gitea-milestone-detail-overdue-wrong-context",
-      "description": "In Gitea, for an open milestone (a named group of work items) whose due date has passed, the milestone list shows the due date in red as overdue, but the milestone's own detail page shows the same date in the normal color with no overdue indication.",
-      "rootCause": "The detail template checks .IsOverdue and .IsClosed at the page root while the actual values belong to .Milestone. The date string is correctly read from .Milestone, but the overdue color condition remains false.",
+      "description": "A Gitea milestone groups work items and can be open, overdue or closed. Its detail page does not reflect that status consistently with the milestone list: an open overdue date lacks the red overdue indication, while a closed milestone still shows its due date instead of Closed and the closure time. The saved milestone state is correct; the detail page chooses the wrong status presentation.",
+      "rootCause": "templates/repo/issue/milestone_issues.tmpl reads .IsClosed and .IsOverdue at the page root instead of .Milestone.IsClosed and .Milestone.IsOverdue. MilestoneIssuesAndPulls supplies the Milestone object but does not set those root keys, so the closed-status branch and overdue styling both remain inactive. Correcting the template context addresses both displays.",
       "reproductionPaths": [
-        "In Gitea, for an open milestone whose due date has passed, the milestone list shows the due date in red as overdue, but the milestone's own detail page shows the same date in the normal color with no overdue indication."
+        "In Gitea, for an open milestone whose due date has passed, the milestone list shows the due date in red as overdue, but the milestone's own detail page shows the same date in the normal color with no overdue indication.",
+        "Create a Gitea milestone with a due date, close it and compare the repository’s Closed milestone list with its detail page. The list says Closed and when it closed, but the detail page still shows the due date without that closure status/time; only the Open action indirectly indicates it is closed."
       ]
     },
     {
