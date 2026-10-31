@@ -471,6 +471,28 @@
       "matchingGuidance": {
         "scope": "Reports that a blank Save Page from Preview gives no feedback match this entry, including ones that don't mention the earlier Write save."
       }
+    },
+    {
+      "id": "gitea-wiki-preview-out-of-order-response",
+      "name": "A slow wiki preview response replaces the preview of newer edits",
+      "summary": "The wiki editor's Preview tab sends a new render request on every click and shows whichever response arrives last. If an earlier, slower render (for example of a long pasted draft) finishes after a newer one, Preview reverts to the old text while the editor holds the newer text.",
+      "expected": "Preview shows the rendering of the current editor text; responses for older text are discarded once a newer preview is requested.",
+      "actual": "A long draft starting 'VERSION_A' was previewed (render about 600 to 1,000 ms), then the user switched to Write, replaced it with '# VERSION_B' and a short line, and clicked Preview. VERSION_B rendered first, then the earlier response arrived and Preview showed VERSION_A while the editor still held VERSION_B. It stayed that way until Preview was clicked again. Waiting for the first preview to finish before editing showed VERSION_B correctly.",
+      "reproSteps": [
+        "Open New Page in a repository wiki and enter a title.",
+        "Paste a long Markdown draft beginning '# VERSION_A' (or throttle the network so the first preview is slow) and click Preview.",
+        "Before that preview finishes, click Write, replace the content with '# VERSION_B' and a short line, and click Preview again.",
+        "Wait for both renders and observe Preview showing VERSION_A while the editor contains VERSION_B."
+      ],
+      "severity": 1,
+      "sourceCause": "web_src/js/features/comp/ComboMarkdownEditor.ts posts the editor text to the markup endpoint on each Preview click and renders the response unconditionally, with no request sequencing, abort, or check that the response matches the current text. Later Gitea still has the same handler.",
+      "matchingGuidance": {
+        "relatedReference": {
+          "id": "gitea-wiki-stale-editor-overwrites-newer-edit",
+          "distinction": "That entry is a server-side stale save that loses stored content; this entry is a client-side preview race where only the Preview tab is wrong and the saved content is correct."
+        },
+        "scope": "The wiki editor's Preview tab ending on an older draft's rendering after a newer preview was requested. Saves are unaffected. The same race in issue, pull request, release or milestone editors belongs to those areas."
+      }
     }
   ]
 }
