@@ -19,10 +19,11 @@
     {
       "id": "gitea-fetch-action-non-json-errors",
       "description": "In Gitea, issue and pull request (a proposed code change) form actions can expose a raw JSON-parsing SyntaxError labelled Network error when the server rejects an unavailable or unauthorized action. Confirmed triggers include stale deleted/locked/archived comment or issue (a tracked work item) forms, deleted milestone (a named group of work items)/time-entry targets and rejected review actions; the UI does not explain the actual refusal.",
-      "rootCause": "fetchActionDoRequest unconditionally calls resp.json() for HTTP 4xx and labels parsing exceptions Network error. Plain-text missing-issue/permission responses therefore expose SyntaxError rather than the rejection reason. Deleted comment inline edits use a separate parser and are kept separate.",
+      "rootCause": "The shared form-action handler expects JSON both for HTTP 200 success and for HTTP 4xx rejection. Some server guards instead return plain-text errors or redirect to an HTML page, which fetch follows before the handler tries to parse it. The resulting JSON-parsing exception is caught and mislabeled Network error, hiding the actual refusal. Deleted comment inline edits use a separate parser and are kept separate.",
       "reproductionPaths": [
-        "In Gitea, a failed Review-panel submission receives a plaintext HTTP 404, but the UI labels a resulting client JSON parse exception as a network error.",
-        "In Gitea, after an author submits a comment-only review of their own pull request, the reviewer sidebar offers Re-request review for that author. The action fails with a raw network/JSON exception on every attempt."
+        "In Gitea, submit Comment, Approve or Request changes from a pull request’s Review panel when the server rejects that submission. The interface shows Network error with a raw JSON SyntaxError instead of explaining the rejection, and the review is not posted. Examples include the HTTP 404 from the latest single-commit Files Changed view and a review panel opened before the pull request was closed in another session. This path concerns the failure feedback; the missing review route itself is a separate functional defect.",
+        "In Gitea, after an author submits a comment-only review of their own pull request, the reviewer sidebar offers Re-request review for that author. The action fails with a raw network/JSON exception on every attempt.",
+        "In Gitea, as a user without write access, leave a conversation-comment draft open on a public pull request. Have the owner lock the conversation in another session, then submit the draft without reloading. No comment is posted and the draft remains, but the notification shows Network error and a JSON SyntaxError about HTML instead of explaining that the conversation is locked. This is the conversation’s Comment form, rather than the separate Review panel."
       ]
     },
     {
@@ -376,10 +377,10 @@
     },
     {
       "id": "gitea-team-review-request-not-expanded-in-index",
-      "description": "In Gitea, a team can be asked to review a pull request (a proposed code change) on behalf of its members. On an organization’s Pull Requests list, the requested pull request appears under Review requested without a keyword but disappears when a matching title keyword is added. A direct request to the individual user can be found, while posting an ordinary comment does not repair the team-only request, distinguishing this from a temporarily stale individual-review search.",
+      "description": "In Gitea, a team can be asked to review a pull request (a proposed code change) on behalf of its members. On an organization’s Pull Requests list, including the same page filtered to one team’s repositories, the requested pull request appears under Review requested without a keyword but disappears when a matching title keyword is added. A direct request to the individual user can be found, while posting an ordinary comment does not repair the team-only request, distinguishing this from a temporarily stale individual-review search. The team selector remains selected; the missing result does not establish that the search reset that selector.",
       "rootCause": "Issue index conversion adds Review.ReviewerID for requested reviews, without expanding ReviewerTeamID membership. A viewer’s team-only request therefore cannot match their user ID even after reindexing.",
       "reproductionPaths": [
-        "On a Gitea organization’s Pull Requests dashboard, use a matching keyword under Review requested for a pull request that requests review from a team you belong to. The matching pull request is omitted instead of treating the team’s request as a request for its members."
+        "On a Gitea organization’s Pull Requests page, request a review from a team that includes the signed-in user, then choose Review requested and search for a word from the pull request’s title. The request is listed without the keyword but omitted with it, even after an ordinary comment refreshes indexing. The same omission occurs after selecting that team’s repository filter at /org/<org>/pulls/<team>; the team stays selected, so an additional claim that the selector reset is not a separate failure."
       ]
     },
     {
@@ -388,6 +389,30 @@
       "rootCause": "The shared issue-list PR branch markup constructs /src/branch/HeadBranch without the branch-existence guard used by the PR detail page. Deleted heads remain actionable links to 404 across list surfaces.",
       "reproductionPaths": [
         "In Gitea, after a pull request’s source branch is deleted, its own detail page shows the branch as plain text, but repository, global, organization, milestone and subscription lists keep a clickable branch link. Following that link opens Page Not Found instead of making the deleted branch visibly unavailable."
+      ]
+    },
+    {
+      "id": "gitea-review-deleted-line-not-remapped",
+      "description": "In a Gitea pull request, inline review comments belong to specific lines of code shown in Files Changed. If a later commit deletes a commented line, its comment can appear under the next surviving line, which now occupies the old line number, without an Outdated label. It remains visible even when outdated comments are hidden, incorrectly presenting a comment about deleted code as a current comment about different text.",
+      "rootCause": "The review invalidation check looks up the comment’s saved line number in the new file and compares that line’s blamed commit with the saved comment commit. It does not remap the original line through the deletion. If another surviving line at that number passes the check, the comment stays current, and the diff renderer attaches it by the unchanged stored line number.",
+      "reproductionPaths": [
+        "In Gitea, open a pull request adding a three-line file, comment on its second line in Files Changed and submit the review. Push a later commit deleting that second line, then reload Files Changed with outdated comments hidden. The comment appears under the former third line, now line two, without an Outdated tag instead of being associated with the deleted line and hidden as outdated."
+      ]
+    },
+    {
+      "id": "gitea-closed-pr-branch-cleanup-missing-open-pr-guard",
+      "description": "In Gitea, a pull request proposes merging a source branch into another branch. A closed, unmerged pull request can still offer Delete Branch after a second open pull request starts using that same source branch. Confirming deletion closes the dialog without a success or error message, while the button and branch remain. The branch is correctly protected from deletion; the defect is offering an operation that cannot succeed and then failing to explain the refusal.",
+      "rootCause": "The pull request page checks whether another open pull request uses the source branch only when the displayed pull request was merged. A closed, unmerged request therefore gets a Delete Branch button even though the cleanup endpoint applies that check to every request and rejects it with HTTP 404. The legacy delete-button handler ignores unsuccessful responses, so no explanation reaches the user.",
+      "reproductionPaths": [
+        "In Gitea, open a pull request from a branch, close it without merging, and open a second pull request from the same source branch. Leave the second one open, return to the closed pull request and confirm Delete Branch. The dialog closes silently, the Delete Branch button remains and the Branches page still lists the source branch linked to the open pull request."
+      ]
+    },
+    {
+      "id": "gitea-merge-title-reuses-default-style-message",
+      "description": "In Gitea, repository settings choose a default way to merge pull requests, while each pull request can offer other merge methods. With Create squash commit as the default, selecting Create merge commit or Rebase then create merge commit still fills the commit title with the squash-style “<pull request title> (#number)” instead of the normal merge-style title. Accepting that text creates the requested merge commit with the wrong default subject; the chosen merge method itself is not changed.",
+      "rootCause": "The pull request page computes one default merge message using the repository’s selected default method. Both the ordinary merge and rebase-then-merge forms reuse that message; only the squash form receives a message computed specifically for its own method. Since the merge handler keeps any nonempty submitted title, switching methods does not correct the prefilled squash title.",
+      "reproductionPaths": [
+        "In Gitea repository settings, set Default Merge Style to Create squash commit. Open a mergeable pull request and select Create merge commit, or Rebase then create merge commit. The title remains the squash-format pull request title followed by its number. Merge without editing it: the resulting two-parent merge commit retains that subject. In a repository whose default is Create merge commit, the same method instead starts with the normal “Merge pull request …” title."
       ]
     }
   ]
