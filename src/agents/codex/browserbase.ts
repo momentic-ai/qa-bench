@@ -18,6 +18,13 @@ const SessionSchema = z.object({
   connectUrl: z.url(),
 });
 
+export function sessionRequest(directory: string, allowedDomains?: string[]) {
+  return {
+    userMetadata: { moEvalRun: path.basename(path.dirname(directory)) },
+    ...(allowedDomains ? { browserSettings: { allowedDomains } } : {}),
+  };
+}
+
 // Each MCP process requests its own CDP endpoint. The supervisor records every
 // allocation before returning it, including child agents and replacement browsers.
 export class BrowserbaseSessions {
@@ -28,13 +35,24 @@ export class BrowserbaseSessions {
   private server = createServer();
   private route = `/${randomUUID()}/json/version/`;
 
+  private baseUrl: string;
+  private allowedDomains: string[] | undefined;
+
   constructor(
     private directory: string,
     private apiKey: string,
-    private baseUrl = "https://api.browserbase.com",
-    /** Browserbase blocks top-level navigation elsewhere; subresources still load. */
-    private allowedDomains?: string[],
-  ) {}
+    {
+      baseUrl = "https://api.browserbase.com",
+      allowedDomains,
+    }: {
+      baseUrl?: string;
+      /** Browserbase blocks top-level navigation elsewhere; subresources still load. */
+      allowedDomains?: string[];
+    } = {},
+  ) {
+    this.baseUrl = baseUrl;
+    this.allowedDomains = allowedDomains;
+  }
 
   private async request(resource: string, body?: unknown) {
     const response = await fetch(`${this.baseUrl}${resource}`, {
@@ -65,14 +83,10 @@ export class BrowserbaseSessions {
       const work = (async () => {
         try {
           const session = SessionSchema.parse(
-            await this.request("/v1/sessions", {
-              userMetadata: {
-                moEvalRun: path.basename(path.dirname(this.directory)),
-              },
-              ...(this.allowedDomains
-                ? { browserSettings: { allowedDomains: this.allowedDomains } }
-                : {}),
-            }),
+            await this.request(
+              "/v1/sessions",
+              sessionRequest(this.directory, this.allowedDomains),
+            ),
           );
           this.sessions.set(session.id, session.projectId);
           await writeJson(path.join(this.directory, `${session.id}.json`), {

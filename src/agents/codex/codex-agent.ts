@@ -104,9 +104,12 @@ const ANSWER_DOMAINS = [
   "copilot.microsoft.com",
   "claude.ai",
 ];
+// Trailing-dot hostnames (github.com.) reach the same sites, so block those too.
 const ANSWER_SOURCES = ANSWER_DOMAINS.flatMap((domain) => [
   domain,
   `*.${domain}`,
+  `${domain}.`,
+  `*.${domain}.`,
 ]);
 
 type BrowserConnection = {
@@ -143,7 +146,6 @@ export class CodexAgent extends CodexRunner {
         mcpServers: {},
         env: this.browserEnvironment,
         sandbox: "workspace-write" as const,
-        ...this.cheatingSetup(),
       };
     }
     return {
@@ -189,13 +191,16 @@ export class CodexAgent extends CodexRunner {
 
   protected async connectBrowser(): Promise<BrowserConnection> {
     if (this.localBrowser) return localBrowserConnection();
+    let allowedDomains: string[] | undefined;
+    if (this.preventCheating) {
+      if (!this.context.targetUrl)
+        throw new Error("--prevent-cheating needs the fixture URL.");
+      allowedDomains = [this.context.targetUrl.hostname];
+    }
     this.browsers = new BrowserbaseSessions(
       path.join(this.context.runDirectory, "browser-sessions"),
       process.env.BROWSERBASE_API_KEY || "",
-      undefined,
-      this.preventCheating && this.context.targetUrl
-        ? [this.context.targetUrl.hostname]
-        : undefined,
+      { allowedDomains },
     );
     return {
       args: [],

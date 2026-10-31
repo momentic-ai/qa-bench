@@ -39,7 +39,6 @@ export async function runFullAppEval(options: FullAppOptions): Promise<void> {
           options.browser,
           "agent-browser",
           options.codexModel,
-          options.preventCheating,
         ),
         "claude-agent-browser": claudeAgent(
           options.browser,
