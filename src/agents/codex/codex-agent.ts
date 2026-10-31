@@ -47,10 +47,17 @@ const ANSWER_DOMAINS = [
   "deepwiki.com",
   "gitingest.com",
   "uithub.com",
-  // The published dataset, and Mo sessions linked from labels
+  // The published dataset, its mirrors and dataset hubs, and Mo sessions linked from labels
   "huggingface.co",
   "hf.co",
   "hf-mirror.com",
+  "modelscope.cn",
+  "modelscope.ai",
+  "wisemodel.cn",
+  "gitcode.com",
+  "opendatalab.com",
+  "kaggle.com",
+  "paperswithcode.com",
   "app.momentic.ai",
   // Upstream forums
   "discourse.metabase.com",
@@ -67,11 +74,22 @@ const ANSWER_DOMAINS = [
   "google.*",
   "bing.com",
   "duckduckgo.com",
-  "search.yahoo.com",
-  "yandex.com",
-  "yandex.ru",
+  "duck.com",
+  "duck.ai",
+  "search.yahoo.*",
+  "yandex.*",
   "ya.ru",
   "baidu.com",
+  "naver.com",
+  "seznam.cz",
+  "so.com",
+  "sogou.com",
+  "search.aol.com",
+  "ask.com",
+  "swisscows.com",
+  "metager.org",
+  "presearch.com",
+  "yep.com",
   "ecosia.org",
   "startpage.com",
   "qwant.com",
@@ -140,7 +158,7 @@ export class CodexAgent extends CodexRunner {
       ? {
           webSearch: "disabled" as const,
           instructions:
-            "The eval harness blocks web search and some external sites. If a flow needs a blocked external site, record it as a coverage limitation, not a bug.",
+            "Some external sites are blocked. Record flows that need one as coverage limitations, not bugs.",
         }
       : {};
   }
