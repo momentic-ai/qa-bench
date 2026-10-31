@@ -493,6 +493,27 @@
         },
         "scope": "The wiki editor's Preview tab ending on an older draft's rendering after a newer preview was requested. Saves are unaffected. The same race in issue, pull request, release or milestone editors belongs to those areas."
       }
+    },
+    {
+      "id": "gitea-wiki-sidebar-footnote-jumps-to-main",
+      "name": "Sidebar footnote links jump to the main page's footnote",
+      "summary": "When a wiki page and its _Sidebar both use a footnote with the same label (for example [^1]), clicking the footnote reference in the sidebar scrolls to the main page's footnote instead of the sidebar's own footnote, because both are rendered with the same anchor id.",
+      "expected": "A footnote reference in the sidebar goes to the sidebar's own footnote, as footnotes in separate issue comments and releases on one page do.",
+      "actual": "The page body and the sidebar both rendered id=\"fn:user-content-1\". Clicking the sidebar's [1] made the page body's footnote ('this belongs to the Home page body') the target and scrolled to it, skipping the sidebar footnote beside the link.",
+      "reproSteps": [
+        "Create a wiki page whose content uses a footnote [^1] with its definition.",
+        "Create a _Sidebar page that also uses a footnote [^1] with a different definition.",
+        "Open the wiki page and click the sidebar's footnote reference [1].",
+        "Observe that the page scrolls to the main page's footnote instead of the sidebar's."
+      ],
+      "severity": 1,
+      "sourceCause": "Footnote anchors are made unique per rendered block only when the render context sets footnoteContextId (modules/markup/html_node.go processFootnoteNode appends it to fn:/fnref: ids and hrefs). Only models/renderhelper/repo_comment.go sets it, so issue bodies, comments, releases and previews get distinct footnote ids. routers/web/repo/wiki.go renders the page body, _Sidebar and _Footer with one NewRenderContextRepoWiki context and the same renderFn, which never sets it, so each block's first footnote is fn:user-content-1. templates/repo/wiki/view.tmpl places the page body before the sidebar, and the browser follows a duplicated id to the first element. Unchanged in latest upstream, where the wiki still has no footnote context.",
+      "matchingGuidance": {
+        "relatedReference": {
+          "id": "gitea-release-notes-duplicate-heading-anchors",
+          "distinction": "Same duplicate-anchor collision between separately rendered blocks on one page. That entry is release-note heading anchors across releases; this entry is footnote anchors between a wiki page body and its _Sidebar (or _Footer)."
+        }
+      }
     }
   ]
 }
