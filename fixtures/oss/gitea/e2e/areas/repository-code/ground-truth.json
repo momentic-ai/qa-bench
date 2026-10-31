@@ -1077,7 +1077,64 @@
         "Expand Error Message in the flash and check whether it shows git stderr and a server temp path."
       ],
       "severity": 1,
-      "sourceCause": "services/repository/files/update.go cleans the tree path for validation but CreateOrUpdateFile runs git ls-files with the raw path, so git's stderr (including the server temp repo path) reaches the flash via routers/web/repo/editor.go. A '../x' path typed in the UI is normalized client-side; the file name '..' is not."
+      "sourceCause": "services/repository/files/update.go cleans the tree path for validation but CreateOrUpdateFile runs git ls-files with the raw path, so git's stderr (including the server temp repo path) reaches the flash via routers/web/repo/editor.go. A '../x' path typed in the UI is normalized client-side; the file name '..' is not.",
+      "matchingGuidance": {
+        "scope": "Requires the UI-reachable complete filename '..'. A ../escape.txt input is normalized by the rendered editor and was not reproduced through that UI; crafted requests alone do not establish this path.",
+        "creditQualification": "Acceptance of this narrower reproduction does not automatically validate or credit a report whose only demonstrated UI input was ../escape.txt."
+      },
+      "reviewEvidence": {
+        "basis": "Explicit user acceptance of the narrowed UI-reachable .. reproduction, with the user-corrected severity 1, based on the supplied reproduction/source packet. No new browser reproduction or independent judge pair claimed.",
+        "userAccepted": true,
+        "sourceRevision": "99053ce4fa2b45f1bca5837418c0c57f793ca824",
+        "severityReason": "User corrected this case to severity 1: an expandable raw Git error is displayed; no full-page crash or unusable page is demonstrated.",
+        "sourceReferences": [
+          "https://github.com/go-gitea/gitea/blob/99053ce4fa2b45f1bca5837418c0c57f793ca824/services/repository/files/update.go#L129-L148",
+          "https://github.com/go-gitea/gitea/blob/99053ce4fa2b45f1bca5837418c0c57f793ca824/services/repository/files/update.go#L465",
+          "https://github.com/go-gitea/gitea/blob/99053ce4fa2b45f1bca5837418c0c57f793ca824/routers/web/repo/editor.go#L366-L368"
+        ],
+        "limitations": [
+          "No successful path traversal or filesystem access beyond the repository was demonstrated.",
+          "The original ../escape.txt UI claim is excluded.",
+          "No independent Claude/Codex verdict pair was supplied."
+        ]
+      },
+      "owningArea": "gitea/repository-code"
+    },
+    {
+      "id": "gitea-empty-upload-diff-shows-binary",
+      "name": "An uploaded empty file is shown as a binary file in the branch comparison",
+      "severity": 1,
+      "owningArea": "gitea/repository-code",
+      "summary": "A zero-byte text upload is committed as NUL bytes, so branch comparisons and commit diffs show BIN and Binary file not shown. This entry covers that downstream presentation of the accepted upload corruption.",
+      "expected": "Preserve the zero-byte upload so its diff shows an added empty file, as an empty file created through New File does.",
+      "actual": "The upload card shows 0 B; after commit, comparison marks the uploaded file BIN with Binary file not shown. The file page shows 1.0 KiB and download contains 1024 NUL bytes. The New File empty-file control has no BIN label.",
+      "reproSteps": [
+        "In a disposable repository branch, choose Add File > Upload File and select a genuine zero-byte .txt file. Confirm its upload card shows 0 B.",
+        "Commit the upload to a new branch and open its comparison with the base branch or its commit diff.",
+        "Observe BIN and Binary file not shown for the uploaded file.",
+        "As a control, create an empty .txt through Add File > New File, confirm committing an empty file, and compare its diff: it has no BIN label."
+      ],
+      "sourceCause": "The upload handler retains its entire 1024-byte buffer when zero bytes are read; Git correctly classifies the resulting NUL-filled blob as binary.",
+      "matchingGuidance": {
+        "relatedReference": {
+          "id": "gitea-empty-upload-stores-nul-buffer",
+          "distinction": "Same upload cause. That severity-3 entry requires confirmed stored-byte corruption. This severity-1 entry covers the BIN presentation in comparison/commit diffs; gitea-empty-upload-shows-1kib-size covers the file-page size."
+        },
+        "scope": "Do not claim the diff renderer misclassifies the stored bytes. Exclude the original unsupported claim that this uploaded file page shows 0 B."
+      },
+      "reviewEvidence": {
+        "basis": "Explicit user acceptance as a related severity-1 entry after review of the supplied reproduction/source packet and existing labels. No new independent judge run or fresh browser reproduction by this coordinator.",
+        "userAccepted": true,
+        "sourceRevision": "99053ce4fa2b45f1bca5837418c0c57f793ca824",
+        "severityReason": "Accepted comparison-page symptom; underlying byte corruption remains the separate existing severity-3 reference.",
+        "sourceReferences": [
+          "https://github.com/go-gitea/gitea/blob/99053ce4fa2b45f1bca5837418c0c57f793ca824/routers/web/repo/editor.go#L815-L819"
+        ],
+        "limitations": [
+          "The renderer correctly describes the stored binary blob.",
+          "Independent Claude/Codex verdict pair was not supplied."
+        ]
+      }
     }
   ]
 }
