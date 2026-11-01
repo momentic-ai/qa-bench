@@ -134,9 +134,10 @@ area in a browser and reports any bugs it finds. A report has the same core
 fields as a ground-truth entry: a name, a summary, expected and actual
 behavior, and reproduction steps.
 
-Every agent gets the same brief and time limit, runs in its own E2B sandbox,
-and is told not to read the benchmark files, the ground truth, or earlier
-reports. The harness defaults to a 2-hour limit (`--time-limit`); Momentic's
+Every agent gets the same brief and time limit and runs in its own E2B
+sandbox. During a run, it can't read the application source, the benchmark
+files, the ground truth, or earlier reports, and it has no internet access
+beyond the application under test. The harness defaults to a 2-hour limit (`--time-limit`); Momentic's
 published runs used 30 and 60 minutes.
 
 Agents evaluated so far: Mo, Codex, and Claude Code (each through Playwright
