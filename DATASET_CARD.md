@@ -137,8 +137,12 @@ behavior, and reproduction steps.
 Every agent gets the same brief and time limit and runs in its own E2B
 sandbox. During a run, it can't read the application source, the benchmark
 files, the ground truth, or earlier reports, and it has no internet access
-beyond the application under test. The harness defaults to a 2-hour limit (`--time-limit`); Momentic's
-published runs used 30 and 60 minutes.
+beyond the application under test. The exception is agent-browser: in the
+published Codex and Claude Code agent-browser runs, the agent's shell had open
+web access (see
+[Web access](https://github.com/momentic-ai/qa-bench#web-access)). The harness
+defaults to a 2-hour limit (`--time-limit`); Momentic's published runs used 30
+and 60 minutes.
 
 Agents evaluated so far: Mo (hosted by Momentic), Codex and Claude Code (each
 through Playwright MCP or agent-browser), and Devin (its native browser). In
