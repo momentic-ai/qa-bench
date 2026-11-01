@@ -31,6 +31,7 @@ export type FullAppOptions = {
   claudeModel?: ClaudeModel;
   outputDirectory: string;
   browser: Browser;
+  preventCheating?: boolean;
 };
 
 export function parseFullAppOptions(args: string[]): FullAppOptions {
@@ -46,6 +47,7 @@ export function parseFullAppOptions(args: string[]): FullAppOptions {
       "grade-only": { type: "boolean", default: false },
       "run-id": { type: "string", multiple: true },
       browser: { type: "string" },
+      "prevent-cheating": { type: "boolean", default: false },
     },
     strict: true,
   });
@@ -85,6 +87,14 @@ export function parseFullAppOptions(args: string[]): FullAppOptions {
       claudeModel = parseModel(CLAUDE_MODELS, values.model);
     else throw new Error("--model applies only to Codex and Claude agents.");
   }
+  if (values["prevent-cheating"]) {
+    if (!values.agent?.startsWith("codex-"))
+      throw new Error("--prevent-cheating applies only to Codex agents.");
+    if (values["grade-only"])
+      throw new Error(
+        "--prevent-cheating applies to new runs, not --grade-only.",
+      );
+  }
   if (values["run-id"] && !values["grade-only"])
     throw new Error(
       "--run-id selects saved runs to regrade with --grade-only.",
@@ -99,6 +109,7 @@ export function parseFullAppOptions(args: string[]): FullAppOptions {
     effort,
     codexModel,
     claudeModel,
+    ...(values["prevent-cheating"] ? { preventCheating: true } : {}),
     outputDirectory: outputDirectory ?? REPORTS_DIRECTORY,
     gradeOnly: values["grade-only"],
     runIds: parseRunIds(values["run-id"]),

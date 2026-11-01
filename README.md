@@ -80,7 +80,7 @@ npm install -g qa@0.27.0
 Run one agent on one area, then compare saved runs:
 
 ```bash
-pnpm eval --agent codex-playwright-mcp --fixtures saleor/areas/vouchers --minutes 30
+pnpm eval --agent codex-playwright-mcp --prevent-cheating --fixtures saleor/areas/vouchers --minutes 30
 pnpm merge --fixtures saleor/areas/vouchers
 ```
 
@@ -140,6 +140,34 @@ Results also include Codex with `gpt-6.1-terra` and Claude Code with
   Playwright MCP runs then have no subagents, and `merge` labels them separately.
 - Mo manages its own subagents, and `--max-concurrent-sub-agents` caps them.
   Devin runs in one session with no child sessions.
+
+### Web access
+
+Coding agents can search the web and find examples of these bugs online instead
+of testing the fixture against its intended behavior. We recommend
+`--prevent-cheating` for every `codex-playwright-mcp` run. The flag is off by
+default so new runs stay comparable with saved ones, and `merge` labels runs
+that use it separately.
+
+The flag turns off Codex web search, makes Playwright MCP refuse the sites in
+`ANSWER_DOMAINS` ([`codex-agent.ts`](src/agents/codex/codex-agent.ts)), limits
+Browserbase pages to the fixture host, and tells Codex to record a blocked site
+as a coverage limitation. Playwright MCP runs already use Codex's read-only
+sandbox, which has no network access.
+
+The flag doesn't stop fixtures that fetch from code hosts on the server, such
+as Gitea's "New Migration" from GitHub.
+
+**`--prevent-cheating` does not protect `codex-agent-browser` runs.** The flag
+is accepted there, but it only turns off web search and, on Browserbase, limits
+page navigation to the fixture host. With `--browser local` its browser isn't
+restricted, and its shell keeps network access on any browser, so the agent can
+still `curl` GitHub or the dataset. To run it without answer lookups, restrict the network outside
+qa-bench. On Linux, run `pnpm eval` under
+[nsjail](https://github.com/google/nsjail) or a similar sandbox with egress
+limited to the hosts the run needs (the fixture, OpenAI, E2B and Browserbase).
+On macOS, where nsjail doesn't run, do the same inside a Linux VM or container
+(for example Docker or OrbStack) with an egress firewall.
 
 ## Scoring
 
