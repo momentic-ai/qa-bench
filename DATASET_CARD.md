@@ -140,8 +140,8 @@ files, the ground truth, or earlier reports, and it has no internet access
 beyond the application under test. The harness defaults to a 2-hour limit (`--time-limit`); Momentic's
 published runs used 30 and 60 minutes.
 
-Agents evaluated so far: Mo, Codex, and Claude Code (each through Playwright
-MCP or agent-browser), and Devin. In Momentic's 60-minute runs, Mo matched
+Agents evaluated so far: Mo (hosted by Momentic), Codex and Claude Code (each
+through Playwright MCP or agent-browser), and Devin (its native browser). In Momentic's 60-minute runs, Mo matched
 17.9% of the 1,396 labeled bugs per pass, against 6.8% for the best Codex
 configuration, 2.8% for the best Claude Code configuration, and 1.9% for Devin.
 Per-configuration results are in the
