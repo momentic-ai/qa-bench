@@ -1,36 +1,53 @@
 # QA bench
 
 A benchmark of AI QA agents finding real bugs in open-source web apps. It runs
-Mo, Codex, Claude Code and Devin against product areas of Metabase, Saleor
-(vouchers), Gitea and Twenty, then grades their bug reports against
-human-reviewed labels.
+Mo, Codex, Claude Code and Devin against 20 product areas of Gitea, Metabase,
+Twenty and Saleor, then grades their bug reports against 1,396 human-reviewed
+bug labels. Results and write-up: [momentic.ai/qa-bench](https://momentic.ai/qa-bench).
 
 Momentic builds Mo and maintains this benchmark.
 
 The labeled fixtures are published as the
 [momentic/qa-bench](https://huggingface.co/datasets/momentic/qa-bench) dataset
-on Hugging Face. To publish, run the Hugging Face sync workflow from `main` in
-GitHub Actions.
+on Hugging Face, with [`DATASET_CARD.md`](DATASET_CARD.md) as its README. To
+publish, run the Hugging Face sync workflow from `main` in GitHub Actions.
 
 Each run gets a fresh copy of the app at a pinned commit, with seeded data, in
 its own E2B sandbox. Areas live in [`fixtures/oss`](fixtures/oss).
 
+| App      | Areas | Labeled bugs |
+| -------- | ----- | ------------ |
+| Gitea    | 11    | 476          |
+| Metabase | 4     | 464          |
+| Twenty   | 4     | 374          |
+| Saleor   | 1     | 82           |
+| Total    | 20    | 1,396        |
+
 ## Results
 
-Per-area results are in [`results/2026-10-30.csv`](results/2026-10-30.csv).
+Graded against the labels at `e77c72b`. Per-area results are in
+[`results/2026-10-31.csv`](results/2026-10-31.csv).
 
 | Configuration                           | Areas   | Correct, 30 min | Correct, 60 min | Recall, 60 min | Precision, 60 min | Score, 60 min | Cost per correct, 60 min |
 | --------------------------------------- | ------- | --------------- | --------------- | -------------- | ----------------- | ------------- | ------------------------ |
-| Mo                                      | 20      | 146.3           | 242.0           | 19.6%          | 84.4%             | 533.7         | $2.98                    |
-| Codex, GPT-6.1 Sol, Playwright MCP      | 20      | 81.0            | 89.0            | 7.2%           | 91.1%             | 230.3         | $0.59                    |
-| Codex, GPT-6.1 Sol, agent-browser       | 20 / 19 | 68.0            | 69.3            | 5.8%           | 80.0%             | 163.3         | $1.08                    |
-| Codex, GPT-6.1 Terra, Playwright MCP    | 19      | 75.7            | 69.0            | 5.8%           | 78.7%             | 154.7         | $0.55                    |
-| Codex, GPT-6.1 Terra, agent-browser     | 19      | 58.0            | 52.0            | 4.3%           | 80.8%             | 125.0         | $0.31                    |
-| Claude Code, Opus 5.5, Playwright MCP   | 20      | 21.7            | 34.6            | 2.8%           | 86.0%             | 79.7          | $3.19                    |
-| Claude Code, Opus 5.5, agent-browser    | 20      | 18.0            | 30.7            | 2.5%           | 85.2%             | 76.7          | $2.68                    |
-| Devin                                   | 20      | 16.0            | 27.0            | 2.2%           | 84.4%             | 65.0          | $3.89                    |
-| Claude Code, Sonnet 5.5, Playwright MCP | 20      | 5.3             | 7.7             | 0.6%           | 88.5%             | 15.3          | $1.46                    |
-| Claude Code, Sonnet 5.5, agent-browser  | 20      | 9.0             | 6.3             | 0.5%           | 79.3%             | 12.7          | $1.24                    |
+| Mo                                      | 20      | 153.4           | 250.3           | 17.9%          | 84.7%             | 548.3         | $2.88                    |
+| Codex, GPT-6.1 Sol, Playwright MCP      | 20      | 88.0            | 94.3            | 6.8%           | 89.0%             | 241.3         | $0.56                    |
+| Codex, GPT-6.1 Terra, Playwright MCP    | 19      | 81.0            | 72.7            | 5.4%           | 74.2%             | 156.3         | $0.52                    |
+| Codex, GPT-6.1 Sol, agent-browser       | 20 / 19 | 68.0            | 69.3            | 5.2%           | 79.1%             | 162.3         | $1.08                    |
+| Codex, GPT-6.1 Terra, agent-browser     | 19      | 63.0            | 53.4            | 4.0%           | 76.2%             | 122.6         | $0.31                    |
+| Claude Code, Opus 5.5, Playwright MCP   | 20      | 25.7            | 39.6            | 2.8%           | 81.5%             | 86.0          | $2.79                    |
+| Claude Code, Opus 5.5, agent-browser    | 20      | 18.0            | 33.3            | 2.4%           | 83.4%             | 82.0          | $2.47                    |
+| Devin                                   | 20      | 16.0            | 27.0            | 1.9%           | 84.4%             | 65.0          | $3.89                    |
+| Claude Code, Sonnet 5.5, Playwright MCP | 20      | 5.7             | 8.0             | 0.6%           | 80.0%             | 14.7          | $1.40                    |
+| Claude Code, Sonnet 5.5, agent-browser  | 20      | 9.3             | 6.3             | 0.5%           | 54.2%             | 9.0           | $1.24                    |
+
+Correct is summed over the areas a configuration ran, and Recall divides it by
+the labels in those areas (1,346 for the 19-area rows). "20 / 19" ran 20 areas
+at 30 minutes and 19 at 60. GPT-6.1 Terra refused Gitea repository settings
+under OpenAI's cybersecurity policy, and GPT-6.1 Sol with agent-browser refused
+it often enough to have one 30-minute run and no 60-minute runs there. Devin
+ran each area once per budget; the other configurations ran each area three
+times per budget.
 
 ## Run it
 
