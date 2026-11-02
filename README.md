@@ -15,7 +15,8 @@ publish, run the Hugging Face sync workflow from `main` in GitHub Actions.
 
 Each run gets a fresh copy of the app at a pinned commit, with seeded data, in
 its own E2B sandbox. Codex and Claude Code drive hosted Browserbase browsers, not
-local ones. Devin uses its own browser, and Mo uses Momentic's hosted browsers.
+local ones. Devin uses its own browser, Browser Use uses its cloud browsers, and
+Mo uses Momentic's hosted browsers.
 Areas live in [`fixtures/oss`](fixtures/oss).
 
 | App      | Areas | Labeled bugs |
@@ -68,6 +69,7 @@ pnpm build-template --cpu 4 --memory 8
 | `BROWSERBASE_API_KEY`                  | Codex and Claude Code, unless using `--browser local` |
 | `MOMENTIC_API_KEY`                     | Mo, unless signed in with `qa login`                  |
 | `DEVIN_ORGANIZATION_ID`, `DEVIN_TOKEN` | Devin ([setup](src/agents/devin/README.md))           |
+| `BROWSER_USE_API_KEY`                  | Browser Use                                           |
 
 Mo runs on Momentic's hosted service, so it needs a Momentic account and the
 [`qa` CLI](https://www.npmjs.com/package/qa). Runs require version 0.27.0:
@@ -84,8 +86,8 @@ pnpm merge --fixtures saleor/areas/vouchers
 ```
 
 `--agent` takes `mo`, `codex-playwright-mcp`, `claude-playwright-mcp`,
-`codex-agent-browser`, `claude-agent-browser` or `devin-qa`. `--fixtures` takes
-an app (`gitea`), all of its areas (`gitea/areas`), one area, or `oss-areas`.
+`codex-agent-browser`, `claude-agent-browser`, `devin-qa` or `browser-use`.
+`--fixtures` takes an app (`gitea`), all of its areas (`gitea/areas`), one area, or `oss-areas`.
 
 Each run is graded when it finishes and saved to
 `reports/<agent>/<fixture>/<run-id>/`. `merge` writes `reports/comparison.md`.
@@ -99,7 +101,9 @@ Every agent gets the same short brief from
 area's scope and entry points, and the rule not to read benchmark files. Codex,
 Claude Code and Devin are also told which browser to use and how to save
 findings. Devin's prompt adds its
-[isolation rules](src/agents/devin/README.md).
+[isolation rules](src/agents/devin/README.md). Browser Use's prompt adds a
+similar rule against outside research and asks it to keep `qa-report.json`
+current in its workspace.
 
 ### Time
 
@@ -117,12 +121,13 @@ to Mo.
 
 Versions are pinned in [`package.json`](package.json).
 
-| Agent       | Model and reasoning effort   | Browser                                         |
-| ----------- | ---------------------------- | ----------------------------------------------- |
-| Mo          | Chosen by Momentic's service | Hosted by Momentic                              |
-| Codex       | `gpt-6.1-sol`, medium        | Playwright MCP or agent-browser, on Browserbase |
-| Claude Code | `claude-opus-5-5`, medium    | Playwright MCP or agent-browser, on Browserbase |
-| Devin       | Devin's defaults             | Devin's native browser                          |
+| Agent       | Model and reasoning effort                 | Browser                                         |
+| ----------- | ------------------------------------------ | ----------------------------------------------- |
+| Mo          | Chosen by Momentic's service               | Hosted by Momentic                              |
+| Codex       | `gpt-6.1-sol`, medium                      | Playwright MCP or agent-browser, on Browserbase |
+| Claude Code | `claude-opus-5-5`, medium                  | Playwright MCP or agent-browser, on Browserbase |
+| Devin       | Devin's defaults                           | Devin's native browser                          |
+| Browser Use | Browser Use's default (`gpt-6-luna`, high) | Browser Use Cloud, without a proxy              |
 
 Results also include Codex with `gpt-6.1-terra` and Claude Code with
 `claude-sonnet-5-5`. Use `--model` to run them.
@@ -141,7 +146,8 @@ Results also include Codex with `gpt-6.1-terra` and Claude Code with
 - `--browser local` replaces Browserbase with headless Chromium on the host.
   Playwright MCP runs then have no subagents, and `merge` labels them separately.
 - Mo manages its own subagents, and `--max-concurrent-sub-agents` caps them.
-  Devin runs in one session with no child sessions.
+  Devin runs in one session with no child sessions. Browser Use runs one
+  Browser Use Cloud agent session with one browser.
 
 ### Web access
 
@@ -158,6 +164,9 @@ as a coverage limitation. Playwright MCP runs already use Codex's read-only
 sandbox, which has no network access.
 
 Claude Code already omits WebSearch and WebFetch from its tool list. With the flag, it also applies the browser restrictions above. Shared agent-browser sessions are kept alive across disconnects. Browserbase sessions get the requested time budget plus two minutes, up to the provider's six-hour limit.
+
+Browser Use's API has no switch for its built-in search tool, so its runs
+record `retrieval: "prompt-restricted"` and rely on the prompt rule above.
 
 The flag doesn't stop fixtures that fetch from code hosts on the server, such
 as Gitea's "New Migration" from GitHub.
@@ -214,6 +223,7 @@ Costs:
 - Claude Code is the cost reported by the Agent SDK, plus estimated Browserbase
   time.
 - Mo is its reported session spend.
+- Browser Use is its reported session cost: model, search, browser and proxy.
 - Devin's cost isn't recorded by this repo. Its figures were calculated
   separately.
 
