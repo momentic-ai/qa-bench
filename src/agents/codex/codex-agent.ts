@@ -207,7 +207,14 @@ export class CodexAgent extends CodexRunner {
     this.browsers = new BrowserbaseSessions(
       path.join(this.context.runDirectory, "browser-sessions"),
       process.env.BROWSERBASE_API_KEY || "",
-      { allowedDomains },
+      {
+        allowedDomains,
+        keepAlive: this.browserTool === "agent-browser",
+        timeoutSeconds: Math.min(
+          21600,
+          Math.ceil((this.context.timeLimitMs ?? 120 * 60_000) / 1000) + 120,
+        ),
+      },
     );
     return {
       args: [],

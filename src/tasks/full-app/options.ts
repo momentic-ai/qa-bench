@@ -88,8 +88,13 @@ export function parseFullAppOptions(args: string[]): FullAppOptions {
     else throw new Error("--model applies only to Codex and Claude agents.");
   }
   if (values["prevent-cheating"]) {
-    if (!values.agent?.startsWith("codex-"))
-      throw new Error("--prevent-cheating applies only to Codex agents.");
+    if (
+      !values.agent?.startsWith("codex-") &&
+      !values.agent?.startsWith("claude-")
+    )
+      throw new Error(
+        "--prevent-cheating applies only to Codex and Claude agents.",
+      );
     if (values["grade-only"])
       throw new Error(
         "--prevent-cheating applies to new runs, not --grade-only.",

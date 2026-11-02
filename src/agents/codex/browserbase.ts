@@ -18,9 +18,16 @@ const SessionSchema = z.object({
   connectUrl: z.url(),
 });
 
-export function sessionRequest(directory: string, allowedDomains?: string[]) {
+export function sessionRequest(
+  directory: string,
+  allowedDomains?: string[],
+  timeoutSeconds?: number,
+  keepAlive = false,
+) {
   return {
     userMetadata: { moEvalRun: path.basename(path.dirname(directory)) },
+    ...(timeoutSeconds ? { timeout: timeoutSeconds } : {}),
+    ...(keepAlive ? { keepAlive: true } : {}),
     ...(allowedDomains ? { browserSettings: { allowedDomains } } : {}),
   };
 }
@@ -37,6 +44,8 @@ export class BrowserbaseSessions {
 
   private baseUrl: string;
   private allowedDomains: string[] | undefined;
+  private timeoutSeconds: number | undefined;
+  private keepAlive: boolean;
 
   constructor(
     private directory: string,
@@ -44,14 +53,20 @@ export class BrowserbaseSessions {
     {
       baseUrl = "https://api.browserbase.com",
       allowedDomains,
+      timeoutSeconds,
+      keepAlive = false,
     }: {
       baseUrl?: string;
       /** Browserbase blocks top-level navigation elsewhere; subresources still load. */
       allowedDomains?: string[];
+      timeoutSeconds?: number;
+      keepAlive?: boolean;
     } = {},
   ) {
     this.baseUrl = baseUrl;
     this.allowedDomains = allowedDomains;
+    this.timeoutSeconds = timeoutSeconds;
+    this.keepAlive = keepAlive;
   }
 
   private async request(resource: string, body?: unknown) {
@@ -85,7 +100,12 @@ export class BrowserbaseSessions {
           const session = SessionSchema.parse(
             await this.request(
               "/v1/sessions",
-              sessionRequest(this.directory, this.allowedDomains),
+              sessionRequest(
+                this.directory,
+                this.allowedDomains,
+                this.timeoutSeconds,
+                this.keepAlive,
+              ),
             ),
           );
           this.sessions.set(session.id, session.projectId);

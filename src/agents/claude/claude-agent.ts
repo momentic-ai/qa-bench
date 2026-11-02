@@ -139,8 +139,9 @@ export class ClaudeAgent extends CodexAgent {
     context: AgentContext,
     browserTool: BrowserTool = "playwright-mcp",
     model: ClaudeModel = CLAUDE_MODELS[0],
+    preventCheating = false,
   ) {
-    super(context, browserTool, model);
+    super(context, browserTool, model, preventCheating);
   }
 
   protected skillOwner = ".claude" as const;
@@ -303,7 +304,13 @@ export class ClaudeAgent extends CodexAgent {
       },
     });
     this.enqueue(
-      `${message}\n\nUse reporting.submit_bug to save each bug with a stable ID, reporting.remove_bug to retract it, and reporting.record_coverage for areas explored and limitations.`,
+      [
+        message,
+        setup.instructions,
+        "Use reporting.submit_bug to save each bug with a stable ID, reporting.remove_bug to retract it, and reporting.record_coverage for areas explored and limitations.",
+      ]
+        .filter(Boolean)
+        .join("\n\n"),
     );
     this.observer = this.observe(this.session);
     void this.observer.catch(() => {});
@@ -544,6 +551,7 @@ export function claudeAgent(
   browser: Browser,
   browserTool: BrowserTool = "playwright-mcp",
   model: ClaudeModel = CLAUDE_MODELS[0],
+  preventCheating = false,
 ): EvalAgentDefinition {
   return {
     name: `claude-${browserTool}`,
@@ -552,6 +560,7 @@ export function claudeAgent(
     config: {
       model,
       browser,
+      ...(preventCheating ? { preventCheating } : {}),
       ...(browserTool === "playwright-mcp"
         ? { subagents: browser !== "local" }
         : {}),
@@ -567,8 +576,8 @@ export function claudeAgent(
     },
     create(context) {
       return browser === "local"
-        ? new LocalClaudeAgent(context, browserTool, model)
-        : new ClaudeAgent(context, browserTool, model);
+        ? new LocalClaudeAgent(context, browserTool, model, preventCheating)
+        : new ClaudeAgent(context, browserTool, model, preventCheating);
     },
   };
 }
