@@ -21,7 +21,20 @@ tags:
   - browser-agents
   - web-apps
   - agent-evaluation
-viewer: false
+configs:
+  - config_name: bugs
+    default: true
+    data_files:
+      - split: test
+        path: data/bugs.jsonl
+  - config_name: known_invalid
+    data_files:
+      - split: test
+        path: data/known_invalid.jsonl
+  - config_name: areas
+    data_files:
+      - split: test
+        path: data/areas.jsonl
 ---
 
 # QA-Bench
@@ -65,18 +78,23 @@ publishes this dataset. Results are at
 The labels grow as new findings are reviewed, so results are only comparable
 when graded against the same label set. Momentic's published results use the
 labels at GitHub commit `e77c72b7ad024366ba194f0c3cc36a93c6209349`, and this
-repository mirrors the GitHub tree. Pin a Hugging Face revision when you report
-results, and cite it alongside the scores. Every score file the harness writes
-carries a hash of the judge configuration and the label files it was graded
-against.
+repository mirrors the GitHub tree, plus the generated `data/` tables. Pin a
+Hugging Face revision when you report results, and cite it alongside the scores.
+Every score file the harness writes carries a hash of the judge configuration
+and the label files it was graded against.
 
 ## Structure
 
 Each application is a top-level folder. The files at the top level build the
 sandbox, and each area folder under `e2e/areas/` holds the brief and the labels
-for that area. There are no train, validation, or test splits.
+for that area. A `data/` folder holds the same briefs and labels as three
+tables for the Dataset Viewer: `bugs` (ground truth), `known_invalid`, and
+`areas`, one row per entry with its `app` and `area`. They leave out the
+optional judge hints, so grade against the JSON files. QA-Bench is
+evaluation-only, so each table has a single `test` split.
 
 ```
+data/                   # viewer tables built from the area folders
 <app>/
   compose.yaml          # pinned images and services
   fixture.json          # port, test accounts, upstream repo + commit
@@ -178,8 +196,16 @@ counts as one or the other.
 hf download momentic/qa-bench --repo-type dataset --local-dir qa-bench
 ```
 
-The dataset is a folder tree rather than a table, so iterate over the area
-folders:
+The viewer tables load with `datasets`:
+
+```python
+from datasets import load_dataset
+
+bugs = load_dataset("momentic/qa-bench", "bugs", split="test")
+```
+
+The harness and judge read the folder tree, so iterate over the area folders
+for the full entries:
 
 ```python
 import json
