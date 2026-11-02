@@ -145,7 +145,9 @@ export class CodexAgent extends CodexRunner {
       return {
         mcpServers: {},
         env: this.browserEnvironment,
-        sandbox: "workspace-write" as const,
+        // Codex's Linux sandbox kills background processes when each command
+        // exits, which would take the agent-browser daemon and its refs with it.
+        sandbox: "danger-full-access" as const,
         // A local agent-browser has no site limits, so don't tell Codex otherwise.
         ...this.cheatingSetup(!this.localBrowser),
       };
