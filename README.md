@@ -29,29 +29,25 @@ Areas live in [`fixtures/oss`](fixtures/oss).
 ## Results
 
 Graded against the labels at `e77c72b`. Per-area results are in
-[`results/2026-10-31.csv`](results/2026-10-31.csv). The dataset is on
+[`results/2026-11-02.csv`](results/2026-11-02.csv). The dataset is on
 [Hugging Face](https://huggingface.co/datasets/momentic/qa-bench).
 
-| Configuration                           | Areas   | Correct, 30 min | Correct, 60 min | Recall, 60 min | Precision, 60 min | Score, 60 min | Cost per correct, 60 min |
-| --------------------------------------- | ------- | --------------- | --------------- | -------------- | ----------------- | ------------- | ------------------------ |
-| Mo                                      | 20      | 153.4           | 250.3           | 17.9%          | 84.7%             | 548.3         | $2.88                    |
-| Codex, GPT-6.1 Sol, Playwright MCP      | 20      | 88.0            | 94.3            | 6.8%           | 89.0%             | 241.3         | $0.56                    |
-| Codex, GPT-6.1 Terra, Playwright MCP    | 19      | 81.0            | 72.7            | 5.4%           | 74.2%             | 156.3         | $0.52                    |
-| Codex, GPT-6.1 Sol, agent-browser       | 20 / 19 | 68.0            | 69.3            | 5.2%           | 79.1%             | 162.3         | $1.08                    |
-| Codex, GPT-6.1 Terra, agent-browser     | 19      | 63.0            | 53.4            | 4.0%           | 76.2%             | 122.6         | $0.31                    |
-| Claude Code, Opus 5.5, Playwright MCP   | 20      | 25.7            | 39.6            | 2.8%           | 81.5%             | 86.0          | $2.79                    |
-| Claude Code, Opus 5.5, agent-browser    | 20      | 18.0            | 33.3            | 2.4%           | 83.4%             | 82.0          | $2.47                    |
-| Devin                                   | 20      | 16.0            | 27.0            | 1.9%           | 84.4%             | 65.0          | $3.89                    |
-| Claude Code, Sonnet 5.5, Playwright MCP | 20      | 5.7             | 8.0             | 0.6%           | 80.0%             | 14.7          | $1.40                    |
-| Claude Code, Sonnet 5.5, agent-browser  | 20      | 9.3             | 6.3             | 0.5%           | 54.2%             | 9.0           | $1.24                    |
+| Configuration                           | Areas | Correct, 30 min | Correct, 60 min | Recall, 60 min | Precision, 60 min | Score, 60 min | Cost per correct, 60 min |
+| --------------------------------------- | ----- | --------------- | --------------- | -------------- | ----------------- | ------------- | ------------------------ |
+| Mo                                      | 20    | 176.7           | 269.3           | 19.3%          | 84.2%             | 588.7         | $2.67                    |
+| Codex, GPT-6.1 Sol, Playwright MCP      | 20    | 74.7            | 86.3            | 6.2%           | 86.0%             | 207.0         | $0.80                    |
+| Codex, GPT-6.1 Terra, Playwright MCP    | 20    | 83.3            | 82.7            | 5.9%           | 81.6%             | 177.0         | $0.53                    |
+| Codex, GPT-6.1 Sol, agent-browser       | 20    | 68.0            | 64.3            | 4.6%           | 76.3%             | 144.3         | $0.96                    |
+| Claude Code, Opus 5.5, Playwright MCP   | 20    | 38.0            | 59.0            | 4.2%           | 79.5%             | 122.7         | $4.09                    |
+| Codex, GPT-6.1 Terra, agent-browser     | 20    | 59.3            | 57.7            | 4.1%           | 76.2%             | 126.3         | $0.27                    |
+| Claude Code, Opus 5.5, agent-browser    | 20    | 24.0            | 41.0            | 2.9%           | 77.0%             | 81.0          | $2.45                    |
+| Devin                                   | 20    | 16.0            | 27.0            | 1.9%           | 84.4%             | 65.0          | $3.89                    |
+| Claude Code, Sonnet 5.5, Playwright MCP | 20    | 12.0            | 15.0            | 1.1%           | 72.6%             | 26.7          | $2.08                    |
+| Claude Code, Sonnet 5.5, agent-browser  | 20    | 8.7             | 13.0            | 0.9%           | 65.0%             | 20.0          | $0.68                    |
 
-Correct is summed over the areas a configuration ran, and Recall divides it by
-the labels in those areas (1,346 for the 19-area rows). "20 / 19" ran 20 areas
-at 30 minutes and 19 at 60. GPT-6.1 Terra refused Gitea repository settings
-under OpenAI's cybersecurity policy, and GPT-6.1 Sol with agent-browser refused
-it often enough to have one 30-minute run and no 60-minute runs there. Devin
-ran each area once per budget; the other configurations ran each area three
-times per budget.
+Every configuration covers all 20 areas. Correct is summed over them, and
+Recall divides it by the 1,396 labels. Devin ran each area once per budget; the
+other configurations ran each area three times per budget.
 
 ## Run it
 
