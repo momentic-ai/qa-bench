@@ -148,20 +148,22 @@ Results also include Codex with `gpt-6.1-terra` and Claude Code with
 
 Coding agents can search the web and find examples of these bugs online instead
 of testing the fixture against its intended behavior. We recommend
-`--prevent-cheating` for every `codex-playwright-mcp` run. The flag is off by
+`--prevent-cheating` for Codex and Claude Code runs. The flag is off by
 default so new runs stay comparable with saved ones, and `merge` labels runs
 that use it separately.
 
 The flag turns off Codex web search, makes Playwright MCP refuse the sites in
 `ANSWER_DOMAINS` ([`codex-agent.ts`](src/agents/codex/codex-agent.ts)), limits
-Browserbase pages to the fixture host, and tells Codex to record a blocked site
+Browserbase pages to the fixture host, and tells the agent to record a blocked site
 as a coverage limitation. Playwright MCP runs already use Codex's read-only
 sandbox, which has no network access.
+
+Claude Code already omits WebSearch and WebFetch from its tool list. With the flag, it also applies the browser restrictions above. Browserbase sessions are kept alive across disconnects and get the requested time budget plus two minutes, up to the provider's six-hour limit.
 
 The flag doesn't stop fixtures that fetch from code hosts on the server, such
 as Gitea's "New Migration" from GitHub.
 
-**`--prevent-cheating` does not protect `codex-agent-browser` runs.** The flag
+**`--prevent-cheating` is not a network firewall for agent-browser runs.** The flag
 is accepted there, but it only turns off web search and, on Browserbase, limits
 page navigation to the fixture host. With `--browser local` its browser isn't
 restricted, and it runs without Codex's sandbox on any browser, so the agent can

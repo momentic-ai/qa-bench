@@ -3,7 +3,7 @@ import { it } from "node:test";
 
 import { parseFullAppOptions } from "./options";
 
-it("records --prevent-cheating only when set, and only for Codex runs", () => {
+it("records --prevent-cheating only when set for Codex and Claude runs", () => {
   assert.equal(
     parseFullAppOptions(["--agent", "codex-playwright-mcp"]).preventCheating,
     undefined,
@@ -27,8 +27,13 @@ it("records --prevent-cheating only when set, and only for Codex runs", () => {
   for (const args of [
     ["--prevent-cheating"],
     ["--agent", "mo", "--prevent-cheating"],
-    ["--agent", "claude-playwright-mcp", "--prevent-cheating"],
     ["--agent", "codex-playwright-mcp", "--prevent-cheating", "--grade-only"],
   ])
     assert.throws(() => parseFullAppOptions(args), /--prevent-cheating/);
+  for (const agent of ["claude-playwright-mcp", "claude-agent-browser"])
+    assert.equal(
+      parseFullAppOptions(["--agent", agent, "--prevent-cheating"])
+        .preventCheating,
+      true,
+    );
 });

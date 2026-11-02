@@ -12,4 +12,10 @@ it("limits Browserbase navigation only when allowed domains are given", () => {
     userMetadata: { moEvalRun: "run-1" },
     browserSettings: { allowedDomains: ["3000-fixture.e2b.app"] },
   });
+  assert.deepEqual(sessionRequest(directory, ["3000-fixture.e2b.app"], 3720), {
+    userMetadata: { moEvalRun: "run-1" },
+    timeout: 3720,
+    keepAlive: true,
+    browserSettings: { allowedDomains: ["3000-fixture.e2b.app"] },
+  });
 });
