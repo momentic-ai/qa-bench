@@ -209,6 +209,7 @@ export class CodexAgent extends CodexRunner {
       process.env.BROWSERBASE_API_KEY || "",
       {
         allowedDomains,
+        keepAlive: this.browserTool === "agent-browser",
         timeoutSeconds: Math.min(
           21600,
           Math.ceil((this.context.timeLimitMs ?? 120 * 60_000) / 1000) + 120,
