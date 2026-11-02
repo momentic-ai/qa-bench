@@ -13,7 +13,9 @@ on Hugging Face, with [`DATASET_CARD.md`](DATASET_CARD.md) as its README. To
 publish, run the Hugging Face sync workflow from `main` in GitHub Actions.
 
 Each run gets a fresh copy of the app at a pinned commit, with seeded data, in
-its own E2B sandbox. Areas live in [`fixtures/oss`](fixtures/oss).
+its own E2B sandbox. Codex and Claude Code drive hosted Browserbase browsers, not
+local ones. Devin uses its own browser, and Mo uses Momentic's hosted browsers.
+Areas live in [`fixtures/oss`](fixtures/oss).
 
 | App      | Areas | Labeled bugs |
 | -------- | ----- | ------------ |
@@ -118,12 +120,12 @@ to Mo.
 
 Versions are pinned in [`package.json`](package.json).
 
-| Agent       | Model and reasoning effort   | Browser                         |
-| ----------- | ---------------------------- | ------------------------------- |
-| Mo          | Chosen by Momentic's service | Hosted by Momentic              |
-| Codex       | `gpt-6.1-sol`, medium        | Playwright MCP or agent-browser |
-| Claude Code | `claude-opus-5-5`, medium    | Playwright MCP or agent-browser |
-| Devin       | Devin's defaults             | Devin's native browser          |
+| Agent       | Model and reasoning effort   | Browser                                         |
+| ----------- | ---------------------------- | ----------------------------------------------- |
+| Mo          | Chosen by Momentic's service | Hosted by Momentic                              |
+| Codex       | `gpt-6.1-sol`, medium        | Playwright MCP or agent-browser, on Browserbase |
+| Claude Code | `claude-opus-5-5`, medium    | Playwright MCP or agent-browser, on Browserbase |
+| Devin       | Devin's defaults             | Devin's native browser                          |
 
 Results also include Codex with `gpt-6.1-terra` and Claude Code with
 `claude-sonnet-5-5`. Use `--model` to run them.
