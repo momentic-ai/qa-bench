@@ -45,13 +45,9 @@ Graded against the labels at `e77c72b`. Per-area results are in
 | Claude Code, Sonnet 5.5, Playwright MCP | 20    | 12.0            | 15.0            | 1.1%           | 72.6%             | 26.7          | $2.08                    |
 | Claude Code, Sonnet 5.5, agent-browser  | 20    | 8.7             | 13.0            | 0.9%           | 65.0%             | 20.0          | $0.68                    |
 
-Correct is summed over the areas a configuration ran, and Recall divides it by
-the labels in those areas (1,346 for the 19-area rows). "20 / 19" ran 20 areas
-at 30 minutes and 19 at 60. GPT-6.1 Terra refused Gitea repository settings
-under OpenAI's cybersecurity policy, and GPT-6.1 Sol with agent-browser refused
-it often enough to have one 30-minute run and no 60-minute runs there. Devin
-ran each area once per budget; the other configurations ran each area three
-times per budget.
+Every configuration covers all 20 areas. Correct is summed over them, and
+Recall divides it by the 1,396 labels. Devin ran each area once per budget; the
+other configurations ran each area three times per budget.
 
 ## Run it
 
