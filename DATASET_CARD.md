@@ -78,10 +78,10 @@ publishes this dataset. Results are at
 The labels grow as new findings are reviewed, so results are only comparable
 when graded against the same label set. Momentic's published results use the
 labels at GitHub commit `e77c72b7ad024366ba194f0c3cc36a93c6209349`, and this
-repository mirrors the GitHub tree. Pin a Hugging Face revision when you report
-results, and cite it alongside the scores. Every score file the harness writes
-carries a hash of the judge configuration and the label files it was graded
-against.
+repository mirrors the GitHub tree, plus the generated `data/` tables. Pin a
+Hugging Face revision when you report results, and cite it alongside the scores.
+Every score file the harness writes carries a hash of the judge configuration
+and the label files it was graded against.
 
 ## Structure
 
