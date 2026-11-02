@@ -133,6 +133,9 @@ Results also include Codex with `gpt-6.1-terra` and Claude Code with
 
 ### Browsers and subagents
 
+- `codex-agent-browser` runs without Codex's sandbox, because the sandbox kills
+  the agent-browser daemon after each command on Linux. Its shell can write
+  anywhere your user can, so run it on a machine or VM you're happy to expose.
 - `*-playwright-mcp` agents use Playwright MCP on Browserbase. The parent and
   each subagent get their own Browserbase browser.
 - `*-agent-browser` agents use the pinned
@@ -164,7 +167,7 @@ as Gitea's "New Migration" from GitHub.
 **`--prevent-cheating` does not protect `codex-agent-browser` runs.** The flag
 is accepted there, but it only turns off web search and, on Browserbase, limits
 page navigation to the fixture host. With `--browser local` its browser isn't
-restricted, and its shell keeps network access on any browser, so the agent can
+restricted, and it runs without Codex's sandbox on any browser, so the agent can
 still `curl` GitHub or the dataset. To run it without answer lookups, restrict the network outside
 qa-bench. On Linux, run `pnpm eval` under
 [nsjail](https://github.com/google/nsjail) or a similar sandbox with egress

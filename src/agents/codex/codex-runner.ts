@@ -23,7 +23,7 @@ const require = createRequire(import.meta.url);
 export type CodexSetup = {
   mcpServers: Record<string, unknown>;
   env?: Record<string, string>;
-  sandbox?: "workspace-write";
+  sandbox?: "danger-full-access";
   subagents?: boolean;
   webSearch?: "disabled";
   /** Appended to the task brief. */
@@ -114,9 +114,6 @@ export abstract class CodexRunner implements EvalAgent {
           config: {
             model_reasoning_effort: "medium",
             ...(setup.webSearch ? { web_search: setup.webSearch } : {}),
-            ...(setup.sandbox
-              ? { sandbox_workspace_write: { network_access: true } }
-              : {}),
             mcp_servers: setup.mcpServers,
             agents: {
               enabled: setup.subagents,
