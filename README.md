@@ -158,7 +158,7 @@ Browserbase pages to the fixture host, and tells the agent to record a blocked s
 as a coverage limitation. Playwright MCP runs already use Codex's read-only
 sandbox, which has no network access.
 
-Claude Code already omits WebSearch and WebFetch from its tool list. With the flag, it also applies the browser restrictions above. Browserbase sessions are kept alive across disconnects and get the requested time budget plus two minutes, up to the provider's six-hour limit.
+Claude Code already omits WebSearch and WebFetch from its tool list. With the flag, it also applies the browser restrictions above. Shared agent-browser sessions are kept alive across disconnects. Browserbase sessions get the requested time budget plus two minutes, up to the provider's six-hour limit.
 
 The flag doesn't stop fixtures that fetch from code hosts on the server, such
 as Gitea's "New Migration" from GitHub.
