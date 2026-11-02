@@ -121,13 +121,13 @@ to Mo.
 
 Versions are pinned in [`package.json`](package.json).
 
-| Agent       | Model and reasoning effort                 | Browser                                         |
-| ----------- | ------------------------------------------ | ----------------------------------------------- |
-| Mo          | Chosen by Momentic's service               | Hosted by Momentic                              |
-| Codex       | `gpt-6.1-sol`, medium                      | Playwright MCP or agent-browser, on Browserbase |
-| Claude Code | `claude-opus-5-5`, medium                  | Playwright MCP or agent-browser, on Browserbase |
-| Devin       | Devin's defaults                           | Devin's native browser                          |
-| Browser Use | Browser Use's default (`gpt-6-luna`, high) | Browser Use Cloud, without a proxy              |
+| Agent       | Model and reasoning effort   | Browser                                         |
+| ----------- | ---------------------------- | ----------------------------------------------- |
+| Mo          | Chosen by Momentic's service | Hosted by Momentic                              |
+| Codex       | `gpt-6.1-sol`, medium        | Playwright MCP or agent-browser, on Browserbase |
+| Claude Code | `claude-opus-5-5`, medium    | Playwright MCP or agent-browser, on Browserbase |
+| Devin       | Devin's defaults             | Devin's native browser                          |
+| Browser Use | Browser Use's defaults       | Browser Use Cloud, without a proxy              |
 
 Results also include Codex with `gpt-6.1-terra` and Claude Code with
 `claude-sonnet-5-5`. Use `--model` to run them.
