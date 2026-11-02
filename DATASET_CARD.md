@@ -145,8 +145,7 @@ to a 2-hour limit (`--time-limit`); Momentic's published runs used 30 and 60
 minutes.
 
 Agents evaluated so far: Mo (hosted by Momentic), Codex and Claude Code (each
-through Playwright MCP or agent-browser on a hosted Browserbase browser, not a
-local one), and Devin (its native browser). In
+through Playwright MCP or agent-browser), and Devin (its native browser). In
 Momentic's 60-minute runs, Mo matched 17.9% of the 1,396 labeled bugs per pass,
 against 6.8% for the best Codex configuration, 2.8% for the best Claude Code
 configuration, and 1.9% for Devin.
