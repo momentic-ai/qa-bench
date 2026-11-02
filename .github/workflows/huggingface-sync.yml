@@ -45,6 +45,42 @@ jobs:
           mkdir dataset
           cp -R fixtures/oss/. dataset/
           cp DATASET_CARD.md dataset/README.md
+      # The card's configs point the Dataset Viewer at these tables; the JSON stays the source.
+      - name: Build viewer tables
+        shell: python
+        run: |
+          import json
+          from pathlib import Path
+
+          root = Path("dataset")
+          out = root / "data"
+          out.mkdir()
+          tables = {"areas": [], "bugs": [], "known_invalid": []}
+          story = ["id", "name", "summary", "expected", "actual", "reproSteps"]
+          for area_dir in sorted(root.glob("*/e2e/areas/*")):
+              app, area = area_dir.parts[1], area_dir.name
+              brief = json.loads((area_dir / "fixture.json").read_text())["productArea"]
+              bugs = json.loads((area_dir / "ground-truth.json").read_text())["bugs"]
+              invalid = json.loads((area_dir / "known-invalid.json").read_text())["bugs"]
+              tables["areas"].append({
+                  "app": app,
+                  "area": area,
+                  "name": brief["name"],
+                  "scope": brief["scope"],
+                  "entryPoints": brief["entryPoints"],
+                  "testResponsiveness": brief.get("testResponsiveness", False),
+                  "bugs": len(bugs),
+                  "knownInvalid": len(invalid),
+              })
+              for bug in bugs:
+                  row = {"app": app, "area": area, **{k: bug.get(k) for k in story}}
+                  tables["bugs"].append({**row, "severity": bug["severity"]})
+              for bug in invalid:
+                  row = {"app": app, "area": area, **{k: bug.get(k) for k in story}}
+                  tables["known_invalid"].append({**row, "reason": bug["reason"]})
+          for name, rows in tables.items():
+              with open(out / f"{name}.jsonl", "w") as f:
+                  f.writelines(json.dumps(row) + "\n" for row in rows)
       - name: Upload and tag
         shell: python
         run: |
