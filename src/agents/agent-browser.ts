@@ -1,9 +1,17 @@
 import { execFile } from "node:child_process";
-import { copyFile, cp, mkdir, symlink } from "node:fs/promises";
+import {
+  copyFile,
+  cp,
+  mkdir,
+  mkdtemp,
+  readdir,
+  rm,
+  symlink,
+} from "node:fs/promises";
 import { createRequire } from "node:module";
+import { tmpdir } from "node:os";
 import path from "node:path";
 import { promisify } from "node:util";
-import { z } from "zod";
 
 import { writeJson } from "../evals/json-file";
 
@@ -11,6 +19,7 @@ const require = createRequire(import.meta.url);
 const command = require.resolve("agent-browser/bin/agent-browser.js");
 const packageDirectory = path.dirname(path.dirname(command));
 const exec = promisify(execFile);
+const wrapper = path.join(import.meta.dirname, "agent-browser-wrapper.mjs");
 
 export type BrowserTool = "playwright-mcp" | "agent-browser";
 
@@ -20,10 +29,10 @@ export async function prepareAgentBrowser(
   skillOwner: ".agents" | ".claude",
 ) {
   const bin = path.join(workspace, "bin");
-  const sockets = path.join(workspace, ".browser-sockets");
+  const sockets = await mkdtemp(path.join(tmpdir(), "qa-bs-"));
   const screenshots = path.join(workspace, "browser-artifacts");
-  await Promise.all([mkdir(bin), mkdir(sockets), mkdir(screenshots)]);
-  await symlink(command, path.join(bin, "agent-browser"));
+  await Promise.all([mkdir(bin), mkdir(screenshots)]);
+  await symlink(wrapper, path.join(bin, "agent-browser"));
   const skills = path.join(workspace, skillOwner, "skills/agent-browser");
   await mkdir(skills, { recursive: true });
   await copyFile(
@@ -32,27 +41,44 @@ export async function prepareAgentBrowser(
   );
   const config = path.join(workspace, "agent-browser.json");
   const executableIndex = browser.args.indexOf("--executable-path");
-  let cdp: string | undefined;
-  if (browser.env.PLAYWRIGHT_MCP_CDP_ENDPOINT) {
-    const response = await fetch(
-      new URL("json/version/", browser.env.PLAYWRIGHT_MCP_CDP_ENDPOINT),
-      { signal: AbortSignal.timeout(30_000) },
-    );
-    if (!response.ok)
-      throw new Error(`Browser connection failed: HTTP ${response.status}`);
-    cdp = z
-      .object({ webSocketDebuggerUrl: z.url() })
-      .parse(await response.json()).webSocketDebuggerUrl;
-  }
-  await writeJson(config, {
-    ...(cdp ? { cdp } : { executablePath: browser.args[executableIndex + 1] }),
-  });
+  const cdp = browser.env.PLAYWRIGHT_MCP_CDP_ENDPOINT;
+  await writeJson(
+    config,
+    cdp ? {} : { executablePath: browser.args[executableIndex + 1] },
+  );
   return {
     PATH: `${bin}${path.delimiter}${process.env.PATH || ""}`,
     AGENT_BROWSER_CONFIG: config,
+    QA_BENCH_BROWSER_COMMAND: command,
+    ...(cdp
+      ? {
+          QA_BENCH_CDP_ENDPOINT: cdp,
+          AGENT_BROWSER_PROVIDER: "qa-bench-browserbase",
+          AGENT_BROWSER_PLUGINS: JSON.stringify([
+            {
+              name: "qa-bench-browserbase",
+              command: process.execPath,
+              args: [
+                path.join(import.meta.dirname, "browserbase-provider.mjs"),
+              ],
+              capabilities: ["browser.provider"],
+            },
+          ]),
+        }
+      : {}),
     AGENT_BROWSER_SOCKET_DIR: sockets,
     AGENT_BROWSER_SCREENSHOT_DIR: screenshots,
   };
+}
+
+export async function closeAgentBrowser(
+  env: Record<string, string>,
+  agentId: string,
+) {
+  await exec(process.execPath, [wrapper, "close", "--all"], {
+    env: { HOME: process.env.HOME, ...env, QA_BENCH_BROWSER_AGENT_ID: agentId },
+    timeout: 30_000,
+  });
 }
 
 export async function closeAgentBrowsers(
@@ -60,11 +86,27 @@ export async function closeAgentBrowsers(
   artifactDirectory: string,
 ) {
   try {
-    await exec(process.execPath, [command, "close", "--all"], {
-      env: { HOME: process.env.HOME, ...env },
-      timeout: 30_000,
-    });
+    const owners = await readdir(env.AGENT_BROWSER_SOCKET_DIR);
+    const results = await Promise.allSettled(
+      owners.map((namespace) =>
+        exec(process.execPath, [command, "close", "--all"], {
+          env: {
+            HOME: process.env.HOME,
+            ...env,
+            AGENT_BROWSER_NAMESPACE: namespace,
+            AGENT_BROWSER_SOCKET_DIR: path.join(
+              env.AGENT_BROWSER_SOCKET_DIR,
+              namespace,
+            ),
+          },
+          timeout: 30_000,
+        }),
+      ),
+    );
+    const failure = results.find((result) => result.status === "rejected");
+    if (failure?.status === "rejected") throw failure.reason;
   } finally {
+    await rm(env.AGENT_BROWSER_SOCKET_DIR, { recursive: true, force: true });
     const workspace = path.dirname(env.AGENT_BROWSER_CONFIG);
     await cp(workspace, artifactDirectory, {
       recursive: true,

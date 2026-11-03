@@ -12,6 +12,7 @@ import {
 } from "../../evals/agent";
 import {
   BrowserTool,
+  closeAgentBrowser,
   closeAgentBrowsers,
   prepareAgentBrowser,
   validateAgentBrowser,
@@ -122,7 +123,7 @@ export class CodexAgent extends CodexRunner {
   protected skillOwner: ".agents" | ".claude" = ".agents";
   private browsers: BrowserbaseSessions | undefined;
   private browserTemporaryDirectory: string | undefined;
-  private browserEnvironment: Record<string, string> | undefined;
+  protected browserEnvironment: Record<string, string> | undefined;
 
   constructor(
     context: AgentContext,
@@ -154,7 +155,7 @@ export class CodexAgent extends CodexRunner {
     }
     return {
       mcpServers: await this.prepareBrowserMcp(),
-      subagents: !this.localBrowser,
+      sandbox: "workspace-write",
       ...this.cheatingSetup(true),
     };
   }
@@ -174,6 +175,11 @@ export class CodexAgent extends CodexRunner {
 
   protected async collectBrowserCost() {
     return this.browsers?.cost();
+  }
+
+  protected async releaseBrowserAgent(agentId: string) {
+    if (this.browserEnvironment)
+      await closeAgentBrowser(this.browserEnvironment, agentId);
   }
 
   protected async cleanup() {
@@ -209,7 +215,6 @@ export class CodexAgent extends CodexRunner {
       process.env.BROWSERBASE_API_KEY || "",
       {
         allowedDomains,
-        keepAlive: this.browserTool === "agent-browser",
         timeoutSeconds: Math.min(
           21600,
           Math.ceil((this.context.timeLimitMs ?? 120 * 60_000) / 1000) + 120,
@@ -244,6 +249,7 @@ export class CodexAgent extends CodexRunner {
         args: [
           playwrightCommand,
           ...browser.args,
+          "--isolated",
           "--output-dir",
           browserOutputDirectory,
           ...(this.preventCheating
@@ -274,9 +280,7 @@ export function codexAgent(
     config: {
       model,
       browser,
-      ...(browserTool === "playwright-mcp"
-        ? { subagents: browser !== "local" }
-        : {}),
+      nativeTools: true,
       ...(preventCheating ? { preventCheating } : {}),
     },
     async validateEnvironment() {

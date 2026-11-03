@@ -37,6 +37,7 @@ export type BrowserLaunch = {
   args: string[];
   env: Record<string, string>;
   disabledTools: string[];
+  cwd?: string;
 };
 
 class PlaywrightProcess {
@@ -54,6 +55,7 @@ class PlaywrightProcess {
   constructor(launch: BrowserLaunch) {
     this.child = spawn(launch.command, launch.args, {
       env: launch.env,
+      cwd: launch.cwd,
       detached: process.platform !== "win32",
       stdio: ["pipe", "pipe", "pipe"],
     });
@@ -268,8 +270,10 @@ export class BrowserProxy {
         if (this.launch.disabledTools.includes(call.name))
           throw new Error(`Unknown tool: ${call.name}`);
         const toolUseId = call._meta?.["claudecode/toolUseId"];
-        const agent = (toolUseId && this.callers.get(toolUseId)) ?? PARENT;
-        if (toolUseId) this.callers.delete(toolUseId);
+        const agent = toolUseId && this.callers.get(toolUseId);
+        if (!toolUseId || !agent)
+          throw new Error("Browser tool call has no registered agent owner.");
+        this.callers.delete(toolUseId);
         return this.browser(agent).call("tools/call", {
           name: call.name,
           arguments: call.arguments ?? {},
