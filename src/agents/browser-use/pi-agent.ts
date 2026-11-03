@@ -80,6 +80,9 @@ export class BrowserUsePiAgent implements EvalAgent {
           enableRecording: false,
           // Fixtures are public E2B hosts; a residential proxy only adds cost and latency.
           proxyCountryCode: null,
+          // Without it the browser ignores viewport emulation and window resizing, so the
+          // responsive widths in the brief are unreachable.
+          allowResizing: true,
         },
       }),
     );
