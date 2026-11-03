@@ -133,8 +133,8 @@ Versions are pinned in [`package.json`](package.json).
 | Browser Use Pi | `gpt-6-luna`, high           | Browser Use Cloud, without a proxy              |
 
 Results also include Codex with `gpt-6.1-terra` and Claude Code with
-`claude-sonnet-5-5`. Use `--model` to run them. `--model gpt-6.1-sol` runs
-Browser Use Pi at medium effort, matching Codex.
+`claude-sonnet-5-5`. Use `--model` to run them. `--model gpt-6.1-sol` or
+`--model gpt-6.1-terra` runs Browser Use Pi at medium effort, matching Codex.
 
 ### Browsers and subagents
 

@@ -21,8 +21,12 @@ import { writeJson } from "../../evals/json-file";
 import { LenientReportSchema, ReportSchema } from "../../evals/reports";
 import { BrowserUseClient } from "./client";
 
-/** Luna uses Browser Use's recommended effort; Sol matches the Codex configuration. */
-const REASONING = { "gpt-6-luna": "high", "gpt-6.1-sol": "medium" } as const;
+/** Luna uses Browser Use's recommended effort; Sol and Terra match the Codex configuration. */
+const REASONING = {
+  "gpt-6-luna": "high",
+  "gpt-6.1-sol": "medium",
+  "gpt-6.1-terra": "medium",
+} as const;
 const REPORT_FILE = "qa-report.json";
 /** Without --minutes, match the longest published budget. */
 const DEFAULT_TIMEOUT_MS = 120 * 60_000;
@@ -49,25 +53,42 @@ const CloudBrowserSchema = z
   })
   .passthrough();
 
-/** Pi's pinned catalog predates gpt-6.1-sol, so register it from gpt-6-sol at gpt-6.1-sol's prices. */
+/** Prices per million tokens for models Pi's pinned catalog lacks; see cost.ts. */
+const UNLISTED_MODELS = {
+  "gpt-6.1-sol": {
+    name: "GPT-6.1 Sol",
+    short: { input: 2, output: 10, cacheRead: 0.1, cacheWrite: 2.5 },
+    long: { input: 4, output: 15, cacheRead: 0.2, cacheWrite: 5 },
+  },
+  "gpt-6.1-terra": {
+    name: "GPT-6.1 Terra",
+    short: { input: 1, output: 5, cacheRead: 0.05, cacheWrite: 1.25 },
+    long: { input: 2, output: 7.5, cacheRead: 0.1, cacheWrite: 2.5 },
+  },
+};
+
+/** Register the GPT-6.1 models from gpt-6-sol's definition at their own prices. */
 function piModels() {
   const models = builtinModels();
   const base = models.getModel("openai", "gpt-6-sol");
   if (!base) throw new Error("Pi's catalog has no gpt-6-sol definition.");
-  const sol = {
-    ...base,
-    id: "gpt-6.1-sol",
-    name: "GPT-6.1 Sol",
-    // Only cached input differs from gpt-6-sol; see cost.ts.
-    cost: {
-      ...base.cost,
-      cacheRead: 0.1,
-      tiers: base.cost.tiers?.map((tier) => ({ ...tier, cacheRead: 0.2 })),
-    },
-  };
+  const unlisted = new Map(
+    Object.entries(UNLISTED_MODELS).map(([id, { name, short, long }]) => [
+      id,
+      {
+        ...base,
+        id,
+        name,
+        cost: {
+          ...short,
+          tiers: base.cost.tiers?.map((tier) => ({ ...tier, ...long })),
+        },
+      },
+    ]),
+  );
   const getModel = models.getModel.bind(models);
   models.getModel = (provider, id) =>
-    provider === "openai" && id === sol.id ? sol : getModel(provider, id);
+    (provider === "openai" && unlisted.get(id)) || getModel(provider, id);
   return models;
 }
 
