@@ -67,8 +67,8 @@ export class BrowserUsePiAgent implements EvalAgent {
     _deadlineMs?: number,
     onReady?: () => number,
   ) {
-    const targetUrl = this.context.targetUrl;
-    if (!targetUrl) throw new Error("Browser Use Pi requires a fixture URL.");
+    if (!this.context.targetUrl)
+      throw new Error("Browser Use Pi requires a fixture URL.");
     // Provision the browser here, as Browser.cloud would, so its ID and cost stay reachable.
     const timeLimitMs = this.context.timeLimitMs ?? DEFAULT_TIMEOUT_MS;
     const browser = CloudBrowserSchema.parse(
@@ -97,8 +97,8 @@ export class BrowserUsePiAgent implements EvalAgent {
       browser: { cdpUrl: browser.cdpUrl },
       dedicatedBrowser: true,
       workspace: this.workspace,
-      // Mirrors --prevent-cheating's Browserbase limit; the Node worker's network is not sandboxed.
-      allowedDomains: [targetUrl.hostname],
+      // No allowedDomains: Pi's policy closes the whole CDP connection when it cannot arm a
+      // tab blocked by a dialog, and the Node worker can fetch any URL regardless.
       telemetry: false,
       log: false,
     });
@@ -106,7 +106,6 @@ export class BrowserUsePiAgent implements EvalAgent {
 
 ${hostedAgentRules({
   retrievalTools: "fetch, require or import of remote code",
-  isolation: "Browser pages are limited to the fixture host.",
   initialize: `call checkpoint('${REPORT_FILE}', report, { partial: true }) with empty bugs, areasExplored and limitations arrays. Each bug has name, summary, expected, actual and reproSteps (an array of strings).`,
   update: "Checkpoint the report again",
   finalize: "deliver the report with finish_from_js",

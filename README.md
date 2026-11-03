@@ -175,8 +175,9 @@ Claude Code already omits WebSearch and WebFetch from its tool list. With the fl
 
 Browser Use's API has no switch for its built-in search tool, so its runs
 record `retrieval: "prompt-restricted"` and rely on the prompt rule above.
-Browser Use Pi has no search tool and its pages are limited to the fixture host,
-but its worker can still fetch any URL, so it records the same setting.
+Browser Use Pi has no search tool, but its worker can fetch any URL, so it
+records the same setting. Its pages aren't limited to the fixture host: Pi's
+domain policy drops the whole browser connection when a page dialog blocks it.
 
 The flag doesn't stop fixtures that fetch from code hosts on the server, such
 as Gitea's "New Migration" from GitHub.
