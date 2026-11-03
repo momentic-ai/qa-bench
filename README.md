@@ -15,8 +15,8 @@ publish, run the Hugging Face sync workflow from `main` in GitHub Actions.
 
 Each run gets a fresh copy of the app at a pinned commit, with seeded data, in
 its own E2B sandbox. Codex and Claude Code drive hosted Browserbase browsers, not
-local ones. Devin uses its own browser, Browser Use uses its cloud browsers, and
-Mo uses Momentic's hosted browsers.
+local ones. Devin uses its own browser, both Browser Use agents use Browser Use
+Cloud browsers, and Mo uses Momentic's hosted browsers.
 Areas live in [`fixtures/oss`](fixtures/oss).
 
 | App      | Areas | Labeled bugs |
@@ -64,12 +64,12 @@ pnpm build-template --cpu 4 --memory 8
 | Environment variable                   | Needed for                                            |
 | -------------------------------------- | ----------------------------------------------------- |
 | `E2B_API_KEY`                          | All runs                                              |
-| `OPENAI_API_KEY`                       | All runs (grading), Codex                             |
+| `OPENAI_API_KEY`                       | All runs (grading), Codex, Browser Use Pi             |
 | `ANTHROPIC_API_KEY`                    | Claude Code                                           |
 | `BROWSERBASE_API_KEY`                  | Codex and Claude Code, unless using `--browser local` |
 | `MOMENTIC_API_KEY`                     | Mo, unless signed in with `qa login`                  |
 | `DEVIN_ORGANIZATION_ID`, `DEVIN_TOKEN` | Devin ([setup](src/agents/devin/README.md))           |
-| `BROWSER_USE_API_KEY`                  | Browser Use                                           |
+| `BROWSER_USE_API_KEY`                  | Browser Use and Browser Use Pi                        |
 
 Mo runs on Momentic's hosted service, so it needs a Momentic account and the
 [`qa` CLI](https://www.npmjs.com/package/qa). Runs require version 0.27.0:
@@ -86,7 +86,8 @@ pnpm merge --fixtures saleor/areas/vouchers
 ```
 
 `--agent` takes `mo`, `codex-playwright-mcp`, `claude-playwright-mcp`,
-`codex-agent-browser`, `claude-agent-browser`, `devin-qa` or `browser-use`.
+`codex-agent-browser`, `claude-agent-browser`, `devin-qa`, `browser-use` or
+`browser-use-pi`.
 `--fixtures` takes an app (`gitea`), all of its areas (`gitea/areas`), one area, or `oss-areas`.
 
 Each run is graded when it finishes and saved to
@@ -101,9 +102,10 @@ Every agent gets the same short brief from
 area's scope and entry points, and the rule not to read benchmark files. Codex,
 Claude Code and Devin are also told which browser to use and how to save
 findings. Devin's prompt adds its
-[isolation rules](src/agents/devin/README.md). Browser Use's prompt adds a
-similar rule against outside research and asks it to keep `qa-report.json`
-current in its workspace.
+[isolation rules](src/agents/devin/README.md). Both Browser Use agents get the
+same rules from [`hosted-agent-rules.ts`](src/evals/hosted-agent-rules.ts); only
+how they save findings differs. Browser Use keeps `qa-report.json` in its
+workspace, and Browser Use Pi checkpoints it.
 
 ### Time
 
@@ -121,13 +123,14 @@ to Mo.
 
 Versions are pinned in [`package.json`](package.json).
 
-| Agent       | Model and reasoning effort   | Browser                                         |
-| ----------- | ---------------------------- | ----------------------------------------------- |
-| Mo          | Chosen by Momentic's service | Hosted by Momentic                              |
-| Codex       | `gpt-6.1-sol`, medium        | Playwright MCP or agent-browser, on Browserbase |
-| Claude Code | `claude-opus-5-5`, medium    | Playwright MCP or agent-browser, on Browserbase |
-| Devin       | Devin's defaults             | Devin's native browser                          |
-| Browser Use | Browser Use's defaults       | Browser Use Cloud, without a proxy              |
+| Agent          | Model and reasoning effort   | Browser                                         |
+| -------------- | ---------------------------- | ----------------------------------------------- |
+| Mo             | Chosen by Momentic's service | Hosted by Momentic                              |
+| Codex          | `gpt-6.1-sol`, medium        | Playwright MCP or agent-browser, on Browserbase |
+| Claude Code    | `claude-opus-5-5`, medium    | Playwright MCP or agent-browser, on Browserbase |
+| Devin          | Devin's defaults             | Devin's native browser                          |
+| Browser Use    | Browser Use's defaults       | Browser Use Cloud, without a proxy              |
+| Browser Use Pi | `gpt-6-luna`, high           | Browser Use Cloud, without a proxy              |
 
 Results also include Codex with `gpt-6.1-terra` and Claude Code with
 `claude-sonnet-5-5`. Use `--model` to run them.
@@ -148,6 +151,11 @@ Results also include Codex with `gpt-6.1-terra` and Claude Code with
 - Mo manages its own subagents, and `--max-concurrent-sub-agents` caps them.
   Devin runs in one session with no child sessions. Browser Use runs one
   Browser Use Cloud agent session with one browser.
+- Browser Use Pi runs the open-source
+  [browser-use-pi](https://github.com/browser-use/browser-use-pi) SDK, pinned to
+  a commit, on the host. It drives one Browser Use Cloud browser over raw CDP.
+  Its JavaScript worker has the host's network and filesystem access, so run it
+  on a machine or VM you're happy to expose.
 
 ### Web access
 
@@ -167,6 +175,8 @@ Claude Code already omits WebSearch and WebFetch from its tool list. With the fl
 
 Browser Use's API has no switch for its built-in search tool, so its runs
 record `retrieval: "prompt-restricted"` and rely on the prompt rule above.
+Browser Use Pi has no search tool and its pages are limited to the fixture host,
+but its worker can still fetch any URL, so it records the same setting.
 
 The flag doesn't stop fixtures that fetch from code hosts on the server, such
 as Gitea's "New Migration" from GitHub.
@@ -224,6 +234,8 @@ Costs:
   time.
 - Mo is its reported session spend.
 - Browser Use is its reported session cost: model, search, browser and proxy.
+- Browser Use Pi is token usage at Pi's catalog prices, plus the reported
+  browser and proxy cost.
 - Devin's cost isn't recorded by this repo. Its figures were calculated
   separately.
 

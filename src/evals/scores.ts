@@ -8,6 +8,7 @@ export const AgentSchema = z.enum([
   "mo",
   "devin-qa",
   "browser-use",
+  "browser-use-pi",
   "codex-playwright-mcp",
   "claude-playwright-mcp",
   "codex-agent-browser",

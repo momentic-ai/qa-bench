@@ -1,4 +1,4 @@
-/** Provider-specific wording for the rules hosted agents (Devin, Browser Use) share. */
+/** Provider-specific wording for the rules shared by agents whose retrieval cannot be sandboxed (Devin, Browser Use). */
 export type HostedAgentRules = {
   /** Built-in retrieval tools named in the research ban. */
   retrievalTools: string;

@@ -159,7 +159,7 @@ async function runFixture({
     );
     let browserTool: Parameters<typeof bugbashBrief>[3];
     if (agentName === "devin-qa") browserTool = "Devin native browser";
-    else if (agentName !== "mo" && agentName !== "browser-use")
+    else if (agentName !== "mo" && !agentName?.startsWith("browser-use"))
       browserTool = agentName?.endsWith("-agent-browser")
         ? "agent-browser"
         : "Playwright MCP";

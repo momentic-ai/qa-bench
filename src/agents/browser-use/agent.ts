@@ -10,7 +10,7 @@ import {
 } from "../../evals/agent";
 import { hostedAgentRules } from "../../evals/hosted-agent-rules";
 import { writeJson } from "../../evals/json-file";
-import { ReportSchema } from "../../evals/reports";
+import { LenientReportSchema, ReportSchema } from "../../evals/reports";
 import { BrowserUseApiError, BrowserUseClient } from "./client";
 
 const REPORT_FILE = "qa-report.json";
@@ -39,21 +39,6 @@ const CostSchema = z
     totalCostUsd: z.string(),
   })
   .passthrough();
-/** Unlike ReportSchema, strips extra keys the agent adds instead of rejecting the whole report. */
-const LenientReportSchema = z.object({
-  bugs: z.array(
-    z.object({
-      name: z.string(),
-      summary: z.string(),
-      expected: z.string(),
-      actual: z.string(),
-      reproSteps: z.array(z.string()),
-    }),
-  ),
-  areasExplored: z.array(z.string()).default([]),
-  limitations: z.array(z.string()).default([]),
-});
-
 export class BrowserUseAgent implements EvalAgent {
   readonly preparesEnvironment = true;
   private session: z.infer<typeof SessionSchema> | undefined;

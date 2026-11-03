@@ -33,6 +33,21 @@ export const ReportSchema = z
   })
   .strict();
 
+/** Unlike ReportSchema, strips extra keys the agent adds instead of rejecting the whole report. */
+export const LenientReportSchema = z.object({
+  bugs: z.array(
+    z.object({
+      name: z.string(),
+      summary: z.string(),
+      expected: z.string(),
+      actual: z.string(),
+      reproSteps: z.array(z.string()),
+    }),
+  ),
+  areasExplored: z.array(z.string()).default([]),
+  limitations: z.array(z.string()).default([]),
+});
+
 export const GroundTruthSchema = z
   .object({ bugs: z.array(KnownBugSchema) })
   .passthrough();

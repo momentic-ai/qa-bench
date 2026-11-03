@@ -41,11 +41,16 @@ const root = path.resolve(import.meta.dirname, "../..");
 const RUNNERS: Record<Agent, BenchmarkAgent> = {
   mo: moRunner,
   "devin-qa": devinQaRunner,
-  // Browser Use saves report.json and cost.json in the Codex runner's format.
+  // Browser Use agents save report.json and cost.json in the Codex runner's format.
   "browser-use": {
     ...codexRunner,
     name: "browser-use",
     reportDirectory: "browser-use",
+  },
+  "browser-use-pi": {
+    ...codexRunner,
+    name: "browser-use-pi",
+    reportDirectory: "browser-use-pi",
   },
   "codex-playwright-mcp": codexRunner,
   "claude-playwright-mcp": claudeRunner,

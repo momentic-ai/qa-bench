@@ -23,14 +23,17 @@ export class BrowserUseClient {
       method = "GET",
       body,
       signal,
+      version = "v4",
     }: {
-      method?: "GET" | "POST";
+      method?: "GET" | "POST" | "PATCH";
       body?: unknown;
       signal?: AbortSignal;
+      /** Browser sessions without an agent live in v3. */
+      version?: "v3" | "v4";
     } = {},
   ): Promise<unknown> {
     const response = await fetch(
-      `https://api.browser-use.com/api/v4/${endpoint}`,
+      `https://api.browser-use.com/api/${version}/${endpoint}`,
       {
         method,
         headers: {
