@@ -142,6 +142,8 @@ function parseBrowser(
       "claude-playwright-mcp",
       "codex-agent-browser",
       "claude-agent-browser",
+      "codex-e2e",
+      "claude-e2e",
     ].includes(agent ?? "")
   )
     throw new Error("--browser applies only to Codex and Claude agents.");

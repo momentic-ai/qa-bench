@@ -33,6 +33,8 @@ import { writeJson } from "../../evals/json-file";
 import { BrowserTool, validateAgentBrowser } from "../agent-browser";
 import { CodexAgent } from "../codex/codex-agent";
 import { FindingsStore } from "../codex/findings-store";
+import { E2EModel } from "../e2e/config";
+import { addE2ECost, validateE2E } from "../e2e/workspace";
 import { validateLocalChromium } from "../local-browser";
 import { BrowserProxy } from "./browser-proxy";
 import { startReportingServer } from "./reporting";
@@ -145,6 +147,10 @@ export class ClaudeAgent extends CodexAgent {
   }
 
   protected skillOwner = ".claude" as const;
+
+  protected e2eModel(): E2EModel {
+    return { provider: "anthropic", id: this.model };
+  }
   private session: Query | undefined;
   private reporting:
     | Awaited<ReturnType<typeof startReportingServer>>
@@ -189,7 +195,8 @@ export class ClaudeAgent extends CodexAgent {
       mkdir(this.codexHome, { recursive: true }),
     ]);
     const setup = await this.prepare();
-    const agentBrowser = this.browserTool === "agent-browser";
+    // agent-browser and e2e run from the shell, which needs the network.
+    const shellBrowser = this.browserTool !== "playwright-mcp";
     const artifacts = path.join(this.context.runDirectory, "browser-artifacts");
     this.workspace = workspace;
     const readable = {
@@ -202,8 +209,8 @@ export class ClaudeAgent extends CodexAgent {
         : {}),
       [artifacts]: "read",
     };
-    if (!agentBrowser) this.readableRoots = [workspace, artifacts];
-    if (!agentBrowser)
+    if (!shellBrowser) this.readableRoots = [workspace, artifacts];
+    if (!shellBrowser)
       this.shellSandbox = [
         process.execPath,
         this.command,
@@ -223,7 +230,7 @@ export class ClaudeAgent extends CodexAgent {
         "bash",
         "-c",
       ];
-    if (!agentBrowser) {
+    if (!shellBrowser) {
       const servers: Record<string, unknown> = setup.mcpServers;
       const playwright = PlaywrightServerSchema.parse(servers.playwright);
       this.browserProxy = new BrowserProxy({
@@ -248,7 +255,7 @@ export class ClaudeAgent extends CodexAgent {
       ...FILE_TOOLS,
       "Bash",
       "TodoWrite",
-      ...(agentBrowser ? ["Skill"] : []),
+      ...(shellBrowser ? ["Skill"] : []),
     ];
     this.session = query({
       prompt: this.input,
@@ -258,8 +265,8 @@ export class ClaudeAgent extends CodexAgent {
         model: this.model,
         effort: "medium",
         systemPrompt: { type: "preset", preset: "claude_code" },
-        settingSources: agentBrowser ? ["project"] : [],
-        ...(agentBrowser ? {} : { skills: [] }),
+        settingSources: shellBrowser ? ["project"] : [],
+        ...(shellBrowser ? {} : { skills: [] }),
         tools,
         allowedTools: [...tools, "mcp__playwright__*", "mcp__reporting__*"],
         disallowedTools: [`mcp__playwright__${DISABLED_BROWSER_TOOL}`],
@@ -350,12 +357,15 @@ export class ClaudeAgent extends CodexAgent {
     );
     const modelCostComplete = this.modelCost !== null && !this.turnOpen;
     const browser = await this.collectBrowserCost();
-    const cost = browser
+    const agentCost = browser
       ? combinedCost(this.modelCost, modelCostComplete, browser)
       : {
           estimatedUsd: this.modelCost,
           costComplete: this.localBrowser && modelCostComplete,
         };
+    const cost = this.e2eJournal
+      ? await addE2ECost(agentCost, this.e2eJournal)
+      : agentCost;
     await writeJson(path.join(this.context.reportDirectory, "cost.json"), cost);
     return {
       bugCount: report.bugs.length,
@@ -569,8 +579,11 @@ export function claudeAgent(
       if (!process.env.ANTHROPIC_API_KEY)
         throw new Error("ANTHROPIC_API_KEY is required.");
       if (browserTool === "agent-browser") await validateAgentBrowser();
-      if (browser === "local") await validateLocalChromium();
-      else if (!process.env.BROWSERBASE_API_KEY)
+      if (browserTool === "e2e") await validateE2E();
+      if (browser === "local") {
+        // e2e downloads its own pinned Chromium.
+        if (browserTool !== "e2e") await validateLocalChromium();
+      } else if (!process.env.BROWSERBASE_API_KEY)
         throw new Error("BROWSERBASE_API_KEY is required.");
       await promisify(execFile)(CLAUDE_COMMAND, ["--version"]);
     },

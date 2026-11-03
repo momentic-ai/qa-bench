@@ -11,6 +11,8 @@ export const AgentSchema = z.enum([
   "claude-playwright-mcp",
   "codex-agent-browser",
   "claude-agent-browser",
+  "codex-e2e",
+  "claude-e2e",
 ]);
 export type Agent = z.infer<typeof AgentSchema>;
 export const AGENTS = AgentSchema.options;

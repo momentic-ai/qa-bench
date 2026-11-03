@@ -1,4 +1,4 @@
-import { mkdir, mkdtemp, rm } from "node:fs/promises";
+import { cp, mkdir, mkdtemp, rm } from "node:fs/promises";
 import { createRequire } from "node:module";
 import { tmpdir } from "node:os";
 import path from "node:path";
@@ -16,6 +16,13 @@ import {
   prepareAgentBrowser,
   validateAgentBrowser,
 } from "../agent-browser";
+import { E2EModel } from "../e2e/config";
+import {
+  E2E_INSTRUCTIONS,
+  addE2ECost,
+  prepareE2E,
+  validateE2E,
+} from "../e2e/workspace";
 import {
   localBrowserConnection,
   validateLocalChromium,
@@ -123,6 +130,7 @@ export class CodexAgent extends CodexRunner {
   private browsers: BrowserbaseSessions | undefined;
   private browserTemporaryDirectory: string | undefined;
   private browserEnvironment: Record<string, string> | undefined;
+  protected e2eJournal: string | undefined;
 
   constructor(
     context: AgentContext,
@@ -134,6 +142,35 @@ export class CodexAgent extends CodexRunner {
   }
 
   protected async prepare(): Promise<CodexSetup> {
+    if (this.browserTool === "e2e") {
+      if (!this.temporaryWorkspace || !this.context.targetUrl)
+        throw new Error("Agent workspace or fixture URL is missing.");
+      this.e2eJournal = path.join(
+        this.context.runDirectory,
+        "e2e-model-calls.jsonl",
+      );
+      const broker = this.localBrowser
+        ? undefined
+        : (await this.connectBrowser()).env.PLAYWRIGHT_MCP_CDP_ENDPOINT;
+      const cheating = this.cheatingSetup(!this.localBrowser);
+      return {
+        mcpServers: {},
+        env: await prepareE2E({
+          workspace: this.temporaryWorkspace,
+          skillOwner: this.skillOwner,
+          targetUrl: this.context.targetUrl,
+          model: this.e2eModel(),
+          journal: this.e2eJournal,
+          broker,
+        }),
+        // e2e's explorers call their model and browser from the agent's shell.
+        sandbox: "danger-full-access" as const,
+        ...cheating,
+        instructions: [E2E_INSTRUCTIONS, cheating.instructions]
+          .filter(Boolean)
+          .join("\n\n"),
+      };
+    }
     if (this.browserTool === "agent-browser") {
       if (!this.temporaryWorkspace)
         throw new Error("Agent workspace is missing.");
@@ -159,7 +196,9 @@ export class CodexAgent extends CodexRunner {
     };
   }
 
-  private cheatingSetup(sitesBlocked: boolean) {
+  private cheatingSetup(
+    sitesBlocked: boolean,
+  ): Pick<CodexSetup, "webSearch" | "instructions"> {
     if (!this.preventCheating) return {};
     return {
       webSearch: "disabled" as const,
@@ -172,6 +211,15 @@ export class CodexAgent extends CodexRunner {
     };
   }
 
+  protected e2eModel(): E2EModel {
+    return { provider: "openai", id: this.model };
+  }
+
+  protected async collectCost() {
+    const cost = await super.collectCost();
+    return this.e2eJournal ? addE2ECost(cost, this.e2eJournal) : cost;
+  }
+
   protected async collectBrowserCost() {
     return this.browsers?.cost();
   }
@@ -182,6 +230,20 @@ export class CodexAgent extends CodexRunner {
         await closeAgentBrowsers(
           this.browserEnvironment,
           path.join(this.context.runDirectory, "browser-artifacts"),
+        );
+      const workspace = this.temporaryWorkspace;
+      if (this.e2eJournal && workspace)
+        // Keep the bug-bash config, charters, repro tests and e2e reports as evidence.
+        await cp(
+          workspace,
+          path.join(this.context.runDirectory, "e2e-workspace"),
+          {
+            recursive: true,
+            filter: (entry) =>
+              ![".agents", ".claude", "node_modules"].includes(
+                path.relative(workspace, entry).split(path.sep)[0],
+              ),
+          },
         );
     } finally {
       await this.browsers?.stop();
@@ -283,8 +345,11 @@ export function codexAgent(
       if (!process.env.OPENAI_API_KEY)
         throw new Error("OPENAI_API_KEY is required.");
       if (browserTool === "agent-browser") await validateAgentBrowser();
-      if (browser === "local") await validateLocalChromium();
-      else if (!process.env.BROWSERBASE_API_KEY)
+      if (browserTool === "e2e") await validateE2E();
+      if (browser === "local") {
+        // e2e downloads its own pinned Chromium.
+        if (browserTool !== "e2e") await validateLocalChromium();
+      } else if (!process.env.BROWSERBASE_API_KEY)
         throw new Error("BROWSERBASE_API_KEY is required.");
     },
     create(context) {
@@ -301,6 +366,6 @@ class LocalCodexAgent extends CodexAgent {
   protected async collectCost() {
     const cost = await super.collectCost();
     // Local browsers have no provider charge, so model cost is the whole cost.
-    return cost && { ...cost, costComplete: true };
+    return cost && { ...cost, costComplete: cost.costComplete !== false };
   }
 }

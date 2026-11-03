@@ -12,7 +12,7 @@ const command = require.resolve("agent-browser/bin/agent-browser.js");
 const packageDirectory = path.dirname(path.dirname(command));
 const exec = promisify(execFile);
 
-export type BrowserTool = "playwright-mcp" | "agent-browser";
+export type BrowserTool = "playwright-mcp" | "agent-browser" | "e2e";
 
 export async function prepareAgentBrowser(
   workspace: string,

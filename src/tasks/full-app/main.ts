@@ -48,6 +48,18 @@ export async function runFullAppEval(options: FullAppOptions): Promise<void> {
           options.claudeModel,
           options.preventCheating,
         ),
+        "codex-e2e": codexAgent(
+          options.browser,
+          "e2e",
+          options.codexModel,
+          options.preventCheating,
+        ),
+        "claude-e2e": claudeAgent(
+          options.browser,
+          "e2e",
+          options.claudeModel,
+          options.preventCheating,
+        ),
       }[agent],
       options,
       runId,

@@ -20,6 +20,12 @@ const GOAL_OBJECTIVE =
   "Complete the evaluation task given in full in this thread's first user message: test the assigned target end to end, save findings with the reporting tools, and follow any later finalization instructions.";
 const require = createRequire(import.meta.url);
 
+export type AgentCost = {
+  estimatedUsd: number | null;
+  costComplete?: boolean;
+  [key: string]: unknown;
+};
+
 export type CodexSetup = {
   mcpServers: Record<string, unknown>;
   env?: Record<string, string>;
@@ -68,11 +74,11 @@ export abstract class CodexRunner implements EvalAgent {
     onReady?.();
     await this.store.initialize();
     const workspace = await this.createWorkspace();
-    const setup = await this.prepare();
     await Promise.all([
       mkdir(this.codexHome, { recursive: true }),
       mkdir(workspace, { recursive: true }),
     ]);
+    const setup = await this.prepare();
     const env = {
       ...setup.env,
       PATH: setup.env?.PATH ?? process.env.PATH ?? "",
@@ -198,7 +204,7 @@ export abstract class CodexRunner implements EvalAgent {
     };
   }
 
-  protected async collectCost() {
+  protected async collectCost(): Promise<AgentCost | null> {
     let cost = null;
     try {
       cost = await getCodexCost(this.codexHome);
