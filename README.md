@@ -1,9 +1,9 @@
 # QA bench
 
 A benchmark of AI QA agents finding real bugs in open-source web apps. It runs
-Mo, Codex, Claude Code and Devin against 20 product areas of Gitea, Metabase,
-Twenty and Saleor, then grades their bug reports against 1,396 human-reviewed
-bug labels. Results: [momentic.ai/qa-bench](https://momentic.ai/qa-bench).
+Mo, Codex, Claude Code, Devin and Browser Use against 20 product areas of Gitea,
+Metabase, Twenty and Saleor, then grades their bug reports against 1,396
+human-reviewed bug labels. Results: [momentic.ai/qa-bench](https://momentic.ai/qa-bench).
 Write-up: [momentic.ai/blog/qa-bench](https://momentic.ai/blog/qa-bench).
 
 Momentic builds Mo and maintains this benchmark.
@@ -43,6 +43,8 @@ Graded against the labels at `e77c72b`. Per-area results are in
 | Codex, GPT-6.1 Terra, agent-browser     | 20    | 59.3            | 57.7            | 4.1%           | 76.2%             | 126.3         | $0.27                    |
 | Claude Code, Opus 5.5, agent-browser    | 20    | 24.0            | 41.0            | 2.9%           | 77.0%             | 81.0          | $2.45                    |
 | Devin                                   | 20    | 16.0            | 27.0            | 1.9%           | 84.4%             | 65.0          | $3.89                    |
+| Browser Use                             | 20    | 19.0            | 22.0            | 1.6%           | 86.9%             | 44.7          | $0.27                    |
+| Browser Use Pi, GPT-6 Luna              | 20    | 17.3            | 18.3            | 1.3%           | 90.2%             | 35.0          | $0.22                    |
 | Claude Code, Sonnet 5.5, Playwright MCP | 20    | 12.0            | 15.0            | 1.1%           | 72.6%             | 26.7          | $2.08                    |
 | Claude Code, Sonnet 5.5, agent-browser  | 20    | 8.7             | 13.0            | 0.9%           | 65.0%             | 20.0          | $0.68                    |
 
