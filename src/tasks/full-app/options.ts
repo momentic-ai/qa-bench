@@ -8,6 +8,8 @@ import {
   CodexModel,
   MO_EFFORTS,
   MoEffort,
+  PI_MODELS,
+  PiModel,
 } from "../../evals/agent";
 import {
   executionOptions,
@@ -29,6 +31,7 @@ export type FullAppOptions = {
   effort?: MoEffort;
   codexModel?: CodexModel;
   claudeModel?: ClaudeModel;
+  piModel?: PiModel;
   outputDirectory: string;
   browser: Browser;
   preventCheating?: boolean;
@@ -80,12 +83,18 @@ export function parseFullAppOptions(args: string[]): FullAppOptions {
   }
   let codexModel: CodexModel | undefined;
   let claudeModel: ClaudeModel | undefined;
+  let piModel: PiModel | undefined;
   if (values.model !== undefined) {
     if (values.agent?.startsWith("codex-"))
       codexModel = parseModel(CODEX_MODELS, values.model);
     else if (values.agent?.startsWith("claude-"))
       claudeModel = parseModel(CLAUDE_MODELS, values.model);
-    else throw new Error("--model applies only to Codex and Claude agents.");
+    else if (values.agent === "browser-use-pi")
+      piModel = parseModel(PI_MODELS, values.model);
+    else
+      throw new Error(
+        "--model applies only to Codex, Claude and Browser Use Pi agents.",
+      );
   }
   if (values["prevent-cheating"]) {
     if (
@@ -114,6 +123,7 @@ export function parseFullAppOptions(args: string[]): FullAppOptions {
     effort,
     codexModel,
     claudeModel,
+    piModel,
     ...(values["prevent-cheating"] ? { preventCheating: true } : {}),
     outputDirectory: outputDirectory ?? REPORTS_DIRECTORY,
     gradeOnly: values["grade-only"],

@@ -27,7 +27,7 @@ export async function runFullAppEval(options: FullAppOptions): Promise<void> {
         mo: moAgent,
         "devin-qa": devinQaAgent,
         "browser-use": browserUseAgent,
-        "browser-use-pi": browserUsePiAgent,
+        "browser-use-pi": browserUsePiAgent(options.piModel),
         "codex-playwright-mcp": codexAgent(
           options.browser,
           "playwright-mcp",

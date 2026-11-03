@@ -5,8 +5,10 @@ export type MoEffort = (typeof MO_EFFORTS)[number];
 /** The first model of each list is the default. */
 export const CODEX_MODELS = ["gpt-6.1-sol", "gpt-6.1-terra"] as const;
 export const CLAUDE_MODELS = ["claude-opus-5-5", "claude-sonnet-5-5"] as const;
+export const PI_MODELS = ["gpt-6-luna", "gpt-6.1-sol"] as const;
 export type CodexModel = (typeof CODEX_MODELS)[number];
 export type ClaudeModel = (typeof CLAUDE_MODELS)[number];
+export type PiModel = (typeof PI_MODELS)[number];
 
 export type AgentContext = {
   agentName?: string;

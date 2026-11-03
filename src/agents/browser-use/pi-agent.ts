@@ -1,4 +1,9 @@
-import { BrowserUse, type RunResult, Type } from "@browser_use/pi";
+import {
+  BrowserUse,
+  type RunResult,
+  Type,
+  builtinModels,
+} from "@browser_use/pi";
 import { readFile } from "node:fs/promises";
 import path from "node:path";
 import { setTimeout as delay } from "node:timers/promises";
@@ -8,14 +13,16 @@ import {
   AgentContext,
   EvalAgent,
   EvalAgentDefinition,
+  PI_MODELS,
+  PiModel,
 } from "../../evals/agent";
 import { hostedAgentRules } from "../../evals/hosted-agent-rules";
 import { writeJson } from "../../evals/json-file";
 import { LenientReportSchema, ReportSchema } from "../../evals/reports";
 import { BrowserUseClient } from "./client";
 
-const MODEL = "openai/gpt-6-luna";
-const REASONING = "high";
+/** Luna uses Browser Use's recommended effort; Sol matches the Codex configuration. */
+const REASONING = { "gpt-6-luna": "high", "gpt-6.1-sol": "medium" } as const;
 const REPORT_FILE = "qa-report.json";
 /** Without --minutes, match the longest published budget. */
 const DEFAULT_TIMEOUT_MS = 120 * 60_000;
@@ -42,6 +49,28 @@ const CloudBrowserSchema = z
   })
   .passthrough();
 
+/** Pi's pinned catalog predates gpt-6.1-sol, so register it from gpt-6-sol at gpt-6.1-sol's prices. */
+function piModels() {
+  const models = builtinModels();
+  const base = models.getModel("openai", "gpt-6-sol");
+  if (!base) throw new Error("Pi's catalog has no gpt-6-sol definition.");
+  const sol = {
+    ...base,
+    id: "gpt-6.1-sol",
+    name: "GPT-6.1 Sol",
+    // Only cached input differs from gpt-6-sol; see cost.ts.
+    cost: {
+      ...base.cost,
+      cacheRead: 0.1,
+      tiers: base.cost.tiers?.map((tier) => ({ ...tier, cacheRead: 0.2 })),
+    },
+  };
+  const getModel = models.getModel.bind(models);
+  models.getModel = (provider, id) =>
+    provider === "openai" && id === sol.id ? sol : getModel(provider, id);
+  return models;
+}
+
 /** Runs the open-source Browser Use Pi SDK on this host against a Browser Use Cloud browser. */
 export class BrowserUsePiAgent implements EvalAgent {
   readonly preparesEnvironment = true;
@@ -54,6 +83,7 @@ export class BrowserUsePiAgent implements EvalAgent {
 
   constructor(
     private readonly context: AgentContext,
+    private readonly model: PiModel,
     private readonly client = BrowserUseClient.fromEnvironment(),
   ) {}
 
@@ -95,8 +125,9 @@ export class BrowserUsePiAgent implements EvalAgent {
       throw new Error("Browser Use Cloud returned no CDP URL.");
     signal.throwIfAborted();
     this.agent = await BrowserUse.create({
-      model: MODEL,
-      reasoning: REASONING,
+      model: `openai/${this.model}`,
+      models: piModels(),
+      reasoning: REASONING[this.model],
       browser: { cdpUrl: browser.cdpUrl },
       dedicatedBrowser: true,
       workspace: this.workspace,
@@ -117,7 +148,12 @@ ${hostedAgentRules({
 })}`;
     await writeJson(
       path.join(this.context.reportDirectory, "browser-use-pi-launch.json"),
-      { browserId: browser.id, model: MODEL, reasoning: REASONING, task },
+      {
+        browserId: browser.id,
+        model: this.model,
+        reasoning: REASONING[this.model],
+        task,
+      },
     );
     const deadlineMs = onReady?.();
     signal.throwIfAborted();
@@ -249,22 +285,26 @@ ${hostedAgentRules({
   }
 }
 
-export const browserUsePiAgent: EvalAgentDefinition = {
-  name: "Browser Use Pi",
-  reportSubdirectory: "browser-use-pi",
-  concurrency: 5,
-  config: {
-    model: "gpt-6-luna",
-    reasoning: REASONING,
-    sdk: "browser-use-pi@5569fba",
-    browser: "browser-use-cloud",
-    proxy: "none",
-    retrieval: "prompt-restricted",
-  },
-  validateEnvironment() {
-    if (!process.env.OPENAI_API_KEY)
-      throw new Error("OPENAI_API_KEY is required.");
-    BrowserUseClient.fromEnvironment();
-  },
-  create: (context) => new BrowserUsePiAgent(context),
-};
+export function browserUsePiAgent(
+  model: PiModel = PI_MODELS[0],
+): EvalAgentDefinition {
+  return {
+    name: "Browser Use Pi",
+    reportSubdirectory: "browser-use-pi",
+    concurrency: 5,
+    config: {
+      model,
+      reasoning: REASONING[model],
+      sdk: "browser-use-pi@5569fba",
+      browser: "browser-use-cloud",
+      proxy: "none",
+      retrieval: "prompt-restricted",
+    },
+    validateEnvironment() {
+      if (!process.env.OPENAI_API_KEY)
+        throw new Error("OPENAI_API_KEY is required.");
+      BrowserUseClient.fromEnvironment();
+    },
+    create: (context) => new BrowserUsePiAgent(context, model),
+  };
+}
