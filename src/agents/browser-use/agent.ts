@@ -8,6 +8,7 @@ import {
   EvalAgent,
   EvalAgentDefinition,
 } from "../../evals/agent";
+import { hostedAgentRules } from "../../evals/hosted-agent-rules";
 import { writeJson } from "../../evals/json-file";
 import { ReportSchema } from "../../evals/reports";
 import { BrowserUseApiError, BrowserUseClient } from "./client";
@@ -86,11 +87,13 @@ export class BrowserUseAgent implements EvalAgent {
     this.workspaceId = workspace.id;
     const task = `${message}
 
-Only inspect the running fixture. Find bugs through your own browser exploration and reproduce every reported failure in this run.
-
-Do not use web search or any other tool to retrieve information from outside the fixture. Do not consult GitHub or other code hosts, repository contents or history, issues, pull requests, fixes, public bug reports, benchmark files, ground truth or previous reports. Do not infer findings from remembered bug reports; confirm failures against the running fixture. If a flow needs an external resource, record it as a coverage limitation.
-
-Before testing, write ${REPORT_FILE} in your workspace as JSON with empty "bugs", "areasExplored" and "limitations" arrays. Each bug has "name", "summary", "expected", "actual" and "reproSteps" (an array of strings). Rewrite the file immediately after each verified bug and completed workflow; it is collected if the run is stopped at the deadline. Finish with the same JSON as your final answer.`;
+${hostedAgentRules({
+  retrievalTools: "web search",
+  initialize: `write ${REPORT_FILE} in your workspace as JSON with empty bugs, areasExplored and limitations arrays. Each bug has name, summary, expected, actual and reproSteps (an array of strings).`,
+  update: `Rewrite ${REPORT_FILE}`,
+  finalize: "give the same JSON as your final answer",
+  closing: `${REPORT_FILE} is collected if the run is stopped at the deadline.`,
+})}`;
     await writeJson(
       path.join(this.context.reportDirectory, "browser-use-launch.json"),
       { workspaceId: workspace.id, task },
