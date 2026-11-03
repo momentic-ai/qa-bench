@@ -1,18 +1,25 @@
 import { execFile } from "node:child_process";
-import { copyFile, cp, mkdir, symlink } from "node:fs/promises";
+import {
+  copyFile,
+  cp,
+  mkdir,
+  mkdtemp,
+  readdir,
+  rm,
+  symlink,
+} from "node:fs/promises";
 import { createRequire } from "node:module";
+import { tmpdir } from "node:os";
 import path from "node:path";
 import { promisify } from "node:util";
 
-import {
-  AgentBrowserProvider,
-  AgentBrowserSessions,
-} from "./agent-browser-sessions";
+import { writeJson } from "../evals/json-file";
 
 const require = createRequire(import.meta.url);
 const command = require.resolve("agent-browser/bin/agent-browser.js");
 const packageDirectory = path.dirname(path.dirname(command));
 const exec = promisify(execFile);
+const wrapper = path.join(import.meta.dirname, "agent-browser-wrapper.mjs");
 
 export type BrowserTool = "playwright-mcp" | "agent-browser";
 
@@ -20,50 +27,87 @@ export async function prepareAgentBrowser(
   workspace: string,
   browser: { args: string[]; env: Record<string, string> },
   skillOwner: ".agents" | ".claude",
-  reportDirectory: string,
-  provider?: AgentBrowserProvider,
 ) {
   const bin = path.join(workspace, "bin");
-  await mkdir(bin);
-  await symlink(
-    path.join(import.meta.dirname, "agent-browser-wrapper.mjs"),
-    path.join(bin, "agent-browser"),
-  );
+  const sockets = await mkdtemp(path.join(tmpdir(), "qa-bs-"));
+  const screenshots = path.join(workspace, "browser-artifacts");
+  await Promise.all([mkdir(bin), mkdir(screenshots)]);
+  await symlink(wrapper, path.join(bin, "agent-browser"));
   const skills = path.join(workspace, skillOwner, "skills/agent-browser");
   await mkdir(skills, { recursive: true });
   await copyFile(
     path.join(packageDirectory, "skills/agent-browser/SKILL.md"),
     path.join(skills, "SKILL.md"),
   );
+  const config = path.join(workspace, "agent-browser.json");
   const executableIndex = browser.args.indexOf("--executable-path");
-  if (!provider && executableIndex < 0)
-    throw new Error("Missing owned browser provider.");
-  const sessions = new AgentBrowserSessions(
-    workspace,
-    command,
-    reportDirectory,
-    provider,
-    executableIndex < 0 ? undefined : browser.args[executableIndex + 1],
+  const cdp = browser.env.PLAYWRIGHT_MCP_CDP_ENDPOINT;
+  await writeJson(
+    config,
+    cdp ? {} : { executablePath: browser.args[executableIndex + 1] },
   );
-  const endpoint = await sessions.start();
   return {
-    workspace,
-    sessions,
-    env: {
-      PATH: `${bin}${path.delimiter}${process.env.PATH || ""}`,
-      QA_BENCH_BROWSER_BROKER: endpoint,
-    },
+    PATH: `${bin}${path.delimiter}${process.env.PATH || ""}`,
+    AGENT_BROWSER_CONFIG: config,
+    QA_BENCH_BROWSER_COMMAND: command,
+    ...(cdp
+      ? {
+          QA_BENCH_CDP_ENDPOINT: cdp,
+          AGENT_BROWSER_PROVIDER: "qa-bench-browserbase",
+          AGENT_BROWSER_PLUGINS: JSON.stringify([
+            {
+              name: "qa-bench-browserbase",
+              command: process.execPath,
+              args: [
+                path.join(import.meta.dirname, "browserbase-provider.mjs"),
+              ],
+              capabilities: ["browser.provider"],
+            },
+          ]),
+        }
+      : {}),
+    AGENT_BROWSER_SOCKET_DIR: sockets,
+    AGENT_BROWSER_SCREENSHOT_DIR: screenshots,
   };
 }
 
+export async function closeAgentBrowser(
+  env: Record<string, string>,
+  agentId: string,
+) {
+  await exec(process.execPath, [wrapper, "close", "--all"], {
+    env: { HOME: process.env.HOME, ...env, QA_BENCH_BROWSER_AGENT_ID: agentId },
+    timeout: 30_000,
+  });
+}
+
 export async function closeAgentBrowsers(
-  runtime: Awaited<ReturnType<typeof prepareAgentBrowser>>,
+  env: Record<string, string>,
   artifactDirectory: string,
 ) {
   try {
-    await runtime.sessions.close();
+    const owners = await readdir(env.AGENT_BROWSER_SOCKET_DIR);
+    const results = await Promise.allSettled(
+      owners.map((namespace) =>
+        exec(process.execPath, [command, "close", "--all"], {
+          env: {
+            HOME: process.env.HOME,
+            ...env,
+            AGENT_BROWSER_NAMESPACE: namespace,
+            AGENT_BROWSER_SOCKET_DIR: path.join(
+              env.AGENT_BROWSER_SOCKET_DIR,
+              namespace,
+            ),
+          },
+          timeout: 30_000,
+        }),
+      ),
+    );
+    const failure = results.find((result) => result.status === "rejected");
+    if (failure?.status === "rejected") throw failure.reason;
   } finally {
-    const workspace = runtime.workspace;
+    await rm(env.AGENT_BROWSER_SOCKET_DIR, { recursive: true, force: true });
+    const workspace = path.dirname(env.AGENT_BROWSER_CONFIG);
     await cp(workspace, artifactDirectory, {
       recursive: true,
       filter: (entry) =>
@@ -73,7 +117,6 @@ export async function closeAgentBrowsers(
           ".claude",
           ".browser-sockets",
           "agent-browser.json",
-          ".browser-owners",
         ].includes(path.relative(workspace, entry).split(path.sep)[0]),
     });
   }
@@ -81,35 +124,4 @@ export async function closeAgentBrowsers(
 
 export async function validateAgentBrowser() {
   await exec(process.execPath, [command, "--version"], { timeout: 10_000 });
-  // The pinned recorder uses -fps_mode, which FFmpeg 4 rejects after recording starts.
-  for (const encoder of ["libvpx", "libx264"]) {
-    try {
-      await exec(
-        "ffmpeg",
-        [
-          "-hide_banner",
-          "-loglevel",
-          "error",
-          "-f",
-          "lavfi",
-          "-i",
-          "color=s=16x16:r=1",
-          "-frames:v",
-          "1",
-          "-fps_mode",
-          "vfr",
-          "-c:v",
-          encoder,
-          "-f",
-          "null",
-          "-",
-        ],
-        { timeout: 10_000 },
-      );
-    } catch {
-      throw new Error(
-        "agent-browser recording needs FFmpeg on PATH with -fps_mode support, libvpx, and libx264. Upgrade FFmpeg before running evals; the recorder encoder preflight failed.",
-      );
-    }
-  }
 }

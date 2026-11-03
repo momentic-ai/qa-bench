@@ -52,7 +52,10 @@ other configurations ran each area three times per budget.
 ## Run it
 
 You need Node.js 22.12+, pnpm, and an [E2B](https://e2b.dev) account. Build the
-sandbox templates once per E2B org. Twenty needs the larger one.
+sandbox templates once per E2B org. Twenty needs the larger one. Claude
+Playwright MCP runs also need the native sandbox dependencies (`bubblewrap` and
+`socat` on Linux). Keep run output outside the system temporary directory;
+Codex refuses to create its sandbox helpers there.
 
 ```bash
 pnpm install
@@ -136,19 +139,17 @@ Results also include Codex with `gpt-6.1-terra` and Claude Code with
   each subagent get their own Browserbase browser.
 - `*-agent-browser` agents use the pinned
   [agent-browser](https://www.npmjs.com/package/agent-browser) CLI and its
-  bundled skill. The parent and each subagent get separate Browserbase browsers,
-  CLI sockets, artifacts, and saved-state namespaces. The harness routes calls
-  by native agent ID and rejects connection overrides. Recording requires FFmpeg
-  on PATH with `-fps_mode` support, libvpx, and libx264; an encoder preflight runs before evals.
-  Allocation failures stop
-  the call instead of starting a local browser.
-- Stopping a CLI subagent releases its browser. Resuming it allocates a fresh
-  browser. `browser-ownership.json` records ownership and rejected overrides;
-  `browser-sessions/` records provider session IDs without connection credentials.
+  bundled skill. Each native agent gets its own CLI namespace and Browserbase
+  connection. The CLI manages browser commands and daemon sessions; the runner
+  supplies the connection and closes remaining namespaces at the end of a run.
 - `--browser local` replaces Browserbase with headless Chromium on the host.
-  Playwright MCP runs then have no subagents, and `merge` labels them separately.
+  Playwright MCP uses isolated contexts, including for subagents.
 - Mo manages its own subagents, and `--max-concurrent-sub-agents` caps them.
   Devin runs in one session with no child sessions.
+
+New runs carry a `native tools` label so `merge` keeps them separate from the
+older restricted-tool runs. The model and medium effort remain explicit benchmark
+settings, and each agent still receives the deadline warning.
 
 ### Web access
 
@@ -161,10 +162,13 @@ that use it separately.
 The flag turns off Codex web search, makes Playwright MCP refuse the sites in
 `ANSWER_DOMAINS` ([`codex-agent.ts`](src/agents/codex/codex-agent.ts)), limits
 Browserbase pages to the fixture host, and tells the agent to record a blocked site
-as a coverage limitation. Playwright MCP runs already use Codex's read-only
-sandbox, which has no network access.
+as a coverage limitation. Playwright MCP runs use the native agent's sandbox:
+commands can write to the run workspace but have no network access.
 
-Claude Code already omits WebSearch and WebFetch from its tool list. With the flag, it also applies the browser restrictions above. Owned agent-browser sessions are kept alive across CLI disconnects. Browserbase sessions get the requested time budget plus two minutes, up to the provider's six-hour limit.
+Claude Code uses its default tool preset. The flag disables WebSearch and WebFetch
+and applies the browser restrictions above. Agent-browser sessions remain
+connected through the CLI daemon. Browserbase sessions get the requested time
+budget plus two minutes, up to the provider's six-hour limit.
 
 The flag doesn't stop fixtures that fetch from code hosts on the server, such
 as Gitea's "New Migration" from GitHub.
@@ -173,8 +177,8 @@ as Gitea's "New Migration" from GitHub.
 is accepted there, but it only turns off web search and, on Browserbase, limits
 page navigation to the fixture host. With `--browser local` its browser isn't
 restricted, and it runs without Codex's sandbox on any browser, so the agent can
-still `curl` GitHub or the dataset. To run it without answer lookups, restrict the network outside
-qa-bench. On Linux, run `pnpm eval` under
+still `curl` GitHub or the dataset. To run it without answer lookups, restrict
+filesystem access and the network outside qa-bench. On Linux, run `pnpm eval` under
 [nsjail](https://github.com/google/nsjail) or a similar sandbox with egress
 limited to the hosts the run needs (the fixture, OpenAI, E2B and Browserbase).
 On macOS, where nsjail doesn't run, do the same inside a Linux VM or container

@@ -14,10 +14,8 @@ const NotificationSchema = z
     params: z
       .object({
         threadId: z.string().nullish(),
-        thread: z.object({ id: z.string() }).passthrough().optional(),
         turnId: z.string().nullish(),
         turn: TurnSchema.nullish(),
-        goal: z.object({ status: z.string() }).passthrough().nullish(),
         item: z
           .object({
             type: z.string(),
@@ -34,9 +32,6 @@ const NotificationSchema = z
       .nullish(),
   })
   .passthrough();
-// Codex app-server rejects longer goal objectives (JSON-RPC -32600).
-export const GOAL_OBJECTIVE_MAX_LENGTH = 4000;
-
 export type CodexNotification = z.infer<typeof NotificationSchema>;
 const EnvelopeSchema = z
   .object({
@@ -131,7 +126,6 @@ export class CodexAppServer {
   private handleMessage(value: unknown) {
     const message = EnvelopeSchema.parse(value);
     if (message.method && message.id !== undefined) {
-      // Server requests also have IDs; route them before matching client replies.
       const task = this.answerRequest(
         message.id,
         message.method,
@@ -141,23 +135,18 @@ export class CodexAppServer {
       return;
     }
     if (typeof message.id === "number") {
-      // Ordinary replies settle the matching client request.
       const pending = this.pending.get(message.id);
       if (!pending) {
-        // Aborted requests may still receive late replies from the subprocess.
         return;
       }
       if (message.error !== undefined) {
-        // RPC failures must remain visible, including rejected steering.
         pending.reject(new Error(JSON.stringify(message.error)));
       } else {
-        // Callers validate their method-specific response shape.
         pending.resolve(message.result);
       }
       return;
     }
     if (!message.method) {
-      // Only method-bearing envelopes can be execution notifications.
       return;
     }
     const notification = NotificationSchema.parse(value);
@@ -187,12 +176,10 @@ export class CodexAppServer {
 
   private enqueueNotification(notification: CodexNotification) {
     if (this.notificationWaiter) {
-      // One execution loop consumes events; message delivery only sends RPCs.
       const waiter = this.notificationWaiter;
       this.notificationWaiter = null;
       waiter.resolve(notification);
     } else {
-      // Startup may emit events before the execution loop begins.
       this.notifications.push(notification);
     }
   }
@@ -211,7 +198,6 @@ export class CodexAppServer {
       return;
     }
     if (method !== "item/tool/call") {
-      // Reject unsupported requests instead of leaving the agent waiting forever.
       await this.write({
         id,
         error: { code: -32601, message: `Unsupported eval request: ${method}` },
@@ -259,7 +245,6 @@ export class CodexAppServer {
 
   request(method: string, params: unknown, signal: AbortSignal) {
     if (this.failure !== undefined) {
-      // A broken transport cannot accept additional RPCs.
       throw this.failure;
     }
     const requestSignal = AbortSignal.any([
@@ -292,7 +277,6 @@ export class CodexAppServer {
         `${JSON.stringify({ id, method, params })}\n`,
         (err) => {
           if (err) {
-            // A failed pipe write settles the request without waiting for its timeout.
             finish();
             reject(err);
           }
@@ -305,11 +289,9 @@ export class CodexAppServer {
     signal.throwIfAborted();
     const notification = this.notifications.shift();
     if (notification) {
-      // Preserve arrival order for events emitted during startup.
       return Promise.resolve(notification);
     }
     if (this.failure !== undefined) {
-      // Transport failure must wake completion even without another notification.
       throw this.failure;
     }
     return new Promise((resolve, reject) => {
@@ -343,25 +325,7 @@ export class CodexAppServer {
     await this.write({ method: "initialized", params: {} });
   }
 
-  /** The full task goes in the first turn; the goal objective is a short pointer to it. */
-  async startGoal({
-    threadId,
-    task,
-    objective,
-    signal,
-    persistent = true,
-  }: {
-    threadId: string;
-    task: string;
-    objective: string;
-    signal: AbortSignal;
-    persistent?: boolean;
-  }) {
-    if (objective.length > GOAL_OBJECTIVE_MAX_LENGTH) {
-      throw new Error(
-        `Codex goal objectives are limited to ${GOAL_OBJECTIVE_MAX_LENGTH} characters.`,
-      );
-    }
+  async startTurn(threadId: string, task: string, signal: AbortSignal) {
     this.rootThreadId = threadId;
     TurnResponseSchema.parse(
       await this.request(
@@ -373,30 +337,18 @@ export class CodexAppServer {
         signal,
       ),
     );
-    if (persistent) {
-      await this.request("thread/goal/set", { threadId, objective }, signal);
-    }
   }
 
   async waitForCompletion(
     threadId: string,
     signal: AbortSignal,
     onEvent: (event: CodexNotification) => void | Promise<void>,
-    requireGoal = true,
   ) {
-    let goalCompleted = false;
     let turnCompleted = false;
     for (;;) {
       const notification = await this.nextNotification(signal);
       if (this.failure !== undefined) throw this.failure;
       await onEvent(notification);
-      if (
-        notification.params?.threadId === threadId &&
-        notification.method === "thread/goal/updated"
-      ) {
-        // The parent owns the goal; child progress must not mark it complete.
-        goalCompleted = notification.params.goal?.status === "complete";
-      }
       if (notification.params?.threadId === threadId) {
         if (notification.method === "turn/started") turnCompleted = false;
         if (notification.method === "turn/completed") turnCompleted = true;
@@ -406,12 +358,11 @@ export class CodexAppServer {
         throw this.failure;
       }
       if (
-        (requireGoal ? goalCompleted : turnCompleted) &&
+        turnCompleted &&
         this.pendingMessages === 0 &&
         this.activeTurns.size === 0 &&
         this.notifications.length === 0
       ) {
-        // Goal completion alone is insufficient: parent and observed children must finish.
         return;
       }
     }
@@ -424,7 +375,6 @@ export class CodexAppServer {
         const activeTurnId = this.activeTurns.get(threadId);
         try {
           if (activeTurnId) {
-            // Steer in place to retain accepted findings and child conversations.
             await this.request(
               "turn/steer",
               {
@@ -435,7 +385,6 @@ export class CodexAppServer {
               signal,
             );
           } else {
-            // An idle parent needs a new turn to receive the instruction.
             TurnResponseSchema.parse(
               await this.request(
                 "turn/start",
@@ -451,15 +400,12 @@ export class CodexAppServer {
         } catch (err) {
           signal.throwIfAborted();
           if (attempt > 0 || this.activeTurns.get(threadId) === activeTurnId) {
-            // Retry only a changed turn precondition, never unrelated provider failures.
             throw err;
           }
-          // Retry a rejected RPC only if its active-turn precondition changed.
         }
       }
     } finally {
       this.pendingMessages -= 1;
-      // A turn may finish before its steer RPC resolves; wake the completion waiter again.
       this.enqueueNotification({ method: "eval/messageDelivered" });
     }
   }
@@ -472,7 +418,6 @@ export class CodexAppServer {
   private async closeHelper() {
     const kill = (signal: NodeJS.Signals) => {
       if (this.exited && process.platform === "win32") {
-        // Windows targets the leader only; Unix groups can outlive their leader.
         return;
       }
       try {
@@ -480,12 +425,10 @@ export class CodexAppServer {
           // Subagents and MCP subprocesses share this eval's process group.
           process.kill(-this.child.pid, signal);
         } else {
-          // Windows supports stopping the app-server process directly.
           this.child.kill(signal);
         }
       } catch (err) {
         if (!(err instanceof Error && "code" in err && err.code === "ESRCH")) {
-          // A process that just exited is harmless; permission and other failures are not.
           throw err;
         }
       }

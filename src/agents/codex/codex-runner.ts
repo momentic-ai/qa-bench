@@ -15,16 +15,12 @@ import {
 } from "./codex-app-server";
 import { FINDINGS_TOOLS, FindingsStore } from "./findings-store";
 
-// The brief can exceed the goal limit, so the objective points to the first turn, which carries it in full.
-const GOAL_OBJECTIVE =
-  "Complete the evaluation task given in full in this thread's first user message: test the assigned target end to end, save findings with the reporting tools, and follow any later finalization instructions.";
 const require = createRequire(import.meta.url);
 
 export type CodexSetup = {
   mcpServers: Record<string, unknown>;
   env?: Record<string, string>;
-  sandbox?: "danger-full-access";
-  subagents?: boolean;
+  sandbox?: "workspace-write" | "danger-full-access";
   webSearch?: "disabled";
   /** Appended to the task brief. */
   instructions?: string;
@@ -109,14 +105,40 @@ export abstract class CodexRunner implements EvalAgent {
           cwd: workspace,
           runtimeWorkspaceRoots: [workspace],
           approvalPolicy: "never",
-          ...(setup.sandbox ? { sandbox: setup.sandbox } : {}),
+          ...(setup.sandbox === "danger-full-access"
+            ? { sandbox: setup.sandbox }
+            : {}),
           dynamicTools: FINDINGS_TOOLS,
           config: {
+            ...(setup.sandbox === "workspace-write"
+              ? {
+                  default_permissions: "eval",
+                  permissions: {
+                    eval: {
+                      filesystem: {
+                        ":minimal": "read",
+                        ":workspace_roots": "write",
+                        [path.join(
+                          this.context.runDirectory,
+                          "browser-artifacts",
+                        )]: "write",
+                        [path.dirname(path.dirname(process.execPath))]: "read",
+                        [path.dirname(
+                          createRequire(this.command).resolve(
+                            `@openai/codex-${process.platform}-${process.arch}/package.json`,
+                          ),
+                        )]: "read",
+                        [path.join(this.codexHome, "tmp", "arg0")]: "read",
+                      },
+                      network: { enabled: false },
+                    },
+                  },
+                }
+              : {}),
             model_reasoning_effort: "medium",
             ...(setup.webSearch ? { web_search: setup.webSearch } : {}),
             mcp_servers: setup.mcpServers,
             agents: {
-              enabled: setup.subagents,
               default_subagent_model: this.model,
               default_subagent_reasoning_effort: "medium",
             },
@@ -126,7 +148,6 @@ export abstract class CodexRunner implements EvalAgent {
       ),
     );
     this.threadId = thread.id;
-    this.registerBrowserAgent(thread.id);
     const task = [
       message,
       setup.instructions,
@@ -138,20 +159,12 @@ export abstract class CodexRunner implements EvalAgent {
       `${this.context.fixture.name}: Codex session ${thread.id}\n`,
     );
     onReady?.();
-    await this.server.startGoal({
-      threadId: thread.id,
-      task,
-      objective: GOAL_OBJECTIVE,
-      signal,
-      persistent: false,
-    });
+    await this.server.startTurn(thread.id, task, signal);
     const completion = this.server.waitForCompletion(
       thread.id,
       AbortSignal.any([signal, this.execution.signal]),
       (event) => this.handleProgress(event),
-      false,
     );
-    // Own the observer even if termination precedes the caller awaiting completion.
     this.pending.push(Promise.allSettled([completion]));
     return { completion };
   }
@@ -172,7 +185,6 @@ export abstract class CodexRunner implements EvalAgent {
     this.execution.abort();
     this.store.seal();
     try {
-      // Closing the dedicated app-server kills its process group and awaits tool handlers.
       await this.server?.close();
     } finally {
       await Promise.all(this.pending);
@@ -232,18 +244,10 @@ export abstract class CodexRunner implements EvalAgent {
 
   protected abstract cleanup(): Promise<void>;
 
-  protected registerBrowserAgent(_agentId: string) {}
-
   protected async releaseBrowserAgent(_agentId: string) {}
 
   private async handleProgress(event: CodexNotification) {
-    const owner = event.params?.threadId ?? event.params?.thread?.id;
-    if (
-      owner &&
-      ["thread/started", "turn/started", "item/started"].includes(event.method)
-    ) {
-      this.registerBrowserAgent(owner);
-    }
+    const owner = event.params?.threadId;
     if (
       owner &&
       ["thread/closed", "thread/archived", "thread/deleted"].includes(
