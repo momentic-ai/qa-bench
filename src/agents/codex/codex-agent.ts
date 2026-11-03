@@ -122,7 +122,9 @@ export class CodexAgent extends CodexRunner {
   protected skillOwner: ".agents" | ".claude" = ".agents";
   private browsers: BrowserbaseSessions | undefined;
   private browserTemporaryDirectory: string | undefined;
-  private browserEnvironment: Record<string, string> | undefined;
+  protected agentBrowsers:
+    | Awaited<ReturnType<typeof prepareAgentBrowser>>
+    | undefined;
 
   constructor(
     context: AgentContext,
@@ -137,19 +139,29 @@ export class CodexAgent extends CodexRunner {
     if (this.browserTool === "agent-browser") {
       if (!this.temporaryWorkspace)
         throw new Error("Agent workspace is missing.");
-      this.browserEnvironment = await prepareAgentBrowser(
+      this.agentBrowsers = await prepareAgentBrowser(
         this.temporaryWorkspace,
         await this.connectBrowser(),
         this.skillOwner,
+        this.context.reportDirectory,
+        this.browsers,
       );
+      const restrictions = this.cheatingSetup(!this.localBrowser);
       return {
+        ...restrictions,
         mcpServers: {},
-        env: this.browserEnvironment,
+        env: this.agentBrowsers.env,
+        instructions: [
+          "The harness gives each agent its own browser. Use agent-browser from PATH for browser calls. Do not use npx or install another browser CLI, change connection settings, or start a fallback browser. If the owned browser fails, record the failure as a coverage limitation.",
+          "instructions" in restrictions
+            ? restrictions.instructions
+            : undefined,
+        ]
+          .filter(Boolean)
+          .join("\n"),
         // Codex's Linux sandbox kills background processes when each command
         // exits, which would take the agent-browser daemon and its refs with it.
         sandbox: "danger-full-access" as const,
-        // A local agent-browser has no site limits, so don't tell Codex otherwise.
-        ...this.cheatingSetup(!this.localBrowser),
       };
     }
     return {
@@ -176,23 +188,35 @@ export class CodexAgent extends CodexRunner {
     return this.browsers?.cost();
   }
 
+  protected registerBrowserAgent(agentId: string) {
+    this.agentBrowsers?.sessions.register(agentId);
+  }
+
+  protected async releaseBrowserAgent(agentId: string) {
+    await this.agentBrowsers?.sessions.release(agentId);
+  }
+
   protected async cleanup() {
     try {
-      if (this.browserEnvironment)
+      if (this.agentBrowsers)
         await closeAgentBrowsers(
-          this.browserEnvironment,
+          this.agentBrowsers,
           path.join(this.context.runDirectory, "browser-artifacts"),
         );
     } finally {
-      await this.browsers?.stop();
-    }
-    if (this.temporaryWorkspace)
-      await rm(this.temporaryWorkspace, { recursive: true, force: true });
-    if (this.browserTemporaryDirectory) {
-      await rm(this.browserTemporaryDirectory, {
-        recursive: true,
-        force: true,
-      });
+      try {
+        await this.browsers?.stop();
+      } finally {
+        await Promise.all([
+          this.temporaryWorkspace &&
+            rm(this.temporaryWorkspace, { recursive: true, force: true }),
+          this.browserTemporaryDirectory &&
+            rm(this.browserTemporaryDirectory, {
+              recursive: true,
+              force: true,
+            }),
+        ]);
+      }
     }
   }
 

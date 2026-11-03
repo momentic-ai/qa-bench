@@ -57,6 +57,7 @@ const FileToolInputSchema = z
   .passthrough();
 const BashInputSchema = z.object({ command: z.string() }).passthrough();
 const PlaywrightServerSchema = z.object({
+  cwd: z.string(),
   command: z.string(),
   args: z.array(z.string()),
   env: z.record(z.string(), z.string()),
@@ -228,6 +229,7 @@ export class ClaudeAgent extends CodexAgent {
       const playwright = PlaywrightServerSchema.parse(servers.playwright);
       this.browserProxy = new BrowserProxy({
         command: playwright.command,
+        cwd: playwright.cwd,
         args: playwright.args,
         env: {
           PATH: process.env.PATH || "",
@@ -283,7 +285,10 @@ export class ClaudeAgent extends CodexAgent {
               hooks: [
                 async (input) => {
                   if (input.hook_event_name === "SubagentStop")
-                    await this.browserProxy?.release(input.agent_id);
+                    await Promise.all([
+                      this.browserProxy?.release(input.agent_id),
+                      this.releaseBrowserAgent(input.agent_id),
+                    ]);
                   return {};
                 },
               ],
@@ -461,6 +466,21 @@ export class ClaudeAgent extends CodexAgent {
 
   private async guardTool(input: HookInput): Promise<SyncHookJSONOutput> {
     if (input.hook_event_name !== "PreToolUse") return {};
+    if (input.tool_name === "Bash" && this.agentBrowsers) {
+      const agentId = input.agent_id ?? "parent";
+      this.registerBrowserAgent(agentId);
+      const bash = BashInputSchema.parse(input.tool_input);
+      return {
+        hookSpecificOutput: {
+          hookEventName: "PreToolUse",
+          permissionDecision: "allow",
+          updatedInput: {
+            ...bash,
+            command: `export QA_BENCH_BROWSER_AGENT_ID=${shellQuote(agentId)}\n${bash.command}`,
+          },
+        },
+      };
+    }
     if (input.tool_name.startsWith("mcp__playwright__")) {
       this.browserProxy?.assign(input.tool_use_id, input.agent_id);
       return {};

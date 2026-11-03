@@ -23,9 +23,13 @@ export function sessionRequest(
   allowedDomains?: string[],
   timeoutSeconds?: number,
   keepAlive = false,
+  agentId?: string,
 ) {
   return {
-    userMetadata: { moEvalRun: path.basename(path.dirname(directory)) },
+    userMetadata: {
+      moEvalRun: path.basename(path.dirname(directory)),
+      ...(agentId ? { agentId } : {}),
+    },
     ...(timeoutSeconds ? { timeout: timeoutSeconds } : {}),
     ...(keepAlive ? { keepAlive: true } : {}),
     ...(allowedDomains ? { browserSettings: { allowedDomains } } : {}),
@@ -35,8 +39,9 @@ export function sessionRequest(
 // Each MCP process requests its own CDP endpoint. The supervisor records every
 // allocation before returning it, including child agents and replacement browsers.
 export class BrowserbaseSessions {
-  private sessions = new Map<string, string>();
-  private pending = new Set<Promise<void>>();
+  private sessions = new Map<string, { projectId: string; agentId?: string }>();
+  private pending = new Set<Promise<unknown>>();
+  private releases = new Map<string, Promise<void>>();
   private errors: string[] = [];
   private closing = false;
   private server = createServer();
@@ -84,6 +89,71 @@ export class BrowserbaseSessions {
     return response.json();
   }
 
+  create(agentId?: string) {
+    if (this.closing)
+      return Promise.reject(new Error("Browser allocation is closed."));
+    const work = (async () => {
+      const session = SessionSchema.parse(
+        await this.request(
+          "/v1/sessions",
+          sessionRequest(
+            this.directory,
+            this.allowedDomains,
+            this.timeoutSeconds,
+            this.keepAlive,
+            agentId,
+          ),
+        ),
+      );
+      this.sessions.set(session.id, { projectId: session.projectId, agentId });
+      await writeJson(path.join(this.directory, `${session.id}.json`), {
+        id: session.id,
+        projectId: session.projectId,
+        ...(agentId ? { agentId } : {}),
+      });
+      return { id: session.id, connectUrl: session.connectUrl };
+    })().catch((err: unknown) => {
+      this.errors.push(
+        `BROWSERBASE_ALLOCATION_FAILED_OR_UNKNOWN:${browserCostError(err)}`,
+      );
+      throw err;
+    });
+    this.pending.add(work);
+    void work.then(
+      () => this.pending.delete(work),
+      () => this.pending.delete(work),
+    );
+    return work;
+  }
+
+  async releaseAgent(agentId: string) {
+    await Promise.all(
+      [...this.sessions]
+        .filter(([, owner]) => owner.agentId === agentId)
+        .map(([id]) => this.release(id)),
+    );
+  }
+
+  private release(id: string) {
+    let work = this.releases.get(id);
+    if (!work) {
+      const owner = this.sessions.get(id);
+      if (!owner) throw new Error("Unknown browser session.");
+      work = this.request(`/v1/sessions/${id}`, {
+        projectId: owner.projectId,
+        status: "REQUEST_RELEASE",
+      })
+        .then(() => {})
+        .catch((err: unknown) => {
+          this.errors.push(
+            `BROWSERBASE_RELEASE_FAILED:${id}:${browserCostError(err)}`,
+          );
+        });
+      this.releases.set(id, work);
+    }
+    return work;
+  }
+
   async start() {
     this.server.on("request", (request, response) => {
       if (
@@ -97,30 +167,12 @@ export class BrowserbaseSessions {
       }
       const work = (async () => {
         try {
-          const session = SessionSchema.parse(
-            await this.request(
-              "/v1/sessions",
-              sessionRequest(
-                this.directory,
-                this.allowedDomains,
-                this.timeoutSeconds,
-                this.keepAlive,
-              ),
-            ),
-          );
-          this.sessions.set(session.id, session.projectId);
-          await writeJson(path.join(this.directory, `${session.id}.json`), {
-            id: session.id,
-            projectId: session.projectId,
-          });
+          const session = await this.create();
           response
             .writeHead(200, { "Content-Type": "application/json" })
             .end(JSON.stringify({ webSocketDebuggerUrl: session.connectUrl }));
-        } catch (err) {
+        } catch {
           // Provider/transport errors can contain credentials; persist a safe failure marker.
-          this.errors.push(
-            `BROWSERBASE_ALLOCATION_FAILED_OR_UNKNOWN:${browserCostError(err)}`,
-          );
           process.stderr.write(
             "Browserbase allocation failed; browser cost may be incomplete.\n",
           );
@@ -142,25 +194,13 @@ export class BrowserbaseSessions {
 
   async stop() {
     this.closing = true;
-    await new Promise<void>((resolve, reject) =>
-      this.server.close((err) => (err ? reject(err) : resolve())),
-    );
-    await Promise.all(this.pending);
-    await Promise.all(
-      [...this.sessions].map(async ([id, projectId]) => {
-        try {
-          await this.request(`/v1/sessions/${id}`, {
-            projectId,
-            status: "REQUEST_RELEASE",
-          });
-        } catch (err) {
-          // Preserve successful usage collection even when release races provider teardown.
-          this.errors.push(
-            `BROWSERBASE_RELEASE_FAILED:${id}:${browserCostError(err)}`,
-          );
-        }
-      }),
-    );
+    if (this.server.listening) {
+      await new Promise<void>((resolve, reject) =>
+        this.server.close((err) => (err ? reject(err) : resolve())),
+      );
+    }
+    await Promise.allSettled(this.pending);
+    await Promise.all([...this.sessions.keys()].map((id) => this.release(id)));
   }
 
   async cost() {
@@ -175,7 +215,12 @@ export class BrowserbaseSessions {
               if (cost.id !== id)
                 throw new Error("BROWSERBASE_USAGE_SESSION_MISMATCH");
               sessions.push(cost);
-              await writeJson(path.join(this.directory, `${id}.json`), cost);
+              await writeJson(path.join(this.directory, `${id}.json`), {
+                ...cost,
+                ...(this.sessions.get(id)?.agentId
+                  ? { agentId: this.sessions.get(id)?.agentId }
+                  : {}),
+              });
               break;
             } catch (err) {
               if (

@@ -126,6 +126,7 @@ export abstract class CodexRunner implements EvalAgent {
       ),
     );
     this.threadId = thread.id;
+    this.registerBrowserAgent(thread.id);
     const task = [
       message,
       setup.instructions,
@@ -231,7 +232,39 @@ export abstract class CodexRunner implements EvalAgent {
 
   protected abstract cleanup(): Promise<void>;
 
+  protected registerBrowserAgent(_agentId: string) {}
+
+  protected async releaseBrowserAgent(_agentId: string) {}
+
   private async handleProgress(event: CodexNotification) {
+    const owner = event.params?.threadId ?? event.params?.thread?.id;
+    if (
+      owner &&
+      ["thread/started", "turn/started", "item/started"].includes(event.method)
+    ) {
+      this.registerBrowserAgent(owner);
+    }
+    if (
+      owner &&
+      ["thread/closed", "thread/archived", "thread/deleted"].includes(
+        event.method,
+      )
+    ) {
+      await this.releaseBrowserAgent(owner);
+    }
+    const completed = event.params?.item;
+    if (
+      event.method === "item/completed" &&
+      completed?.type === "collabAgentToolCall" &&
+      completed.tool === "closeAgent" &&
+      completed.status === "completed"
+    ) {
+      await Promise.all(
+        (completed.receiverThreadIds ?? []).map((id) =>
+          this.releaseBrowserAgent(id),
+        ),
+      );
+    }
     if (
       event.method === "turn/completed" &&
       event.params?.threadId &&

@@ -14,6 +14,7 @@ const NotificationSchema = z
     params: z
       .object({
         threadId: z.string().nullish(),
+        thread: z.object({ id: z.string() }).passthrough().optional(),
         turnId: z.string().nullish(),
         turn: TurnSchema.nullish(),
         goal: z.object({ status: z.string() }).passthrough().nullish(),
@@ -23,6 +24,8 @@ const NotificationSchema = z
             text: z.string().optional(),
             server: z.string().optional(),
             tool: z.string().optional(),
+            status: z.string().optional(),
+            receiverThreadIds: z.array(z.string()).optional(),
           })
           .passthrough()
           .optional(),
