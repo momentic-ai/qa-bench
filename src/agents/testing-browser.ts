@@ -15,8 +15,8 @@ import {
 import { BrowserbaseSessions } from "./codex/browserbase";
 import { E2EModel } from "./e2e/config";
 import {
-  E2E_INSTRUCTIONS,
   addE2ECost,
+  e2eInstructions,
   prepareE2E,
   validateE2E,
 } from "./e2e/workspace";
@@ -170,6 +170,7 @@ export abstract class TestingBrowser {
   protected abstract setup(workspace: string): Promise<BrowserToolSetup>;
 
   async prepare(workspace: string): Promise<PreparedBrowser> {
+    const setup = await this.setup(workspace);
     const { browser, preventCheating } = this.options;
     const sitesBlocked = this.blocksSitesLocally || browser !== "local";
     const instructions = [
@@ -183,7 +184,7 @@ export abstract class TestingBrowser {
     return {
       instructions,
       unsandboxedShell: this.unsandboxedShell,
-      ...(await this.setup(workspace)),
+      ...setup,
     };
   }
 
@@ -307,7 +308,6 @@ class AgentBrowser extends TestingBrowser {
 }
 
 class E2E extends TestingBrowser {
-  protected instructions = E2E_INSTRUCTIONS;
   private journal: string | undefined;
   private workspace: string | undefined;
 
@@ -319,6 +319,7 @@ class E2E extends TestingBrowser {
 
   protected async setup(workspace: string) {
     this.workspace = workspace;
+    this.instructions = e2eInstructions(this.context.fixture);
     if (!this.context.targetUrl)
       throw new Error("Agent fixture URL is missing.");
     this.journal = path.join(
@@ -329,6 +330,7 @@ class E2E extends TestingBrowser {
       env: await prepareE2E({
         workspace,
         skillOwner: this.options.skillOwner,
+        fixture: this.context.fixture,
         targetUrl: this.context.targetUrl,
         model: this.options.e2eModel,
         journal: this.journal,

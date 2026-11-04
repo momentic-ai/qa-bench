@@ -3,13 +3,33 @@ import { cp, symlink, writeFile } from "node:fs/promises";
 import path from "node:path";
 import { promisify } from "node:util";
 
+import { fixtureAccounts } from "../../evals/bugbash-brief";
 import { AgentCost, getE2EModelCost } from "../../evals/cost";
+import { Fixture } from "../../evals/types";
 import { E2EModel } from "./config";
 
 const root = path.resolve(import.meta.dirname, "../../..");
 
-export const E2E_INSTRUCTIONS =
-  "e2e is set up in your working directory, with an e2e.config.ts for the app. Run a bug bash with the e2e skill and save each bug it confirms.";
+// e2e refuses credentials with shorter passwords.
+const MIN_PASSWORD_LENGTH = 6;
+
+/** Brief text for an e2e run: how it's set up and which accounts e2e can sign in as. */
+export function e2eInstructions(fixture: Fixture) {
+  const accounts = fixture.username ? fixtureAccounts(fixture) : [];
+  const usable = accounts.filter(
+    (account) => account.password.length >= MIN_PASSWORD_LENGTH,
+  );
+  const unusable = accounts.filter((account) => !usable.includes(account));
+  return [
+    "e2e is set up in your working directory, with an e2e.config.ts for the app. Run a bug bash with the e2e skill and save each bug it confirms.",
+    usable.length > 0 &&
+      `The config declares these accounts as e2e credentials: ${usable.map((account) => account.name).join(", ")}.`,
+    unusable.length > 0 &&
+      `e2e can't sign in as ${unusable.map((account) => account.username).join(", ")}: e2e needs passwords of at least ${MIN_PASSWORD_LENGTH} characters.`,
+  ]
+    .filter(Boolean)
+    .join(" ");
+}
 
 /**
  * Sets up the project the e2e skill expects: the CLI, the skill, and a config
@@ -19,6 +39,7 @@ export const E2E_INSTRUCTIONS =
 export async function prepareE2E({
   workspace,
   skillOwner,
+  fixture,
   targetUrl,
   model,
   journal,
@@ -26,6 +47,7 @@ export async function prepareE2E({
 }: {
   workspace: string;
   skillOwner: ".agents" | ".claude";
+  fixture: Fixture;
   targetUrl: URL;
   model: E2EModel;
   journal: string;
@@ -48,6 +70,18 @@ export async function prepareE2E({
     model.provider === "openai"
       ? { openai: { reasoningEffort: "medium" } }
       : { anthropic: { effort: "medium" } };
+  // Passwords come from the environment, as e2e expects, not from the config file.
+  const accounts = (fixture.username ? fixtureAccounts(fixture) : []).filter(
+    (account) => account.password.length >= MIN_PASSWORD_LENGTH,
+  );
+  const passwordVariable = (name: string) =>
+    `E2E_PASSWORD_${name.toUpperCase().replaceAll("-", "_")}`;
+  const credentials = accounts
+    .map(
+      ({ name, username }) =>
+        `    ${JSON.stringify(name)}: { username: ${JSON.stringify(username)}, password: process.env.${passwordVariable(name)} ?? "" },`,
+    )
+    .join("\n");
   await writeFile(
     path.join(workspace, "e2e.config.ts"),
     `import type { E2EConfig } from "e2e";
@@ -56,6 +90,9 @@ import { meteredModel } from ${JSON.stringify(path.join(import.meta.dirname, "co
 
 export default {
   targets: [{ engine: ${engine}, app: { url: ${JSON.stringify(targetUrl.href)} } }],
+  credentials: {
+${credentials}
+  },
   agents: {
     default: {
       model: meteredModel(${JSON.stringify(model)}, ${JSON.stringify(journal)}),
@@ -67,6 +104,9 @@ export default {
   );
   return {
     PATH: `${path.join(root, "node_modules/.bin")}${path.delimiter}${process.env.PATH || ""}`,
+    ...Object.fromEntries(
+      accounts.map(({ name, password }) => [passwordVariable(name), password]),
+    ),
   };
 }
 
