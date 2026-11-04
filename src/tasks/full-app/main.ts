@@ -1,3 +1,5 @@
+import { browserUseAgent } from "../../agents/browser-use/agent";
+import { browserUsePiAgent } from "../../agents/browser-use/pi-agent";
 import { claudeAgent } from "../../agents/claude/claude-agent";
 import { codexAgent } from "../../agents/codex/codex-agent";
 import { devinQaAgent } from "../../agents/devin/qa-agent";
@@ -24,6 +26,8 @@ export async function runFullAppEval(options: FullAppOptions): Promise<void> {
       agent: {
         mo: moAgent,
         "devin-qa": devinQaAgent,
+        "browser-use": browserUseAgent,
+        "browser-use-pi": browserUsePiAgent(options.piModel),
         "codex-playwright-mcp": codexAgent(
           options.browser,
           "playwright-mcp",

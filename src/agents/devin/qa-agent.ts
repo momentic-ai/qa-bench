@@ -8,6 +8,7 @@ import {
   EvalAgent,
   EvalAgentDefinition,
 } from "../../evals/agent";
+import { hostedAgentRules } from "../../evals/hosted-agent-rules";
 import { writeJson } from "../../evals/json-file";
 import { ReportSchema } from "../../evals/reports";
 import { DevinApiError, DevinQaClient } from "./qa-client";
@@ -86,13 +87,17 @@ export class DevinQaAgent implements EvalAgent {
     );
     const prompt = `${message}
 
-Only inspect the running fixture. Find bugs through your own browser exploration and reproduce every reported failure in this session.
-
-Do not use web_search, DeepWiki (including devin_ask_wiki_question), or any other search, browsing, shell, API, or MCP tool to retrieve information outside the fixture. Do not consult GitHub, GitLab, Codeberg, repository contents or history, issues, pull requests, fixes, public bug reports, benchmark files, ground truth, previous reports, prior sessions, knowledge notes, or playbooks. Do not infer findings from remembered bug reports; confirm failures against the running fixture.
-
-The network profile restricts the VM, but some built-in retrieval tools remain available. Their availability is not permission to use them. Do not bypass the restrictions, request broader network access, change security settings, or create child sessions. If a flow needs a blocked external resource, record it as a coverage limitation.
-
-Before testing, initialize provide_structured_output with empty bugs, areasExplored and limitations arrays. Keep is_final=false while testing. Update structured output immediately after each verified bug and completed workflow. Include complete reproduction steps and observed evidence in each finding. Keep areasExplored and limitations current, and mark is_final=true only when the work is complete or the budget ends. A final chat reply does not submit findings.`;
+${hostedAgentRules({
+  retrievalTools: "web_search, DeepWiki (including devin_ask_wiki_question)",
+  privateSources: ["prior sessions", "knowledge notes", "playbooks"],
+  isolation:
+    "The network profile restricts the VM, but some built-in retrieval tools remain available. Their availability is not permission to use them. Do not bypass the restrictions, request broader network access, change security settings, or create child sessions.",
+  initialize:
+    "initialize provide_structured_output with empty bugs, areasExplored and limitations arrays. Keep is_final=false while testing.",
+  update: "Update structured output",
+  finalize: "mark is_final=true",
+  closing: "A final chat reply does not submit findings.",
+})}`;
     const title = `momentic-qa-${randomUUID()}`;
     await writeJson(
       path.join(this.context.reportDirectory, "devin-launch-intent.json"),
