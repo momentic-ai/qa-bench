@@ -56,6 +56,16 @@ const RUNNERS: Record<Agent, BenchmarkAgent> = {
     name: "claude-agent-browser",
     reportDirectory: "claude-agent-browser",
   },
+  "codex-e2e": {
+    ...codexRunner,
+    name: "codex-e2e",
+    reportDirectory: "codex-e2e",
+  },
+  "claude-e2e": {
+    ...claudeRunner,
+    name: "claude-e2e",
+    reportDirectory: "claude-e2e",
+  },
 };
 
 export async function gradeFixture(

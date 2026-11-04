@@ -84,8 +84,9 @@ pnpm merge --fixtures saleor/areas/vouchers
 ```
 
 `--agent` takes `mo`, `codex-playwright-mcp`, `claude-playwright-mcp`,
-`codex-agent-browser`, `claude-agent-browser` or `devin-qa`. `--fixtures` takes
-an app (`gitea`), all of its areas (`gitea/areas`), one area, or `oss-areas`.
+`codex-agent-browser`, `claude-agent-browser`, `codex-e2e`, `claude-e2e` or
+`devin-qa`. `--fixtures` takes an app (`gitea`), all of its areas
+(`gitea/areas`), one area, or `oss-areas`.
 
 Each run is graded when it finishes and saved to
 `reports/<agent>/<fixture>/<run-id>/`. `merge` writes `reports/comparison.md`.
@@ -117,12 +118,12 @@ to Mo.
 
 Versions are pinned in [`package.json`](package.json).
 
-| Agent       | Model and reasoning effort   | Browser                                         |
-| ----------- | ---------------------------- | ----------------------------------------------- |
-| Mo          | Chosen by Momentic's service | Hosted by Momentic                              |
-| Codex       | `gpt-6.1-sol`, medium        | Playwright MCP or agent-browser, on Browserbase |
-| Claude Code | `claude-opus-5-5`, medium    | Playwright MCP or agent-browser, on Browserbase |
-| Devin       | Devin's defaults             | Devin's native browser                          |
+| Agent       | Model and reasoning effort   | Browser                                              |
+| ----------- | ---------------------------- | ---------------------------------------------------- |
+| Mo          | Chosen by Momentic's service | Hosted by Momentic                                   |
+| Codex       | `gpt-6.1-sol`, medium        | Playwright MCP, agent-browser or e2e, on Browserbase |
+| Claude Code | `claude-opus-5-5`, medium    | Playwright MCP, agent-browser or e2e, on Browserbase |
+| Devin       | Devin's defaults             | Devin's native browser                               |
 
 Results also include Codex with `gpt-6.1-terra` and Claude Code with
 `claude-sonnet-5-5`. Use `--model` to run them.
@@ -138,6 +139,14 @@ Results also include Codex with `gpt-6.1-terra` and Claude Code with
   [agent-browser](https://www.npmjs.com/package/agent-browser) CLI and its
   bundled skill. Each run connects to one Browserbase browser, and the agent
   decides how to share it.
+- `*-e2e` agents run a bug bash with the pinned
+  [e2e](https://www.npmjs.com/package/e2e) CLI and its bundled skill: they plan
+  charters, run `e2e explore` for each, and save the bugs that a failing repro
+  test confirms. The workspace's `e2e.config.ts` sets only the fixture URL, the
+  browser and the model. e2e's own agent uses the coding agent's model at
+  medium effort, and each e2e process gets its own Browserbase browser. e2e
+  needs Node.js 22.22.3 or later 22.x, or 24.8 or later. Like
+  `codex-agent-browser`, these runs have no shell sandbox.
 - `--browser local` replaces Browserbase with headless Chromium on the host.
   Playwright MCP runs then have no subagents, and `merge` labels them separately.
 - Mo manages its own subagents, and `--max-concurrent-sub-agents` caps them.
@@ -162,7 +171,7 @@ Claude Code already omits WebSearch and WebFetch from its tool list. With the fl
 The flag doesn't stop fixtures that fetch from code hosts on the server, such
 as Gitea's "New Migration" from GitHub.
 
-**`--prevent-cheating` is not a network firewall for agent-browser runs.** The flag
+**`--prevent-cheating` is not a network firewall for agent-browser or e2e runs.** The flag
 is accepted there, but it only turns off web search and, on Browserbase, limits
 page navigation to the fixture host. With `--browser local` its browser isn't
 restricted, and it runs without Codex's sandbox on any browser, so the agent can

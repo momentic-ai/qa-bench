@@ -13,6 +13,7 @@ import { AgentCost } from "../evals/cost";
 import { writeJson } from "../evals/json-file";
 import { BrowserTool } from "./agent-browser";
 import { FindingsStore } from "./codex/findings-store";
+import { E2EModel } from "./e2e/config";
 import {
   BrowserOptions,
   PreparedBrowser,
@@ -28,6 +29,7 @@ type CodingAgentClass = {
   family: "codex" | "claude";
   apiKey: string;
   skillOwner: BrowserOptions["skillOwner"];
+  e2eProvider: E2EModel["provider"];
   validate(): Promise<void>;
 };
 
@@ -77,6 +79,7 @@ export abstract class CodingAgent implements EvalAgent {
             browser,
             preventCheating,
             skillOwner: this.skillOwner,
+            e2eModel: { provider: this.e2eProvider, id: model },
           }),
         ),
     };

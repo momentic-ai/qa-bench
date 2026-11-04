@@ -4,7 +4,11 @@ export function bugbashBrief(
   url: URL,
   timeLimitMs: number | undefined,
   fixture: Fixture,
-  browserTool?: "Playwright MCP" | "agent-browser" | "Devin native browser",
+  browserTool?:
+    | "Playwright MCP"
+    | "agent-browser"
+    | "e2e"
+    | "Devin native browser",
 ) {
   const sections = [
     `Find bugs in this app: ${url.href}`,

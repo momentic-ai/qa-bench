@@ -41,6 +41,7 @@ export class CodexAgent extends CodingAgent {
   static family = "codex" as const;
   static apiKey = "OPENAI_API_KEY";
   static skillOwner = ".agents" as const;
+  static e2eProvider = "openai" as const;
   protected findingsToolPrefix = "";
   private server: CodexAppServer | undefined;
   private codexHome: string;
