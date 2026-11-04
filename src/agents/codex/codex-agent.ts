@@ -323,6 +323,22 @@ export class CodexAgent extends CodexRunner {
   }
 }
 
+/** Checks the browser and browser tool that Codex and Claude Code runs share. */
+export async function validateBrowser(
+  browser: Browser,
+  browserTool: BrowserTool,
+) {
+  if (browserTool === "agent-browser") await validateAgentBrowser();
+  if (browserTool === "e2e") await validateE2E();
+  if (browser !== "local") {
+    if (!process.env.BROWSERBASE_API_KEY)
+      throw new Error("BROWSERBASE_API_KEY is required.");
+  } else if (browserTool !== "e2e") {
+    // e2e downloads its own pinned Chromium.
+    await validateLocalChromium();
+  }
+}
+
 export function codexAgent(
   browser: Browser,
   browserTool: BrowserTool = "playwright-mcp",
@@ -344,13 +360,7 @@ export function codexAgent(
     async validateEnvironment() {
       if (!process.env.OPENAI_API_KEY)
         throw new Error("OPENAI_API_KEY is required.");
-      if (browserTool === "agent-browser") await validateAgentBrowser();
-      if (browserTool === "e2e") await validateE2E();
-      if (browser === "local") {
-        // e2e downloads its own pinned Chromium.
-        if (browserTool !== "e2e") await validateLocalChromium();
-      } else if (!process.env.BROWSERBASE_API_KEY)
-        throw new Error("BROWSERBASE_API_KEY is required.");
+      await validateBrowser(browser, browserTool);
     },
     create(context) {
       return browser === "local"
