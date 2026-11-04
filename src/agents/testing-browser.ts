@@ -135,7 +135,6 @@ type BrowserToolSetup = Omit<
 /** One coding-agent run's browser and the tool the agent drives it with. */
 export abstract class TestingBrowser {
   readonly artifacts: string;
-  protected workspace: string | undefined;
   private browsers: BrowserbaseSessions | undefined;
   protected unsandboxedShell = true;
   /** Whether answer sites are blocked even on a local browser. */
@@ -163,7 +162,6 @@ export abstract class TestingBrowser {
 
   async prepare(workspace: string): Promise<PreparedBrowser> {
     const { browser, preventCheating } = this.options;
-    this.workspace = workspace;
     const sitesBlocked = this.blocksSitesLocally || browser !== "local";
     const instructions =
       preventCheating && sitesBlocked
