@@ -152,7 +152,7 @@ default so new runs stay comparable with saved ones, and `merge` labels runs
 that use it separately.
 
 The flag turns off Codex web search, makes Playwright MCP refuse the sites in
-`ANSWER_DOMAINS` ([`codex-agent.ts`](src/agents/codex/codex-agent.ts)), limits
+`ANSWER_DOMAINS` ([`testing-browser.ts`](src/agents/testing-browser.ts)), limits
 Browserbase pages to the fixture host, and tells the agent to record a blocked site
 as a coverage limitation. Playwright MCP runs already use Codex's read-only
 sandbox, which has no network access.

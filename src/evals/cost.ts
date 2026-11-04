@@ -20,6 +20,11 @@ type TokenPrices = {
   cacheWrite: number;
   output: number;
 };
+export type AgentCost = {
+  estimatedUsd: number | null;
+  costComplete?: boolean;
+  [key: string]: unknown;
+};
 export type CodexCost = {
   estimatedUsd: number;
   byModel: Record<string, ModelUsage>;

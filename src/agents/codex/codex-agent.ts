@@ -1,7 +1,7 @@
-import { mkdir, mkdtemp, rm } from "node:fs/promises";
+import { mkdir, rm } from "node:fs/promises";
 import { createRequire } from "node:module";
-import { tmpdir } from "node:os";
 import path from "node:path";
+import { z } from "zod";
 
 import {
   AgentContext,
@@ -10,254 +10,218 @@ import {
   CodexModel,
   EvalAgentDefinition,
 } from "../../evals/agent";
+import { getCodexCost } from "../../evals/cost";
+import { writeJson } from "../../evals/json-file";
+import { BrowserTool } from "../agent-browser";
+import { CodingAgent } from "../coding-agent";
 import {
-  BrowserTool,
-  closeAgentBrowsers,
-  prepareAgentBrowser,
-  validateAgentBrowser,
-} from "../agent-browser";
+  DISABLED_BROWSER_TOOL,
+  PreparedBrowser,
+  TestingBrowser,
+} from "../testing-browser";
 import {
-  localBrowserConnection,
-  validateLocalChromium,
-} from "../local-browser";
-import { BrowserbaseSessions } from "./browserbase";
-import { CodexRunner, CodexSetup } from "./codex-runner";
+  CodexAppServer,
+  CodexNotification,
+  loginCodexWithApiKey,
+} from "./codex-app-server";
+import { FINDINGS_TOOLS } from "./findings-store";
 
 const require = createRequire(import.meta.url);
-// Sites holding upstream issues, fixes or this benchmark's labels, copies of them,
-// and search engines that lead to them. Playwright matches a bare host exactly, so
-// each domain also gets a `*.` pattern; `*` spans dots, so `google.*` covers google.co.uk.
-const ANSWER_DOMAINS = [
-  // Code hosts, plus GitHub viewers, mirrors and raw-file proxies
-  "github.com",
-  "githubusercontent.com",
-  "github.dev",
-  "github1s.com",
-  "githubbox.com",
-  "githack.com",
-  "statically.io",
-  "gitlab.com",
-  "codeberg.org",
-  "gitea.com",
-  "bitbucket.org",
-  "gitee.com",
-  // Code search and AI repository readers
-  "sourcegraph.com",
-  "grep.app",
-  "deepwiki.com",
-  "gitingest.com",
-  "uithub.com",
-  // The published dataset, its mirrors and dataset hubs, and Mo sessions linked from labels
-  "huggingface.co",
-  "hf.co",
-  "hf-mirror.com",
-  "modelscope.cn",
-  "modelscope.ai",
-  "wisemodel.cn",
-  "gitcode.com",
-  "opendatalab.com",
-  "kaggle.com",
-  "paperswithcode.com",
-  "app.momentic.ai",
-  // Upstream forums
-  "discourse.metabase.com",
-  "forum.gitea.com",
-  // Archives and translation proxies that serve copies of blocked pages
-  "archive.org",
-  "archive.ph",
-  "archive.today",
-  "archive.is",
-  "archive.li",
-  "archive.md",
-  "translate.goog",
-  // Search and AI answer engines
-  "google.*",
-  "bing.com",
-  "duckduckgo.com",
-  "duck.com",
-  "duck.ai",
-  "search.yahoo.*",
-  "yandex.*",
-  "ya.ru",
-  "baidu.com",
-  "naver.com",
-  "seznam.cz",
-  "so.com",
-  "sogou.com",
-  "search.aol.com",
-  "ask.com",
-  "swisscows.com",
-  "metager.org",
-  "presearch.com",
-  "yep.com",
-  "ecosia.org",
-  "startpage.com",
-  "qwant.com",
-  "search.brave.com",
-  "kagi.com",
-  "mojeek.com",
-  "you.com",
-  "perplexity.ai",
-  "phind.com",
-  "chatgpt.com",
-  "chat.openai.com",
-  "copilot.microsoft.com",
-  "claude.ai",
-];
-// Trailing-dot hostnames (github.com.) reach the same sites, so block those too.
-const ANSWER_SOURCES = ANSWER_DOMAINS.flatMap((domain) => [
-  domain,
-  `*.${domain}`,
-  `${domain}.`,
-  `*.${domain}.`,
-]);
+export const CODEX_PACKAGE = require.resolve("@openai/codex/package.json");
+export const CODEX_COMMAND = path.join(
+  path.dirname(CODEX_PACKAGE),
+  "bin/codex.js",
+);
 
-type BrowserConnection = {
-  args: string[];
-  env: Record<string, string>;
-};
+// The brief can exceed the goal limit, so the objective points to the first turn, which carries it in full.
+const GOAL_OBJECTIVE =
+  "Complete the evaluation task given in full in this thread's first user message: test the assigned target end to end, save findings with the reporting tools, and follow any later finalization instructions.";
 
-export class CodexAgent extends CodexRunner {
-  protected localBrowser = false;
-  protected skillOwner: ".agents" | ".claude" = ".agents";
-  private browsers: BrowserbaseSessions | undefined;
-  private browserTemporaryDirectory: string | undefined;
-  private browserEnvironment: Record<string, string> | undefined;
+export class CodexAgent extends CodingAgent {
+  static family = "codex" as const;
+  static apiKey = "OPENAI_API_KEY";
+  static skillOwner = ".agents" as const;
+  protected findingsToolPrefix = "";
+  private server: CodexAppServer | undefined;
+  private codexHome: string;
+  private execution = new AbortController();
+  private pending: Promise<unknown>[] = [];
+  private subagentFailures: {
+    threadId: string;
+    turnId: string;
+    error: unknown;
+  }[] = [];
 
-  constructor(
-    context: AgentContext,
-    protected browserTool: BrowserTool = "playwright-mcp",
-    model: string = CODEX_MODELS[0],
-    protected preventCheating = false,
+  constructor(context: AgentContext, model: string, browser: TestingBrowser) {
+    super(context, model, browser);
+    this.codexHome = path.join(context.runDirectory, "codex-home");
+  }
+
+  protected async launch(
+    task: string,
+    setup: PreparedBrowser,
+    signal: AbortSignal,
+    onReady?: () => number,
   ) {
-    super(context, model);
-  }
-
-  protected async prepare(): Promise<CodexSetup> {
-    if (this.browserTool === "agent-browser") {
-      if (!this.temporaryWorkspace)
-        throw new Error("Agent workspace is missing.");
-      this.browserEnvironment = await prepareAgentBrowser(
-        this.temporaryWorkspace,
-        await this.connectBrowser(),
-        this.skillOwner,
-      );
-      return {
-        mcpServers: {},
-        env: this.browserEnvironment,
-        // Codex's Linux sandbox kills background processes when each command
-        // exits, which would take the agent-browser daemon and its refs with it.
-        sandbox: "danger-full-access" as const,
-        // A local agent-browser has no site limits, so don't tell Codex otherwise.
-        ...this.cheatingSetup(!this.localBrowser),
-      };
-    }
-    return {
-      mcpServers: await this.prepareBrowserMcp(),
-      subagents: !this.localBrowser,
-      ...this.cheatingSetup(true),
+    const { workspace } = this;
+    await mkdir(this.codexHome, { recursive: true });
+    const env = {
+      ...setup.env,
+      PATH: setup.env?.PATH ?? process.env.PATH ?? "",
+      HOME: process.env.HOME || "",
+      USERPROFILE: process.env.USERPROFILE || "",
+      SYSTEMROOT: process.env.SYSTEMROOT || "",
+      CODEX_HOME: this.codexHome,
+      OPENAI_API_KEY: process.env.OPENAI_API_KEY || "",
     };
+    await loginCodexWithApiKey(
+      CODEX_COMMAND,
+      env,
+      process.env.OPENAI_API_KEY || "",
+      signal,
+    );
+    this.server = new CodexAppServer(
+      CODEX_COMMAND,
+      env,
+      async (threadId, tool, args) => {
+        if (threadId !== this.sessionId) {
+          throw new Error(
+            "Send your findings to the parent; only the root agent accepts eval results.",
+          );
+        }
+        await this.findings.handleTool(tool, args);
+      },
+    );
+    await this.server.initialize(signal);
+    const { thread } = z.object({ thread: z.object({ id: z.string() }) }).parse(
+      await this.server.request(
+        "thread/start",
+        {
+          model: this.model,
+          cwd: workspace,
+          runtimeWorkspaceRoots: [workspace],
+          approvalPolicy: "never",
+          // Codex's Linux sandbox kills background processes when each command
+          // exits, which would take the agent-browser daemon and its refs with it.
+          ...(setup.unsandboxedShell ? { sandbox: "danger-full-access" } : {}),
+          dynamicTools: FINDINGS_TOOLS,
+          config: {
+            model_reasoning_effort: "medium",
+            ...(this.browser.options.preventCheating
+              ? { web_search: "disabled" }
+              : {}),
+            mcp_servers: setup.playwright
+              ? {
+                  playwright: {
+                    ...setup.playwright,
+                    startup_timeout_sec: 60,
+                    tool_timeout_sec: 120,
+                    default_tools_approval_mode: "approve",
+                    required: true,
+                    disabled_tools: [DISABLED_BROWSER_TOOL],
+                  },
+                }
+              : {},
+            agents: {
+              enabled: setup.subagents,
+              default_subagent_model: this.model,
+              default_subagent_reasoning_effort: "medium",
+            },
+          },
+        },
+        signal,
+      ),
+    );
+    this.sessionId = thread.id;
+    process.stdout.write(
+      `${this.context.fixture.name}: Codex session ${thread.id}\n`,
+    );
+    onReady?.();
+    await this.server.startGoal({
+      threadId: thread.id,
+      task,
+      objective: GOAL_OBJECTIVE,
+      signal,
+      persistent: false,
+    });
+    const completion = this.server.waitForCompletion(
+      thread.id,
+      AbortSignal.any([signal, this.execution.signal]),
+      (event) => this.handleProgress(event),
+      false,
+    );
+    // Own the observer even if termination precedes the caller awaiting completion.
+    this.pending.push(Promise.allSettled([completion]));
+    return { completion };
   }
 
-  private cheatingSetup(sitesBlocked: boolean) {
-    if (!this.preventCheating) return {};
-    return {
-      webSearch: "disabled" as const,
-      ...(sitesBlocked
-        ? {
-            instructions:
-              "Some external sites are blocked. Record flows that need one as coverage limitations, not bugs.",
-          }
-        : {}),
-    };
+  async send(message: string, signal: AbortSignal) {
+    const { server, sessionId: threadId } = this;
+    if (!server || !threadId) throw new Error("Codex session did not start.");
+    const delivery = server.sendMessage(
+      threadId,
+      message,
+      AbortSignal.any([signal, this.execution.signal]),
+    );
+    this.pending.push(Promise.allSettled([delivery]));
+    await delivery;
   }
 
-  protected async collectBrowserCost() {
-    return this.browsers?.cost();
-  }
-
-  protected async cleanup() {
+  protected async stop() {
+    this.execution.abort();
     try {
-      if (this.browserEnvironment)
-        await closeAgentBrowsers(
-          this.browserEnvironment,
-          path.join(this.context.runDirectory, "browser-artifacts"),
-        );
+      // Closing the dedicated app-server kills its process group and awaits tool handlers.
+      await this.server?.close();
     } finally {
-      await this.browsers?.stop();
-    }
-    if (this.temporaryWorkspace)
-      await rm(this.temporaryWorkspace, { recursive: true, force: true });
-    if (this.browserTemporaryDirectory) {
-      await rm(this.browserTemporaryDirectory, {
-        recursive: true,
-        force: true,
-      });
+      await Promise.all(this.pending);
+      await rm(path.join(this.codexHome, "auth.json"), { force: true });
     }
   }
 
-  protected async connectBrowser(): Promise<BrowserConnection> {
-    if (this.localBrowser) return localBrowserConnection();
-    let allowedDomains: string[] | undefined;
-    if (this.preventCheating) {
-      if (!this.context.targetUrl)
-        throw new Error("--prevent-cheating needs the fixture URL.");
-      allowedDomains = [this.context.targetUrl.hostname];
+  protected async modelCost() {
+    let cost = null;
+    try {
+      cost = await getCodexCost(this.codexHome);
+    } catch (err) {
+      process.stderr.write(
+        `${this.context.fixture.name}: could not collect Codex cost: ${err}\n`,
+      );
     }
-    this.browsers = new BrowserbaseSessions(
-      path.join(this.context.runDirectory, "browser-sessions"),
-      process.env.BROWSERBASE_API_KEY || "",
-      {
-        allowedDomains,
-        keepAlive: this.browserTool === "agent-browser",
-        timeoutSeconds: Math.min(
-          21600,
-          Math.ceil((this.context.timeLimitMs ?? 120 * 60_000) / 1000) + 120,
-        ),
-      },
-    );
-    return {
-      args: [],
-      env: { PLAYWRIGHT_MCP_CDP_ENDPOINT: await this.browsers.start() },
-    };
+    return { cost, complete: cost !== null };
   }
 
-  private async prepareBrowserMcp() {
-    const browserTemporaryDirectory = await mkdtemp(
-      path.join(tmpdir(), "pw-eval-"),
-    );
-    this.browserTemporaryDirectory = browserTemporaryDirectory;
-    const browserOutputDirectory = path.join(
-      this.context.runDirectory,
-      "browser-artifacts",
-    );
-    await mkdir(browserOutputDirectory, { recursive: true });
-    const browser = await this.connectBrowser();
-    const playwrightCommand = path.join(
-      path.dirname(require.resolve("@playwright/mcp/package.json")),
-      "cli.js",
-    );
-    return {
-      playwright: {
-        command: process.execPath,
-        cwd: browserOutputDirectory,
-        args: [
-          playwrightCommand,
-          ...browser.args,
-          "--output-dir",
-          browserOutputDirectory,
-          ...(this.preventCheating
-            ? ["--blocked-origins", ANSWER_SOURCES.join(";")]
-            : []),
-        ],
-        env: { ...browser.env, TMPDIR: browserTemporaryDirectory },
-        startup_timeout_sec: 60,
-        tool_timeout_sec: 120,
-        default_tools_approval_mode: "approve",
-        required: true,
-        disabled_tools: ["browser_run_code_unsafe"],
-      },
-    };
+  private async handleProgress(event: CodexNotification) {
+    if (
+      event.method === "turn/completed" &&
+      event.params?.threadId &&
+      event.params.threadId !== this.sessionId &&
+      event.params?.turn?.status === "failed"
+    ) {
+      const { threadId, turn } = event.params;
+      const failure = { threadId, turnId: turn.id, error: turn.error };
+      this.subagentFailures.push(failure);
+      await writeJson(
+        path.join(this.context.reportDirectory, "subagent-failures.json"),
+        this.subagentFailures,
+      );
+      return;
+    }
+    const item = event.params?.item;
+    if (event.method !== "item/completed" || !item) return;
+    let detail = item.type;
+    switch (item.type) {
+      case "agentMessage":
+        detail = item.text ?? item.type;
+        break;
+      case "mcpToolCall":
+        detail = `${item.server}.${item.tool}`;
+        break;
+      case "dynamicToolCall":
+      case "collabAgentToolCall":
+        detail = item.tool ?? item.type;
+        break;
+    }
+    process.stdout.write(`${this.context.fixture.name}: ${detail}\n`);
   }
 }
 
@@ -267,40 +231,5 @@ export function codexAgent(
   model: CodexModel = CODEX_MODELS[0],
   preventCheating = false,
 ): EvalAgentDefinition {
-  return {
-    name: `codex-${browserTool}`,
-    reportSubdirectory: `codex-${browserTool}`,
-    concurrency: browser === "local" ? 2 : Infinity,
-    config: {
-      model,
-      browser,
-      ...(browserTool === "playwright-mcp"
-        ? { subagents: browser !== "local" }
-        : {}),
-      ...(preventCheating ? { preventCheating } : {}),
-    },
-    async validateEnvironment() {
-      if (!process.env.OPENAI_API_KEY)
-        throw new Error("OPENAI_API_KEY is required.");
-      if (browserTool === "agent-browser") await validateAgentBrowser();
-      if (browser === "local") await validateLocalChromium();
-      else if (!process.env.BROWSERBASE_API_KEY)
-        throw new Error("BROWSERBASE_API_KEY is required.");
-    },
-    create(context) {
-      return browser === "local"
-        ? new LocalCodexAgent(context, browserTool, model, preventCheating)
-        : new CodexAgent(context, browserTool, model, preventCheating);
-    },
-  };
-}
-
-class LocalCodexAgent extends CodexAgent {
-  protected localBrowser = true;
-
-  protected async collectCost() {
-    const cost = await super.collectCost();
-    // Local browsers have no provider charge, so model cost is the whole cost.
-    return cost && { ...cost, costComplete: true };
-  }
+  return CodexAgent.definition(browser, browserTool, model, preventCheating);
 }
