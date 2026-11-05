@@ -2,7 +2,7 @@ import { mkdir, rm, stat, writeFile } from "node:fs/promises";
 import path from "node:path";
 import { z } from "zod";
 
-import { Assessment } from "./assessment";
+import { Assessment } from "../grading/assessment";
 import { Finding, KnownBug } from "./reports";
 
 export type OutsideAreaReview = {

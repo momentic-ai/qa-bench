@@ -3,7 +3,6 @@ import { mkdir } from "node:fs/promises";
 import path from "node:path";
 
 import { selectComparisonFixtures } from "../../evals/fixture-selection";
-import { gradeFixture } from "../../evals/grading";
 import {
   claimReportRun,
   createRunId,
@@ -18,6 +17,7 @@ import {
   writeScores,
 } from "../../evals/scores";
 import { Fixture } from "../../evals/types";
+import { gradeFixture } from "../../grading/grading";
 import { FullAppOptions } from "./options";
 
 export function createFullAppGrader(
