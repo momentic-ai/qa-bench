@@ -158,13 +158,13 @@ ground truth, or earlier reports, and it has no internet access beyond the
 application under test. The published runs had two exceptions (see [Web
 access](https://github.com/momentic-ai/qa-bench#web-access)): Codex web search
 was on, including in Playwright MCP runs, and in the Codex and Claude Code
-agent-browser runs the agent's shell had open web access. The harness defaults
+agent-browser and e2e runs the agent's shell had open web access. The harness defaults
 to a 2-hour limit (`--time-limit`); Momentic's published runs used 30 and 60
 minutes.
 
 Agents evaluated so far: Mo (hosted by Momentic), Codex and Claude Code (each
-through Playwright MCP or agent-browser on a hosted Browserbase browser, not a
-local one), and Devin (its native browser). In
+through Playwright MCP, agent-browser or e2e on a hosted Browserbase browser,
+not a local one), and Devin (its native browser). In
 Momentic's 60-minute runs, Mo matched 19.3% of the 1,396 labeled bugs per pass,
 against 6.2% for the best Codex configuration, 4.2% for the best Claude Code
 configuration, and 1.9% for Devin.
@@ -188,7 +188,8 @@ or neither. Repeat reports of one bug in the same run are duplicates.
 Reports that match neither list go to a `review.md` queue. A reviewer labels
 each one as a new bug or a known-invalid report, so the label set grows with
 each round. In the published results, every report has been reviewed and
-counts as one or the other.
+counts as one or the other, except the e2e runs, whose unmatched reports are
+still pending review.
 
 ## Usage
 
