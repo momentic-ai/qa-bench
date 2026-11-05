@@ -3,7 +3,7 @@ import { createHash } from "node:crypto";
 import { existsSync } from "node:fs";
 import path from "node:path";
 
-import { loadKnownInvalid } from "./assessment";
+import { loadKnownInvalid } from "../grading/assessment";
 import { readGroundTruth } from "./ground-truth";
 import { findReportRun, runLabel, verifyCaseMetadata } from "./report-files";
 import { loadGroundTruth } from "./reports";

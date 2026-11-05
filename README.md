@@ -189,7 +189,9 @@ failure, then classifies the best report in each group:
 Findings that match another area's labels are recorded separately and left out
 of every metric below. The judge is a model, so regrading can change a few
 matches. Its full prompt is in
-[`grading-contract.ts`](src/evals/grading-contract.ts).
+[`grading-contract.ts`](src/grading/grading-contract.ts). `pnpm grader-eval`
+checks the judge against reviewed findings in
+[`cases.json`](src/grading/eval/cases.json).
 
 | Metric           | Definition                                      |
 | ---------------- | ----------------------------------------------- |

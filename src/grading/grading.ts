@@ -8,6 +8,22 @@ import { claudeRunner } from "../agents/claude/runner";
 import { codexRunner } from "../agents/codex/runner";
 import { devinQaRunner } from "../agents/devin/qa-reader";
 import { moRunner } from "../agents/mo/runner";
+import { readGroundTruth } from "../evals/ground-truth";
+import { verifyCaseMetadata } from "../evals/report-files";
+import { DurationSchema, Finding, loadGroundTruth } from "../evals/reports";
+import {
+  OutsideAreaReview,
+  writeReviewArtifacts,
+} from "../evals/review-artifacts";
+import {
+  Agent,
+  ScoreSchema,
+  metrics,
+  reportDirectory,
+  throughput,
+  writeScores,
+} from "../evals/scores";
+import { BenchmarkAgent, Fixture } from "../evals/types";
 import { partitionAreaAssessment } from "./area-assessment";
 import {
   Assessment,
@@ -23,19 +39,6 @@ import {
   GRADING_THREAD_OPTIONS,
   gradingPrompt,
 } from "./grading-contract";
-import { readGroundTruth } from "./ground-truth";
-import { verifyCaseMetadata } from "./report-files";
-import { DurationSchema, Finding, loadGroundTruth } from "./reports";
-import { OutsideAreaReview, writeReviewArtifacts } from "./review-artifacts";
-import {
-  Agent,
-  ScoreSchema,
-  metrics,
-  reportDirectory,
-  throughput,
-  writeScores,
-} from "./scores";
-import { BenchmarkAgent, Fixture } from "./types";
 
 const root = path.resolve(import.meta.dirname, "../..");
 const RUNNERS: Record<Agent, BenchmarkAgent> = {
@@ -277,7 +280,7 @@ export async function gradeFixture(
   );
   return score;
 }
-async function judge(
+export async function judge(
   fixture: Fixture,
   groundTruth: Finding[],
   knownInvalid: Finding[],

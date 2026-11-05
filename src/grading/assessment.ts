@@ -2,8 +2,8 @@ import { createHash } from "node:crypto";
 import path from "node:path";
 import { z } from "zod";
 
-import { readDataset } from "./dataset";
-import { FindingSchema, KnownBug, SeveritySchema } from "./reports";
+import { readDataset } from "../evals/dataset";
+import { FindingSchema, KnownBug, SeveritySchema } from "../evals/reports";
 
 const INDEX = z.number().int().nonnegative();
 const REASON = z.string().min(1);

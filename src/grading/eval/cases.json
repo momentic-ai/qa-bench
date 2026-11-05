@@ -1,0 +1,874 @@
+{
+  "cases": [
+    {
+      "fixture": "metabase/areas/dashboards",
+      "finding": {
+        "name": "Duplicating a dashboard drops its question link card",
+        "summary": "Duplicating E-commerce Insights with “Only duplicate the dashboard” removes the “All subscriptions in table view” link from Website Analysis while retaining the surrounding charts and Appendix.",
+        "expected": "The duplicate retains the source dashboard's link card alongside its charts and text.",
+        "actual": "The source link card is missing from the duplicate. The whole-page multimodal assertion found no card titled All subscriptions in table view; Most recent subscription and Appendix remain.",
+        "reproSteps": [
+          "https://5501-i47a2we9l323o0g8wal59.e2b.app/collection/2-examples",
+          "As Harbor Admin, open E-commerce Insights in Examples.",
+          "Open Website Analysis and scroll down; observe the All subscriptions in table view link below Most recent subscription.",
+          "Open the dashboard menu > Duplicate, enter a unique name and check Only duplicate the dashboard.",
+          "Click Duplicate, open Website Analysis in the new dashboard and scroll to Most recent subscription and Appendix."
+        ]
+      },
+      "expected": {
+        "kind": "match",
+        "reference": "Duplicating dashboard drops the “All subscriptions in table view” link on the Most recent subscription card"
+      }
+    },
+    {
+      "fixture": "metabase/areas/admin",
+      "finding": {
+        "name": "Saving a text-filter segment replaces the segment list with an error",
+        "summary": "Creating a Products segment using Title contains Cotton returns to Segments with only “An error occurred” instead of the list. The matching count before saving was 11 rows.",
+        "expected": "The saved Products segment appears in the segment list with its text filter definition.",
+        "actual": "The Segments page displays An error occurred, with no list or segment row; full-page assertion confirmed that the list was replaced by the error.",
+        "reproSteps": [
+          "https://5501-ihtxob6bd8mrq725cdz1x.e2b.app/admin/datamodel/database",
+          "As Admin, open Table Metadata > Segments > New segment.",
+          "Select Sample Database > Products.",
+          "Enter name Mo Segments QA text 0717 and description Text and date filter checks.",
+          "Add Title filter with Contains and value Cotton.",
+          "If Save changes remains disabled, retype the same segment name, then click Save changes.",
+          "Observe the returned Segments page."
+        ]
+      },
+      "expected": {
+        "kind": "invalid",
+        "reference": "Saving a People segment with Source Is not Google/Facebook opens 'An error occurred' instead of the Segments list"
+      }
+    },
+    {
+      "fixture": "metabase/areas/data-modeling",
+      "finding": {
+        "name": "Stale model description edit overwrites another user's saved title",
+        "summary": "Maya saves only a description draft from an older open model tab after Harbor Admin has renamed the model. The description saves, but Harbor Admin's persisted title is silently replaced with the old title.",
+        "expected": "Saving a description should preserve the other user's saved title, or show a conflict rather than silently overwriting unrelated data.",
+        "actual": "The description saved as Maya stale-tab description draft., but the refreshed title reverted to QA Maya Collaboration 0720. History says Maya renamed it from QA Maya Collaboration 0720 Concurrent Admin to QA Maya Collaboration 0720 and changed the description.",
+        "reproSteps": [
+          "https://5501-iheurjrrrcm4af0t4r8wk.e2b.app/browse/models",
+          "As Maya create a disposable Products-based model in Our analytics named QA Maya Collaboration 0720.",
+          "Open More info, click the description, type Maya stale-tab description draft. and leave the field focused without blurring.",
+          "In another tab as Harbor Admin, open the same model, change its header title to QA Maya Collaboration 0720 Concurrent Admin and blur. Refresh to verify that title persisted.",
+          "Restore Maya's session in the second tab, then return to the original Maya model tab without refreshing it.",
+          "Blur the pending description field, then refresh and inspect the model title and description in More info.",
+          "Inspect History, which shows Maya's description save also renaming the model back."
+        ]
+      },
+      "expected": {
+        "kind": "invalid",
+        "reference": "Saving a stale metric definition overwrites another user's saved description"
+      }
+    },
+    {
+      "fixture": "metabase/areas/querying",
+      "finding": {
+        "name": "Discard changes dialog reappears when returning to previous SQL results",
+        "summary": "After running a zero-row SQL query from a saved native question, Back to previous results prompts to discard changes. Confirming restores earlier results underneath but leaves the discard dialog open; confirming again still leaves it open.",
+        "expected": "Confirming discard closes the dialog and returns to previous results, allowing normal question interaction.",
+        "actual": "Previous expression results appear underneath the modal, but Discard your changes? remains visible after both confirmations. A whole-page AI assertion confirmed the dialog was still open after the second confirmation.",
+        "reproSteps": [
+          "https://5501-i2ktltpk7c7xbc2rqbr38.e2b.app/",
+          "As Harbor, create a native SQL query on Sample Database using SELECT CASE WHEN 3 > 2 THEN 'yes' ELSE 'no' END AS decision, COALESCE(NULL, 7) AS fallback, LOWER('SQL-QA') AS lower_label.",
+          "Run and save with a unique SQL-QA name; reload and open editor.",
+          "Replace SQL with SELECT ID, TITLE FROM PRODUCTS WHERE 1=0 and run.",
+          "Click Back to previous results on the No results screen.",
+          "Click Discard changes, then click Discard changes again."
+        ]
+      },
+      "expected": {
+        "kind": "match",
+        "reference": "Discard changes remains stuck after rejecting a circular saved-question source"
+      }
+    },
+    {
+      "fixture": "metabase/areas/admin",
+      "finding": {
+        "name": "Selecting Link display formatting crashes table metadata panels",
+        "summary": "Selecting Link under Display as for the Region field shows a formatting-updated toast, then both table and field settings panels show “An error occurred.” The field preview remains visible with the original region values.",
+        "expected": "Link formatting should expose link configuration and keep metadata settings usable.",
+        "actual": "The table and field settings panels are replaced with “An error occurred,” preventing further edits.",
+        "reproSteps": [
+          "https://5501-ihtxob6bd8mrq725cdz1x.e2b.app/admin/datamodel",
+          "As Admin open Table Metadata, Release operations, Release Requests.",
+          "Select Region and open Preview.",
+          "Scroll the field settings to Display as.",
+          "Click Link and wait for the formatting update."
+        ]
+      },
+      "expected": {
+        "kind": "unverified"
+      }
+    },
+    {
+      "fixture": "gitea/areas/issues",
+      "finding": {
+        "name": "Global state and ownership navigation silently clear author and assignee filters",
+        "summary": "The global dashboard's state and ownership links omit active author and assignee filters, so navigating changes those filters and displays unrelated issues.",
+        "expected": "Changing issue state or ownership category should preserve the selected author or assignee; the displayed state count should agree with the resulting list.",
+        "actual": "With author maya selected, the dashboard shows 0 Closed. Clicking 0 Closed removes poster=maya and shows the seeded closed issue 'Publish the initial contributor guide' by eval. With assignee alex selected, 0 Closed likewise opens the same unassigned issue because assignee=alex is removed. Switching from In your repositories to Created by you with assignee alex selected also clears the assignee and adds an issue assigned to eval.",
+        "reproSteps": [
+          "Sign in as eval and open the global Issues dashboard with In your repositories selected.",
+          "Open Author, search for maya, and select maya. Observe that the filtered list has 0 Closed.",
+          "Click the 0 Closed link.",
+          "Observe that the author filter is cleared and the closed issue 'Publish the initial contributor guide', opened by eval, is displayed.",
+          "Repeat from the global Issues dashboard with Assignee set to alex: 0 Closed again opens the unassigned seeded issue after silently clearing the assignee filter.",
+          "With Assignee set to alex, click Created by you and observe that the assignee filter is cleared and 'Clarify release ownership', assigned to eval, appears."
+        ]
+      },
+      "expected": {
+        "kind": "match",
+        "reference": "Switching global Issues state drops the selected assignee or author filter"
+      }
+    },
+    {
+      "fixture": "gitea/areas/releases",
+      "finding": {
+        "name": "Mobile tag-name field extends beyond the viewport",
+        "summary": "The New Release tag-name input remains 500 pixels wide at a 390-pixel viewport, so its right edge is cut off while the other form fields fit.",
+        "expected": "The Tag name input should fit within the mobile form like the title and notes fields.",
+        "actual": "The tag-name input extends past the right viewport edge; its right border is not visible.",
+        "reproSteps": [
+          "https://5503-ijo5hrd6mlu6t8wob5hed.e2b.app/eval/harbor-handbook/releases/new",
+          "Open New Release in eval/harbor-handbook at 390x844 CSS pixels.",
+          "Inspect the Tag name input above the target selector."
+        ]
+      },
+      "expected": {
+        "kind": "match",
+        "reference": "New Release Tag name field overflows the mobile viewport"
+      }
+    },
+    {
+      "fixture": "gitea/areas/labels",
+      "finding": {
+        "name": "Archived label badge overlaps the Edit icon on mobile",
+        "summary": "An archived repository label at 390 CSS pixels shows its Archived badge underneath the Edit pencil icon, making the badge text and control run together.",
+        "expected": "The Archived badge and Edit control are separately readable and do not overlap.",
+        "actual": "The Edit pencil is visibly drawn over the right side of the Archived badge for qa-responsive. A page assertion confirmed the overlap.",
+        "reproSteps": [
+          "https://5503-ipvqp64zd9progzoqrlkl.e2b.app/eval/harbor-handbook/labels",
+          "Open harbor-handbook Labels as the authenticated administrator.",
+          "Create a disposable label qa-responsive with description Tablet create, palette color and color #009800.",
+          "Edit the label, check Archive Label, and save.",
+          "Set the viewport to 390 CSS pixels wide and scroll to that label."
+        ]
+      },
+      "expected": {
+        "kind": "match",
+        "reference": "Archived label status overlaps the Edit icon on mobile"
+      }
+    },
+    {
+      "fixture": "gitea/areas/repository-code",
+      "finding": {
+        "name": "Rename-only file edits preview as no changes",
+        "summary": "Changing only a saved file's name and choosing Preview Changes displays “There are no changes to show.” The pending filename change is not represented in the preview.",
+        "expected": "Preview identifies the pending rename, even when file content is unchanged.",
+        "actual": "Preview says “There are no changes to show.” despite changing qa-editor-m73.txt to qa-editor-m73-renamed.txt.",
+        "reproSteps": [
+          "https://5503-iuzfgl6qg8xqstgc8yd3x.e2b.app/eval/harbor-handbook",
+          "On eval/harbor-handbook, create a uniquely named QA branch from main.",
+          "Use Add File > New File to create qa-rename.txt containing a short line and commit directly to the QA branch.",
+          "Open that file and click Edit File.",
+          "Change filename to qa-renamed.txt without changing content.",
+          "Click Preview Changes."
+        ]
+      },
+      "expected": {
+        "kind": "match",
+        "reference": "Preview Changes reports no changes for a file rename"
+      }
+    },
+    {
+      "fixture": "gitea/areas/site-administration",
+      "finding": {
+        "name": "Unadopted Repositories button covers the repository total on mobile",
+        "summary": "At 390 CSS pixels wide, the blue Unadopted Repositories button overlaps the Repository Management heading and hides its total count.",
+        "expected": "The heading and repository total remain readable without overlapping the navigation button.",
+        "actual": "The button covers the right-hand portion of Repository Management (Total: 1), including the count.",
+        "reproSteps": [
+          "https://5503-ioxu70dxuor37ovjsmxw5.e2b.app/-/admin/repos",
+          "As an administrator, open Site Administration > Code Assets > Repositories.",
+          "View the page at 390 CSS pixels wide with a repository in inventory."
+        ]
+      },
+      "expected": {
+        "kind": "match",
+        "reference": [
+          "Mobile user and repository inventory totals are covered by their action buttons",
+          "Unadopted Repositories button covers the repository total on the mobile Repositories page"
+        ]
+      }
+    },
+    {
+      "fixture": "gitea/areas/issues",
+      "finding": {
+        "name": "Assignee filter hides issues assigned to the selected user",
+        "summary": "Selecting eval in the repository Assignee filter displays No results even though both matching open RepoQA issues are assigned to eval and visible without that filter.",
+        "expected": "The two open issues assigned to eval remain in the filtered results.",
+        "actual": "The list displays 'No results' with 0 Open and 0 Closed after filtering by Assignee eval.",
+        "reproSteps": [
+          "https://5503-invdze7ee6k507064iyrc.e2b.app/eval/harbor-handbook/issues",
+          "As eval, create two uniquely named RepoQA issues in harbor-handbook.",
+          "Search the common unique title prefix and select both results.",
+          "Use bulk Assignee → eval; inspect each issue to confirm eval appears under Assignees.",
+          "Return to repository Issues and search the common title prefix; both issues appear with assignee avatars.",
+          "Choose Assignee → eval."
+        ]
+      },
+      "expected": {
+        "kind": "match",
+        "reference": "Repository issue search with an Assignee filter omits a matching assigned issue"
+      }
+    },
+    {
+      "fixture": "gitea/areas/milestones",
+      "finding": {
+        "name": "Switching to Created by you retains the Assigned to you restriction",
+        "summary": "On Zeta past due, switching Type from Assigned to you to Created by you leaves No results even though eval authored both milestone issues. The Assignee menu still has eval checked after the Type switch.",
+        "expected": "Created by you replaces the prior Type selection and lists issues authored by the current user, including the unassigned open fixture.",
+        "actual": "The list remains No results with 0 Open and 0 Closed. A whole-page multimodal assertion confirmed there are no issue results; opening Assignee shows eval remains selected even though no separate Assignee filter was applied.",
+        "reproSteps": [
+          "https://5503-iwd4457jxulffz7cojbnb.e2b.app/mo-milestones-qa/release-beta/milestone/11",
+          "As eval, open Zeta past due containing one open and one closed issue authored by eval, both unassigned.",
+          "Open Type and select Assigned to you; the list shows No results.",
+          "Open Type and select Created by you.",
+          "Inspect the issue list and open Assignee."
+        ]
+      },
+      "expected": {
+        "kind": "match",
+        "reference": "Milestone All issues retains the implicit Assigned to you filter"
+      }
+    },
+    {
+      "fixture": "gitea/areas/issues",
+      "finding": {
+        "name": "Switching to built-in issue tracker discards saved external tracker configuration",
+        "summary": "After saving an external tracker URL, format and regular expression, switching to the built-in tracker and returning to external presents empty configuration fields. The prior external setup must be entered again.",
+        "expected": "Previously saved external tracker URL, URL format and regex remain available when returning to external mode, allowing switching without rebuilding configuration.",
+        "actual": "External tracker URL, URL Format and regex fields are empty. Whole-page assertion confirmed the saved external URLs were absent.",
+        "reproSteps": [
+          "https://5503-i3h0y6nvbkmu4y2q9iyi3.e2b.app",
+          "Intermediate actions in video exercise independent settings; they do not edit external tracker configuration.",
+          "As eval, create a fresh disposable initialized repository.",
+          "In repository Settings > Advanced Settings select external issue tracker, enter https://example.com/ as tracker URL and https://example.com/?user={user}&repo={repo}&issue={index} as URL format.",
+          "Select Regular Expression format and enter ISSUE-(\\d+), then save with the Advanced Settings Update Settings button. Reopen and confirm values.",
+          "Select Use Built-In Issue Tracker and save.",
+          "Reopen Settings > Advanced Settings and select Use External Issue Tracker."
+        ]
+      },
+      "expected": {
+        "kind": "invalid",
+        "reference": "Switching external issue tracker to built-in deletes saved external URL, format and regex configuration"
+      }
+    },
+    {
+      "fixture": "gitea/areas/pull-requests",
+      "finding": {
+        "name": "Renaming a reviewed file removes inline threads from Files Changed and breaks conversation links",
+        "summary": "Inline review threads remain in Conversation after a file rename but disappear from Files Changed, including when outdated comments are shown.",
+        "expected": "Existing inline review threads remain accessible on the renamed file or an outdated diff, and Conversation links lead to the thread.",
+        "actual": "Reproduced twice on harbor-handbook#5 with successive renames docs/contributing.md → docs/qa-contributing-review.md → docs/qa-renamed-again.md. Threads remain in Conversation but are absent from Files Changed with show-outdated=true. Filename links point to /pulls/5/files#issuecomment-66 or #issuecomment-88 with no matching comment element. Evidence: /tmp/review-evidence/rename-thread-before.png, rename-editor.png, rename-conversation-thread-link.png, rename-thread-missing-result.png, rename-show-outdated-true.png.",
+        "reproSteps": [
+          "Sign in as eval and open eval/harbor-handbook. Edit docs/contributing.md, append a line, choose a new disposable branch, and create a pull request into main.",
+          "In a separate browser session sign in as maya, open the request's Files Changed tab, and add a single inline comment on the appended line.",
+          "As eval edit that same file on the disposable branch, change its filename while retaining its contents, and commit directly to the branch.",
+          "Open the request's Conversation tab and click the filename link above the inline thread.",
+          "In Files Changed ensure outdated comments are shown and inspect the linked thread."
+        ]
+      },
+      "expected": {
+        "kind": "match",
+        "reference": "Moving or renaming a reviewed file hides its inline comments in Files Changed"
+      }
+    },
+    {
+      "fixture": "gitea/areas/profiles-account-settings",
+      "finding": {
+        "name": "Private profile briefly appears through previously visited activity tab",
+        "summary": "Navigating to a private user profile's Public Activity URL ('/eval?tab=activity') displays profile details including display name, avatar, and social counts, even though the base profile URL ('/eval') returns 404 Not Found.",
+        "expected": "Navigating to '/eval?tab=activity' should return 404 Not Found when the profile is private and inaccessible at '/eval'.",
+        "actual": "Navigating to '/eval?tab=activity' loads the profile page with the user's name ('Eval QA Profile'), avatar, and follower/following stats instead of returning 404 Not Found.",
+        "reproSteps": [
+          "https://5503-i9qypm24oaevjalfaxmak.e2b.app/eval",
+          "Original owner confirmed Private saved at18:56:28.047Z, asserted still Private18:57:03.721Z and refreshed still Private18:58:33.811Z; no toggle in between. Owner hover of Limited18:57:31.549Z did not select/save. Original disclosure did not recur: browser Back to same entry now returns404. Cause unknown; do not assume cache. Fresh equivalent owner/observer fixtures may be needed to repeat the transition. Report submitted from denied retry state because original transient state cannot be restored.",
+          "Use two accounts without shared organization access: profile owner and another signed-in observer.",
+          "While the owner's profile is Public with Hide Email and Hide Activity checked, visit its profile and Public Activity tab as the observer.",
+          "As the owner, save profile visibility Private and refresh to verify persistence; leave it unchanged.",
+          "As the observer, open the owner's profile and confirm 404 Not Found.",
+          "Revisit the previously viewed Public Activity URL. In the observed run it displayed the private profile identity, avatar and social counts once instead of 404."
+        ]
+      },
+      "expected": {
+        "kind": "invalid",
+        "reference": "Private profile briefly appears through a previously visited activity tab"
+      }
+    },
+    {
+      "fixture": "gitea/areas/labels",
+      "finding": {
+        "name": "Changing issue labels rewrites or erases prior label activity",
+        "summary": "Issue label activity reflects the current label selection instead of preserving the history of additions and removals.",
+        "expected": "The issue timeline should retain the original label-added event and append events when labels are removed or added.",
+        "actual": "A new issue created with documentation initially shows 'eval added the documentation label'. Clearing labels removes that historical event entirely and records no removal event, including after reload. Independently reproduced by root in harbor-handbook issue #7: snapshot page-2026-10-29T23-17-00-425Z.yml shows the added event; page-2026-10-29T23-17-09-184Z.yml shows No Label and no label events. Parallel testing also found changing bug+enhancement to question rewrites the earlier event to 'added question'.",
+        "reproSteps": [
+          "Sign in as eval and open /eval/harbor-handbook/issues/new.",
+          "Enter a disposable title, select documentation in the Labels sidebar, and create the issue.",
+          "Observe the timeline event stating that eval added the documentation label.",
+          "Open the Labels sidebar, click Clear labels, and click outside to save.",
+          "Reload the issue. The original label-added event has disappeared, and no removal event is recorded."
+        ]
+      },
+      "expected": {
+        "kind": "invalid",
+        "reference": [
+          "Label added and removed events disappear from an issue timeline after deselecting and archiving the label",
+          "Clear labels on a pull request deletes a label's added event from its timeline without recording its removal"
+        ]
+      }
+    },
+    {
+      "fixture": "gitea/areas/issues",
+      "finding": {
+        "name": "Fuzzy issue search fails to find close spelling matches",
+        "summary": "The advertised fuzzy search mode returns no results for one-character omissions from a matching issue title, across global and organization issue dashboards.",
+        "expected": "Fuzzy search, described as Include results that also match the search term closely, finds a title containing dashboard when searching dashbord.",
+        "actual": "Issues titled Organization dashboard Alpha and Organization dashboard Beta both appear for q=dashboard&search_mode=fuzzy. In the same mode, dashbord (one omitted character), dashboar (last character omitted), and Alhpa (transposed Alpha) each return no results. Reproduced globally and on the organization dashboard.",
+        "reproSteps": [
+          "Sign in as eval and create a disposable organization and repository using the visible creation forms.",
+          "Create an issue titled Organization dashboard Alpha in that repository.",
+          "Open the organization's Issues dashboard.",
+          "Choose Fuzzy search mode, whose tooltip says Include results that also match the search term closely.",
+          "Search dashboard and confirm the issue is returned.",
+          "Replace the query with dashbord and submit. Observe no results despite the close spelling match.",
+          "Repeat the fuzzy query from global /issues and observe the same failure."
+        ]
+      },
+      "expected": {
+        "kind": "invalid",
+        "reference": "Global Fuzzy search fails to find a known issue when the query omits one final character"
+      }
+    },
+    {
+      "fixture": "metabase/areas/data-modeling",
+      "finding": {
+        "name": "Saving a metric without a source exposes a SQL error",
+        "summary": "New metric creation allows opening and submitting Save before selecting data. Submission displays a raw DATABASE_ID constraint error and INSERT statement instead of explaining that a source is required.",
+        "expected": "Prevent submitting an incomplete metric or clearly tell the user to select a data source.",
+        "actual": "The dialog displays `NULL not allowed for column \"DATABASE_ID\"; SQL statement: INSERT INTO \"REPORT_CARD\" ...` with internal column names and values; its Save button changes to Failed.",
+        "reproSteps": [
+          "https://5501-inyqs7vepa2yzh2kpdtq6.e2b.app/browse/metrics",
+          "As Harbor Admin, open Metrics and click the plus button.",
+          "Without selecting any data source, click Save.",
+          "Enter a fresh metric name such as MO Metrics Missing Source 1030 and click Save in the dialog."
+        ]
+      },
+      "expected": {
+        "kind": "match",
+        "reference": "Saving a metric without a data source exposes a raw DATABASE_ID SQL error"
+      }
+    },
+    {
+      "fixture": "metabase/areas/dashboards",
+      "finding": {
+        "name": "Middle alignment makes the beginning of overflowing text cards unreachable",
+        "summary": "Applying Middle vertical alignment to a long text card hides its heading and top paragraphs, leaving them unreachable by scrolling.",
+        "expected": "All saved text should remain reachable by scrolling when its content exceeds the card height.",
+        "actual": "The card content renders starting at Line 06; the heading and Lines 01–05 remain clipped above and cannot be revealed by scrolling upward.",
+        "reproSteps": [
+          "https://5501-i2d3yvunvmv9nb771vatu.e2b.app/dashboard/4-qa-textlinks-mo7",
+          "Create an isolated dashboard and add a text card around 316 pixels tall.",
+          "Enter a heading Long content QA followed by 20 short paragraphs separated by blank lines; save.",
+          "Open text card settings, select Right horizontal alignment and Middle vertical alignment, Done, and save dashboard.",
+          "Refresh and scroll upward inside the text card."
+        ]
+      },
+      "expected": {
+        "kind": "match",
+        "reference": "Bottom- or middle-aligned text cards hide overflowing content above the scroll area"
+      }
+    },
+    {
+      "fixture": "metabase/areas/admin",
+      "finding": {
+        "name": "Custom map saves a URL after rejecting its content",
+        "summary": "Editing a working map to https://example.com produces “GeoJSON URL returned invalid content-type,” but Save map accepts it. After refresh the stored map still has the invalid URL and cannot render.",
+        "expected": "Reject saving a URL known not to return GeoJSON; preserve the working map until valid content is loaded.",
+        "actual": "Save closes the dialog and stores https://example.com. After page refresh, reopening shows the invalid content-type error instead of geometry.",
+        "reproSteps": [
+          "https://5501-igbffah0qchhyoqzoqbsi.e2b.app/admin/settings/maps",
+          "In Admin > Settings > Maps create a prefixed map using https://raw.githubusercontent.com/datasets/geo-countries/master/data/countries.geojson, identifier ISO3166-1-Alpha-3 and display name name.",
+          "Reopen the saved map and change URL to https://example.com.",
+          "Click Refresh beside URL; wait for invalid content-type error.",
+          "Click Save map, refresh the page and reopen the map."
+        ]
+      },
+      "expected": {
+        "kind": "match",
+        "reference": "Failed GeoJSON refresh keeps the previous file's properties and allows saving the rejected URL"
+      }
+    },
+    {
+      "fixture": "metabase/areas/querying",
+      "finding": {
+        "name": "Self join conditions change displayed base record values",
+        "summary": "Adding a User ID equality condition to an Orders self-join causes base User ID values to render blank and alters the displayed base Product ID values.",
+        "expected": "Adding a join condition to a self-join should not erase or corrupt display remappings for base table columns like User ID and Product ID.",
+        "actual": "After adding 'Orders User ID = Orders User ID' to the join and clicking Visualize, all base User ID cells render completely blank and base Order 1 displays 'Incredible Plastic Chair' for Product ID.",
+        "reproSteps": [
+          "https://5501-i6gsihqarmu0q2pkp0qpy.e2b.app/question/notebook",
+          "As Harbor Admin, create New > Question > Sample Database > Orders.",
+          "Join Orders to Orders, left join, ID = ID; visualize and save a fresh QA-joinsedge-prefixed question.",
+          "Observe Order 1: User ID Hudson Borer and Product ID Awesome Concrete Shoes.",
+          "Open Editor; change ID = ID to ID < ID and Visualize. Order 1 now displays Abbie Ryan and Incredible Bronze Wallet.",
+          "Open Editor; add a second condition User ID = User ID and Visualize. Observe base Order 1 User ID blank and Product ID Incredible Plastic Chair."
+        ]
+      },
+      "expected": {
+        "kind": "match",
+        "reference": "Orders self-join displays incorrect source user and product labels"
+      }
+    },
+    {
+      "fixture": "metabase/areas/querying",
+      "finding": {
+        "name": "Clearing and retyping in notebook data source picker search closes picker and navigates to /document/new",
+        "summary": "In the notebook editor's Orders data source picker, the first typing of \"Products\" filters correctly. But when the search field already has text and you clear it and type \"Products\" again, the picker closes partway through. The rest of the keystrokes then go to global shortcuts, so the app leaves the unsaved notebook query, opens /document/new, and the last typed character \"s\" becomes the document title.",
+        "expected": "The picker stays open while the user types in its search field, so it filters to Products and the notebook query stays on screen.",
+        "actual": "The picker closed after the search text was cleared. The rest of the typed characters started global shortcuts, the page went to /document/new with \"S\" as the title, and the unsaved notebook query was gone.",
+        "reproSteps": [
+          "Start signed in with the supplied saved session and open https://5501-i4ggq967l56ps7czyrojv.e2b.app/question/notebook",
+          "Select Sample Database > Orders, click Visualize, wait for the Orders results, then click Editor.",
+          "Click the Orders data source button to open its picker.",
+          "Type Products into 'Search for tables and more...'. The list filters correctly.",
+          "Click the search field, clear its text, and type Products again.",
+          "Observe: the picker closes, the URL becomes /document/new, and a new document titled 'S' appears."
+        ]
+      },
+      "expected": {
+        "kind": "match",
+        "reference": "Clicking the notebook source-search input closes the picker instead of positioning the cursor"
+      }
+    },
+    {
+      "fixture": "metabase/areas/querying",
+      "finding": {
+        "name": "Fractional row limits silently change to whole numbers",
+        "summary": "Entering Row limit 2.5 runs the query with two rows; reopening Editor shows 2 without explaining that the input was changed.",
+        "expected": "A fractional row count is rejected with clear validation rather than silently replacing the entered number.",
+        "actual": "The input displayed 2.5, but results contained two rows and the reopened limit displayed 2. A multimodal whole-page check confirmed no validation or warning feedback.",
+        "reproSteps": [
+          "https://5501-igu5ir88jegpt5zl50mpc.e2b.app/question/notebook",
+          "Create a Products notebook question in Sample Database.",
+          "Add Price greater than 20 and Category is Gizmo, sort Price descending and set Row limit 3.",
+          "Visualize, save as a new QA-filters- question and refresh.",
+          "Open Editor, replace Row limit with 2.5 and blur.",
+          "Visualize, then reopen Editor."
+        ]
+      },
+      "expected": {
+        "kind": "invalid",
+        "reference": "Fractional row limit 2.5 is silently changed to 2 when running the query"
+      }
+    },
+    {
+      "fixture": "metabase/areas/admin",
+      "finding": {
+        "name": "Unpublished chart remains in Embedded questions",
+        "summary": "Unpublishing Release requests by region and category confirms that publication is required again, yet closing configuration leaves the chart in Embedded questions.",
+        "expected": "Unpublished chart is removed from Embedded questions.",
+        "actual": "Release requests by region and category remains listed under Embedded questions despite successful unpublication.",
+        "reproSteps": [
+          "https://5501-ivriwpn9unaxhszx5rw9f.e2b.app/admin/embedding",
+          "As Harbor Admin enable guest embeds, open New embed, choose Chart and select Release requests by region and category.",
+          "Publish the question, close configuration and refresh to see it in Embedded questions.",
+          "Reopen New embed and select the same chart.",
+          "Click Unpublish and observe publication-required message.",
+          "Close configuration and inspect Embedded questions."
+        ]
+      },
+      "expected": {
+        "kind": "match",
+        "reference": "Published embeds list does not refresh after publishing or unpublishing from the embed wizard"
+      }
+    },
+    {
+      "fixture": "metabase/areas/querying",
+      "finding": {
+        "name": "Updating an unchanged custom formula silently rebinds a colliding column reference",
+        "summary": "A custom column may be renamed to match a source field. Dependent formulas initially keep referring to the custom column, but opening and updating the unchanged formula rebinds the same displayed reference to the source field and changes the answer.",
+        "expected": "Updating an unchanged formula must retain its reference to the custom column and preserve Quadruple280.32 for product2. The app should disambiguate source/custom references or prevent conflicting custom-column names.",
+        "actual": "Quadruple changes to140.16for product2, equal to twice the source Price instead of twice the custom Price. Product1 changes117.85→58.93 and product3changes141.55→70.78. No expression text was changed; Update silently changes which Price the formula references. The saved question initially retains the correct4xcalculation across reload, so the change specifically happens on Update.",
+        "reproSteps": [
+          "New Question → Sample Database → Products.",
+          "Add custom column Doubled price = [Price] * 2.",
+          "Add custom column Quadruple = [Doubled price] * 2. Optionally limit to3rows.",
+          "Rename Doubled price to Price; the app allows this despite an existing source field named Price.",
+          "Visualize: product ID2 has source Price70.08, custom Price140.16, Quadruple280.32.",
+          "Open Editor and edit Quadruple. It displays [Price] * 2.",
+          "Click Update without changing anything, then Visualize again.",
+          "Saved reproduction ready at /question/55-qa-colliding-custom-column-reference: open it, edit Quadruple and click Update unchanged, then Visualize. Reproduced again from this saved question after reload."
+        ]
+      },
+      "expected": {
+        "kind": "match",
+        "reference": "Selecting a custom column with a source field's name silently references the source field"
+      }
+    },
+    {
+      "fixture": "metabase/areas/admin",
+      "finding": {
+        "name": "Admin table search omits hidden tables",
+        "summary": "In Admin Table Metadata, searching for a hidden table ('Requests') returns 'No results', preventing administrators from finding or unhiding it via search.",
+        "expected": "Admin metadata search should return matching tables, including hidden tables, allowing administrators to locate, manage, or unhide them.",
+        "actual": "Searching for 'Requests' displays 'No results' in the sidebar even though 'Release Requests' exists and its metadata editor remains open.",
+        "reproSteps": [
+          "https://5501-i216k69g2xhts0cmwiil1.e2b.app/admin/datamodel/database",
+          "Sign in as an administrator and open Admin > Table Metadata.",
+          "Use a fresh seeded Release operations database with visible Release Requests table (or restore that table to visible first). Expand Release operations and open Release Requests.",
+          "Click the table's Hide table eye control. Verify the crossed-out eye and Unhide table control.",
+          "Reload the page and verify the hidden state persists.",
+          "Enter Requests into Search tables and inspect the sidebar results."
+        ]
+      },
+      "expected": {
+        "kind": "match",
+        "reference": "Hidden tables do not appear in Admin Table Metadata search"
+      }
+    },
+    {
+      "fixture": "metabase/areas/querying",
+      "finding": {
+        "name": "Grouping chips cannot be reordered with the advertised keyboard controls",
+        "summary": "The query builder exposes grouping chips as focusable sortable buttons and provides Space/arrow-key instructions, but these keys never start or complete reordering. Mouse dragging the same chips works.",
+        "expected": "The advertised keyboard sequence moves State before Source and announces the drag and drop.",
+        "actual": "The focused chip remains in the same position and no keyboard drag announcement occurs. Mouse dragging reorders successfully. Reproduced with People Source/State and Products Category/Vendor.",
+        "reproSteps": [
+          "Create a Question from Sample Database > People.",
+          "Summarize by Count, then group by Source and State.",
+          "Focus the State grouping chip (a button with tabindex=0). Its accessible description instructs users to press Space, use arrow keys, then press Space again.",
+          "Press Space, ArrowLeft, Space.",
+          "Compare with dragging the State chip before Source using the mouse."
+        ]
+      },
+      "expected": {
+        "kind": "invalid",
+        "reference": "Notebook grouping and sort chips ignore advertised keyboard reorder controls"
+      }
+    },
+    {
+      "fixture": "twenty/areas/records-views",
+      "finding": {
+        "name": "Text sorting in lists is case-sensitive (byte order)",
+        "summary": "Sorting People by Company (and Companies by Name) puts all uppercase-initial values before lowercase ones and compares letters by character code, not alphabetically.",
+        "expected": "Alphabetical order that ignores case: Accolite Digital before AVASOFT, and iPipeline/isolved among the other I names.",
+        "actual": "Ascending: 2020, 3Pillar Global, 6sense, ACS Technologies, ACTIVE Network, ACV Auctions, ASAP, ASG Technologies, AVASOFT, Accolite Digital... Descending starts with webOS, uTest, project44, o9 Solutions, nCino, isolved, insightsoftware, impact.com, ibi, iPipeline, then the uppercase names. Companies sorted by Name show the same: ACS, ASAP, AVASOFT before Accolite.",
+        "reproSteps": [
+          "Sign in as tim@apple.dev and open /objects/people.",
+          "Click Sort, then Company (Ascending). Observe AVASOFT is listed before Accolite Digital.",
+          "Click the Company sort chip to switch to Descending. Observe the lowercase names (webOS, uTest, project44...) are listed first, before all uppercase names."
+        ]
+      },
+      "expected": {
+        "kind": "match",
+        "reference": "Saved Name sorting uses different case ordering in Table and Kanban"
+      }
+    },
+    {
+      "fixture": "twenty/areas/workflows",
+      "finding": {
+        "name": "Multiple default Text fields overwrite each other in form output",
+        "summary": "Adding two default Text fields creates the same internal output name for both, so the run loses the first response.",
+        "expected": "Each form field should produce a distinct output value, or the editor should require unique field names before testing or activation.",
+        "actual": "Both fields are accepted and shown in the form, but the run result contains only the second value under `text`. The run state shows both input values yet only `{\"text\":\"second\"}` in the step result.",
+        "reproSteps": [
+          "Open Workflows and create a new workflow.",
+          "Select the Launch manually trigger and add a Form action.",
+          "Click Add Field twice, leaving both fields at their default Text settings.",
+          "Click Test, enter `first` in the first field and `second` in the second, then submit.",
+          "Open the resulting workflow run and inspect the Form node's Output or the run State. Only `text: second` is present; `first` is missing."
+        ]
+      },
+      "expected": {
+        "kind": "invalid",
+        "reference": "Duplicate form labels silently overwrite submitted answers"
+      }
+    },
+    {
+      "fixture": "twenty/areas/workflows",
+      "finding": {
+        "name": "See Runs from a workflow version opens unrelated runs",
+        "summary": "The See Runs command on MO-VERSIONS-0826 v1 opens the global 35-run list, including unrelated Untitled and MO-TRIGGER workflows, rather than that version's run history.",
+        "expected": "See Runs from a specific version shows its related runs, or an empty result for a version with no runs.",
+        "actual": "The destination shows 35 global runs from unrelated workflows. Multimodal assertion confirmed no filter limiting the list to MO-VERSIONS-0826 or v1.",
+        "reproSteps": [
+          "https://5500-iqr3w53xn1c5rl0raxok1.e2b.app/objects/workflowVersions",
+          "Create and activate a uniquely named manual workflow without running it, so it has a version but no runs.",
+          "Open its version from Workflow Versions.",
+          "At 768 width open Command Menu and choose See Runs.",
+          "Inspect the destination run list."
+        ]
+      },
+      "expected": {
+        "kind": "match",
+        "reference": "Workflow Version See Runs omits the selected version filter"
+      }
+    },
+    {
+      "fixture": "twenty/areas/settings-data-model",
+      "finding": {
+        "name": "Newly created object indexes display a blank Fields cell",
+        "summary": "An index created in data-model settings is shown without its indexed field until the page is reopened in a fresh tab.",
+        "expected": "The new index row should immediately display its selected field names.",
+        "actual": "After adding a BTREE index on Name, a success notification appears but the index row's Fields cell is blank. A fresh tab shows Name correctly.",
+        "reproSteps": [
+          "Sign in as tim@apple.dev, create a uniquely named custom object in Settings > Data model, and turn on Advanced.",
+          "Open the object's Settings tab and select Add Index.",
+          "Choose the Name field, retain BTREE, and save.",
+          "Observe the new BTREE index row has a blank Fields cell next to its delete control.",
+          "Open the same object settings in a fresh browser tab and observe that Name is displayed.",
+          "Delete the test index and temporary object."
+        ]
+      },
+      "expected": {
+        "kind": "match",
+        "reference": "Object API-name edits leave indexes without field labels or field-name search"
+      }
+    },
+    {
+      "fixture": "twenty/areas/workflows",
+      "finding": {
+        "name": "Schedule trigger validation errors show raw {placeholders} instead of entered value",
+        "summary": "In the 'On a schedule' trigger form, invalid interval values produce error messages with unfilled template variables ({newDay}, {newHour}, {newMinute}); lower-bound wording 'greater than 1' contradicts 1 being accepted.",
+        "expected": "Error shows the actual value, e.g. 'Invalid hour value 25. Should be integer between 0 and 23', and lower-bound wording matches accepted values (e.g. 'at least 1').",
+        "actual": "Days=0: 'Invalid day value {newDay}. Should be integer greater than 1'; hour=25: 'Invalid hour value {newHour}. Should be integer between 0 and 23'; minute=75: 'Invalid minute value {newMinute}. Should be integer between 0 and 59'; Hours mode 0: 'Invalid hour value {newHour}. Should be integer greater than 1'. Seen on two workflows.",
+        "reproSteps": [
+          "Sign in as tim@apple.dev and open /objects/workflows.",
+          "Click '+ New Workflow' and name it 'A-Sched'.",
+          "Click 'Add a Trigger' and choose 'On a schedule' (defaults to Days).",
+          "Type 25 in 'Trigger at hour (UTC)' then click an empty area of the canvas: '{newHour}' message appears.",
+          "Set minute to 75 and 'Days between triggers' to 0, click canvas: '{newMinute}' and '{newDay}' messages appear.",
+          "Switch interval to Hours, set 'Hours between triggers' to 0, click canvas: '...{newHour}. Should be integer greater than 1'."
+        ]
+      },
+      "expected": {
+        "kind": "match",
+        "reference": "Schedule validation messages display literal newMinute, newHour and newDay placeholders"
+      }
+    },
+    {
+      "fixture": "twenty/areas/workflows",
+      "finding": {
+        "name": "Submitting a workflow run form quickly after typing shows 'Invalid workflow operation.' error toasts",
+        "summary": "When a user types into a form field of a paused workflow run and clicks Submit within ~0.5s, two red 'Invalid workflow operation.' toasts appear; console shows 'Cannot update steps of a completed or failed workflow run'. Run still completes.",
+        "expected": "No error toast; pending field saves complete before submit or are discarded silently.",
+        "actual": "Two 'Invalid workflow operation.' toasts; console CombinedGraphQLErrors 'Cannot update steps of a completed or failed workflow run'; stored Form step settings lack the entered values. Reproduced on runs #2 and #4; not when waiting ~2s before Submit.",
+        "reproSteps": [
+          "Sign in as tim@apple.dev; create workflow 'QA4-Manual Create' with trigger 'Launch manually' (Global), a 'Form' step with a Text field and a Number field 'Employees', and a 'Create Record' (Companies) step; click Activate.",
+          "Go to /objects/workflowRuns, press Ctrl+K and choose 'QA4-Manual Create'.",
+          "When the form opens in the side panel, type '7' in Employees and click Submit within ~0.5s.",
+          "Observe two red 'Invalid workflow operation.' toasts at bottom right."
+        ]
+      },
+      "expected": {
+        "kind": "match",
+        "reference": "Successful workflow form submission displays invalid-operation errors"
+      }
+    },
+    {
+      "fixture": "twenty/areas/workflows",
+      "finding": {
+        "name": "Duplicated workflows are attributed to System instead of the user",
+        "summary": "Duplicating a workflow while signed in as Tim Apple creates a workflow whose Created by field is System.",
+        "expected": "The duplicate's Created by field should identify the signed-in member who performed Duplicate Workflow.",
+        "actual": "Normal workflows created during the session show Tim Apple, while root's QA Lifecycle Manual (Duplicate) and QA Mobile Create (Duplicate), and an independent session's Quick Lead (Duplicate), all persist Created by S System. Evidence: visible Workflows table DOM at04:42:23 and independent verification04:44; root duplicate5a7d23db-0128-4d30-8aff-60ec6a415253, e5b482ee-7c5f-4b7c-9631-466950fea2f9, independent1bf7ea90-057d-4f87-9e09-4049e882e46b.",
+        "reproSteps": [
+          "Sign in as tim@apple.dev and open /objects/workflows.",
+          "Create a named workflow with a manual trigger and an action.",
+          "Return to the Workflows list and observe its Created by column shows Tim Apple.",
+          "Open the workflow, choose Command Menu > Duplicate Workflow.",
+          "Return to the list and inspect the duplicate's Created by column.",
+          "Observe it shows System; reload the list to confirm it persists."
+        ]
+      },
+      "expected": {
+        "kind": "match",
+        "reference": "A duplicated workflow shows 'Created by: System' instead of the user who duplicated it"
+      }
+    },
+    {
+      "fixture": "twenty/areas/records-views",
+      "finding": {
+        "name": "Company grouping removes matching opportunities from the table",
+        "summary": "Changing table grouping from Stage to Company leaves the table area blank and changes the view count from 3 to 0",
+        "expected": "The three opportunity records remain displayed, grouped under their respective company headers (Microsoft, Chegg Inc., and Snap Inc.)",
+        "actual": "The entire table grid disappears, leaving the table area blank, and the opportunity count next to the view name decreases from 3 to 0",
+        "reproSteps": [
+          "https://5500-izhukhfxepcxa2cwg3a9d.e2b.app/objects/opportunities",
+          "Observed in QA Opp 0739 Renamed a7e84058-8692-40b9-af0f-f09ed9726a8e, descending Amount sort and Average Amount footer. No record edits. Active session stayed functional; refreshed authentication is supplied for independent verification.",
+          "Open Opportunities in Apple workspace; create a unique Table view.",
+          "Filter Name contains iPhone Corporate and save; verify three rows for Microsoft, Chegg and Snap.",
+          "Select Options → Group → Stage.",
+          "Enable Hide empty groups and refresh; verify New group still has all three rows.",
+          "Open Options → Group → Group by Stage and choose Company.",
+          "Close menu and inspect table."
+        ]
+      },
+      "expected": {
+        "kind": "invalid",
+        "reference": "Company relation grouping requires explicitly configured groups"
+      }
+    },
+    {
+      "fixture": "twenty/areas/settings-data-model",
+      "finding": {
+        "name": "Mobile folder selection opens an empty editor",
+        "summary": "At 390 CSS px, selecting a populated folder during layout customization opens “Edit folder” with “Select a navigation item to edit” instead of its customization controls.",
+        "expected": "The selected folder's name, color and organization controls appear, as they do at 768 CSS px.",
+        "actual": "An Edit folder panel opens with only “Select a navigation item to edit.” Whole-page AI assertion confirmed no folder name, color or organization controls anywhere.",
+        "reproSteps": [
+          "https://5500-iypundg54mqyq2podg3wr.e2b.app/settings/layout",
+          "At desktop create a navigation folder, move Companies into it and save.",
+          "Resize to 390 CSS px and open Settings > Layout > Customize.",
+          "Open the navigation drawer and select the saved folder."
+        ]
+      },
+      "expected": {
+        "kind": "match",
+        "reference": "Navigation folder and link editors become empty after a mobile or tablet panel close"
+      }
+    },
+    {
+      "fixture": "twenty/areas/workflows",
+      "finding": {
+        "name": "Renaming a form label breaks its downstream variable",
+        "summary": "Changing a mapped Text field label from Company name to Client name replaces the downstream Name variable with Not Found. Testing then creates a company with an empty name instead of the submitted text.",
+        "expected": "Renaming the same form field retains its downstream reference and passes the submitted value, or prevents execution with clear correction feedback.",
+        "actual": "Downstream Name becomes Not Found. The run still completes and created record output shows name [empty string], not Mo Forms Output Rename 20260717.",
+        "reproSteps": [
+          "https://5500-ilshrr500s1l0g4061yei.e2b.app/objects/workflows",
+          "Create a manual workflow with a Form Text field labeled Company name.",
+          "Add Create Record for Companies and map its Name to Form > Company name.",
+          "Return to Form and change only the field Label to Client name.",
+          "Reopen Create Record: Name now shows Not Found.",
+          "Click Test, enter Mo Forms Output Rename 20260717 in Client name and Submit.",
+          "Open the completed Create Record output."
+        ]
+      },
+      "expected": {
+        "kind": "invalid",
+        "reference": "Renaming a Form input breaks downstream mappings but still permits activation"
+      }
+    },
+    {
+      "fixture": "saleor/areas/vouchers",
+      "finding": {
+        "name": "Correcting invalid percentage cannot create voucher because draft codes already exist",
+        "summary": "Retrying to save a new voucher after an initial validation failure rejects its own draft promo codes as already existing.",
+        "expected": "Saving the voucher after an initial validation failure should not reject its draft codes as already existing.",
+        "actual": "Saving again displays 'Promo code already exists' listing all draft codes, with the error toast 'Couldn't create voucher / Fix the codes section and try again.'",
+        "reproSteps": [
+          "https://5503-i1kzbi2rlg29elwmao03w.e2b.app/discounts/vouchers/add",
+          "Open Create Voucher as admin and name a fresh voucher QA Create Mixed.",
+          "Generate three fresh codes with a unique prefix and add unique manual codes.",
+          "Assign Channel-USD and Channel-PLN.",
+          "Set Channel-USD percentage to 101 and Channel-PLN to 15.5; click Save.",
+          "After Invalid percentage value and Couldn't create voucher appear, correct USD to 100 and click Save again."
+        ]
+      },
+      "expected": {
+        "kind": "match",
+        "reference": [
+          "Correcting a rejected discount causes a duplicate-code error",
+          "Invalid voucher percentage persists an incomplete voucher and reserves its code"
+        ]
+      }
+    },
+    {
+      "fixture": "saleor/areas/vouchers",
+      "finding": {
+        "name": "Creation checklist counts each draft voucher code twice",
+        "summary": "The setup checklist overstates the number of codes ready on a new voucher by a factor of two, conflicting with the actual Voucher codes table.",
+        "expected": "The checklist should say 2 codes ready initially and 1 code ready after deleting one.",
+        "actual": "It says 4 codes ready for the two generated rows, then 2 codes ready when only one draft row remains. Reproduced on two fresh creation forms.",
+        "reproSteps": [
+          "Open Create voucher (/discounts/vouchers/add).",
+          "Click Add code > Generate codes.",
+          "Enter Code Quantity 2 and any optional prefix, then Confirm.",
+          "Compare Add a code in the setup checklist against the two Draft rows in Voucher codes.",
+          "Delete one draft code and confirm the deletion."
+        ]
+      },
+      "expected": {
+        "kind": "match",
+        "reference": "Voucher setup checklist overcounts manually added codes"
+      }
+    },
+    {
+      "fixture": "saleor/areas/vouchers",
+      "finding": {
+        "name": "Discount type filter 'Percentage' also returns shipping-type vouchers",
+        "summary": "Filtering the voucher list by Discount type = Percentage includes the 'Free shipping' voucher, whose discount type is Shipping.",
+        "expected": "Only vouchers with a percentage discount type (e.g. 'Percentage order discount' 5% off, 'Single Use Vouchers' 10% off) are listed.",
+        "actual": "The results list 'Percentage order discount' (5% off), 'Single Use Vouchers' (10% off) AND 'Free shipping' (offer 'Free shipping'). Filtering by Shipping returns only 'Free shipping', and its detail page shows the Free shipping discount option selected, so it is wrongly included in the Percentage results.",
+        "reproSteps": [
+          "Sign in as admin@example.com / admin.",
+          "Go to Discounts > Vouchers (/discounts/vouchers).",
+          "Click Filters, add a 'Discount type' filter with operator 'is'.",
+          "Select 'Percentage' and apply.",
+          "Look at the results: 'Free shipping' (offer column 'Free shipping') is listed with the percentage vouchers.",
+          "Change the filter value to 'Shipping': only 'Free shipping' is returned, which confirms it is a shipping voucher."
+        ]
+      },
+      "expected": {
+        "kind": "match",
+        "reference": "Percentage voucher filter includes the Free shipping voucher"
+      }
+    },
+    {
+      "fixture": "saleor/areas/vouchers",
+      "finding": {
+        "name": "Variant assignment table labels product type as product name",
+        "summary": "The assigned Variants table repeats the “Product Name” column heading over a column containing “Top,” while the actual product name is Monospace Tee.",
+        "expected": "Column headings distinguish product name, variant name, and product type.",
+        "actual": "The third column is labeled “Product Name” but displays “Top,” alongside the first Product Name column displaying Monospace Tee.",
+        "reproSteps": [
+          "https://5503-ibhe1kixugdelk3hvejon.e2b.app/discounts/vouchers",
+          "Open a saved Products-scope voucher.",
+          "Assign the Monospace Tee M variant and save.",
+          "Expand Variants under Eligible products."
+        ]
+      },
+      "expected": {
+        "kind": "match",
+        "reference": "Variant eligibility table repeats the Product Name column heading"
+      }
+    },
+    {
+      "fixture": "saleor/areas/vouchers",
+      "finding": {
+        "name": "Changing voucher scope loses the percentage edit on save",
+        "summary": "Switching voucher scope to Entire order and modifying Channel-PLN percentage fails to keep the entered value, reverting to 75%.",
+        "expected": "Channel-PLN percentage input should accept the entered value (5%) and persist it after save and reload.",
+        "actual": "Channel-PLN percentage immediately reverts to 75% upon typing and remains 75% after saving and reloading.",
+        "reproSteps": [
+          "https://5503-i1kzbi2rlg29elwmao03w.e2b.app/discounts/vouchers",
+          "As admin open Percentage order discount.",
+          "Set PLN percentage to 7.5, save, then change scope to Products and save.",
+          "Change scope to Entire order, enter 5 in Channel-PLN percentage, then Save.",
+          "Reload and inspect Discount."
+        ]
+      },
+      "expected": {
+        "kind": "invalid",
+        "reference": "Changing voucher scope loses the percentage edit on save"
+      }
+    }
+  ]
+}
