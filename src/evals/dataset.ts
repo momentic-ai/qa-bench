@@ -8,6 +8,14 @@ const DatasetSchema = z.object({
   bugs: z.array(z.object({ name: z.string() }).passthrough()),
 });
 
+// A single reproSteps list and a one-case list of lists are the same label.
+function asCases(bug: Record<string, unknown>) {
+  const steps = bug.reproSteps;
+  if (!Array.isArray(steps) || steps.some((step) => Array.isArray(step)))
+    return bug;
+  return { ...bug, reproSteps: [steps] };
+}
+
 export async function readDataset(file: string): Promise<string> {
   const areas = path.join(path.dirname(file), PRODUCT_AREAS_DIRECTORY);
   let entries;
@@ -38,7 +46,7 @@ export async function readDataset(file: string): Promise<string> {
   const combined = new Map<string, (typeof datasets)[number][number]>();
   for (const bug of datasets.flat()) {
     const previous = combined.get(bug.name);
-    if (previous && !isDeepStrictEqual(previous, bug)) {
+    if (previous && !isDeepStrictEqual(asCases(previous), asCases(bug))) {
       throw new Error(`Conflicting labels for ${bug.name} in ${file}.`);
     }
     combined.set(bug.name, bug);

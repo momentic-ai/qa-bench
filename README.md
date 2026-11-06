@@ -223,8 +223,8 @@ Costs:
 E2B and grading aren't included in cost.
 
 `scores.csv` uses `known_hits`, `known_invalid`, `unverified` and `duplicates`
-for Correct, Incorrect, Unmatched and Dup. Its `precision` field also counts
-duplicates of classified findings, so it can differ from the definition above.
+for Correct, Incorrect, Unmatched and Dup. `extra_known_hits` counts further
+findings of an already-found label.
 
 ## Labels
 
