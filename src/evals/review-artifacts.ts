@@ -2,12 +2,16 @@ import { mkdir, rm, stat, writeFile } from "node:fs/promises";
 import path from "node:path";
 import { z } from "zod";
 
-import { Assessment } from "../grading/assessment";
+import { Assessment, KnownInvalidFinding } from "../grading/assessment";
 import { Finding, KnownBug } from "./reports";
 
 export type OutsideAreaReview = {
   knownHits: { findingIndex: number; reference: KnownBug; reason: string }[];
-  knownInvalid: { findingIndex: number; reference: Finding; reason: string }[];
+  knownInvalid: {
+    findingIndex: number;
+    reference: KnownInvalidFinding;
+    reason: string;
+  }[];
   duplicates: Assessment["duplicates"];
 };
 
@@ -106,7 +110,7 @@ export async function writeReviewArtifacts({
   report: { bugs: Finding[] };
   assessment: Assessment;
   groundTruth: KnownBug[];
-  knownInvalid: Finding[];
+  knownInvalid: KnownInvalidFinding[];
   outsideArea?: OutsideAreaReview;
 }): Promise<string> {
   const directory = path.join(reportDirectory, "findings");
@@ -169,7 +173,7 @@ export async function writeReviewArtifacts({
       "";
     let target: KnownBug | undefined;
     if (hit) target = groundTruth[hit.groundTruthIndex];
-    let reference: Finding | undefined =
+    let reference: KnownInvalidFinding | KnownBug | undefined =
       outsideHit?.reference ?? outsideInvalid?.reference ?? target;
     if (!reference && invalid)
       reference = knownInvalid[invalid.knownInvalidIndex];

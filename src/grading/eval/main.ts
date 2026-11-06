@@ -5,8 +5,9 @@ import { z } from "zod";
 
 import { selectComparisonFixtures } from "../../evals/fixture-selection";
 import { readGroundTruth } from "../../evals/ground-truth";
-import { FindingSchema } from "../../evals/reports";
-import { loadKnownInvalid } from "../assessment";
+import { FindingSchema, KnownBug } from "../../evals/reports";
+import { Fixture } from "../../evals/types";
+import { KnownInvalidFinding, loadKnownInvalid } from "../assessment";
 import { judge } from "../grading";
 
 // Several references are accepted when labels duplicate one bug.
@@ -23,6 +24,12 @@ const CasesSchema = z
               .object({
                 kind: z.literal("match"),
                 reference: ReferenceSchema,
+                reproStepsIndex: z
+                  .number()
+                  .int()
+                  .nonnegative()
+                  .nullable()
+                  .optional(),
               })
               .strict(),
             z
@@ -54,6 +61,26 @@ const fixtures = new Map(
     )
   ).map((fixture) => [fixture.name, fixture]),
 );
+const labels = new Map<
+  string,
+  Promise<{ groundTruth: KnownBug[]; knownInvalid: KnownInvalidFinding[] }>
+>();
+// Each area's labels load once, on first use, so a bad file fails only its own cases.
+function loadLabels(name: string, fixture: Fixture) {
+  if (!labels.has(name)) {
+    labels.set(
+      name,
+      Promise.all([
+        readGroundTruth(fixture),
+        loadKnownInvalid(path.dirname(fixture.groundTruthFile)),
+      ]).then(([groundTruth, knownInvalid]) => ({
+        groundTruth: groundTruth.bugs,
+        knownInvalid: knownInvalid.bugs,
+      })),
+    );
+  }
+  return labels.get(name)!;
+}
 const codex = new Codex({ apiKey: process.env.OPENAI_API_KEY });
 // Each case is judged alone, so code-side duplicate removal never hides an answer.
 async function runCase({
@@ -62,10 +89,7 @@ async function runCase({
   expected,
 }: (typeof cases)[number]) {
   const fixture = fixtures.get(name)!;
-  const { bugs: groundTruth } = await readGroundTruth(fixture);
-  const { bugs: knownInvalid } = await loadKnownInvalid(
-    path.dirname(fixture.groundTruthFile),
-  );
+  const { groundTruth, knownInvalid } = await loadLabels(name, fixture);
   const assessment = await judge(
     fixture,
     groundTruth,
@@ -75,13 +99,18 @@ async function runCase({
   );
   const [match] = assessment.matches;
   const [invalid] = assessment.invalidMatches;
-  let actual: { kind: string; reference?: string } = {
+  let actual: {
+    kind: string;
+    reference?: string;
+    reproStepsIndex?: number | null;
+  } = {
     kind: "unverified",
   };
   if (match) {
     actual = {
       kind: "match",
       reference: groundTruth[match.groundTruthIndex].name,
+      reproStepsIndex: match.reproStepsIndex,
     };
   } else if (invalid) {
     actual = {
@@ -92,7 +121,11 @@ async function runCase({
   const references: (string | undefined)[] =
     "reference" in expected ? [expected.reference].flat() : [undefined];
   const pass =
-    actual.kind === expected.kind && references.includes(actual.reference);
+    actual.kind === expected.kind &&
+    references.includes(actual.reference) &&
+    (!("reproStepsIndex" in expected) ||
+      expected.reproStepsIndex === undefined ||
+      actual.reproStepsIndex === expected.reproStepsIndex);
   return { name: finding.name, pass, expected, actual };
 }
 const results: Awaited<ReturnType<typeof runCase>>[] = [];

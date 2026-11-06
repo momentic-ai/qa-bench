@@ -28,7 +28,8 @@ Areas live in [`fixtures/oss`](fixtures/oss).
 
 ## Results
 
-Graded against the labels at `e77c72b`. Per-area results are in
+Graded with the labels and grader at `e77c72b`. Later grader changes aren't
+reflected. Per-area results are in
 [`results/2026-11-02.csv`](results/2026-11-02.csv). The dataset is on
 [Hugging Face](https://huggingface.co/datasets/momentic/qa-bench).
 
@@ -196,15 +197,15 @@ On macOS, where nsjail doesn't run, do the same inside a Linux VM or container
 ## Scoring
 
 A judge model (`gpt-6.1-sol`, high reasoning) compares each
-finding with the area's [labels](#labels). It first groups reports of the same
-failure, then classifies the best report in each group:
+finding with the area's [labels](#labels) and classifies each finding on its
+own:
 
-| Result    | Meaning                                                                |
-| --------- | ---------------------------------------------------------------------- |
-| Correct   | Matches a label in `ground-truth.json`. Each label matches one finding |
-| Incorrect | Matches a rejected claim in `known-invalid.json`                       |
-| Unmatched | Matches neither. It may be a new bug, and is neither right nor wrong   |
-| Dup.      | An extra report of a failure already in a group                        |
+| Result    | Meaning                                                               |
+| --------- | --------------------------------------------------------------------- |
+| Correct   | Matches a label in `ground-truth.json`. Each label counts once        |
+| Incorrect | Matches a rejected claim in `known-invalid.json`                      |
+| Unmatched | Matches neither. It may be a new bug, and is neither right nor wrong  |
+| Dup.      | Repeats a match: same label or rejected claim, through the same steps |
 
 Findings that match another area's labels are recorded separately and left out
 of every metric below. The judge is a model, so regrading can change a few
@@ -213,14 +214,14 @@ matches. Its full prompt is in
 checks the judge against reviewed findings in
 [`cases.json`](src/grading/eval/cases.json).
 
-| Metric           | Definition                                      |
-| ---------------- | ----------------------------------------------- |
-| Findings         | Correct + Incorrect + Unmatched + Dup.          |
-| Precision        | Correct / (Correct + Incorrect)                 |
-| Recall           | Correct / labeled bugs in the area              |
-| Score            | Severity of Correct findings − Incorrect − Dup. |
-| Cost per run     | Mean cost of a run                              |
-| Cost per correct | Cost / Correct                                  |
+| Metric           | Definition                                                           |
+| ---------------- | -------------------------------------------------------------------- |
+| Findings         | Every submitted finding                                              |
+| Precision        | Findings matching a label / (those + Incorrect), duplicates included |
+| Recall           | Correct / labels in the area                                         |
+| Score            | Severity of Correct labels − Incorrect − Dup.                        |
+| Cost per run     | Mean cost of a run                                                   |
+| Cost per correct | Cost / Correct                                                       |
 
 Severity comes from the label: 1 for cosmetic issues, 3 for functional bugs and 5
 for broken pages or raw error dumps. Unmatched findings don't affect Precision or
@@ -242,8 +243,8 @@ Costs:
 E2B and grading aren't included in cost.
 
 `scores.csv` uses `known_hits`, `known_invalid`, `unverified` and `duplicates`
-for Correct, Incorrect, Unmatched and Dup. Its `precision` field also counts
-duplicates of classified findings, so it can differ from the definition above.
+for Correct, Incorrect, Unmatched and Dup. `extra_known_hits` counts further
+findings of an already-found label.
 
 ## Labels
 

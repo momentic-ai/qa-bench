@@ -19,7 +19,16 @@ export const SeveritySchema = z.union([
   z.literal(3),
   z.literal(5),
 ]);
+// Labels list reproduction cases; a single list is read as one case.
+export const ReproCasesSchema = z
+  .union([z.array(z.array(z.string())), z.array(z.string())])
+  .transform((steps) =>
+    steps.length > 0 && steps.every((step) => Array.isArray(step))
+      ? (steps as string[][])
+      : [steps as string[]],
+  );
 export const KnownBugSchema = FindingSchema.extend({
+  reproSteps: ReproCasesSchema,
   severity: SeveritySchema,
   sourceCause: z.string().min(1).optional(),
 });
