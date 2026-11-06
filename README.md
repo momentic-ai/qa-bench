@@ -151,9 +151,11 @@ Results also include Codex with `gpt-6.1-terra` and Claude Code with
 - `*-e2e` agents run a bug bash with the pinned
   [e2e](https://www.npmjs.com/package/e2e) CLI and its bundled skill: they plan
   charters, run `e2e explore` for each, and save the bugs that a failing repro
-  test confirms. The workspace's `e2e.config.ts` sets only the fixture URL, the
-  browser and the model. e2e's own agent uses the coding agent's model at
-  medium effort, and each e2e process gets its own Browserbase browser. e2e
+  test confirms. The workspace's `e2e.config.ts` sets the fixture URL, the
+  browser, the model, the fixture accounts as e2e credentials (passwords come
+  from the environment), and video recording. e2e's own agent uses the coding
+  agent's model at medium effort, and each e2e process gets its own Browserbase
+  browser. e2e
   needs Node.js 22.22.3 or later 22.x, or 24.8 or later. Like
   `codex-agent-browser`, these runs have no shell sandbox.
 - `--browser local` replaces Browserbase with headless Chromium on the host.
