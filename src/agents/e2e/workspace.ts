@@ -90,6 +90,8 @@ import { meteredModel } from ${JSON.stringify(path.join(import.meta.dirname, "co
 
 export default {
   targets: [{ engine: ${engine}, app: { url: ${JSON.stringify(targetUrl.href)} } }],
+  // Each explore and repro records a replay for reviewing its findings.
+  video: "on",
   credentials: {
 ${credentials}
   },
