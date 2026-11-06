@@ -185,9 +185,9 @@ export async function writeReviewArtifacts({
       severityLabel = `Severity: **${target.severity}** (stored reference weight)`;
       rowSeverity = String(target.severity);
     }
-    if ((invalid || outsideInvalid) && reference) {
+    if ((invalid || outsideInvalid) && reference && "reason" in reference) {
       // Preserve the human's rejection rationale separately from the model's matching explanation.
-      for (const field of ["reason", "reviewedBy", "reviewedAt"]) {
+      for (const field of ["reason", "reviewedBy", "reviewedAt"] as const) {
         const value = reference[field];
         if (typeof value === "string")
           referenceLines.push(`${field}: ${text(value)}`);
