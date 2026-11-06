@@ -5,9 +5,9 @@ import { z } from "zod";
 
 import { selectComparisonFixtures } from "../../evals/fixture-selection";
 import { readGroundTruth } from "../../evals/ground-truth";
-import { Finding, FindingSchema, KnownBug } from "../../evals/reports";
+import { FindingSchema, KnownBug } from "../../evals/reports";
 import { Fixture } from "../../evals/types";
-import { loadKnownInvalid } from "../assessment";
+import { KnownInvalidFinding, loadKnownInvalid } from "../assessment";
 import { judge } from "../grading";
 
 // Several references are accepted when labels duplicate one bug.
@@ -63,7 +63,7 @@ const fixtures = new Map(
 );
 const labels = new Map<
   string,
-  Promise<{ groundTruth: KnownBug[]; knownInvalid: Finding[] }>
+  Promise<{ groundTruth: KnownBug[]; knownInvalid: KnownInvalidFinding[] }>
 >();
 // Each area's labels load once, on first use, so a bad file fails only its own cases.
 function loadLabels(name: string, fixture: Fixture) {

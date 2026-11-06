@@ -3,9 +3,10 @@ import path from "node:path";
 import { z } from "zod";
 
 import { readDataset } from "../evals/dataset";
-import { FindingSchema, KnownBug } from "../evals/reports";
+import { FindingSchema, KnownBug, ReproCasesSchema } from "../evals/reports";
 
 export const KnownInvalidFindingSchema = FindingSchema.extend({
+  reproSteps: ReproCasesSchema,
   reason: z.string().min(1),
 });
 export type KnownInvalidFinding = z.infer<typeof KnownInvalidFindingSchema>;
@@ -35,12 +36,15 @@ export async function loadKnownInvalid(fixtureDirectory: string) {
 
 type Reason = { findingIndex: number; reason: string };
 export type Assessment = {
-  // reproStepsIndex is null when the finding reaches the bug through none of its reproSteps cases.
+  // reproStepsIndex is null when the finding reaches the entry through none of its reproSteps cases.
   matches: (Reason & {
     groundTruthIndex: number;
     reproStepsIndex: number | null;
   })[];
-  invalidMatches: (Reason & { knownInvalidIndex: number })[];
+  invalidMatches: (Reason & {
+    knownInvalidIndex: number;
+    reproStepsIndex: number | null;
+  })[];
   duplicates: (Reason & { canonicalFindingIndex: number })[];
   unverified: Reason[];
   severities: (Reason & { severity: KnownBug["severity"] })[];
@@ -109,7 +113,7 @@ export function scoreAssessment(
   };
 }
 
-// Repeat matches of one bug's reproSteps case, or of one rejected claim, become duplicates of the first.
+// Repeat matches of one entry's reproSteps case become duplicates of the first.
 export function dedupeAssessment(
   assessment: Omit<Assessment, "duplicates">,
 ): Assessment {
@@ -140,7 +144,9 @@ export function dedupeAssessment(
     invalidMatches: assessment.invalidMatches.filter(
       (match) =>
         !isRepeat(
-          `invalid ${match.knownInvalidIndex}`,
+          match.reproStepsIndex === null
+            ? null
+            : `invalid ${match.knownInvalidIndex} case ${match.reproStepsIndex}`,
           match.findingIndex,
           match.reason,
         ),

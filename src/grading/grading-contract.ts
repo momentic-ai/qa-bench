@@ -2,7 +2,7 @@ import { createHash } from "node:crypto";
 import { z } from "zod";
 
 import { Finding, KnownBug, SeveritySchema } from "../evals/reports";
-import { Assessment } from "./assessment";
+import { Assessment, KnownInvalidFinding } from "./assessment";
 
 export const GRADING_THREAD_OPTIONS = {
   model: "gpt-6.1-sol",
@@ -24,7 +24,7 @@ export const JudgeOutputSchema = z
             "Zero-based index of the matched entry in set, or null when unverified.",
           ),
           reproStepsIndex: INDEX.nullable().describe(
-            "For a groundTruth match, the zero-based index of the matching reproSteps case; otherwise null.",
+            "For a match, the zero-based index of the matching reproSteps case of that entry; otherwise null.",
           ),
           reason: z.string().min(1),
           clarity: z
@@ -51,7 +51,7 @@ export function toAssessment(
   output: z.infer<typeof JudgeOutputSchema>,
   findingCount: number,
   groundTruth: KnownBug[],
-  knownInvalidCount: number,
+  knownInvalid: KnownInvalidFinding[],
 ): Omit<Assessment, "duplicates"> {
   if (output.findings.length !== findingCount) {
     throw new Error(
@@ -65,37 +65,34 @@ export function toAssessment(
     severities: [],
   };
   for (const [findingIndex, item] of output.findings.entries()) {
-    const { index, reason } = item;
-    const setSize = {
-      groundTruth: groundTruth.length,
-      knownInvalid: knownInvalidCount,
-      unverified: 0,
+    const { index, reproStepsIndex, reason } = item;
+    const entries = {
+      groundTruth,
+      knownInvalid,
+      unverified: [],
     }[item.set];
+    const entry = index === null ? undefined : entries[index];
     if (
       (item.set === "unverified") !== (index === null) ||
-      (index !== null && index >= setSize) ||
-      (item.set !== "groundTruth" && item.reproStepsIndex !== null)
+      (index !== null && !entry) ||
+      (reproStepsIndex !== null &&
+        reproStepsIndex >= (entry?.reproSteps.length ?? 0))
     ) {
       throw new Error(
-        `Judge chose a missing entry for finding ${findingIndex}.`,
+        `Judge chose a missing entry or reproSteps case for finding ${findingIndex}.`,
       );
     }
     if (item.set === "groundTruth") {
-      const cases = groundTruth[index!].reproSteps.length;
-      if (item.reproStepsIndex !== null && item.reproStepsIndex >= cases) {
-        throw new Error(
-          `Judge chose a missing reproSteps case for finding ${findingIndex}.`,
-        );
-      }
       assessment.matches.push({
         groundTruthIndex: index!,
-        reproStepsIndex: item.reproStepsIndex,
+        reproStepsIndex,
         findingIndex,
         reason,
       });
     } else if (item.set === "knownInvalid") {
       assessment.invalidMatches.push({
         knownInvalidIndex: index!,
+        reproStepsIndex,
         findingIndex,
         reason,
       });
@@ -126,7 +123,7 @@ const JudgeFindingSchema = z.object({
 const JudgeGroundTruthSchema = JudgeFindingSchema.extend({
   reproSteps: z.array(z.array(z.string())),
 });
-const JudgeKnownInvalidSchema = JudgeFindingSchema.extend({
+const JudgeKnownInvalidSchema = JudgeGroundTruthSchema.extend({
   reason: z.string(),
 });
 export const GRADING_PROMPT_TEMPLATE = `Grade QA findings for the {{fixture}} app area. The JSON below has:
@@ -138,7 +135,7 @@ Matching:
 1. Go through each finding one at a time and match it to a groundTruth bug or a knownInvalid entry.
    - Match on summary, expected, and actual: they must describe the same bug as the entry's summary, expected, and actual. Use reproSteps only as context. It's not required that reproSteps match exactly.
    - Being on the same page, control, or element does not make two bugs the same. They are the same bug when the same failing behavior was observed, even if the finding got there through a different page or flow.
-2. For each groundTruth match, compare the finding's reproSteps with each of the bug's reproSteps cases. Pick the case that reaches the bug the same way. Ignore insignificant differences in wording, test data, or extra setup steps. Set reproStepsIndex to that case's index, or null if the finding reaches the bug some other way.
+2. For each match, compare the finding's reproSteps with each of the entry's reproSteps cases. Pick the case that reaches the bug the same way. Ignore insignificant differences in wording, test data, or extra setup steps. Set reproStepsIndex to that case's index, or null if the finding reaches the bug some other way.
 3. Each finding matches at most one groundTruth bug or knownInvalid entry. Several findings can match the same one.
 4. Every other finding is unverified.
 
@@ -155,7 +152,7 @@ Pick the lowest severity that fits when unsure, and explain it briefly.
 export function gradingPrompt(
   fixture: string,
   groundTruth: KnownBug[],
-  knownInvalid: Finding[],
+  knownInvalid: KnownInvalidFinding[],
   findings: Finding[],
 ) {
   const data = {

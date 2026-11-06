@@ -43,13 +43,9 @@ export async function readDataset(file: string): Promise<string> {
       }
     }),
   );
-  // Only ground-truth labels take reproSteps cases; known-invalid entries keep a single list.
-  const normalize =
-    path.basename(file) === "ground-truth.json"
-      ? asCases
-      : (bug: Record<string, unknown>) => bug;
   const combined = new Map<string, (typeof datasets)[number][number]>();
-  for (const bug of datasets.flat().map(normalize)) {
+  // Store the case-list form so the merged text and its hash don't depend on which format each file uses.
+  for (const bug of datasets.flat().map(asCases)) {
     const previous = combined.get(bug.name as string);
     if (previous && !isDeepStrictEqual(previous, bug)) {
       throw new Error(`Conflicting labels for ${bug.name} in ${file}.`);

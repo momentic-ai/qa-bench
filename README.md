@@ -180,12 +180,12 @@ A judge model (`gpt-6.1-sol`, high reasoning) compares each
 finding with the area's [labels](#labels) and classifies each finding on its
 own:
 
-| Result    | Meaning                                                              |
-| --------- | -------------------------------------------------------------------- |
-| Correct   | Matches a label in `ground-truth.json`. Each label counts once       |
-| Incorrect | Matches a rejected claim in `known-invalid.json`                     |
-| Unmatched | Matches neither. It may be a new bug, and is neither right nor wrong |
-| Dup.      | Repeats a match: same label and repro steps, or same rejected claim  |
+| Result    | Meaning                                                               |
+| --------- | --------------------------------------------------------------------- |
+| Correct   | Matches a label in `ground-truth.json`. Each label counts once        |
+| Incorrect | Matches a rejected claim in `known-invalid.json`                      |
+| Unmatched | Matches neither. It may be a new bug, and is neither right nor wrong  |
+| Dup.      | Repeats a match: same label or rejected claim, through the same steps |
 
 Findings that match another area's labels are recorded separately and left out
 of every metric below. The judge is a model, so regrading can change a few

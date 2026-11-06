@@ -32,6 +32,7 @@ import { BenchmarkAgent, Fixture } from "../evals/types";
 import { partitionAreaAssessment } from "./area-assessment";
 import {
   Assessment,
+  KnownInvalidFinding,
   dedupeAssessment,
   loadKnownInvalid,
   scoreAssessment,
@@ -284,7 +285,7 @@ export async function gradeFixture(
 export async function judge(
   fixture: Fixture,
   groundTruth: KnownBug[],
-  knownInvalid: Finding[],
+  knownInvalid: KnownInvalidFinding[],
   bugs: Finding[],
   codex: Codex,
   signal?: AbortSignal,
@@ -317,7 +318,7 @@ export async function judge(
           JudgeOutputSchema.parse(JSON.parse(finalResponse)),
           bugs.length,
           groundTruth,
-          knownInvalid.length,
+          knownInvalid,
         ),
       );
     } catch (err) {
