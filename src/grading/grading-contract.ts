@@ -73,7 +73,8 @@ export function toAssessment(
     }[item.set];
     if (
       (item.set === "unverified") !== (index === null) ||
-      (index !== null && index >= setSize)
+      (index !== null && index >= setSize) ||
+      (item.set !== "groundTruth" && item.reproStepsIndex !== null)
     ) {
       throw new Error(
         `Judge chose a missing entry for finding ${findingIndex}.`,
