@@ -194,14 +194,14 @@ matches. Its full prompt is in
 checks the judge against reviewed findings in
 [`cases.json`](src/grading/eval/cases.json).
 
-| Metric           | Definition                                      |
-| ---------------- | ----------------------------------------------- |
-| Findings         | Every submitted finding                         |
-| Precision        | Findings matching a label / (those + Incorrect) |
-| Recall           | Correct / labels in the area                    |
-| Score            | Severity of Correct labels − Incorrect − Dup.   |
-| Cost per run     | Mean cost of a run                              |
-| Cost per correct | Cost / Correct                                  |
+| Metric           | Definition                                                           |
+| ---------------- | -------------------------------------------------------------------- |
+| Findings         | Every submitted finding                                              |
+| Precision        | Findings matching a label / (those + Incorrect), duplicates included |
+| Recall           | Correct / labels in the area                                         |
+| Score            | Severity of Correct labels − Incorrect − Dup.                        |
+| Cost per run     | Mean cost of a run                                                   |
+| Cost per correct | Cost / Correct                                                       |
 
 Severity comes from the label: 1 for cosmetic issues, 3 for functional bugs and 5
 for broken pages or raw error dumps. Unmatched findings don't affect Precision or
