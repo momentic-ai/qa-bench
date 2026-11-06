@@ -43,13 +43,18 @@ export async function readDataset(file: string): Promise<string> {
       }
     }),
   );
+  // Only ground-truth labels take reproSteps cases; known-invalid entries keep a single list.
+  const normalize =
+    path.basename(file) === "ground-truth.json"
+      ? asCases
+      : (bug: Record<string, unknown>) => bug;
   const combined = new Map<string, (typeof datasets)[number][number]>();
-  for (const bug of datasets.flat()) {
-    const previous = combined.get(bug.name);
-    if (previous && !isDeepStrictEqual(asCases(previous), asCases(bug))) {
+  for (const bug of datasets.flat().map(normalize)) {
+    const previous = combined.get(bug.name as string);
+    if (previous && !isDeepStrictEqual(previous, bug)) {
       throw new Error(`Conflicting labels for ${bug.name} in ${file}.`);
     }
-    combined.set(bug.name, bug);
+    combined.set(bug.name as string, bug as (typeof datasets)[number][number]);
   }
   return JSON.stringify({ bugs: [...combined.values()] }) + "\n";
 }
