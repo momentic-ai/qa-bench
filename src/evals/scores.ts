@@ -16,15 +16,16 @@ export type Agent = z.infer<typeof AgentSchema>;
 export const AGENTS = AgentSchema.options;
 const count = z.number().int().nonnegative();
 
-// Precision judges every adjudicated report, including duplicates of known hits and known invalid findings; recall credits each reference once.
+// Precision judges every adjudicated report, including extra matches and duplicates; recall credits each reference once.
 export function metrics(
   knownHits: number,
   knownInvalid: number,
   groundTruth: number,
   duplicateKnownHits = 0,
   duplicateKnownInvalid = 0,
+  extraKnownHits = 0,
 ) {
-  const correct = knownHits + duplicateKnownHits;
+  const correct = knownHits + extraKnownHits + duplicateKnownHits;
   const adjudicated = correct + knownInvalid + duplicateKnownInvalid;
   return {
     precision: adjudicated === 0 ? null : correct / adjudicated,
@@ -69,8 +70,9 @@ export const ScoreSchema = z
     bugs: count,
     flags: count,
     known_hits: count,
+    // Further findings of an already-found bug; neither hits nor duplicates.
+    extra_known_hits: count,
     unverified: count,
-    ignored: count.default(0),
     outside_area_known_hits: count.default(0),
     outside_area_known_invalid: count.default(0),
     outside_area_duplicates: count.default(0),
@@ -106,6 +108,7 @@ export const ScoreSchema = z
       score.ground_truth,
       score.duplicate_known_hits,
       score.duplicate_known_invalid,
+      score.extra_known_hits,
     );
     const ratesPerMinute = throughput(
       score.bugs,
@@ -120,8 +123,8 @@ export const ScoreSchema = z
     if (score.cost_complete && score.cost_usd === null) return false;
     const submissions =
       score.known_hits +
+      score.extra_known_hits +
       score.unverified +
-      score.ignored +
       score.duplicates +
       score.known_invalid +
       score.outside_area_known_hits +
@@ -282,8 +285,8 @@ export function totalScores(scores: Score[], agent: Agent): Score {
       bugs: sum.bugs + score.bugs,
       flags: sum.flags + score.flags,
       known_hits: sum.known_hits + score.known_hits,
+      extra_known_hits: sum.extra_known_hits + score.extra_known_hits,
       unverified: sum.unverified + score.unverified,
-      ignored: sum.ignored + score.ignored,
       outside_area_known_hits:
         sum.outside_area_known_hits + score.outside_area_known_hits,
       outside_area_known_invalid:
@@ -318,8 +321,8 @@ export function totalScores(scores: Score[], agent: Agent): Score {
       bugs: 0,
       flags: 0,
       known_hits: 0,
+      extra_known_hits: 0,
       unverified: 0,
-      ignored: 0,
       outside_area_known_hits: 0,
       outside_area_known_invalid: 0,
       outside_area_duplicates: 0,
@@ -366,6 +369,7 @@ export function totalScores(scores: Score[], agent: Agent): Score {
       total.ground_truth,
       total.duplicate_known_hits,
       total.duplicate_known_invalid,
+      total.extra_known_hits,
     ),
   });
 }

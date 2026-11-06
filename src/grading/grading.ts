@@ -10,7 +10,12 @@ import { devinQaRunner } from "../agents/devin/qa-reader";
 import { moRunner } from "../agents/mo/runner";
 import { readGroundTruth } from "../evals/ground-truth";
 import { verifyCaseMetadata } from "../evals/report-files";
-import { DurationSchema, Finding, loadGroundTruth } from "../evals/reports";
+import {
+  DurationSchema,
+  Finding,
+  KnownBug,
+  loadGroundTruth,
+} from "../evals/reports";
 import {
   OutsideAreaReview,
   writeReviewArtifacts,
@@ -27,17 +32,18 @@ import { BenchmarkAgent, Fixture } from "../evals/types";
 import { partitionAreaAssessment } from "./area-assessment";
 import {
   Assessment,
+  dedupeAssessment,
   loadKnownInvalid,
   scoreAssessment,
-  validateAssessment,
 } from "./assessment";
 import {
-  GRADING_APP_SCHEMA,
   GRADING_METHOD_SHA256,
   GRADING_OUTPUT_SCHEMA,
   GRADING_PROMPT_TEMPLATE,
   GRADING_THREAD_OPTIONS,
+  JudgeOutputSchema,
   gradingPrompt,
+  toAssessment,
 } from "./grading-contract";
 
 const root = path.resolve(import.meta.dirname, "../..");
@@ -197,13 +203,8 @@ export async function gradeFixture(
     assessment,
     knownHits: matchedBugs,
     scores,
-  } = scoreAssessment(
-    judged,
-    groundTruth,
-    knownInvalid.bugs.length,
-    bugs.length,
-  );
-  const knownHits = assessment.matches.length;
+  } = scoreAssessment(judged, groundTruth);
+  const knownHits = scores.known_hits;
   const knownInvalidCount = assessment.invalidMatches.length;
   const duplicates = assessment.duplicates.length;
   await writeFile(
@@ -247,7 +248,6 @@ export async function gradeFixture(
     flags: flags.length,
     ...scores,
     unverified,
-    ignored: assessment.ignored?.length ?? 0,
     outside_area_known_hits: outsideKnownHits,
     outside_area_known_invalid: outsideKnownInvalid,
     outside_area_duplicates: outsideDuplicates,
@@ -263,6 +263,7 @@ export async function gradeFixture(
       groundTruth.length,
       scores.duplicate_known_hits,
       scores.duplicate_known_invalid,
+      scores.extra_known_hits,
     ),
     ...throughput(bugs.length, knownHits, report.durationSeconds),
     review_path: options.runId
@@ -282,7 +283,7 @@ export async function gradeFixture(
 }
 export async function judge(
   fixture: Fixture,
-  groundTruth: Finding[],
+  groundTruth: KnownBug[],
   knownInvalid: Finding[],
   bugs: Finding[],
   codex: Codex,
@@ -299,19 +300,28 @@ export async function judge(
       severities: [],
     };
   }
-  const thread = codex.startThread({
-    ...GRADING_THREAD_OPTIONS,
-    workingDirectory: root,
-  });
   const prompt = gradingPrompt(fixture.name, groundTruth, knownInvalid, bugs);
-  const { finalResponse } = await thread.run(prompt, {
-    signal,
-    outputSchema: GRADING_OUTPUT_SCHEMA,
-  });
-  const assessment = GRADING_APP_SCHEMA.parse(JSON.parse(finalResponse));
-  return validateAssessment(assessment, {
-    groundTruth: groundTruth.length,
-    knownInvalid: knownInvalid.length,
-    findings: bugs.length,
-  });
+  // One retry absorbs an occasional malformed judge answer.
+  for (let attempt = 1; ; attempt++) {
+    const thread = codex.startThread({
+      ...GRADING_THREAD_OPTIONS,
+      workingDirectory: root,
+    });
+    const { finalResponse } = await thread.run(prompt, {
+      signal,
+      outputSchema: GRADING_OUTPUT_SCHEMA,
+    });
+    try {
+      return dedupeAssessment(
+        toAssessment(
+          JudgeOutputSchema.parse(JSON.parse(finalResponse)),
+          bugs.length,
+          groundTruth,
+          knownInvalid.length,
+        ),
+      );
+    } catch (err) {
+      if (attempt >= 2) throw err;
+    }
+  }
 }

@@ -3,13 +3,10 @@ import path from "node:path";
 import { z } from "zod";
 
 import { readDataset } from "../evals/dataset";
-import { FindingSchema, KnownBug, SeveritySchema } from "../evals/reports";
-
-const INDEX = z.number().int().nonnegative();
-const REASON = z.string().min(1);
+import { FindingSchema, KnownBug } from "../evals/reports";
 
 export const KnownInvalidFindingSchema = FindingSchema.extend({
-  reason: REASON,
+  reason: z.string().min(1),
 });
 export type KnownInvalidFinding = z.infer<typeof KnownInvalidFindingSchema>;
 
@@ -36,70 +33,34 @@ export async function loadKnownInvalid(fixtureDirectory: string) {
   return { bugs, hash: createHash("sha256").update(contents).digest("hex") };
 }
 
-export const AssessmentSchema = z
-  .object({
-    matches: z.array(
-      z
-        .object({
-          groundTruthIndex: INDEX,
-          findingIndex: INDEX,
-          reason: REASON,
-        })
-        .strict(),
-    ),
-    invalidMatches: z.array(
-      z
-        .object({
-          knownInvalidIndex: INDEX,
-          findingIndex: INDEX,
-          reason: REASON,
-        })
-        .strict(),
-    ),
-    duplicates: z.array(
-      z
-        .object({
-          findingIndex: INDEX,
-          canonicalFindingIndex: INDEX,
-          reason: REASON,
-        })
-        .strict(),
-    ),
-    unverified: z.array(
-      z.object({ findingIndex: INDEX, reason: REASON }).strict(),
-    ),
-    ignored: z
-      .array(z.object({ findingIndex: INDEX, reason: REASON }).strict())
-      .optional(),
-    severities: z.array(
-      z
-        .object({
-          findingIndex: INDEX,
-          severity: SeveritySchema,
-          reason: REASON,
-        })
-        .strict(),
-    ),
-  })
-  .strict();
-
-export type Assessment = z.infer<typeof AssessmentSchema>;
+type Reason = { findingIndex: number; reason: string };
+export type Assessment = {
+  // reproStepsIndex is null when the finding reaches the bug through none of its reproSteps cases.
+  matches: (Reason & {
+    groundTruthIndex: number;
+    reproStepsIndex: number | null;
+  })[];
+  invalidMatches: (Reason & { knownInvalidIndex: number })[];
+  duplicates: (Reason & { canonicalFindingIndex: number })[];
+  unverified: Reason[];
+  severities: (Reason & { severity: KnownBug["severity"] })[];
+};
 
 export function scoreAssessment(
   assessment: Assessment,
   groundTruth: KnownBug[],
-  knownInvalidCount: number,
-  findingsCount: number,
 ) {
-  validateAssessment(assessment, {
-    groundTruth: groundTruth.length,
-    knownInvalid: knownInvalidCount,
-    findings: findingsCount,
-  });
-  const knownHits = assessment.matches.map((match) => ({
+  const matches = assessment.matches.map((match) => ({
     ...groundTruth[match.groundTruthIndex],
     ...match,
   }));
+  // Recall credits each bug once, however many findings report it.
+  const knownHits = matches.filter(
+    (hit, i) =>
+      matches.findIndex(
+        (other) => other.groundTruthIndex === hit.groundTruthIndex,
+      ) === i,
+  );
   const severitySum = knownHits.reduce((sum, hit) => sum + hit.severity, 0);
   // Known misses are submitted claims matching reviewed negatives; unfound positives affect recall only.
   const knownMisses = assessment.invalidMatches.length;
@@ -114,16 +75,8 @@ export function scoreAssessment(
     assessment: {
       ...assessment,
       severities: assessment.severities.map((estimate) => {
-        let canonicalFindingIndex = estimate.findingIndex;
-        if (assessment.ignored !== undefined) {
-          const duplicate = assessment.duplicates.find(
-            (item) => item.findingIndex === estimate.findingIndex,
-          );
-          canonicalFindingIndex =
-            duplicate?.canonicalFindingIndex ?? canonicalFindingIndex;
-        }
-        const hit = knownHits.find(
-          (item) => item.findingIndex === canonicalFindingIndex,
+        const hit = matches.find(
+          (item) => item.findingIndex === estimate.findingIndex,
         );
         if (hit) {
           // A matched claim inherits its fixed reference weight, never the judge's estimate.
@@ -139,6 +92,7 @@ export function scoreAssessment(
     },
     scores: {
       known_hits: knownHits.length,
+      extra_known_hits: matches.length - knownHits.length,
       known_misses: knownMisses,
       duplicate_known_hits: assessment.duplicates.filter((duplicate) =>
         matchedFindings.has(duplicate.canonicalFindingIndex),
@@ -155,86 +109,42 @@ export function scoreAssessment(
   };
 }
 
-export function validateAssessment(
-  assessment: Assessment,
-  counts: { groundTruth: number; knownInvalid: number; findings: number },
+// Repeat matches of one bug's reproSteps case, or of one rejected claim, become duplicates of the first.
+export function dedupeAssessment(
+  assessment: Omit<Assessment, "duplicates">,
 ): Assessment {
-  const classified = new Set<number>();
-  function classify(index: number) {
-    if (index >= counts.findings || classified.has(index)) {
-      // An overlapping or nonexistent finding would corrupt the score partition.
-      throw new Error(
-        `Invalid or multiply classified finding index: ${index}.`,
-      );
+  const first = new Map<string, number>();
+  const duplicates: Assessment["duplicates"] = [];
+  function isRepeat(key: string | null, findingIndex: number, reason: string) {
+    if (key === null) return false;
+    const canonicalFindingIndex = first.get(key);
+    if (canonicalFindingIndex === undefined) {
+      first.set(key, findingIndex);
+      return false;
     }
-    classified.add(index);
+    duplicates.push({ findingIndex, canonicalFindingIndex, reason });
+    return true;
   }
-  const matchedReferences = new Set<number>();
-  for (const match of assessment.matches) {
-    if (
-      match.groundTruthIndex >= counts.groundTruth ||
-      matchedReferences.has(match.groundTruthIndex)
-    ) {
-      // Each reviewed positive can earn at most one known hit.
-      throw new Error(
-        `Invalid or repeated ground-truth index: ${match.groundTruthIndex}.`,
-      );
-    }
-    matchedReferences.add(match.groundTruthIndex);
-    classify(match.findingIndex);
-  }
-  const invalidReferences = new Set<number>();
-  for (const match of assessment.invalidMatches) {
-    if (
-      match.knownInvalidIndex >= counts.knownInvalid ||
-      invalidReferences.has(match.knownInvalidIndex)
-    ) {
-      // Repeated claims about one reviewed negative must be grouped as duplicates.
-      throw new Error(
-        `Invalid or repeated known-invalid index: ${match.knownInvalidIndex}.`,
-      );
-    }
-    invalidReferences.add(match.knownInvalidIndex);
-    classify(match.findingIndex);
-  }
-  for (const finding of assessment.unverified) {
-    classify(finding.findingIndex);
-  }
-  const canonicalIndices = new Set(classified);
-  const ignoredIndices = new Set<number>();
-  for (const finding of assessment.ignored ?? []) {
-    classify(finding.findingIndex);
-    ignoredIndices.add(finding.findingIndex);
-  }
-  for (const duplicate of assessment.duplicates) {
-    if (!canonicalIndices.has(duplicate.canonicalFindingIndex)) {
-      // Duplicate chains and self-references cannot identify a single canonical claim.
-      throw new Error(
-        `Duplicate does not reference a canonical finding: ${duplicate.findingIndex}.`,
-      );
-    }
-    classify(duplicate.findingIndex);
-  }
-  if (classified.size !== counts.findings) {
-    // Missing classifications must fail rather than silently becoming unverified.
-    throw new Error("Missing finding classifications in judge assessment.");
-  }
-  const severityIndices = new Set<number>();
-  for (const item of assessment.severities) {
-    if (
-      item.findingIndex >= counts.findings ||
-      severityIndices.has(item.findingIndex) ||
-      ignoredIndices.has(item.findingIndex)
-    ) {
-      throw new Error(
-        `Invalid or repeated severity index: ${item.findingIndex}.`,
-      );
-    }
-    severityIndices.add(item.findingIndex);
-  }
-  if (severityIndices.size !== counts.findings - ignoredIndices.size) {
-    // An incomplete severity list would leave gaps in the human review queue.
-    throw new Error("Missing finding severities in judge assessment.");
-  }
-  return assessment;
+  return {
+    ...assessment,
+    matches: assessment.matches.filter(
+      (match) =>
+        !isRepeat(
+          match.reproStepsIndex === null
+            ? null
+            : `bug ${match.groundTruthIndex} case ${match.reproStepsIndex}`,
+          match.findingIndex,
+          match.reason,
+        ),
+    ),
+    invalidMatches: assessment.invalidMatches.filter(
+      (match) =>
+        !isRepeat(
+          `invalid ${match.knownInvalidIndex}`,
+          match.findingIndex,
+          match.reason,
+        ),
+    ),
+    duplicates,
+  };
 }

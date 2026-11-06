@@ -169,7 +169,7 @@ export async function writeReviewArtifacts({
       "";
     let target: KnownBug | undefined;
     if (hit) target = groundTruth[hit.groundTruthIndex];
-    let reference: Finding | undefined =
+    let reference: Finding | KnownBug | undefined =
       outsideHit?.reference ?? outsideInvalid?.reference ?? target;
     if (!reference && invalid)
       reference = knownInvalid[invalid.knownInvalidIndex];
