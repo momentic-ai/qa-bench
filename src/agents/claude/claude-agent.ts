@@ -130,6 +130,7 @@ export class ClaudeAgent extends CodingAgent {
   static family = "claude" as const;
   static apiKey = "ANTHROPIC_API_KEY";
   static skillOwner = ".claude" as const;
+  static e2eProvider = "anthropic" as const;
 
   static async validate() {
     await promisify(execFile)(CLAUDE_COMMAND, ["--version"]);

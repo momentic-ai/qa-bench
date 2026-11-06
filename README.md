@@ -36,10 +36,12 @@ Graded against the labels at `e77c72b`. Per-area results are in
 | --------------------------------------- | ----- | --------------- | --------------- | -------------- | ----------------- | ------------- | ------------------------ |
 | Mo                                      | 20    | 176.7           | 269.3           | 19.3%          | 84.2%             | 588.7         | $2.67                    |
 | Codex, GPT-6.1 Sol, Playwright MCP      | 20    | 74.7            | 86.3            | 6.2%           | 86.0%             | 207.0         | $0.80                    |
+| Codex, GPT-6.1 Sol, e2e\*               | 20    | 77.3            | 83.7            | 6.0%           | 90.3%             | 205.6         | $2.08                    |
 | Codex, GPT-6.1 Terra, Playwright MCP    | 20    | 83.3            | 82.7            | 5.9%           | 81.6%             | 177.0         | $0.53                    |
 | Codex, GPT-6.1 Sol, agent-browser       | 20    | 68.0            | 64.3            | 4.6%           | 76.3%             | 144.3         | $0.96                    |
 | Claude Code, Opus 5.5, Playwright MCP   | 20    | 38.0            | 59.0            | 4.2%           | 79.5%             | 122.7         | $4.09                    |
 | Codex, GPT-6.1 Terra, agent-browser     | 20    | 59.3            | 57.7            | 4.1%           | 76.2%             | 126.3         | $0.27                    |
+| Claude Code, Opus 5.5, e2e\*            | 20    | 39.4            | 57.3            | 4.1%           | 89.6%             | 127.3         | $8.98                    |
 | Claude Code, Opus 5.5, agent-browser    | 20    | 24.0            | 41.0            | 2.9%           | 77.0%             | 81.0          | $2.45                    |
 | Devin                                   | 20    | 16.0            | 27.0            | 1.9%           | 84.4%             | 65.0          | $3.89                    |
 | Claude Code, Sonnet 5.5, Playwright MCP | 20    | 12.0            | 15.0            | 1.1%           | 72.6%             | 26.7          | $2.08                    |
@@ -47,7 +49,14 @@ Graded against the labels at `e77c72b`. Per-area results are in
 
 Every configuration covers all 20 areas. Correct is summed over them, and
 Recall divides it by the 1,396 labels. Devin ran each area once per budget; the
-other configurations ran each area three times per budget.
+other configurations ran each area three times per budget, except Codex with
+e2e on Gitea repository settings at 60 minutes. OpenAI's cybersecurity policy
+refused one of those runs three times, so that area has two.
+
+\* Pending label review. The e2e runs left 106 distinct findings (135 reports)
+that match no label; the other rows have none. Reviewing them will raise
+Correct and Recall where they are real bugs, and can lower Precision and Score
+where they are invalid.
 
 ## Run it
 
@@ -84,8 +93,9 @@ pnpm merge --fixtures saleor/areas/vouchers
 ```
 
 `--agent` takes `mo`, `codex-playwright-mcp`, `claude-playwright-mcp`,
-`codex-agent-browser`, `claude-agent-browser` or `devin-qa`. `--fixtures` takes
-an app (`gitea`), all of its areas (`gitea/areas`), one area, or `oss-areas`.
+`codex-agent-browser`, `claude-agent-browser`, `codex-e2e`, `claude-e2e` or
+`devin-qa`. `--fixtures` takes an app (`gitea`), all of its areas
+(`gitea/areas`), one area, or `oss-areas`.
 
 Each run is graded when it finishes and saved to
 `reports/<agent>/<fixture>/<run-id>/`. `merge` writes `reports/comparison.md`.
@@ -117,12 +127,12 @@ to Mo.
 
 Versions are pinned in [`package.json`](package.json).
 
-| Agent       | Model and reasoning effort   | Browser                                         |
-| ----------- | ---------------------------- | ----------------------------------------------- |
-| Mo          | Chosen by Momentic's service | Hosted by Momentic                              |
-| Codex       | `gpt-6.1-sol`, medium        | Playwright MCP or agent-browser, on Browserbase |
-| Claude Code | `claude-opus-5-5`, medium    | Playwright MCP or agent-browser, on Browserbase |
-| Devin       | Devin's defaults             | Devin's native browser                          |
+| Agent       | Model and reasoning effort   | Browser                                              |
+| ----------- | ---------------------------- | ---------------------------------------------------- |
+| Mo          | Chosen by Momentic's service | Hosted by Momentic                                   |
+| Codex       | `gpt-6.1-sol`, medium        | Playwright MCP, agent-browser or e2e, on Browserbase |
+| Claude Code | `claude-opus-5-5`, medium    | Playwright MCP, agent-browser or e2e, on Browserbase |
+| Devin       | Devin's defaults             | Devin's native browser                               |
 
 Results also include Codex with `gpt-6.1-terra` and Claude Code with
 `claude-sonnet-5-5`. Use `--model` to run them.
@@ -138,6 +148,16 @@ Results also include Codex with `gpt-6.1-terra` and Claude Code with
   [agent-browser](https://www.npmjs.com/package/agent-browser) CLI and its
   bundled skill. Each run connects to one Browserbase browser, and the agent
   decides how to share it.
+- `*-e2e` agents run a bug bash with the pinned
+  [e2e](https://www.npmjs.com/package/e2e) CLI and its bundled skill: they plan
+  charters, run `e2e explore` for each, and save the bugs that a failing repro
+  test confirms. The workspace's `e2e.config.ts` sets the fixture URL, the
+  browser, the model, the fixture accounts as e2e credentials (passwords come
+  from the environment), and video recording. e2e's own agent uses the coding
+  agent's model at medium effort, and each e2e process gets its own Browserbase
+  browser. e2e
+  needs Node.js 22.22.3 or later 22.x, or 24.8 or later. Like
+  `codex-agent-browser`, these runs have no shell sandbox.
 - `--browser local` replaces Browserbase with headless Chromium on the host.
   Playwright MCP runs then have no subagents, and `merge` labels them separately.
 - Mo manages its own subagents, and `--max-concurrent-sub-agents` caps them.
@@ -162,7 +182,7 @@ Claude Code already omits WebSearch and WebFetch from its tool list. With the fl
 The flag doesn't stop fixtures that fetch from code hosts on the server, such
 as Gitea's "New Migration" from GitHub.
 
-**`--prevent-cheating` is not a network firewall for agent-browser runs.** The flag
+**`--prevent-cheating` is not a network firewall for agent-browser or e2e runs.** The flag
 is accepted there, but it only turns off web search and, on Browserbase, limits
 page navigation to the fixture host. With `--browser local` its browser isn't
 restricted, and it runs without Codex's sandbox on any browser, so the agent can

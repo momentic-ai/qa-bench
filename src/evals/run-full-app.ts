@@ -162,7 +162,9 @@ async function runFixture({
     else if (agentName !== "mo")
       browserTool = agentName?.endsWith("-agent-browser")
         ? "agent-browser"
-        : "Playwright MCP";
+        : agentName?.endsWith("-e2e")
+          ? "e2e"
+          : "Playwright MCP";
     const run = await runAgent({
       agent,
       message: bugbashBrief(url, timeLimitMs, fixture, browserTool),

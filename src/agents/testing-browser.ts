@@ -1,4 +1,4 @@
-import { mkdir, mkdtemp, rm } from "node:fs/promises";
+import { cp, mkdir, mkdtemp, rm } from "node:fs/promises";
 import { createRequire } from "node:module";
 import { tmpdir } from "node:os";
 import path from "node:path";
@@ -13,6 +13,13 @@ import {
   validateAgentBrowser,
 } from "./agent-browser";
 import { BrowserbaseSessions } from "./codex/browserbase";
+import { E2EModel } from "./e2e/config";
+import {
+  addE2ECost,
+  e2eInstructions,
+  prepareE2E,
+  validateE2E,
+} from "./e2e/workspace";
 import { localBrowserConnection, validateLocalChromium } from "./local-browser";
 
 const require = createRequire(import.meta.url);
@@ -110,6 +117,7 @@ export type BrowserOptions = {
   preventCheating: boolean;
   /** Where the agent discovers skills. */
   skillOwner: ".agents" | ".claude";
+  e2eModel: E2EModel;
 };
 
 export type PreparedBrowser = {
@@ -120,7 +128,7 @@ export type PreparedBrowser = {
     env: Record<string, string>;
   };
   env?: Record<string, string>;
-  /** agent-browser needs network access and background processes from the shell. */
+  /** agent-browser and e2e need network access and background processes from the shell. */
   unsandboxedShell: boolean;
   subagents?: boolean;
   /** Appended to the task brief. */
@@ -140,6 +148,7 @@ export abstract class TestingBrowser {
   /** Whether answer sites are blocked even on a local browser. */
   protected blocksSitesLocally = false;
   protected keepAlive = false;
+  protected instructions: string | undefined;
 
   constructor(
     protected context: AgentContext,
@@ -161,16 +170,21 @@ export abstract class TestingBrowser {
   protected abstract setup(workspace: string): Promise<BrowserToolSetup>;
 
   async prepare(workspace: string): Promise<PreparedBrowser> {
+    const setup = await this.setup(workspace);
     const { browser, preventCheating } = this.options;
     const sitesBlocked = this.blocksSitesLocally || browser !== "local";
-    const instructions =
-      preventCheating && sitesBlocked
-        ? "Some external sites are blocked. Record flows that need one as coverage limitations, not bugs."
-        : "";
+    const instructions = [
+      this.instructions,
+      preventCheating &&
+        sitesBlocked &&
+        "Some external sites are blocked. Record flows that need one as coverage limitations, not bugs.",
+    ]
+      .filter(Boolean)
+      .join("\n\n");
     return {
       instructions,
       unsandboxedShell: this.unsandboxedShell,
-      ...(await this.setup(workspace)),
+      ...setup,
     };
   }
 
@@ -293,7 +307,70 @@ class AgentBrowser extends TestingBrowser {
   }
 }
 
+class E2E extends TestingBrowser {
+  private journal: string | undefined;
+  private workspace: string | undefined;
+
+  static async validate(browser: Browser) {
+    await validateE2E();
+    // e2e downloads its own pinned Chromium.
+    if (browser !== "local") await super.validate(browser);
+  }
+
+  protected async setup(workspace: string) {
+    this.workspace = workspace;
+    this.instructions = e2eInstructions(this.context.fixture);
+    if (!this.context.targetUrl)
+      throw new Error("Agent fixture URL is missing.");
+    this.journal = path.join(
+      this.context.runDirectory,
+      "e2e-model-calls.jsonl",
+    );
+    return {
+      env: await prepareE2E({
+        workspace,
+        skillOwner: this.options.skillOwner,
+        fixture: this.context.fixture,
+        targetUrl: this.context.targetUrl,
+        model: this.options.e2eModel,
+        journal: this.journal,
+        broker:
+          this.options.browser === "local"
+            ? undefined
+            : (await this.connect()).env.PLAYWRIGHT_MCP_CDP_ENDPOINT,
+      }),
+    };
+  }
+
+  async cost(model: AgentCost | null, modelComplete: boolean) {
+    const cost = await super.cost(model, modelComplete);
+    return this.journal ? addE2ECost(cost, this.journal) : cost;
+  }
+
+  async close() {
+    const { workspace } = this;
+    try {
+      if (this.journal && workspace)
+        // Keep the bug-bash config, charters, repro tests and e2e reports as evidence.
+        await cp(
+          workspace,
+          path.join(this.context.runDirectory, "e2e-workspace"),
+          {
+            recursive: true,
+            filter: (entry) =>
+              ![".agents", ".claude", "node_modules"].includes(
+                path.relative(workspace, entry).split(path.sep)[0],
+              ),
+          },
+        );
+    } finally {
+      await super.close();
+    }
+  }
+}
+
 const BROWSER_TOOLS = {
   "playwright-mcp": PlaywrightMcp,
   "agent-browser": AgentBrowser,
+  e2e: E2E,
 } satisfies Record<BrowserTool, unknown>;
