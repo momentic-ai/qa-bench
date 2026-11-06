@@ -15,20 +15,25 @@
     },
     {
       "id": "gitea-global-milestone-name-sort-drops-repositories",
-      "name": "Global milestones: Sort > Name discards the repository filter and restores excluded milestones",
-      "summary": "Sorting global milestones by Name clears the active repository selection and restores milestones from excluded repositories.",
-      "expected": "Name sorting should reorder only milestones in the selected repositories, retaining the active repository selection and excluding milestones from deselected repositories.",
-      "actual": "After deselecting eval/harbor-handbook, the global list shows 2 Open milestones. Sort > Name removes repos from the URL, resets the sidebar selection, and shows 3 Open including the previously excluded Handbook 1.1 milestone.",
+      "name": "Milestones Sort > Name discards the repository filter on global and organization pages",
+      "summary": "On the global and organization Milestones pages, the Sort > Name link drops the repos filter, so milestones from excluded repositories reappear.",
+      "expected": "Choosing Sort > Name keeps the selected repository filter, like the other sort options.",
+      "actual": "The Name sort link omits repos from the URL, resets the repository selection, and lists milestones from excluded repositories, raising the open count (for example 2 to 3 on the global page, 1 to 3 on an organization page).",
       "reproSteps": [
-        "Sign in as fixture administrator eval. Through the UI, ensure at least two accessible repositories have open milestones; create disposable repositories/milestones if necessary.",
-        "Open the global /milestones dashboard. Deselect one repository in the sidebar and confirm its milestone disappears while another repository remains selected.",
-        "Open Sort and choose Name.",
-        "Observe that the repository selection resets, the URL loses repos, and the excluded milestone returns. In the native reproduction the count increased from 2 Open to 3 Open."
+        [
+          "Sign in as fixture administrator eval. Through the UI, ensure at least two accessible repositories have open milestones; create disposable repositories/milestones if necessary.",
+          "Open the global /milestones dashboard. Deselect one repository in the sidebar and confirm its milestone disappears while another repository remains selected.",
+          "Open Sort and choose Name.",
+          "Observe that the repository selection resets, the URL loses repos, and the excluded milestone returns. In the native reproduction the count increased from 2 Open to 3 Open."
+        ],
+        [
+          "In an organization with two repositories that each have a milestone, open the organization's Milestones page.",
+          "Click one repository in the sidebar filter to exclude it.",
+          "Choose Sort > Name.",
+          "Check whether the excluded repository's milestones are listed again."
+        ]
       ],
-      "severity": 3,
-      "matchingGuidance": {
-        "deduplication": "Distinct from gitea-milestone-search-sort-reset (repository search drops sorting) and gitea-pass2-004 (rejected multiselect interpretation). This reference requires a verified excluded repository returning after global Name sorting."
-      }
+      "severity": 3
     },
     {
       "id": "gitea-milestone-search-sort-reset",
@@ -42,8 +47,7 @@
         "Enter QA in the milestone search field and press Enter.",
         "Inspect the resulting URL and rows. The search URL contains state=open&q=QA but no sort parameter; undated QA Alpha rows appear first, and QA Beta Past appears before QA Gamma Future. Searching has reset the applied ordering."
       ],
-      "severity": 3,
-      "sourceCause": "Repository milestones use the shared issue search form, whose hidden sort input is inside the not PageIsMilestones condition. The milestone handler sets PageIsMilestones=true, so normal search submission sends state and q without the applied sort. The handler then passes an empty SortType to the milestone query, changing deadline_unix DESC to the default deadline_unix ASC, name ASC. This reverses dated rows and moves undated zero-deadline rows first."
+      "severity": 3
     },
     {
       "id": "gitea-milestone-epoch-date-placeholder",
@@ -57,10 +61,7 @@
         "Inspect its row in the milestone list: the calendar icon is followed by '-' rather than the date.",
         "Open Edit Milestone and confirm the saved Due Date remains January 1, 1970."
       ],
-      "severity": 1,
-      "matchingGuidance": {
-        "scope": "Default UTC fixture display path. No lost date or identical behavior in every timezone is claimed."
-      }
+      "severity": 1
     },
     {
       "id": "gitea-pass2-005",
@@ -90,11 +91,7 @@
         "On the resulting page at /eval/mo-gitea-03-issues-milestones-close-repro/milestones?state=close, observe “1 Closed” and no milestone row; the state remained visible after five seconds.",
         "Click the visible “1 Closed” filter. At /eval/mo-gitea-03-issues-milestones-close-repro/milestones?state=closed, observe the milestone row."
       ],
-      "severity": 3,
-      "sourceCause": "routers/web/repo/milestone.go ChangeMilestoneStatus redirects to /milestones?state=<action>, so Close sends state=close, while the Milestones page only treats state=closed as the Closed view and shows the Open list for anything else.",
-      "matchingGuidance": {
-        "scope": "Reports that closing a milestone (from its details page or the list, however the page was reached) lands on state=close, the Open view, an empty list, or a list without the just-closed milestone match this entry, unless the report's observed result says the repository tabs, header or page body disappeared; those match gitea-milestone-close-blanks-page instead."
-      }
+      "severity": 3
     },
     {
       "id": "gitea-whitespace-milestone-title-saved-empty",
@@ -137,13 +134,7 @@
         "Observe the page scrolls horizontally and the title runs past the right edge.",
         "Open the milestone's detail page and observe the heading widens the page well past 390px."
       ],
-      "severity": 1,
-      "matchingGuidance": {
-        "relatedReference": {
-          "name": "Long milestone titles overlap repository labels in the global milestone list at 390×844",
-          "distinction": "Both come from milestone titles having no word-break at mobile width, but on different pages with different symptoms: this reference covers the repository milestone list and milestone detail page widening the page into horizontal scroll, and the related reference covers the global /milestones list where the title overlaps the repository label. Credit each finding to the reference for the page and symptom it reports."
-        }
-      }
+      "severity": 1
     },
     {
       "id": "gitea-milestone-close-reopen-drops-search",
@@ -158,13 +149,7 @@
         "Observe the search box is empty, the sort is reset, and the non-matching milestone is listed.",
         "Switch to Closed, search again, click Open on the closed milestone, and observe the search is lost the same way."
       ],
-      "severity": 3,
-      "matchingGuidance": {
-        "relatedReference": {
-          "name": "Closing a milestone opens an empty closed-milestone list",
-          "distinction": "Both come from the milestone status-change redirect, but they are different defects: this reference covers losing the search keyword and sort after Close or Reopen from a searched list (Reopen sends the correct state and still loses them), and the related reference covers the redirect using state=close so the Closed list is not shown. Credit search/sort-loss findings here and empty-closed-list findings to the related reference."
-        }
-      }
+      "severity": 3
     },
     {
       "id": "gitea-milestone-delete-drops-search",
@@ -178,13 +163,7 @@
         "Click Delete on one of the matching milestones and confirm.",
         "Observe the search box is empty, the sort is reset, and the non-matching milestone is listed."
       ],
-      "severity": 3,
-      "matchingGuidance": {
-        "relatedReference": {
-          "id": "gitea-milestone-close-reopen-drops-search",
-          "distinction": "Both lose the milestone list's search and sort after an action, but through different handlers: this reference covers Delete (which redirects to the bare Milestones page), and the related reference covers Close and Reopen (which redirect with only a state parameter). Credit each finding to the reference for the action it reports."
-        }
-      }
+      "severity": 3
     },
     {
       "id": "gitea-milestone-year-one-date-placeholder",
@@ -197,13 +176,7 @@
         "Save and reopen Edit to confirm the date is stored as 0001-01-01.",
         "Open the repository's Milestones list and observe '-' instead of the date."
       ],
-      "severity": 1,
-      "matchingGuidance": {
-        "relatedReference": {
-          "id": "gitea-milestone-epoch-date-placeholder",
-          "distinction": "Both come from the date formatter treating a special instant as 'no date', but for different dates: this reference covers January 1, 0001 (Go's zero time), and the related reference covers January 1, 1970 (Unix zero). Credit each finding to the reference for the date it reports."
-        }
-      }
+      "severity": 1
     },
     {
       "id": "gitea-milestone-assigned-to-you-ignores-assignee-filter",
@@ -217,13 +190,7 @@
         "Open the Type filter and choose Assigned to you. Confirm only the issue assigned to eval is listed.",
         "Open the Assignee filter and choose Assigned to nobody. Observe that the URL contains assignee=(none) but the issue assigned to eval is still listed."
       ],
-      "severity": 3,
-      "matchingGuidance": {
-        "relatedReference": {
-          "id": "gitea-pass2-005",
-          "distinction": "gitea-pass2-005 is switching Type back to All issues and keeping the assignee=<you> restriction that Assigned to you injected. This entry is choosing an explicit Assignee option (Assigned to nobody, Assigned to anybody, or another user) while Type stays Assigned to you, and the list ignoring that Assignee choice."
-        }
-      }
+      "severity": 3
     },
     {
       "id": "gitea-milestone-created-by-you-ignores-author-filter",
@@ -237,13 +204,7 @@
         "Open the Type filter and choose Created by you. Confirm only the issue opened by eval is listed.",
         "Open the Author filter and choose alex. Observe that the URL contains poster=alex and the Author filter shows alex, but the issue opened by eval is still listed and the issue opened by alex is not."
       ],
-      "severity": 3,
-      "matchingGuidance": {
-        "relatedReference": {
-          "id": "gitea-milestone-assigned-to-you-ignores-assignee-filter",
-          "distinction": "gitea-milestone-assigned-to-you-ignores-assignee-filter is the Assignee filter being ignored while Type is Assigned to you. This entry is the Author filter being ignored while Type is Created by you, so the list shows the signed-in user's own issues instead of the selected author's."
-        }
-      }
+      "severity": 3
     },
     {
       "id": "gitea-milestone-name-sort-descending",
@@ -257,13 +218,7 @@
         "Open Sort and choose Name.",
         "Observe the order Zebra, Mango, Banana, Apple."
       ],
-      "severity": 1,
-      "matchingGuidance": {
-        "relatedReference": {
-          "id": "gitea-global-milestone-name-sort-drops-repositories",
-          "distinction": "gitea-global-milestone-name-sort-drops-repositories is Sort > Name on the global Milestones page discarding the repository filter and bringing back excluded milestones. This entry is the order Sort > Name produces (reverse alphabetical, case-sensitive) on the repository or global list, regardless of filters."
-        }
-      }
+      "severity": 1
     },
     {
       "id": "gitea-milestone-label-chip-drops-filters",
@@ -290,13 +245,7 @@
         "Set the viewport to 390×844 CSS pixels and open the organization’s Milestones page.",
         "Compare the two milestone heading rows. Observe that the long repository badge text runs over the milestone icon and title, while the short one does not."
       ],
-      "severity": 1,
-      "matchingGuidance": {
-        "relatedReference": {
-          "name": "Long milestone titles overlap repository labels in the global milestone list at 390×844",
-          "distinction": "That entry is a long milestone title overflowing onto the repository label. This entry is the opposite element: a long repository badge overflowing onto the milestone icon and title."
-        }
-      }
+      "severity": 1
     },
     {
       "id": "gitea-new-issue-deleted-milestone-raw-json-error",
@@ -313,26 +262,6 @@
       "severity": 1
     },
     {
-      "id": "gitea-org-milestones-name-sort-drops-repo-filter",
-      "name": "Organization milestones: Sort > Name discards the repository filter",
-      "summary": "On an organization's Milestones page, after excluding a repository with the sidebar filter, choosing Sort > Name brings the excluded repository's milestones back. The Name sort link doesn't carry the selected repositories.",
-      "expected": "Changing the sort keeps the selected repository filter, so only the selected repositories' milestones are listed.",
-      "actual": "With ORG-alpha excluded so only ORG-Beta-undated was listed, choosing Sort > Name listed ORG-Zebra-late, ORG-Beta-undated and ORG-Apple-early, and the open count went from 1 to 3.",
-      "reproSteps": [
-        "In an organization with two repositories that each have a milestone, open the organization's Milestones page.",
-        "Click one repository in the sidebar filter to exclude it.",
-        "Choose Sort > Name.",
-        "Check whether the excluded repository's milestones are listed again."
-      ],
-      "severity": 3,
-      "matchingGuidance": {
-        "relatedReference": {
-          "name": "Global milestones: Sort > Name discards the repository filter and restores excluded milestones",
-          "distinction": "Same Name sort link and handler, but that entry is the global Milestones dashboard; this entry is an organization's Milestones page."
-        }
-      }
-    },
-    {
       "id": "gitea-milestone-label-filter-alt-enter-includes",
       "name": "Alt+Enter in a milestone's Label filter includes the label instead of excluding it",
       "summary": "On a milestone's detail page, choosing a label in the Label filter with Alt+Enter includes it instead of excluding it, even though the filter's hint says Alt+click/Enter excludes labels.",
@@ -344,13 +273,7 @@
         "Search for that label, highlight it with the arrow keys, and press Alt+Enter.",
         "Check whether the label was excluded or included, and whether the unlabeled issues are still listed."
       ],
-      "severity": 3,
-      "matchingGuidance": {
-        "relatedReference": {
-          "name": "Alt+Enter in the Label filter includes the label instead of excluding it",
-          "distinction": "Same keyboard handling, but that entry is the repository Issues list; this entry is a milestone's detail page."
-        }
-      }
+      "severity": 3
     },
     {
       "id": "gitea-global-milestones-epoch-date-placeholder",
@@ -363,13 +286,7 @@
         "Open Milestones from the top navigation (/milestones), optionally searching for the milestone.",
         "Check the due date shown next to the calendar icon."
       ],
-      "severity": 1,
-      "matchingGuidance": {
-        "relatedReference": {
-          "name": "Milestone due date January 1, 1970 renders as '-' despite being saved",
-          "distinction": "Same date and cause, but that entry is a repository's milestone list and detail page; this entry is the global Milestones page."
-        }
-      }
+      "severity": 1
     },
     {
       "id": "gitea-milestone-search-like-wildcards",
@@ -396,13 +313,7 @@
         "Click New Issue, fill in a title, and click Create Issue.",
         "Read the error message shown."
       ],
-      "severity": 1,
-      "matchingGuidance": {
-        "relatedReference": {
-          "name": "Milestone page offers New Issue to users who can't create it with that milestone",
-          "distinction": "Same failed create, but that entry is the New Issue button being offered and the create failing; this entry is the unhelpful raw JSON error shown for it."
-        }
-      }
+      "severity": 1
     },
     {
       "id": "gitea-milestone-new-issue-offered-to-nonmember",
@@ -415,19 +326,12 @@
         "Click New Issue and fill in a title.",
         "Click Create Issue and check whether the issue was created."
       ],
-      "severity": 3,
-      "matchingGuidance": {
-        "relatedReference": {
-          "name": "Creating an issue from a public milestone as a non-member shows a raw JSON error",
-          "distinction": "Same failed create, but that entry is the raw JSON error message; this entry is the New Issue button being offered and the create failing."
-        }
-      }
+      "severity": 3
     },
     {
       "id": "gitea-double-click-create-milestone-duplicates",
       "name": "Rapid double-clicking Create Milestone creates duplicate milestones",
       "severity": 3,
-      "owningArea": "gitea/milestones",
       "summary": "Two rapid clicks on Create Milestone during one completed form submission can insert two persistent milestones with identical titles and descriptions.",
       "expected": "A rapid accidental double-click during one milestone creation attempt creates one milestone, as the guarded New Issue form does. This does not require milestone names to be unique across deliberate creation attempts.",
       "actual": "With clicks about 50 ms apart, two distinct milestone records are inserted and listed after reload. Searching their title shows 2 Open and 0 Closed. A single-click control creates exactly one.",
@@ -437,53 +341,12 @@
         "Search for the submitted title and confirm that two separate milestone links are listed with 2 Open and 0 Closed.",
         "Open both records and reload the list to verify persistent duplicate records rather than duplicate rendering.",
         "As a control, submit a fresh equivalent form with one click and confirm it creates exactly one record."
-      ],
-      "sourceReport": {
-        "sessionId": "c5d5ba47-209d-5623-bc01-692d20db9086",
-        "webUrl": "https://app.momentic.ai/mo/sessions/c5d5ba47-209d-5623-bc01-692d20db9086?tab=bug%3ADouble-clicking%20Create%20Milestone%20creates%20duplicate%20milestones",
-        "recording": {
-          "startedAt": 1793226587830,
-          "finishedAt": 1793226627755,
-          "agentId": "c5d5ba47-209d-5623-bc01-692d20db9086:sandbox-bugbash-v2:populated-lifecycle",
-          "windowId": "2ab4abb1-7933-4846-88dd-de962109cf78",
-          "artifactId": "3043b52b-8bc1-4bda-b244-4cebef9254a0"
-        }
-      },
-      "matchingGuidance": {
-        "scope": "Covers duplicate persistent milestone creation from rapid repeated submission of one completed New Milestone form. Does not require mobile width. Deliberately submitting separate creation forms with the same title, or merely seeing repeated rendered rows without distinct saved IDs, is insufficient.",
-        "distinction": "Duplicate labels created deliberately, stale compare forms creating duplicate pull requests, and retrying a blocked Close with Comment are separate triggers and causes."
-      },
-      "reviewEvidence": {
-        "basis": "Explicit user acceptance at severity 3 after both subscription-authenticated reviewers independently reproduced duplicate records and passing single-click controls. Both final verdicts recommend acceptance at severity 3.",
-        "userAccepted": true,
-        "sourceRevision": "99053ce4fa2b45f1bca5837418c0c57f793ca824",
-        "severityReason": "Severity 3: unintended duplicate persistent records requiring manual cleanup, beyond a visual duplication.",
-        "analysis": [
-          "Codex and Claude each reproduced twice at 390px with clicks 50 ms apart and verified separate saved milestone IDs. Both reproduced at desktop width and confirmed a single click creates one record. Codex additionally reproduced as a contributor.",
-          "Claude confirmed the guarded New Issue form creates one issue under the same 50 ms double-click. Codex confirmed repeating Update Milestone edits the existing record without creating another.",
-          "The milestone form is an ordinary POST without the shared fetch-action in-flight submission guard. Each valid creation request constructs a fresh milestone and inserts it in a transaction.",
-          "Claude also tested zero-gap Playwright dblclick and clicks 150 ms apart; those attempts created one milestone. Navigation timing and browser submit coalescing were inferred explanations, not traced.",
-          "Latest inspected source retains the ordinary form and insertion path; latest runtime was not tested."
-        ],
-        "sourceReferences": [
-          "https://github.com/go-gitea/gitea/blob/99053ce4fa2b45f1bca5837418c0c57f793ca824/templates/repo/issue/milestone_new.tmpl#L24-L58",
-          "https://github.com/go-gitea/gitea/blob/99053ce4fa2b45f1bca5837418c0c57f793ca824/web_src/js/features/common-fetch-action.ts#L59-L63",
-          "https://github.com/go-gitea/gitea/blob/99053ce4fa2b45f1bca5837418c0c57f793ca824/routers/web/repo/milestone.go#L110-L140",
-          "https://github.com/go-gitea/gitea/blob/99053ce4fa2b45f1bca5837418c0c57f793ca824/models/issues/milestone.go#L107-L124",
-          "https://github.com/go-gitea/gitea/blob/965d7522e0b3d323ea2da6615e7d4b39684d16e5/templates/repo/issue/milestone_new.tmpl#L24-L56"
-        ],
-        "limitations": [
-          "Timing-sensitive: the sampled 50 ms double-clicks reproduced; zero-gap and 150 ms controls did not. No universal double-click failure rate is claimed.",
-          "One-record-per-attempt is an inferred data-integrity contract supported by the New Issue control; general milestone-name uniqueness is not required.",
-          "Latest runtime and repeated direct API requests were not tested."
-        ]
-      }
+      ]
     },
     {
       "id": "gitea-mobile-milestone-delete-dialog-clipped",
       "name": "Long milestone titles push the mobile Delete confirmation partly offscreen",
       "severity": 1,
-      "owningArea": "gitea/milestones",
       "summary": "An unbroken milestone title widens the repository milestone list on mobile. Its Delete confirmation can centre on the widened layout viewport, clipping the right edge and part of the Yes button beyond the visible screen.",
       "expected": "The Delete Milestone confirmation and both buttons remain fully visible at phone width, even when a milestone title is long.",
       "actual": "At a visible width of 390px, mobile-emulated layout widths of 504–524px placed the dialog around x=77–428 or x=87–438. The Yes button extended past the visible right edge. Short or hyphenated titles and plain desktop viewport resizing kept the dialog onscreen.",
@@ -493,53 +356,7 @@
         "On the repository milestone list, search for the title or its prefix and open Delete for that milestone.",
         "Observe that the confirmation right edge and part of Yes lie outside the visible phone viewport.",
         "As controls, repeat with short or hyphenated titles under the same mobile emulation, and with the long title under plain desktop viewport resizing; confirm the dialog fits."
-      ],
-      "sourceReport": {
-        "sessionId": "7313a773-52da-5ae4-999e-f32bf5f43f0f",
-        "webUrl": "https://app.momentic.ai/mo/sessions/7313a773-52da-5ae4-999e-f32bf5f43f0f?tab=bug%3AMobile%20milestone%20deletion%20dialog%20clips%20its%20confirmation%20button",
-        "recording": {
-          "startedAt": 1793226557046,
-          "finishedAt": 1793226579300,
-          "agentId": "7313a773-52da-5ae4-999e-f32bf5f43f0f:sandbox-bugbash-v2:repo-lifecycle",
-          "windowId": "9906381f-2e09-4707-8628-d13e2dce1f0e",
-          "artifactId": "8397012a-9b74-4bcc-a61c-c7e2dbae6c97"
-        }
-      },
-      "matchingGuidance": {
-        "relatedReference": {
-          "id": "gitea-milestone-unbroken-title-overflows-mobile",
-          "distinction": "The existing entry covers title and page overflow itself. This entry covers opening Delete afterward and the resulting offscreen confirmation. The accepted release-delete dialog has a different page-overflow trigger."
-        },
-        "scope": "Covers the Delete confirmation and its Yes button clipping on mobile after a long milestone title widens the page. The user independently tested and accepted the bug. Plain desktop resizing passed as a control; it is not sufficient to disprove mobile behavior. Complete permanent inability to confirm deletion is not claimed because horizontal panning recovered the clipped portion in one reproduction."
-      },
-      "reviewEvidence": {
-        "basis": "The user independently tested the bug and explicitly accepted it outright at severity 1. Claude also independently reproduced it twice with mobile device emulation and passing controls. Codex tested plain desktop viewport resizing, which passed; that different browser mode does not negate the confirmed mobile failure.",
-        "userAccepted": true,
-        "sourceRevision": "99053ce4fa2b45f1bca5837418c0c57f793ca824",
-        "severityReason": "Severity 1: partially offscreen confirmation and button; no failed deletion request or saved-data loss demonstrated.",
-        "analysis": [
-          "The user confirmed personal reproduction and requested outright acceptance. Acceptance is based on that confirmation and the positive independent mobile checks, rather than an override of non-reproduction.",
-          "Claude reproduced twice with isMobile, touch and DPR 3 at visible width 390px. The unbroken title widened the page/layout viewport, and the centred modal extended beyond the visible right edge.",
-          "Codex tested two fresh long titles and a control at 390px, plus 320px, desktop, open-dialog resizing and horizontal scrolling. Those plain viewport tests passed, and deletion succeeded. Claude also confirmed that plain resizing passes.",
-          "Pinned title markup lacks wrapping for unbroken runs. The fixed, inset dimmer centres the confirmation on the expanded layout viewport; the 90vw width cap alone does not keep it inside the narrower visible area.",
-          "Claude recovered the cut-off portion by horizontal wheel panning, so the observation is initial clipping rather than an established permanent navigation or deletion dead end.",
-          "Latest title styling adds overflow-wrap:anywhere and replaces the modal mechanism. A latest-runtime fix was not tested."
-        ],
-        "sourceReferences": [
-          "https://github.com/go-gitea/gitea/blob/99053ce4fa2b45f1bca5837418c0c57f793ca824/templates/repo/issue/milestones.tmpl#L22-L25",
-          "https://github.com/go-gitea/gitea/blob/99053ce4fa2b45f1bca5837418c0c57f793ca824/templates/repo/issue/milestones.tmpl#L95-L104",
-          "https://github.com/go-gitea/gitea/blob/99053ce4fa2b45f1bca5837418c0c57f793ca824/web_src/css/shared/milestone.css#L1-L63",
-          "https://github.com/go-gitea/gitea/blob/99053ce4fa2b45f1bca5837418c0c57f793ca824/web_src/css/modules/dimmer.css#L3-L27",
-          "https://github.com/go-gitea/gitea/blob/99053ce4fa2b45f1bca5837418c0c57f793ca824/web_src/css/modules/modal.css#L1-L4",
-          "https://github.com/go-gitea/gitea/blob/965d7522e0b3d323ea2da6615e7d4b39684d16e5/web_src/css/repo/issue-list.css#L102-L108"
-        ],
-        "limitations": [
-          "The user independently tested the bug; their exact device/browser setup was not specified.",
-          "Codex’s plain desktop viewport checks passed; independent positive runs used mobile device emulation.",
-          "Latest runtime, an exact upstream fixing commit and the original Mo recording were not independently verified."
-        ],
-        "userIndependentlyReproduced": true
-      }
+      ]
     },
     {
       "id": "gitea-milestone-detail-overdue-not-marked",
@@ -578,13 +395,7 @@
         "On the Milestones list, search for '100', then for '100%'.",
         "Compare the results."
       ],
-      "severity": 3,
-      "matchingGuidance": {
-        "relatedReference": {
-          "name": "Milestone search treats underscores and percent signs as wildcards",
-          "distinction": "Same unescaped search pattern, but that entry is '_' and '%' over-matching other titles; this entry is a term ending or starting with '%' missing the titles that contain it."
-        }
-      }
+      "severity": 3
     },
     {
       "id": "gitea-milestone-repo-badge-overlaps-heading-mobile",
@@ -598,15 +409,7 @@
         "Open the organization's Milestones page or the global Milestones page.",
         "Observe the repository badge text running over the milestone icon and title."
       ],
-      "severity": 1,
-      "sourceCause": "templates/user/dashboard/milestones.tmpl puts the repository .ui.large.label in a flex heading, and web_src/css/modules/label.css makes .ui.label shrinkable (min-width:0) and nowrap with no overflow clipping, so its text paints past the shrunken box.",
-      "matchingGuidance": {
-        "relatedReference": {
-          "id": "gitea-org-milestone-repo-badge-overlaps-title-mobile",
-          "distinction": "Same pages and cause. That entry was recorded with a repository name of about 60 characters; this entry is the same overlap from names of about 31–38 characters."
-        },
-        "scope": "Reports that a milestone row's repository badge text runs over the milestone icon or title on the organization or global Milestones lists match this entry at any narrow width (mobile or tablet), whether the badge is squeezed by a long repository name or by a long milestone title."
-      }
+      "severity": 1
     },
     {
       "id": "gitea-global-milestone-name-sort-descending",
@@ -620,14 +423,7 @@
         "Choose Sort > Name.",
         "Observe Zulu listed above Alpha."
       ],
-      "severity": 1,
-      "sourceCause": "models/issues/milestone_list.go maps the name sort to \"name DESC\", and the global Milestones page (routers/web/user/home.go Milestones) uses that order.",
-      "matchingGuidance": {
-        "relatedReference": {
-          "id": "gitea-milestone-name-sort-descending",
-          "distinction": "Same name DESC ordering. This entry is the global Milestones page at /milestones; the related entry was recorded on the repository Milestones list."
-        }
-      }
+      "severity": 1
     },
     {
       "id": "gitea-org-milestone-name-sort-descending",
@@ -641,14 +437,7 @@
         "Choose Sort > Name.",
         "Observe Zulu listed first and Alpha last."
       ],
-      "severity": 1,
-      "sourceCause": "models/issues/milestone_list.go maps the name sort to \"name DESC\", and routers/web/user/home.go Milestones serves /org/<org>/milestones with that order.",
-      "matchingGuidance": {
-        "relatedReference": {
-          "id": "gitea-milestone-name-sort-descending",
-          "distinction": "Same name DESC ordering. This entry is the organization Milestones page; gitea-milestone-name-sort-descending is the repository list and gitea-global-milestone-name-sort-descending is the global /milestones page."
-        }
-      }
+      "severity": 1
     },
     {
       "id": "gitea-milestone-detail-closed-shows-due-date",
@@ -661,14 +450,7 @@
         "On the repository's Milestones list, select Closed and note that the milestone shows 'Closed <time ago>'.",
         "Open the milestone's detail page and check what is shown next to the completion percentage."
       ],
-      "severity": 1,
-      "sourceCause": "templates/repo/issue/milestone_issues.tmpl tests top-level .IsClosed and .IsOverdue instead of the milestone's fields. MilestoneIssuesAndPulls never sets those keys, so the page always renders the open-milestone due-date branch. Fixed upstream in go-gitea/gitea#39834.",
-      "matchingGuidance": {
-        "relatedReference": {
-          "id": "gitea-milestone-detail-overdue-not-marked",
-          "distinction": "Same template variable bug. That entry is an open overdue milestone whose date isn't marked red; this entry is a closed milestone that shows its due date instead of its closed status."
-        }
-      }
+      "severity": 1
     }
   ]
 }
