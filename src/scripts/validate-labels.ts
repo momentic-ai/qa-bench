@@ -1,13 +1,13 @@
 import { readFile, readdir } from "node:fs/promises";
 import path from "node:path";
 
-import { GroundTruthSchema, KnownInvalidSchema } from "./evals/reports";
+import { GroundTruthSchema, KnownInvalidSchema } from "../evals/reports";
 
 const schemas = {
   "ground-truth.json": GroundTruthSchema,
   "known-invalid.json": KnownInvalidSchema,
 };
-const root = path.resolve(import.meta.dirname, "../fixtures/oss");
+const root = path.resolve(import.meta.dirname, "../../fixtures/oss");
 const files = (await readdir(root, { recursive: true }))
   .filter((file) =>
     /^[^/]+\/e2e\/areas\/[^/]+\/(ground-truth|known-invalid)\.json$/.test(

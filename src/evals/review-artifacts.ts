@@ -187,11 +187,7 @@ export async function writeReviewArtifacts({
     }
     if ((invalid || outsideInvalid) && reference && "reason" in reference) {
       // Preserve the human's rejection rationale separately from the model's matching explanation.
-      for (const field of ["reason", "reviewedBy", "reviewedAt"] as const) {
-        const value = reference[field];
-        if (typeof value === "string")
-          referenceLines.push(`${field}: ${text(value)}`);
-      }
+      referenceLines.push(`reason: ${text(reference.reason)}`);
     }
     const canonicalDuplicate = duplicate ?? outsideDuplicate;
     if (canonicalDuplicate) {

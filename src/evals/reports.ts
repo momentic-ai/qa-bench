@@ -30,18 +30,12 @@ export const ReproCasesSchema = z
 export const KnownBugSchema = FindingSchema.extend({
   reproSteps: ReproCasesSchema,
   severity: SeveritySchema,
-  // Included in the Hugging Face dataset export.
-  id: z.string().optional(),
 }).strict();
 export type KnownBug = z.infer<typeof KnownBugSchema>;
 
 export const KnownInvalidFindingSchema = FindingSchema.extend({
   reproSteps: ReproCasesSchema,
   reason: z.string().min(1),
-  id: z.string().optional(),
-  // Shown with the human's rejection rationale in review artifacts.
-  reviewedBy: z.string().optional(),
-  reviewedAt: z.string().optional(),
 }).strict();
 export type KnownInvalidFinding = z.infer<typeof KnownInvalidFindingSchema>;
 

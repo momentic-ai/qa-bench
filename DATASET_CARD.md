@@ -113,17 +113,15 @@ there.
 `ground-truth.json` and `known-invalid.json` both hold `{ "bugs": [...] }`.
 Each entry has:
 
-| Field                      | Description                                                                                          |
-| -------------------------- | ---------------------------------------------------------------------------------------------------- |
-| `name`                     | Short title                                                                                          |
-| `summary`                  | One-sentence description                                                                             |
-| `expected`                 | Correct behavior                                                                                     |
-| `actual`                   | Observed behavior on the seeded data                                                                 |
-| `reproSteps`               | Ordered steps from the entry point, or a list of such cases when the bug can be reached several ways |
-| `severity`                 | 1, 3, or 5 (ground truth only)                                                                       |
-| `reason`                   | Why the claim was rejected (known-invalid only)                                                      |
-| `id`                       | Optional stable identifier                                                                           |
-| `reviewedBy`, `reviewedAt` | Optional reviewer and review time (known-invalid only)                                               |
+| Field        | Description                                                                                          |
+| ------------ | ---------------------------------------------------------------------------------------------------- |
+| `name`       | Short title                                                                                          |
+| `summary`    | One-sentence description                                                                             |
+| `expected`   | Correct behavior                                                                                     |
+| `actual`     | Observed behavior on the seeded data                                                                 |
+| `reproSteps` | Ordered steps from the entry point, or a list of such cases when the bug can be reached several ways |
+| `severity`   | 1, 3, or 5 (ground truth only)                                                                       |
+| `reason`     | Why the claim was rejected (known-invalid only)                                                      |
 
 An entry from `gitea/e2e/areas/pull-requests/ground-truth.json`:
 
