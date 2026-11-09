@@ -30,9 +30,14 @@ export const ReproCasesSchema = z
 export const KnownBugSchema = FindingSchema.extend({
   reproSteps: ReproCasesSchema,
   severity: SeveritySchema,
-  sourceCause: z.string().min(1).optional(),
-});
+}).strict();
 export type KnownBug = z.infer<typeof KnownBugSchema>;
+
+export const KnownInvalidFindingSchema = FindingSchema.extend({
+  reproSteps: ReproCasesSchema,
+  reason: z.string().min(1),
+}).strict();
+export type KnownInvalidFinding = z.infer<typeof KnownInvalidFindingSchema>;
 
 export const ReportSchema = z
   .object({
@@ -44,7 +49,11 @@ export const ReportSchema = z
 
 export const GroundTruthSchema = z
   .object({ bugs: z.array(KnownBugSchema) })
-  .passthrough();
+  .strict();
+
+export const KnownInvalidSchema = z
+  .object({ bugs: z.array(KnownInvalidFindingSchema) })
+  .strict();
 
 export async function loadGroundTruth(file: string) {
   const text = await readDataset(file);

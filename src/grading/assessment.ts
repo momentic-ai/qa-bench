@@ -1,21 +1,14 @@
 import { createHash } from "node:crypto";
 import path from "node:path";
-import { z } from "zod";
 
 import { readDataset } from "../evals/dataset";
-import { FindingSchema, KnownBug, ReproCasesSchema } from "../evals/reports";
+import { KnownBug, KnownInvalidSchema } from "../evals/reports";
 
-export const KnownInvalidFindingSchema = FindingSchema.extend({
-  reproSteps: ReproCasesSchema,
-  reason: z.string().min(1),
-});
-export type KnownInvalidFinding = z.infer<typeof KnownInvalidFindingSchema>;
-
-export const KnownInvalidSchema = z
-  .object({
-    bugs: z.array(KnownInvalidFindingSchema),
-  })
-  .strict();
+export {
+  KnownInvalidFindingSchema,
+  KnownInvalidSchema,
+} from "../evals/reports";
+export type { KnownInvalidFinding } from "../evals/reports";
 
 export async function loadKnownInvalid(fixtureDirectory: string) {
   let contents: string;

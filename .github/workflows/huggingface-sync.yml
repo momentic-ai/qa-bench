@@ -56,7 +56,7 @@ jobs:
           out = root / "data"
           out.mkdir()
           tables = {"areas": [], "bugs": [], "known_invalid": []}
-          story = ["id", "name", "summary", "expected", "actual", "reproSteps"]
+          story = ["name", "summary", "expected", "actual", "reproSteps"]
           for area_dir in sorted(root.glob("*/e2e/areas/*")):
               app, area = area_dir.parts[1], area_dir.name
               brief = json.loads((area_dir / "fixture.json").read_text())["productArea"]
@@ -72,11 +72,17 @@ jobs:
                   "bugs": len(bugs),
                   "knownInvalid": len(invalid),
               })
+              def cases(steps):
+                  # Labels may hold one list of steps or a list of cases; the viewer gets cases.
+                  return steps if steps and isinstance(steps[0], list) else [steps]
+
               for bug in bugs:
                   row = {"app": app, "area": area, **{k: bug.get(k) for k in story}}
+                  row["reproSteps"] = cases(row["reproSteps"])
                   tables["bugs"].append({**row, "severity": bug["severity"]})
               for bug in invalid:
                   row = {"app": app, "area": area, **{k: bug.get(k) for k in story}}
+                  row["reproSteps"] = cases(row["reproSteps"])
                   tables["known_invalid"].append({**row, "reason": bug["reason"]})
           for name, rows in tables.items():
               with open(out / f"{name}.jsonl", "w") as f:

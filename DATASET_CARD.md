@@ -89,9 +89,8 @@ Each application is a top-level folder. The files at the top level build the
 sandbox, and each area folder under `e2e/areas/` holds the brief and the labels
 for that area. A `data/` folder holds the same briefs and labels as three
 tables for the Dataset Viewer: `bugs` (ground truth), `known_invalid`, and
-`areas`, one row per entry with its `app` and `area`. They leave out the
-optional judge hints, so grade against the JSON files. QA-Bench is
-evaluation-only, so each table has a single `test` split.
+`areas`, one row per entry with its `app` and `area`. The JSON files are the
+source. QA-Bench is evaluation-only, so each table has a single `test` split.
 
 ```
 data/                   # viewer tables built from the area folders
@@ -113,18 +112,17 @@ there.
 `ground-truth.json` and `known-invalid.json` both hold `{ "bugs": [...] }`.
 Each entry has:
 
-| Field                                                  | Description                                                     |
-| ------------------------------------------------------ | --------------------------------------------------------------- |
-| `name`                                                 | Short title                                                     |
-| `summary`                                              | One-sentence description                                        |
-| `expected`                                             | Correct behavior                                                |
-| `actual`                                               | Observed behavior on the seeded data                            |
-| `reproSteps`                                           | Ordered steps from the entry point                              |
-| `severity`                                             | 1, 3, or 5 (ground truth only)                                  |
-| `matchingGuidance`, `matchingScope`, `owningArea`, ... | Optional hints for the judge on which reports count as this bug |
+| Field        | Description                                                                                          |
+| ------------ | ---------------------------------------------------------------------------------------------------- |
+| `name`       | Short title                                                                                          |
+| `summary`    | One-sentence description                                                                             |
+| `expected`   | Correct behavior                                                                                     |
+| `actual`     | Observed behavior on the seeded data                                                                 |
+| `reproSteps` | Ordered steps from the entry point, or a list of such cases when the bug can be reached several ways |
+| `severity`   | 1, 3, or 5 (ground truth only)                                                                       |
+| `reason`     | Why the claim was rejected (known-invalid only)                                                      |
 
-An entry from `gitea/e2e/areas/pull-requests/ground-truth.json`, with its optional
-matching hints left out:
+An entry from `gitea/e2e/areas/pull-requests/ground-truth.json`:
 
 ```json
 {
