@@ -32,6 +32,8 @@ export type FullAppOptions = {
   outputDirectory: string;
   browser: Browser;
   preventCheating?: boolean;
+  /** Codex and Claude runs execute in a Docker sandbox unless --no-sandbox. */
+  sandbox: boolean;
 };
 
 export function parseFullAppOptions(args: string[]): FullAppOptions {
@@ -48,6 +50,7 @@ export function parseFullAppOptions(args: string[]): FullAppOptions {
       "run-id": { type: "string", multiple: true },
       browser: { type: "string" },
       "prevent-cheating": { type: "boolean", default: false },
+      "no-sandbox": { type: "boolean", default: false },
     },
     strict: true,
   });
@@ -100,6 +103,12 @@ export function parseFullAppOptions(args: string[]): FullAppOptions {
         "--prevent-cheating applies to new runs, not --grade-only.",
       );
   }
+  if (
+    values["no-sandbox"] &&
+    !values.agent?.startsWith("codex-") &&
+    !values.agent?.startsWith("claude-")
+  )
+    throw new Error("--no-sandbox applies only to Codex and Claude agents.");
   if (values["run-id"] && !values["grade-only"])
     throw new Error(
       "--run-id selects saved runs to regrade with --grade-only.",
@@ -115,6 +124,7 @@ export function parseFullAppOptions(args: string[]): FullAppOptions {
     codexModel,
     claudeModel,
     ...(values["prevent-cheating"] ? { preventCheating: true } : {}),
+    sandbox: !values["no-sandbox"],
     outputDirectory: outputDirectory ?? REPORTS_DIRECTORY,
     gradeOnly: values["grade-only"],
     runIds: parseRunIds(values["run-id"]),

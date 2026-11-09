@@ -1,4 +1,4 @@
-import { mkdir, rm } from "node:fs/promises";
+import { cp, mkdir, rm } from "node:fs/promises";
 import { createRequire } from "node:module";
 import path from "node:path";
 import { z } from "zod";
@@ -42,6 +42,7 @@ export class CodexAgent extends CodingAgent {
   static apiKey = "OPENAI_API_KEY";
   static skillOwner = ".agents" as const;
   static e2eProvider = "openai" as const;
+  static apiHost = "api.openai.com";
   protected findingsToolPrefix = "";
   private server: CodexAppServer | undefined;
   private codexHome: string;
@@ -53,8 +54,13 @@ export class CodexAgent extends CodingAgent {
     error: unknown;
   }[] = [];
 
-  constructor(context: AgentContext, model: string, browser: TestingBrowser) {
-    super(context, model, browser);
+  constructor(
+    context: AgentContext,
+    model: string,
+    browser: TestingBrowser,
+    sandboxed: boolean,
+  ) {
+    super(context, model, browser, sandboxed);
     this.codexHome = path.join(context.runDirectory, "codex-home");
   }
 
@@ -68,7 +74,7 @@ export class CodexAgent extends CodingAgent {
     await mkdir(this.codexHome, { recursive: true });
     const env = {
       ...setup.env,
-      PATH: setup.env?.PATH ?? process.env.PATH ?? "",
+      PATH: setup.env?.PATH ?? this.runtime.pathEnv([]),
       HOME: process.env.HOME || "",
       USERPROFILE: process.env.USERPROFILE || "",
       SYSTEMROOT: process.env.SYSTEMROOT || "",
@@ -76,12 +82,14 @@ export class CodexAgent extends CodingAgent {
       OPENAI_API_KEY: process.env.OPENAI_API_KEY || "",
     };
     await loginCodexWithApiKey(
+      this.runtime,
       CODEX_COMMAND,
       env,
       process.env.OPENAI_API_KEY || "",
       signal,
     );
     this.server = new CodexAppServer(
+      this.runtime,
       CODEX_COMMAND,
       env,
       async (threadId, tool, args) => {
@@ -102,9 +110,9 @@ export class CodexAgent extends CodingAgent {
           cwd: workspace,
           runtimeWorkspaceRoots: [workspace],
           approvalPolicy: "never",
-          // Codex's Linux sandbox kills background processes when each command
-          // exits, which would take the agent-browser daemon and its refs with it.
-          ...(setup.unsandboxedShell ? { sandbox: "danger-full-access" } : {}),
+          // The run's sandbox container is the boundary. Codex's own per-command
+          // sandbox would kill the agent-browser daemon and e2e's explorers.
+          sandbox: "danger-full-access",
           dynamicTools: FINDINGS_TOOLS,
           config: {
             model_reasoning_effort: "medium",
@@ -176,6 +184,12 @@ export class CodexAgent extends CodingAgent {
     } finally {
       await Promise.all(this.pending);
       await rm(path.join(this.codexHome, "auth.json"), { force: true });
+      // Keep Codex's transcripts with the report; the run directory is deleted after grading.
+      await cp(
+        path.join(this.codexHome, "sessions"),
+        path.join(this.context.reportDirectory, "codex-sessions"),
+        { recursive: true },
+      ).catch(() => {});
     }
   }
 
@@ -231,6 +245,13 @@ export function codexAgent(
   browserTool: BrowserTool = "playwright-mcp",
   model: CodexModel = CODEX_MODELS[0],
   preventCheating = false,
+  sandboxed = true,
 ): EvalAgentDefinition {
-  return CodexAgent.definition(browser, browserTool, model, preventCheating);
+  return CodexAgent.definition(
+    browser,
+    browserTool,
+    model,
+    preventCheating,
+    sandboxed,
+  );
 }

@@ -1,8 +1,7 @@
-import { spawn } from "node:child_process";
 import { createInterface } from "node:readline";
 import { z } from "zod";
 
-import { runCommand } from "../../evals/command";
+import { ToolEnv, ToolRuntime } from "../../sandbox/runtime";
 
 const TurnSchema = z
   .object({ id: z.string(), status: z.string(), error: z.unknown().nullish() })
@@ -59,16 +58,17 @@ type NotificationWaiter = {
 };
 
 export function loginCodexWithApiKey(
+  runtime: ToolRuntime,
   command: string,
-  env: NodeJS.ProcessEnv,
+  env: ToolEnv,
   apiKey: string,
   signal: AbortSignal,
 ) {
-  return runCommand(process.execPath, [command, "login", "--with-api-key"], {
-    env,
-    signal,
-    input: `${apiKey}\n`,
-  });
+  return runtime.run(
+    runtime.node,
+    [runtime.path(command), "login", "--with-api-key"],
+    { env, signal, input: `${apiKey}\n` },
+  );
 }
 
 export class CodexAppServer {
@@ -88,19 +88,20 @@ export class CodexAppServer {
   private rootThreadId: string | undefined;
 
   constructor(
+    runtime: ToolRuntime,
     command: string,
-    env: NodeJS.ProcessEnv,
+    env: ToolEnv,
     private handleTool: (
       threadId: string,
       tool: string,
       args: unknown,
     ) => Promise<void>,
   ) {
-    this.child = spawn(process.execPath, [command, "app-server", "--stdio"], {
-      env,
-      detached: process.platform !== "win32",
-      stdio: ["pipe", "pipe", "pipe"],
-    });
+    this.child = runtime.spawn(
+      runtime.node,
+      [runtime.path(command), "app-server", "--stdio"],
+      { env },
+    );
     this.exit = new Promise((resolve) =>
       this.child.once("close", () => {
         this.exited = true;

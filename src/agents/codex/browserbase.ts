@@ -1,7 +1,9 @@
 import { randomUUID } from "node:crypto";
 import { createServer } from "node:http";
+import { Socket } from "node:net";
 import path from "node:path";
 import { setTimeout as delay } from "node:timers/promises";
+import tls from "node:tls";
 import { z } from "zod";
 
 import {
@@ -34,13 +36,19 @@ export function sessionRequest(
 
 // Each MCP process requests its own CDP endpoint. The supervisor records every
 // allocation before returning it, including child agents and replacement browsers.
+// It also relays each browser's WebSocket, so a sandboxed client only ever dials
+// this local port and never needs its own route to Browserbase.
 export class BrowserbaseSessions {
   private sessions = new Map<string, string>();
+  private connectUrls = new Map<string, URL>();
+  private relays = new Set<Socket>();
+  private port = 0;
   private pending = new Set<Promise<void>>();
   private errors: string[] = [];
   private closing = false;
   private server = createServer();
-  private route = `/${randomUUID()}/json/version/`;
+  private prefix = `/${randomUUID()}/`;
+  private route = `${this.prefix}json/version/`;
 
   private baseUrl: string;
   private allowedDomains: string[] | undefined;
@@ -109,13 +117,16 @@ export class BrowserbaseSessions {
             ),
           );
           this.sessions.set(session.id, session.projectId);
+          this.connectUrls.set(session.id, new URL(session.connectUrl));
           await writeJson(path.join(this.directory, `${session.id}.json`), {
             id: session.id,
             projectId: session.projectId,
           });
-          response
-            .writeHead(200, { "Content-Type": "application/json" })
-            .end(JSON.stringify({ webSocketDebuggerUrl: session.connectUrl }));
+          response.writeHead(200, { "Content-Type": "application/json" }).end(
+            JSON.stringify({
+              webSocketDebuggerUrl: `ws://127.0.0.1:${this.port}${this.prefix}devtools/browser/${session.id}`,
+            }),
+          );
         } catch (err) {
           // Provider/transport errors can contain credentials; persist a safe failure marker.
           this.errors.push(
@@ -130,6 +141,9 @@ export class BrowserbaseSessions {
       this.pending.add(work);
       void work.finally(() => this.pending.delete(work));
     });
+    this.server.on("upgrade", (request, socket: Socket, head: Buffer) =>
+      this.relay(request.url, request.rawHeaders, socket, head),
+    );
     await new Promise<void>((resolve, reject) => {
       this.server.once("error", reject);
       this.server.listen(0, "127.0.0.1", resolve);
@@ -137,11 +151,55 @@ export class BrowserbaseSessions {
     const address = this.server.address();
     if (!address || typeof address === "string")
       throw new Error("BROWSERBASE_BROKER_ADDRESS_MISSING");
+    this.port = address.port;
     return `http://127.0.0.1:${address.port}${this.route.replace(/json\/version\/$/, "")}`;
+  }
+
+  // Forwards the client's WebSocket upgrade to the session's Browserbase URL, byte for byte.
+  private relay(
+    url: string | undefined,
+    rawHeaders: string[],
+    client: Socket,
+    head: Buffer,
+  ) {
+    const id = url?.startsWith(`${this.prefix}devtools/browser/`)
+      ? url.slice(`${this.prefix}devtools/browser/`.length)
+      : undefined;
+    const target = id ? this.connectUrls.get(id) : undefined;
+    if (this.closing || !target) {
+      client.end("HTTP/1.1 404 Not Found\r\nContent-Length: 0\r\n\r\n");
+      return;
+    }
+    const headers: string[] = [];
+    for (let i = 0; i < rawHeaders.length; i += 2) {
+      if (rawHeaders[i].toLowerCase() !== "host")
+        headers.push(`${rawHeaders[i]}: ${rawHeaders[i + 1]}`);
+    }
+    const upstream = tls.connect({
+      host: target.hostname,
+      port: Number(target.port) || 443,
+      servername: target.hostname,
+    });
+    for (const socket of [client, upstream]) {
+      this.relays.add(socket);
+      socket.on("close", () => this.relays.delete(socket));
+      socket.on("error", () => {
+        client.destroy();
+        upstream.destroy();
+      });
+    }
+    upstream.once("secureConnect", () => {
+      upstream.write(
+        `GET ${target.pathname}${target.search} HTTP/1.1\r\nHost: ${target.host}\r\n${headers.join("\r\n")}\r\n\r\n`,
+      );
+      if (head.length) upstream.write(head);
+      client.pipe(upstream).pipe(client);
+    });
   }
 
   async stop() {
     this.closing = true;
+    for (const socket of this.relays) socket.destroy();
     await new Promise<void>((resolve, reject) =>
       this.server.close((err) => (err ? reject(err) : resolve())),
     );

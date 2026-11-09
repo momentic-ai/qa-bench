@@ -7,19 +7,14 @@ import {
   SyncHookJSONOutput,
   query,
 } from "@anthropic-ai/claude-agent-sdk";
-import {
-  ChildProcessWithoutNullStreams,
-  execFile,
-  spawn,
-} from "node:child_process";
+import { ChildProcessWithoutNullStreams, execFile } from "node:child_process";
 import { randomUUID } from "node:crypto";
 import { WriteStream, createWriteStream } from "node:fs";
-import { mkdir, realpath } from "node:fs/promises";
+import { mkdir } from "node:fs/promises";
 import { createRequire } from "node:module";
 import path from "node:path";
 import { finished } from "node:stream/promises";
 import { promisify } from "node:util";
-import { z } from "zod";
 
 import {
   Browser,
@@ -29,7 +24,6 @@ import {
 } from "../../evals/agent";
 import { writeJson } from "../../evals/json-file";
 import { BrowserTool } from "../agent-browser";
-import { CODEX_COMMAND, CODEX_PACKAGE } from "../codex/codex-agent";
 import { CodingAgent } from "../coding-agent";
 import { DISABLED_BROWSER_TOOL, PreparedBrowser } from "../testing-browser";
 import { BrowserProxy } from "./browser-proxy";
@@ -45,14 +39,6 @@ const CLAUDE_COMMAND = path.join(
 const SUBAGENT_TOOLS = ["Agent", "Task"];
 const ORCHESTRATION_TOOLS = [...SUBAGENT_TOOLS, "SendMessage", "TaskStop"];
 const FILE_TOOLS = ["Read", "Glob", "Grep"];
-const FileToolInputSchema = z
-  .object({
-    file_path: z.string().optional(),
-    path: z.string().optional(),
-    pattern: z.string().optional(),
-  })
-  .passthrough();
-const BashInputSchema = z.object({ command: z.string() }).passthrough();
 
 function denyTool(reason: string): SyncHookJSONOutput {
   return {
@@ -62,35 +48,6 @@ function denyTool(reason: string): SyncHookJSONOutput {
       permissionDecisionReason: reason,
     },
   };
-}
-
-function shellQuote(value: string) {
-  return `'${value.replaceAll("'", `'\\''`)}'`;
-}
-
-async function resolveThroughLinks(target: string): Promise<string> {
-  try {
-    return await realpath(target);
-  } catch {
-    const parent = path.dirname(target);
-    if (parent === target) return target;
-    return path.join(await resolveThroughLinks(parent), path.basename(target));
-  }
-}
-
-async function isInside(roots: string[], workspace: string, target: string) {
-  const actual = await resolveThroughLinks(path.resolve(workspace, target));
-  for (const root of roots) {
-    const relative = path.relative(await realpath(root), actual);
-    if (
-      relative === "" ||
-      (relative !== ".." &&
-        !relative.startsWith(`..${path.sep}`) &&
-        !path.isAbsolute(relative))
-    )
-      return true;
-  }
-  return false;
 }
 
 class MessageQueue implements AsyncIterable<SDKUserMessage> {
@@ -131,6 +88,7 @@ export class ClaudeAgent extends CodingAgent {
   static apiKey = "ANTHROPIC_API_KEY";
   static skillOwner = ".claude" as const;
   static e2eProvider = "anthropic" as const;
+  static apiHost = "api.anthropic.com";
 
   static async validate() {
     await promisify(execFile)(CLAUDE_COMMAND, ["--version"]);
@@ -159,35 +117,24 @@ export class ClaudeAgent extends CodingAgent {
   private stopping = false;
   private totalCostUsd: number | null = null;
   private turnOpen = false;
-  private readableRoots: string[] = [];
-  private shellSandbox: string[] = [];
 
   protected async launch(
     brief: string,
     setup: PreparedBrowser,
     signal: AbortSignal,
   ) {
-    const { workspace } = this;
+    const { workspace, runtime } = this;
     const { playwright } = setup;
     // Playwright MCP runs use no skills.
     const playwrightMcp = playwright !== undefined;
     const configDirectory = path.join(this.context.runDirectory, "claude-home");
     await mkdir(configDirectory, { recursive: true });
-    // Claude Code's Bash has no sandbox of its own, so sandboxed runs borrow Codex's.
-    const codexHome = path.join(this.context.runDirectory, "codex-home");
-    if (!setup.unsandboxedShell) {
-      await mkdir(codexHome, { recursive: true });
-      this.readableRoots = [workspace, this.browser.artifacts];
-      this.shellSandbox = await codexSandbox(codexHome, workspace, [
-        this.browser.artifacts,
-      ]);
-    }
     if (playwright) {
-      this.browserProxy = new BrowserProxy({
+      this.browserProxy = new BrowserProxy(runtime, {
         command: playwright.command,
         args: playwright.args,
         env: {
-          PATH: process.env.PATH || "",
+          PATH: runtime.pathEnv([]),
           HOME: process.env.HOME || "",
           ...playwright.env,
         },
@@ -196,6 +143,9 @@ export class ClaudeAgent extends CodingAgent {
     }
     const browserUrl = await this.browserProxy?.start();
     this.reporting = await startReportingServer(this.findings);
+    // Claude Code reaches both servers on the host's loopback.
+    for (const url of [browserUrl, this.reporting.url])
+      if (url) await runtime.forward(Number(new URL(url).port));
     signal.throwIfAborted();
     this.transcript = createWriteStream(
       path.join(this.context.reportDirectory, "transcript.jsonl"),
@@ -249,11 +199,10 @@ export class ClaudeAgent extends CodingAgent {
         },
         env: {
           ...setup.env,
-          PATH: setup.env?.PATH ?? process.env.PATH,
+          PATH: setup.env?.PATH ?? runtime.pathEnv([]),
           HOME: process.env.HOME,
           ANTHROPIC_API_KEY: process.env.ANTHROPIC_API_KEY,
           CLAUDE_CONFIG_DIR: configDirectory,
-          ...(this.shellSandbox.length ? { CODEX_HOME: codexHome } : {}),
           CLAUDE_CODE_DISABLE_NONESSENTIAL_TRAFFIC: "1",
           DISABLE_AUTOUPDATER: "1",
         },
@@ -401,48 +350,11 @@ export class ClaudeAgent extends CodingAgent {
         "Send your findings to the parent; only the root agent accepts eval results.",
       );
     }
-    if (input.tool_name === "Bash" && this.shellSandbox.length) {
-      const bash = BashInputSchema.parse(input.tool_input);
-      return {
-        hookSpecificOutput: {
-          hookEventName: "PreToolUse",
-          permissionDecision: "allow",
-          updatedInput: {
-            ...bash,
-            command: [...this.shellSandbox, bash.command]
-              .map(shellQuote)
-              .join(" "),
-          },
-        },
-      };
-    }
-    if (FILE_TOOLS.includes(input.tool_name) && this.readableRoots.length) {
-      const {
-        file_path,
-        path: searchPath,
-        pattern,
-      } = FileToolInputSchema.parse(input.tool_input);
-      const targets = [file_path, searchPath];
-      if (input.tool_name === "Glob" && pattern && path.isAbsolute(pattern))
-        targets.push(pattern.split(/[*?[{]/)[0]);
-      for (const target of targets) {
-        if (
-          target !== undefined &&
-          !(await isInside(this.readableRoots, this.workspace, target))
-        )
-          return denyTool(`${target}: No such file or directory`);
-      }
-    }
     return {};
   }
 
   private spawn({ command, args, cwd, env }: SpawnOptions) {
-    const child = spawn(command, args, {
-      cwd,
-      env,
-      detached: true,
-      stdio: ["pipe", "pipe", "pipe"],
-    });
+    const child = this.runtime.spawn(command, args, { cwd, env });
     this.child = child;
     this.exit = new Promise((resolve) => child.once("close", () => resolve()));
     child.stderr.setEncoding("utf8");
@@ -483,54 +395,13 @@ export function claudeAgent(
   browserTool: BrowserTool = "playwright-mcp",
   model: ClaudeModel = CLAUDE_MODELS[0],
   preventCheating = false,
+  sandboxed = true,
 ): EvalAgentDefinition {
-  return ClaudeAgent.definition(browser, browserTool, model, preventCheating);
-}
-
-/**
- * Prefix that runs `bash -c <command>` under `codex sandbox`: no network, and
- * read-only access to the workspace, `readable` and what bash itself needs.
- */
-async function codexSandbox(
-  codexHome: string,
-  workspace: string,
-  readable: string[],
-) {
-  const filesystem = {
-    ":minimal": "read",
-    ":workspace_roots": "read",
-    [codexRuntimeDirectory()]: "read",
-    [path.join(codexHome, "tmp", "arg0")]: "read",
-    ...(process.platform === "linux"
-      ? { [await realpath("/etc/resolv.conf")]: "read" }
-      : {}),
-    ...Object.fromEntries(readable.map((root) => [root, "read"])),
-  };
-  return [
-    process.execPath,
-    CODEX_COMMAND,
-    "sandbox",
-    "--permission-profile",
-    "eval",
-    "--cd",
-    workspace,
-    "-c",
-    `permissions.eval={filesystem={${Object.entries(filesystem)
-      .map(
-        ([file, permission]) =>
-          `${JSON.stringify(file)}=${JSON.stringify(permission)}`,
-      )
-      .join(",")}},network={enabled=false}}`,
-    "--",
-    "bash",
-    "-c",
-  ];
-}
-
-function codexRuntimeDirectory() {
-  return path.dirname(
-    createRequire(CODEX_PACKAGE).resolve(
-      `@openai/codex-${process.platform}-${process.arch}/package.json`,
-    ),
+  return ClaudeAgent.definition(
+    browser,
+    browserTool,
+    model,
+    preventCheating,
+    sandboxed,
   );
 }

@@ -17,25 +17,15 @@ const PlaywrightSchema = z.object({
   ),
 });
 
-function chromiumExecutable() {
+/** Playwright MCP's copy of playwright-core, whose Chromium the local browser tools use. */
+export function playwrightCoreDirectory() {
+  return path.dirname(playwright.resolve("playwright-core/package.json"));
+}
+
+export function chromiumExecutable() {
   return PlaywrightSchema.parse(
     playwright("playwright-core"),
   ).chromium.executablePath();
-}
-
-export function localBrowserConnection() {
-  const executablePath = chromiumExecutable();
-  return {
-    args: [
-      "--browser",
-      "chromium",
-      "--headless",
-      "--executable-path",
-      executablePath,
-    ],
-    env: {},
-    filesystem: { [path.dirname(path.dirname(executablePath))]: "read" },
-  };
 }
 
 export async function validateLocalChromium() {

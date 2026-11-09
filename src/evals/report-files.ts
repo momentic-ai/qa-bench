@@ -312,6 +312,7 @@ export async function runLabel(agent: string, runDirectory: string) {
   if (config.browser === "local") settings.push("local browser");
   if (config.subagents === false) settings.push("no subagents");
   if (config.preventCheating) settings.push("prevent-cheating");
+  if (config.sandboxed) settings.push("sandboxed");
   if (config.effort && config.effort !== "medium")
     settings.push(`${config.effort} effort`);
   return settings.length ? `${agent} (${settings.join(", ")})` : agent;

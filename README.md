@@ -61,8 +61,11 @@ where they are invalid.
 
 ## Run it
 
-You need Node.js 22.12+, pnpm, and an [E2B](https://e2b.dev) account. Build the
-sandbox templates once per E2B org. Twenty needs the larger one.
+You need Node.js 22.12+, pnpm, and an [E2B](https://e2b.dev) account. Codex
+and Claude Code runs also need [Docker](https://docs.docker.com/get-docker/)
+(Docker Desktop or OrbStack on macOS); the first run builds their
+[sandbox image](#sandbox). Build the E2B templates once per E2B org. Twenty
+needs the larger one.
 
 ```bash
 pnpm install
@@ -140,9 +143,6 @@ Results also include Codex with `gpt-6.1-terra` and Claude Code with
 
 ### Browsers and subagents
 
-- `codex-agent-browser` runs without Codex's sandbox, because the sandbox kills
-  the agent-browser daemon after each command on Linux. Its shell can write
-  anywhere your user can, so run it on a machine or VM you're happy to expose.
 - `*-playwright-mcp` agents use Playwright MCP on Browserbase. The parent and
   each subagent get their own Browserbase browser.
 - `*-agent-browser` agents use the pinned
@@ -156,11 +156,11 @@ Results also include Codex with `gpt-6.1-terra` and Claude Code with
   browser, the model, the fixture accounts as e2e credentials (passwords come
   from the environment), and video recording. e2e's own agent uses the coding
   agent's model at medium effort, and each e2e process gets its own Browserbase
-  browser. e2e
-  needs Node.js 22.22.3 or later 22.x, or 24.8 or later. Like
-  `codex-agent-browser`, these runs have no shell sandbox.
-- `--browser local` replaces Browserbase with headless Chromium on the host.
-  Playwright MCP runs then have no subagents, and `merge` labels them separately.
+  browser. With `--no-sandbox`, e2e needs Node.js 22.22.3 or later 22.x, or 24.8
+  or later.
+- `--browser local` replaces Browserbase with headless Chromium inside the
+  sandbox. Playwright MCP runs then have no subagents, and `merge` labels them
+  separately.
 - Mo manages its own subagents, and `--max-concurrent-sub-agents` caps them.
   Devin runs in one session with no child sessions.
 
@@ -175,24 +175,37 @@ that use it separately.
 The flag turns off Codex web search, makes Playwright MCP refuse the sites in
 `ANSWER_DOMAINS` ([`testing-browser.ts`](src/agents/testing-browser.ts)), limits
 Browserbase pages to the fixture host, and tells the agent to record a blocked site
-as a coverage limitation. Playwright MCP runs already use Codex's read-only
-sandbox, which has no network access.
+as a coverage limitation. The [sandbox](#sandbox) already keeps the agent's
+own shell off the web.
 
 Claude Code already omits WebSearch and WebFetch from its tool list. With the flag, it also applies the browser restrictions above. Shared agent-browser sessions are kept alive across disconnects. Browserbase sessions get the requested time budget plus two minutes, up to the provider's six-hour limit.
 
 The flag doesn't stop fixtures that fetch from code hosts on the server, such
 as Gitea's "New Migration" from GitHub.
 
-**`--prevent-cheating` is not a network firewall for agent-browser or e2e runs.** The flag
-is accepted there, but it only turns off web search and, on Browserbase, limits
-page navigation to the fixture host. With `--browser local` its browser isn't
-restricted, and it runs without Codex's sandbox on any browser, so the agent can
-still `curl` GitHub or the dataset. To run it without answer lookups, restrict the network outside
-qa-bench. On Linux, run `pnpm eval` under
-[nsjail](https://github.com/google/nsjail) or a similar sandbox with egress
-limited to the hosts the run needs (the fixture, OpenAI, E2B and Browserbase).
-On macOS, where nsjail doesn't run, do the same inside a Linux VM or container
-(for example Docker or OrbStack) with an egress firewall.
+### Sandbox
+
+Each Codex or Claude Code run executes in its own Docker container, built from
+[`sandbox/Dockerfile`](sandbox/Dockerfile) with the pinned agent CLIs, browser
+tools and Chromium. The container holds none of this repository's files: it
+mounts only the run's workspace and its own run directory, so the agent can't
+read labels, earlier reports or other runs.
+
+The container has no network. Its only way out is an egress proxy in the harness
+([`egress-proxy.ts`](src/sandbox/egress-proxy.ts)) that allows the agent's
+model API and the fixture, plus the harness's own local servers (the Browserbase
+broker, which relays each browser's connection, and Claude Code's reporting and
+browser servers). Everything else is refused and logged to the run directory's
+`egress-denied.log`, and local Chromium uses the same proxy. Codex's own sandbox
+is off inside the container, since the container is the boundary.
+
+The image is tagged by a hash of what it's built from, so changing a pinned
+tool builds a new one on the next run. Codex's session logs are kept in the
+report as `codex-sessions/`. `merge` labels sandboxed runs separately from the
+published runs, which ran without it.
+
+`--no-sandbox` runs the agent on the host as your user, with your filesystem and
+open web access; use it only on a machine or VM you're happy to expose.
 
 ## Scoring
 

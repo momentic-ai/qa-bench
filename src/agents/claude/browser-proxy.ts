@@ -1,8 +1,10 @@
-import { ChildProcessWithoutNullStreams, spawn } from "node:child_process";
+import { ChildProcessWithoutNullStreams } from "node:child_process";
 import { randomUUID } from "node:crypto";
 import { createServer } from "node:http";
 import { createInterface } from "node:readline";
 import { z } from "zod";
+
+import { ToolRuntime } from "../../sandbox/runtime";
 
 const PARENT = "parent";
 const TOOL_TIMEOUT_MS = 120_000;
@@ -51,11 +53,9 @@ class PlaywrightProcess {
   private stderr = "";
   private ready: Promise<unknown>;
 
-  constructor(launch: BrowserLaunch) {
-    this.child = spawn(launch.command, launch.args, {
+  constructor(runtime: ToolRuntime, launch: BrowserLaunch) {
+    this.child = runtime.spawn(launch.command, launch.args, {
       env: launch.env,
-      detached: process.platform !== "win32",
-      stdio: ["pipe", "pipe", "pipe"],
     });
     this.exit = new Promise((resolve) =>
       this.child.once("close", () => resolve()),
@@ -171,7 +171,10 @@ export class BrowserProxy {
   private server = createServer();
   private endpoint = `/${randomUUID()}`;
 
-  constructor(private launch: BrowserLaunch) {}
+  constructor(
+    private runtime: ToolRuntime,
+    private launch: BrowserLaunch,
+  ) {}
 
   assign(toolUseId: string, agentId: string | undefined) {
     this.callers.set(toolUseId, agentId ?? PARENT);
@@ -289,7 +292,7 @@ export class BrowserProxy {
         .catch((err: unknown) =>
           process.stderr.write(`Could not stop a failed browser: ${err}\n`),
         );
-      browser = new PlaywrightProcess(this.launch);
+      browser = new PlaywrightProcess(this.runtime, this.launch);
       this.browsers.set(agent, browser);
     }
     return browser;

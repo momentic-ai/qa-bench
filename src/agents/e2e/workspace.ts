@@ -6,6 +6,7 @@ import { promisify } from "node:util";
 import { fixtureAccounts } from "../../evals/bugbash-brief";
 import { AgentCost, getE2EModelCost } from "../../evals/cost";
 import { Fixture } from "../../evals/types";
+import { ToolRuntime } from "../../sandbox/runtime";
 import { E2EModel } from "./config";
 
 const root = path.resolve(import.meta.dirname, "../../..");
@@ -43,6 +44,7 @@ export async function prepareE2E({
   targetUrl,
   model,
   journal,
+  runtime,
   broker,
 }: {
   workspace: string;
@@ -51,10 +53,11 @@ export async function prepareE2E({
   targetUrl: URL;
   model: E2EModel;
   journal: string;
+  runtime: ToolRuntime;
   broker?: string;
 }) {
   await symlink(
-    path.join(root, "node_modules"),
+    runtime.path(path.join(root, "node_modules")),
     path.join(workspace, "node_modules"),
   );
   await cp(
@@ -86,7 +89,7 @@ export async function prepareE2E({
     path.join(workspace, "e2e.config.ts"),
     `import type { E2EConfig } from "e2e";
 import { web } from "@e2e-dev/web";
-import { meteredModel } from ${JSON.stringify(path.join(import.meta.dirname, "config.ts"))};
+import { meteredModel } from ${JSON.stringify(runtime.path(path.join(import.meta.dirname, "config.ts")))};
 
 export default {
   targets: [{ engine: ${engine}, app: { url: ${JSON.stringify(targetUrl.href)} } }],
@@ -105,7 +108,7 @@ ${credentials}
 `,
   );
   return {
-    PATH: `${path.join(root, "node_modules/.bin")}${path.delimiter}${process.env.PATH || ""}`,
+    PATH: runtime.pathEnv([runtime.path(path.join(root, "node_modules/.bin"))]),
     ...Object.fromEntries(
       accounts.map(({ name, password }) => [passwordVariable(name), password]),
     ),
