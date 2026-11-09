@@ -80,10 +80,10 @@ pnpm build-template --cpu 4 --memory 8
 | `DEVIN_ORGANIZATION_ID`, `DEVIN_TOKEN` | Devin ([setup](src/agents/devin/README.md))           |
 
 Mo runs on Momentic's hosted service, so it needs a Momentic account and the
-[`qa` CLI](https://www.npmjs.com/package/qa). Runs require version 0.27.0:
+[`qa` CLI](https://www.npmjs.com/package/qa). Runs require version 0.32.0:
 
 ```bash
-npm install -g qa@0.27.0
+npm install -g qa@0.32.0
 ```
 
 Run one agent on one area, then compare saved runs:

@@ -41,7 +41,8 @@ export class MoAgent implements EvalAgent {
     onReady?: () => number,
   ) {
     onReady?.();
-    const startArgs = ["start", message];
+    // Mo sees no org knowledge base, MCP servers or repositories, matching the other agents' fixture-only limits.
+    const startArgs = ["start", message, "--ignore-org-context"];
     if (this.context.effort) startArgs.push("--effort", this.context.effort);
     if (this.context.maxConcurrentSubAgents !== undefined) {
       startArgs.push(
