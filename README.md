@@ -86,6 +86,9 @@ Mo runs on Momentic's hosted service, so it needs a Momentic account and the
 npm install -g qa@0.32.0
 ```
 
+Mo eval sessions start with `--no-test-cases`, so Mo's flow observer does not
+record test cases or add its model cost.
+
 Run one agent on one area, then compare saved runs:
 
 ```bash
