@@ -16,7 +16,7 @@ publish, run the Hugging Face sync workflow from `main` in GitHub Actions.
 Each run gets a fresh copy of the app at a pinned commit, with seeded data, in
 its own E2B sandbox. Codex and Claude Code drive hosted Browserbase browsers, not
 local ones. Devin uses its own browser, and Mo uses Momentic's hosted browsers.
-Areas live in [`fixtures/oss`](fixtures/oss).
+Areas live in [`fixtures/web/oss`](fixtures/web/oss).
 
 | App      | Areas | Labeled bugs |
 | -------- | ----- | ------------ |
@@ -251,7 +251,7 @@ findings of an already-found label.
 
 ## Labels
 
-Each area in `fixtures/oss/<app>/e2e/areas/<area>/` has:
+Each area in `fixtures/web/oss/<app>/areas/<area>/` has:
 
 - `fixture.json`: scope and entry points
 - `ground-truth.json`: confirmed bugs

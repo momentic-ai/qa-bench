@@ -86,7 +86,7 @@ and the label files it was graded against.
 ## Structure
 
 Each application is a top-level folder. The files at the top level build the
-sandbox, and each area folder under `e2e/areas/` holds the brief and the labels
+sandbox, and each area folder under `areas/` holds the brief and the labels
 for that area. A `data/` folder holds the same briefs and labels as three
 tables for the Dataset Viewer: `bugs` (ground truth), `known_invalid`, and
 `areas`, one row per entry with its `app` and `area`. The JSON files are the
@@ -98,7 +98,7 @@ data/                   # viewer tables built from the area folders
   compose.yaml          # pinned images and services
   fixture.json          # port, test accounts, upstream repo + commit
   runtime/              # seed and snapshot scripts, seed data
-  e2e/areas/<area>/
+  areas/<area>/
     fixture.json        # area name, scope, entry points
     ground-truth.json   # known bugs
     known-invalid.json  # known false reports
@@ -122,7 +122,7 @@ Each entry has:
 | `severity`   | 1, 3, or 5 (ground truth only)                                                                       |
 | `reason`     | Why the claim was rejected (known-invalid only)                                                      |
 
-An entry from `gitea/e2e/areas/pull-requests/ground-truth.json`:
+An entry from `gitea/areas/pull-requests/ground-truth.json`:
 
 ```json
 {
@@ -210,7 +210,7 @@ for the full entries:
 import json
 from pathlib import Path
 
-for area in sorted(Path("qa-bench").glob("*/e2e/areas/*")):
+for area in sorted(Path("qa-bench").glob("*/areas/*")):
     brief = json.loads((area / "fixture.json").read_text())["productArea"]
     bugs = json.loads((area / "ground-truth.json").read_text())["bugs"]
     invalid = json.loads((area / "known-invalid.json").read_text())["bugs"]
