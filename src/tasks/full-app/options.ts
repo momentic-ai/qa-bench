@@ -147,7 +147,7 @@ function parseBrowser(
     ].includes(agent ?? "")
   )
     throw new Error("--browser applies only to Codex and Claude agents.");
-  if (browser !== "browserbase" && browser !== "local")
-    throw new Error("--browser must be browserbase or local.");
+  if (browser !== "browserbase" && browser !== "kernel" && browser !== "local")
+    throw new Error("--browser must be browserbase, kernel or local.");
   return browser;
 }

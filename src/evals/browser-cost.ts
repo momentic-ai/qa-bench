@@ -9,11 +9,17 @@ export const BROWSERBASE_PRICING = {
   billingUnitSeconds: 60,
   proxyBillingUnitBytes: 1_000_000,
 };
+// Kernel bills active (non-standby) runtime per GB of browser memory.
+export const KERNEL_PRICING = {
+  usdPerGbSecond: 0.0000166667,
+  source: "https://www.kernel.sh/docs/info/pricing",
+};
+const PRICING = { browserbase: BROWSERBASE_PRICING, kernel: KERNEL_PRICING };
 export type BrowserCost = {
-  provider: "browserbase";
+  provider: keyof typeof PRICING;
   estimatedUsd: number | null;
   complete: boolean;
-  pricing: typeof BROWSERBASE_PRICING;
+  pricing: (typeof PRICING)[keyof typeof PRICING];
   sessions: BrowserSessionCost[];
   errors: string[];
 };
@@ -23,6 +29,7 @@ export type BrowserSessionCost = {
   proxyBytes?: number;
   billedSeconds?: number;
   billedProxyBytes?: number;
+  memoryGib?: number;
   estimatedUsd: number;
   complete: boolean;
 };
@@ -57,6 +64,28 @@ export function browserbaseSessionCost(input: unknown): BrowserSessionCost {
     complete: true,
   };
 }
+const KernelUsageSchema = z.object({
+  session_id: z.string().min(1),
+  memory: z.string().regex(/^\d+GiB$/),
+  usage_status: z.enum(["pending", "ready"]).optional(),
+  // Absent until a deleted session's usage settles.
+  usage: z.object({ uptime_ms: z.number().int().nonnegative() }).optional(),
+});
+export function kernelSessionCost(input: unknown): BrowserSessionCost {
+  const session = KernelUsageSchema.parse(input);
+  // Usage is final only after deletion settles; pending or live meters undercount.
+  if (session.usage_status !== "ready" || !session.usage)
+    throw new Error("KERNEL_USAGE_NOT_READY");
+  const seconds = session.usage.uptime_ms / 1000;
+  const memoryGib = Number.parseInt(session.memory, 10);
+  return {
+    id: session.session_id,
+    seconds,
+    memoryGib,
+    estimatedUsd: seconds * memoryGib * KERNEL_PRICING.usdPerGbSecond,
+    complete: true,
+  };
+}
 export function browserCost(
   provider: BrowserCost["provider"],
   sessions: BrowserSessionCost[],
@@ -73,7 +102,7 @@ export function browserCost(
         : null,
     complete:
       errors.length === 0 && unique.every((session) => session.complete),
-    pricing: BROWSERBASE_PRICING,
+    pricing: PRICING[provider],
     sessions: unique,
     errors,
   };
@@ -101,7 +130,10 @@ export function browserCostError(err: unknown) {
     // Retain schema failure locations without logging provider values or connection URLs.
     return `INVALID_USAGE:${err.issues.map((issue) => `${issue.path.join(".")}:${issue.code}`).join(",")}`;
   }
-  if (err instanceof Error && /^BROWSERBASE_[A-Z0-9_]+$/.test(err.message)) {
+  if (
+    err instanceof Error &&
+    /^(BROWSERBASE|KERNEL)_[A-Z0-9_]+$/.test(err.message)
+  ) {
     // Our provider errors contain HTTP status or lifecycle state, never response bodies.
     return err.message;
   }
