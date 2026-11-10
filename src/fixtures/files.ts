@@ -218,9 +218,7 @@ export async function discoverDeploymentFiles(directory: string) {
         name !== "candidate-findings.json" &&
         name !== "case.json" &&
         !name.endsWith("cases.ts") &&
-        !["source", "runs", "reports", "areas"].includes(
-          file.split("/")[0],
-        )
+        !["source", "runs", "reports", "areas"].includes(file.split("/")[0])
       );
     })
     .sort();
