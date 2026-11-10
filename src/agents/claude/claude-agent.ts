@@ -33,7 +33,7 @@ import { CODEX_COMMAND, CODEX_PACKAGE } from "../codex/codex-agent";
 import { CodingAgent } from "../coding-agent";
 import { DISABLED_BROWSER_TOOL, PreparedBrowser } from "../testing-browser";
 import { BrowserProxy } from "./browser-proxy";
-import { startReportingServer } from "./reporting";
+import { reportingServer } from "./reporting";
 
 const require = createRequire(import.meta.url);
 const CLAUDE_COMMAND = path.join(
@@ -138,9 +138,6 @@ export class ClaudeAgent extends CodingAgent {
 
   protected findingsToolPrefix = "reporting.";
   private session: Query | undefined;
-  private reporting:
-    | Awaited<ReturnType<typeof startReportingServer>>
-    | undefined;
   private browserProxy: BrowserProxy | undefined;
   private transcript: WriteStream | undefined;
   private child: ChildProcessWithoutNullStreams | undefined;
@@ -194,8 +191,6 @@ export class ClaudeAgent extends CodingAgent {
         disabledTools: [DISABLED_BROWSER_TOOL],
       });
     }
-    const browserUrl = await this.browserProxy?.start();
-    this.reporting = await startReportingServer(this.findings);
     signal.throwIfAborted();
     this.transcript = createWriteStream(
       path.join(this.context.reportDirectory, "transcript.jsonl"),
@@ -222,16 +217,10 @@ export class ClaudeAgent extends CodingAgent {
         disallowedTools: [`mcp__playwright__${DISABLED_BROWSER_TOOL}`],
         permissionMode: "dontAsk",
         mcpServers: {
-          ...(browserUrl
-            ? {
-                playwright: {
-                  type: "http" as const,
-                  url: browserUrl,
-                  timeout: 120_000,
-                },
-              }
+          ...(this.browserProxy
+            ? { playwright: this.browserProxy.server() }
             : {}),
-          reporting: { type: "http", url: this.reporting.url },
+          reporting: reportingServer(this.findings),
         },
         hooks: {
           PreToolUse: [{ hooks: [async (input) => this.guardTool(input)] }],
@@ -284,7 +273,7 @@ export class ClaudeAgent extends CodingAgent {
         this.transcript.end();
         await finished(this.transcript);
       }
-      await Promise.all([this.reporting?.close(), this.browserProxy?.close()]);
+      await this.browserProxy?.close();
     }
   }
 
