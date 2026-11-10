@@ -27,7 +27,10 @@ export async function resolveAppFixture(selection: string) {
   if (parts.length > 4 || namespace !== "oss" || !basename) {
     throw new Error(invalidMessage);
   }
-  if (variant !== undefined && (variant !== "areas" || !area)) {
+  // A trailing slash (`gitea/`) is a full-app selection with an empty variant.
+  const invalidVariant =
+    variant === "areas" ? !area : Boolean(variant) || Boolean(area);
+  if (invalidVariant) {
     throw new Error(invalidMessage);
   }
   await selectFixtureNames(root, [basename]);
