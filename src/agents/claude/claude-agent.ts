@@ -30,10 +30,11 @@ import {
 import { writeJson } from "../../evals/json-file";
 import { BrowserTool } from "../agent-browser";
 import { CODEX_COMMAND, CODEX_PACKAGE } from "../codex/codex-agent";
+import { FINDINGS_TOOLS, FindingsStore } from "../codex/findings-store";
 import { CodingAgent } from "../coding-agent";
 import { DISABLED_BROWSER_TOOL, PreparedBrowser } from "../testing-browser";
 import { BrowserProxy } from "./browser-proxy";
-import { reportingServer } from "./reporting";
+import { ToolSchema, sdkMcpServer } from "./sdk-mcp";
 
 const require = createRequire(import.meta.url);
 const CLAUDE_COMMAND = path.join(
@@ -62,6 +63,25 @@ function denyTool(reason: string): SyncHookJSONOutput {
       permissionDecisionReason: reason,
     },
   };
+}
+
+function reportingServer(store: FindingsStore) {
+  return sdkMcpServer({
+    name: "reporting",
+    listTools: async () =>
+      FINDINGS_TOOLS.map(({ type: _, ...tool }) => ToolSchema.parse(tool)),
+    async callTool(call) {
+      try {
+        await store.handleTool(call.name, call.arguments);
+        return { content: [{ type: "text", text: "Saved." }] };
+      } catch (err) {
+        return {
+          isError: true,
+          content: [{ type: "text", text: String(err) }],
+        };
+      }
+    },
+  });
 }
 
 function shellQuote(value: string) {
