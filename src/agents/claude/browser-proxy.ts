@@ -1,21 +1,11 @@
-import { McpSdkServerConfigWithInstance } from "@anthropic-ai/claude-agent-sdk";
-import { McpServer } from "@modelcontextprotocol/sdk/server/mcp.js";
-import {
-  CallToolRequestSchema,
-  CallToolResultSchema,
-  ListToolsRequestSchema,
-  ListToolsResultSchema,
-} from "@modelcontextprotocol/sdk/types.js";
 import { ChildProcessWithoutNullStreams, spawn } from "node:child_process";
 import { createInterface } from "node:readline";
 import { z } from "zod";
 
+import { ToolResultSchema, ToolSchema, sdkMcpServer } from "./sdk-mcp";
+
 const PARENT = "parent";
 const TOOL_TIMEOUT_MS = 120_000;
-const MetaSchema = z
-  .object({ "claudecode/toolUseId": z.string().optional() })
-  .passthrough()
-  .optional();
 const ResponseSchema = z
   .object({
     id: z.number(),
@@ -173,54 +163,40 @@ export class BrowserProxy {
     await browser?.close();
   }
 
-  server(): McpSdkServerConfigWithInstance {
-    const server = new McpServer(
-      { name: "playwright", version: "1.0.0" },
-      {
-        capabilities: { tools: {} },
-        instructions:
-          "Each agent, including each subagent, gets its own separate browser.",
+  server() {
+    return sdkMcpServer({
+      name: "playwright",
+      instructions:
+        "Each agent, including each subagent, gets its own separate browser.",
+      timeout: TOOL_TIMEOUT_MS,
+      listTools: async () => {
+        this.tools ??= this.browser(PARENT)
+          .call("tools/list", {})
+          .catch((err: unknown) => {
+            this.tools = undefined;
+            throw err;
+          });
+        return z
+          .object({ tools: z.array(ToolSchema) })
+          .parse(await this.tools)
+          .tools.filter(
+            (tool) => !this.launch.disabledTools.includes(tool.name),
+          );
       },
-    );
-    server.server.setRequestHandler(ListToolsRequestSchema, async () => {
-      this.tools ??= this.browser(PARENT)
-        .call("tools/list", {})
-        .catch((err: unknown) => {
-          this.tools = undefined;
-          throw err;
-        });
-      const list = ListToolsResultSchema.parse(await this.tools);
-      return {
-        ...list,
-        tools: list.tools.filter(
-          (tool) => !this.launch.disabledTools.includes(tool.name),
-        ),
-      };
-    });
-    server.server.setRequestHandler(
-      CallToolRequestSchema,
-      async ({ params }) => {
-        if (this.launch.disabledTools.includes(params.name))
-          throw new Error(`Unknown tool: ${params.name}`);
-        const toolUseId = MetaSchema.parse(params._meta)?.[
-          "claudecode/toolUseId"
-        ];
+      callTool: async (call) => {
+        if (this.launch.disabledTools.includes(call.name))
+          throw new Error(`Unknown tool: ${call.name}`);
+        const toolUseId = call._meta?.["claudecode/toolUseId"];
         const agent = (toolUseId && this.callers.get(toolUseId)) ?? PARENT;
         if (toolUseId) this.callers.delete(toolUseId);
-        return CallToolResultSchema.parse(
+        return ToolResultSchema.parse(
           await this.browser(agent).call("tools/call", {
-            name: params.name,
-            arguments: params.arguments ?? {},
+            name: call.name,
+            arguments: call.arguments ?? {},
           }),
         );
       },
-    );
-    return {
-      type: "sdk",
-      name: "playwright",
-      instance: server,
-      timeout: TOOL_TIMEOUT_MS,
-    };
+    });
   }
 
   async close() {
