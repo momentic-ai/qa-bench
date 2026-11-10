@@ -1,35 +1,17 @@
 import { ChildProcessWithoutNullStreams, spawn } from "node:child_process";
-import { randomUUID } from "node:crypto";
-import { createServer } from "node:http";
 import { createInterface } from "node:readline";
 import { z } from "zod";
 
+import { ToolResultSchema, ToolSchema, sdkMcpServer } from "./sdk-mcp";
+
 const PARENT = "parent";
 const TOOL_TIMEOUT_MS = 120_000;
-const RequestSchema = z.object({
-  id: z.union([z.string(), z.number()]).optional(),
-  method: z.string(),
-  params: z.unknown().optional(),
-});
-const CallSchema = z
-  .object({
-    name: z.string(),
-    arguments: z.unknown().optional(),
-    _meta: z
-      .object({ "claudecode/toolUseId": z.string().optional() })
-      .passthrough()
-      .optional(),
-  })
-  .passthrough();
 const ResponseSchema = z
   .object({
     id: z.number(),
     result: z.unknown().optional(),
     error: z.unknown().optional(),
   })
-  .passthrough();
-const ToolListSchema = z
-  .object({ tools: z.array(z.object({ name: z.string() }).passthrough()) })
   .passthrough();
 
 export type BrowserLaunch = {
@@ -168,8 +150,6 @@ export class BrowserProxy {
   private callers = new Map<string, string>();
   private tools: Promise<unknown> | undefined;
   private closing = false;
-  private server = createServer();
-  private endpoint = `/${randomUUID()}`;
 
   constructor(private launch: BrowserLaunch) {}
 
@@ -183,101 +163,47 @@ export class BrowserProxy {
     await browser?.close();
   }
 
-  async start() {
-    this.server.on("request", async (request, response) => {
-      if (request.url !== this.endpoint || request.method !== "POST") {
-        response.writeHead(request.url === this.endpoint ? 405 : 404).end();
-        return;
-      }
-      let id: string | number | undefined;
-      try {
-        let body = "";
-        for await (const chunk of request) body += String(chunk);
-        const message = RequestSchema.parse(JSON.parse(body));
-        id = message.id;
-        if (id === undefined) {
-          response.writeHead(202).end();
-          return;
-        }
-        const result = await this.handle(message.method, message.params);
-        response
-          .writeHead(200, { "Content-Type": "application/json" })
-          .end(JSON.stringify({ jsonrpc: "2.0", id, result }));
-      } catch (err) {
-        response.writeHead(200, { "Content-Type": "application/json" }).end(
-          JSON.stringify({
-            jsonrpc: "2.0",
-            id: id ?? null,
-            error: { code: -32603, message: String(err) },
-          }),
-        );
-      }
-    });
-    await new Promise<void>((resolve, reject) => {
-      this.server.once("error", reject);
-      this.server.listen(0, "127.0.0.1", resolve);
-    });
-    const address = this.server.address();
-    if (!address || typeof address === "string")
-      throw new Error("Missing browser proxy address.");
-    return `http://127.0.0.1:${address.port}${this.endpoint}`;
-  }
-
-  async close() {
-    this.closing = true;
-    if (this.server.listening) {
-      this.server.closeAllConnections();
-      await new Promise<void>((resolve, reject) =>
-        this.server.close((err) => (err ? reject(err) : resolve())),
-      );
-    }
-    const browsers = [...this.browsers.values()];
-    this.browsers.clear();
-    await Promise.all(browsers.map((browser) => browser.close()));
-  }
-
-  private async handle(method: string, params: unknown) {
-    switch (method) {
-      case "initialize":
-        return {
-          protocolVersion: "2025-03-26",
-          capabilities: { tools: {} },
-          serverInfo: { name: "playwright", version: "1.0.0" },
-          instructions:
-            "Each agent, including each subagent, gets its own separate browser.",
-        };
-      case "ping":
-        return {};
-      case "tools/list": {
+  server() {
+    return sdkMcpServer({
+      name: "playwright",
+      instructions:
+        "Each agent, including each subagent, gets its own separate browser.",
+      timeout: TOOL_TIMEOUT_MS,
+      listTools: async () => {
         this.tools ??= this.browser(PARENT)
           .call("tools/list", {})
           .catch((err: unknown) => {
             this.tools = undefined;
             throw err;
           });
-        const list = ToolListSchema.parse(await this.tools);
-        return {
-          ...list,
-          tools: list.tools.filter(
+        return z
+          .object({ tools: z.array(ToolSchema) })
+          .parse(await this.tools)
+          .tools.filter(
             (tool) => !this.launch.disabledTools.includes(tool.name),
-          ),
-        };
-      }
-      case "tools/call": {
-        const call = CallSchema.parse(params);
+          );
+      },
+      callTool: async (call) => {
         if (this.launch.disabledTools.includes(call.name))
           throw new Error(`Unknown tool: ${call.name}`);
         const toolUseId = call._meta?.["claudecode/toolUseId"];
         const agent = (toolUseId && this.callers.get(toolUseId)) ?? PARENT;
         if (toolUseId) this.callers.delete(toolUseId);
-        return this.browser(agent).call("tools/call", {
-          name: call.name,
-          arguments: call.arguments ?? {},
-        });
-      }
-      default:
-        throw new Error(`Unsupported MCP method: ${method}`);
-    }
+        return ToolResultSchema.parse(
+          await this.browser(agent).call("tools/call", {
+            name: call.name,
+            arguments: call.arguments ?? {},
+          }),
+        );
+      },
+    });
+  }
+
+  async close() {
+    this.closing = true;
+    const browsers = [...this.browsers.values()];
+    this.browsers.clear();
+    await Promise.all(browsers.map((browser) => browser.close()));
   }
 
   private browser(agent: string) {
