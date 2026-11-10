@@ -13,35 +13,28 @@ const packageDirectory = path.resolve(import.meta.dirname, "../..");
 export const OSS_FIXTURES_DIRECTORY = path.join(
   packageDirectory,
   "fixtures",
+  "web",
   "oss",
 );
 
-const FIXTURE_ROOTS = new Map([["oss", OSS_FIXTURES_DIRECTORY]]);
-
+/** Resolves `<app>`, `oss/<app>` (full-app) and `[oss/]<app>/areas/<area>` to a fixture directory. */
 export async function resolveAppFixture(selection: string) {
   const parts = selection.split("/");
-  if (!FIXTURE_ROOTS.has(parts[0])) parts.unshift("oss");
+  if (parts[0] !== "oss") parts.unshift("oss");
   const [namespace, basename, variant, area] = parts;
-  const root = FIXTURE_ROOTS.get(namespace);
+  const root = OSS_FIXTURES_DIRECTORY;
   const invalidMessage = `Invalid fixture: ${selection}. Use <app>, oss/<app> or oss/<app>/areas/<area>.`;
-  if (parts.length > 4 || !root || !basename) {
+  if (parts.length > 4 || namespace !== "oss" || !basename) {
     throw new Error(invalidMessage);
   }
-  switch (variant) {
-    case "areas":
-      if (!area) throw new Error(invalidMessage);
-      break;
-    case undefined:
-    case "":
-    case "e2e":
-      if (area) throw new Error(invalidMessage);
-      break;
-    default:
-      throw new Error(invalidMessage);
+  // A trailing slash (`gitea/`) is a full-app selection with an empty variant.
+  const invalidVariant =
+    variant === "areas" ? !area : Boolean(variant) || Boolean(area);
+  if (invalidVariant) {
+    throw new Error(invalidMessage);
   }
   await selectFixtureNames(root, [basename]);
   if (variant === "areas") {
-    const areasDirectory = path.join(root, basename, "e2e", "areas");
     const available = await productAreaNames(basename);
     if (!available.includes(area)) {
       throw new Error(
@@ -50,10 +43,10 @@ export async function resolveAppFixture(selection: string) {
     }
     return {
       name: `${basename}/areas/${area}`,
-      directory: path.join(areasDirectory, area),
+      directory: path.join(root, basename, "areas", area),
     };
   }
-  return { name: basename, directory: path.join(root, basename, "e2e") };
+  return { name: basename, directory: path.join(root, basename) };
 }
 
 export async function selectAppFixtures(requestedNames: string[] = []) {
@@ -97,16 +90,16 @@ export async function expandAppFixtureNames(requestedNames: string[]) {
           (area) => `oss/${areaSelection[1]}/areas/${area}`,
         );
       }
-      const root = FIXTURE_ROOTS.get(name);
-      if (!root) return [name];
-      return selectFixtureNames(root, []);
+      return name === "oss"
+        ? selectFixtureNames(OSS_FIXTURES_DIRECTORY, [])
+        : [name];
     }),
   );
   return selections.flat();
 }
 
 async function productAreaNames(app: string) {
-  const directory = path.join(OSS_FIXTURES_DIRECTORY, app, "e2e", "areas");
+  const directory = path.join(OSS_FIXTURES_DIRECTORY, app, "areas");
   const names = await selectFixtureNames(directory, []).catch((error) => {
     if (error instanceof Error && "code" in error && error.code === "ENOENT")
       return [];
@@ -228,9 +221,7 @@ export async function discoverDeploymentFiles(directory: string) {
         name !== "candidate-findings.json" &&
         name !== "case.json" &&
         !name.endsWith("cases.ts") &&
-        !["source", "runs", "reports", "areas", "e2e"].includes(
-          file.split("/")[0],
-        )
+        !["source", "runs", "reports", "areas"].includes(file.split("/")[0])
       );
     })
     .sort();
