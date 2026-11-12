@@ -51,7 +51,7 @@ async function runFolders(fixtureDirectory: string) {
   }
 }
 
-/** The first of runIds saved for this fixture, current or archived. */
+/** A requested run saved for this fixture, checking current reports before the archive. */
 export async function findRequestedRun(
   reportsDirectory: string,
   agent: Agent,
