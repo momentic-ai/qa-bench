@@ -3,8 +3,12 @@ import path from "node:path";
 import { z } from "zod";
 
 import { writeJson } from "../../evals/json-file";
-import { FindingSchema, ReportSchema } from "../../evals/reports";
-import { BugRecording } from "../bug-videos";
+import {
+  BugRecording,
+  BugRecordingSchema,
+  CodingAgentReportSchema,
+  FindingSchema,
+} from "../../evals/reports";
 
 const SubmittedBugSchema = z
   .object({ id: z.string().min(1), bug: FindingSchema.strict() })
@@ -20,7 +24,7 @@ const SavedFindingsSchema = CoverageSchema.extend({
   bugs: z.array(
     SubmittedBugSchema.extend({
       submittedAt: z.iso.datetime(),
-      recording: z.unknown().optional(),
+      recording: BugRecordingSchema.optional(),
     }),
   ),
 });
@@ -135,7 +139,7 @@ export class FindingsStore {
     const saved = SavedFindingsSchema.parse(
       JSON.parse(await readFile(this.file, "utf8")),
     );
-    return ReportSchema.parse({
+    return CodingAgentReportSchema.parse({
       bugs: saved.bugs.map(({ bug, recording }) =>
         recording ? { ...bug, recording } : bug,
       ),

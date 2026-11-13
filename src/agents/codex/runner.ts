@@ -2,14 +2,14 @@ import { readFile } from "node:fs/promises";
 import path from "node:path";
 
 import { readOptionalCost, readReportDuration } from "../../evals/report-files";
-import { CodexCostSchema, ReportSchema } from "../../evals/reports";
+import { CodexCostSchema, CodingAgentReportSchema } from "../../evals/reports";
 import { BenchmarkAgent } from "../../evals/types";
 
 export const codexRunner: BenchmarkAgent = {
   name: "codex-playwright-mcp",
   reportDirectory: "codex-playwright-mcp",
   async getReport(directory) {
-    const report = ReportSchema.parse(
+    const report = CodingAgentReportSchema.parse(
       JSON.parse(await readFile(path.join(directory, "report.json"), "utf8")),
     );
     const cost = await readOptionalCost(directory);

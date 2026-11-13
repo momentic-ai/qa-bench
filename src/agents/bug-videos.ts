@@ -12,6 +12,8 @@ import path from "node:path";
 import { promisify } from "node:util";
 import { z } from "zod";
 
+import { BugRecording } from "../evals/reports";
+
 const exec = promisify(execFile);
 /** A pinned ffmpeg, so cutting doesn't depend on the machine's ffmpeg. */
 const ffmpeg = z.string().parse(ffmpegPath);
@@ -27,13 +29,6 @@ const MAX_CLIP_BYTES = 14 * 1024 * 1024;
 export const BrowserLogSchema = z
   .object({ at: z.iso.datetime(), frame: z.string() })
   .strict();
-
-export type BugRecording = {
-  /** The clip is artifacts/<artifactId>.mp4 in the report directory. */
-  artifactId: string;
-  startedAt: string;
-  finishedAt: string;
-};
 
 type Bug = { id: string; submittedAt: string };
 type Frame = { at: number; path: string };

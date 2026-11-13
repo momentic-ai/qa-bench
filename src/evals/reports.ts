@@ -41,14 +41,29 @@ export type KnownInvalidFinding = z.infer<typeof KnownInvalidFindingSchema>;
 
 export const ReportSchema = z
   .object({
-    bugs: z.array(
-      // A coding agent's bug video, cut from its browser recording.
-      FindingSchema.extend({ recording: z.unknown().optional() }).strict(),
-    ),
+    bugs: z.array(FindingSchema.strict()),
     areasExplored: z.array(z.string()),
     limitations: z.array(z.string()),
   })
   .strict();
+
+/** A Codex or Claude bug's video clip, cut from its browser recording. */
+export const BugRecordingSchema = z
+  .object({
+    /** The clip is artifacts/<artifactId>.mp4 in the report directory. */
+    artifactId: z.string(),
+    startedAt: z.iso.datetime(),
+    finishedAt: z.iso.datetime(),
+  })
+  .strict();
+export type BugRecording = z.infer<typeof BugRecordingSchema>;
+
+/** A Codex or Claude report, whose bugs may carry a video clip. */
+export const CodingAgentReportSchema = ReportSchema.extend({
+  bugs: z.array(
+    FindingSchema.extend({ recording: BugRecordingSchema.optional() }).strict(),
+  ),
+});
 
 export const GroundTruthSchema = z
   .object({ bugs: z.array(KnownBugSchema) })
