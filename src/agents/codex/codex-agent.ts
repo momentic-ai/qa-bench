@@ -231,6 +231,13 @@ export function codexAgent(
   browserTool: BrowserTool = "playwright-mcp",
   model: CodexModel = CODEX_MODELS[0],
   preventCheating = false,
+  recordBugs = false,
 ): EvalAgentDefinition {
-  return CodexAgent.definition(browser, browserTool, model, preventCheating);
+  return CodexAgent.definition(
+    browser,
+    browserTool,
+    model,
+    preventCheating,
+    recordBugs,
+  );
 }

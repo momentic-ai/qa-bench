@@ -50,6 +50,7 @@ export abstract class CodingAgent implements EvalAgent {
     browserTool: BrowserTool,
     model: string,
     preventCheating: boolean,
+    recordBugs: boolean,
   ): EvalAgentDefinition {
     const name = `${this.family}-${browserTool}`;
     const Tool = TestingBrowser.for(browserTool);
@@ -64,8 +65,12 @@ export abstract class CodingAgent implements EvalAgent {
           ? { subagents: browser !== "local" }
           : {}),
         ...(preventCheating ? { preventCheating } : {}),
+        ...(recordBugs ? { recordBugs } : {}),
       },
       validateEnvironment: async () => {
+        // Only a local Chromium the harness launches is recorded.
+        if (recordBugs && (browserTool === "e2e" || browser !== "local"))
+          throw new Error("Bug recording needs a local, non-e2e browser.");
         if (!process.env[this.apiKey])
           throw new Error(`${this.apiKey} is required.`);
         await Tool.validate(browser);
@@ -78,6 +83,7 @@ export abstract class CodingAgent implements EvalAgent {
           new Tool(context, {
             browser,
             preventCheating,
+            recordBugs,
             skillOwner: this.skillOwner,
             e2eModel: { provider: this.e2eProvider, id: model },
           }),
@@ -134,6 +140,8 @@ export abstract class CodingAgent implements EvalAgent {
   async terminate() {
     this.findings.seal();
     try {
+      // Videos help human review but never block shutdown.
+      await this.browser.stopRecording().catch(() => {});
       await this.stop();
     } finally {
       await this.browser.close();
@@ -144,14 +152,33 @@ export abstract class CodingAgent implements EvalAgent {
 
   async collectResults(signal: AbortSignal) {
     signal.throwIfAborted();
-    const report = await this.findings.collect();
-    await writeJson(
-      path.join(this.context.reportDirectory, "report.json"),
-      report,
-    );
+    const reportFile = path.join(this.context.reportDirectory, "report.json");
+    let report = await this.findings.collect();
+    await writeJson(reportFile, report);
     const model = await this.modelCost();
     const cost = await this.browser.cost(model.cost, model.complete);
     await writeJson(path.join(this.context.reportDirectory, "cost.json"), cost);
+    if (this.browser.options.recordBugs)
+      try {
+        const { recordings, errors } = await this.browser.recordBugs(
+          await this.findings.submissions(),
+          // Leave the rest of the collection budget for grading's inputs.
+          AbortSignal.any([signal, AbortSignal.timeout(300_000)]),
+        );
+        await this.findings.attachRecordings(recordings);
+        report = await this.findings.collect();
+        await writeJson(reportFile, report);
+        if (errors.length) {
+          process.stderr.write(`Bug videos incomplete: ${errors.join(", ")}\n`);
+          await writeJson(
+            path.join(this.context.reportDirectory, "recording-errors.json"),
+            errors,
+          );
+        }
+      } catch (err) {
+        // Videos help human review but never decide a run's result.
+        process.stderr.write(`Bug videos failed: ${String(err)}\n`);
+      }
     return {
       bugCount: report.bugs.length,
       costUsd: cost?.estimatedUsd ?? null,

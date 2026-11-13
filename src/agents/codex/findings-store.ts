@@ -3,7 +3,12 @@ import path from "node:path";
 import { z } from "zod";
 
 import { writeJson } from "../../evals/json-file";
-import { FindingSchema, ReportSchema } from "../../evals/reports";
+import {
+  BugRecording,
+  BugRecordingSchema,
+  CodingAgentReportSchema,
+  FindingSchema,
+} from "../../evals/reports";
 
 const SubmittedBugSchema = z
   .object({ id: z.string().min(1), bug: FindingSchema.strict() })
@@ -16,7 +21,12 @@ const CoverageSchema = z
   })
   .strict();
 const SavedFindingsSchema = CoverageSchema.extend({
-  bugs: z.array(SubmittedBugSchema.extend({ submittedAt: z.iso.datetime() })),
+  bugs: z.array(
+    SubmittedBugSchema.extend({
+      submittedAt: z.iso.datetime(),
+      recording: BugRecordingSchema.optional(),
+    }),
+  ),
 });
 
 export const FINDINGS_TOOLS = [
@@ -46,7 +56,11 @@ export const FINDINGS_TOOLS = [
 export class FindingsStore {
   private bugs = new Map<
     string,
-    { bug: z.infer<typeof FindingSchema>; submittedAt: string }
+    {
+      bug: z.infer<typeof FindingSchema>;
+      submittedAt: string;
+      recording?: BugRecording;
+    }
   >();
   private areasExplored = new Set<string>();
   private limitations = new Set<string>();
@@ -125,11 +139,29 @@ export class FindingsStore {
     const saved = SavedFindingsSchema.parse(
       JSON.parse(await readFile(this.file, "utf8")),
     );
-    return ReportSchema.parse({
-      bugs: saved.bugs.map(({ bug }) => bug),
+    return CodingAgentReportSchema.parse({
+      bugs: saved.bugs.map(({ bug, recording }) =>
+        recording ? { ...bug, recording } : bug,
+      ),
       areasExplored: saved.areasExplored,
       limitations: saved.limitations,
     });
+  }
+
+  /** Accepted bugs with when each was first submitted. */
+  async submissions() {
+    await this.pending;
+    return [...this.bugs].map(([id, { submittedAt }]) => ({ id, submittedAt }));
+  }
+
+  /** Saves each bug's video clip with its accepted finding, as Mo's bugs carry theirs. */
+  async attachRecordings(recordings: Map<string, BugRecording>) {
+    await this.pending;
+    for (const [id, recording] of recordings) {
+      const saved = this.bugs.get(id);
+      if (saved) saved.recording = recording;
+    }
+    await this.persist();
   }
 
   private persist() {

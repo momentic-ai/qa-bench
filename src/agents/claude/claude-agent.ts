@@ -492,8 +492,15 @@ export function claudeAgent(
   browserTool: BrowserTool = "playwright-mcp",
   model: ClaudeModel = CLAUDE_MODELS[0],
   preventCheating = false,
+  recordBugs = false,
 ): EvalAgentDefinition {
-  return ClaudeAgent.definition(browser, browserTool, model, preventCheating);
+  return ClaudeAgent.definition(
+    browser,
+    browserTool,
+    model,
+    preventCheating,
+    recordBugs,
+  );
 }
 
 /**
