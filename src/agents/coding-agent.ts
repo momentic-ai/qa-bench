@@ -68,6 +68,9 @@ export abstract class CodingAgent implements EvalAgent {
         ...(recordBugs ? { recordBugs } : {}),
       },
       validateEnvironment: async () => {
+        // Only a local Chromium the harness launches is recorded.
+        if (recordBugs && (browserTool === "e2e" || browser !== "local"))
+          throw new Error("Bug recording needs a local, non-e2e browser.");
         if (!process.env[this.apiKey])
           throw new Error(`${this.apiKey} is required.`);
         await Tool.validate(browser);
