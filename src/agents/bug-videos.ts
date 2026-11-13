@@ -87,6 +87,11 @@ function planClips(bugs: Bug[], frames: Frame[]) {
   return clips;
 }
 
+/** Quotes a path for an ffconcat manifest. */
+function quote(file: string) {
+  return `'${file.replaceAll("'", "'\\''")}'`;
+}
+
 /**
  * Mo's encoder (encodeVideoReviewFrames): holds each JPEG until the next one,
  * so still pages keep their real duration, then 1280x720 10 fps h264 within
@@ -117,17 +122,20 @@ async function encodeClip({
   for (const [index, frame] of selected.entries()) {
     const at = Math.max(startedAt, frame.at);
     const nextAt = selected[index + 1]?.at ?? finishedAt;
-    manifest.push(`file '${frame.path}'`, `duration ${(nextAt - at) / 1000}`);
+    manifest.push(
+      `file ${quote(frame.path)}`,
+      `duration ${(nextAt - at) / 1000}`,
+    );
   }
   // ffconcat repeats the last file so its duration is honored
-  manifest.push(`file '${lastFrame.path}'`);
+  manifest.push(`file ${quote(lastFrame.path)}`);
   const manifestPath = `${videoPath}.txt`;
-  await writeFile(manifestPath, manifest.join("\n"), { signal });
   const maxRateKbps = Math.min(
     1500,
     Math.floor((MAX_CLIP_BYTES * 8 * 0.9) / (durationMs / 1000 + 1) / 1000),
   );
   try {
+    await writeFile(manifestPath, manifest.join("\n"), { signal });
     // -fs stops one byte past the limit, which the size check below rejects
     await exec(
       ffmpeg,

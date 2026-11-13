@@ -42,6 +42,10 @@ export function localBrowserConnection() {
   };
 }
 
+function running(child: ChildProcess | undefined): child is ChildProcess {
+  return child?.exitCode === null && child.signalCode === null;
+}
+
 /** Asks Chromium to quit over CDP. */
 async function closeBrowser(webSocketUrl: string) {
   const socket = new WebSocket(webSocketUrl);
@@ -75,9 +79,14 @@ export class LocalChromium {
       ],
       { stdio: "ignore" },
     );
+    let failed: Error | undefined;
+    this.process.once("error", (err) => (failed = err));
     // Chromium writes its chosen port and browser path here once it listens.
     const portFile = path.join(this.profile, "DevToolsActivePort");
     for (let attempt = 0; attempt < 100; attempt++) {
+      if (failed) throw failed;
+      if (!running(this.process))
+        throw new Error("Local Chromium exited on start.");
       const [port, browserPath] = (
         await readFile(portFile, "utf8").catch(() => "")
       ).split("\n");
@@ -97,18 +106,19 @@ export class LocalChromium {
   }
 
   async stop() {
-    if (this.process?.exitCode === null) {
-      const exited = once(this.process, "exit");
+    const child = this.process;
+    if (running(child)) {
+      const exited = once(child, "exit");
       // A clean shutdown waits for Chromium's helper processes, which still
       // write to the profile after a SIGTERM.
       const closed = this.webSocketUrl
         ? closeBrowser(this.webSocketUrl)
         : Promise.reject(new Error("Local Chromium did not start."));
-      await closed.catch(() => this.process?.kill());
+      await closed.catch(() => child.kill());
       const timeout = AbortSignal.timeout(10_000);
       await Promise.race([exited, once(timeout, "abort")]);
-      if (this.process.exitCode === null && this.process.signalCode === null) {
-        this.process.kill("SIGKILL");
+      if (running(child)) {
+        child.kill("SIGKILL");
         await exited;
       }
     }
