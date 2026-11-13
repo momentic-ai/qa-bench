@@ -51,12 +51,15 @@ async function runFolders(fixtureDirectory: string) {
   }
 }
 
-export async function findReportRun(
+/** A requested run saved for this fixture, checking current reports before the archive. */
+export async function findRequestedRun(
   reportsDirectory: string,
   agent: Agent,
   fixture: string,
-  runIds: readonly string[] = [],
-): Promise<{ reportsDirectory: string; directory: string; runId?: string }> {
+  runIds: readonly string[],
+): Promise<
+  { reportsDirectory: string; directory: string; runId: string } | undefined
+> {
   for (const root of [
     reportsDirectory,
     path.join(reportsDirectory, "archive"),
@@ -71,6 +74,15 @@ export async function findReportRun(
         runId,
       };
   }
+  return undefined;
+}
+
+/** The newest finished run for this fixture, or its folder for older layouts. */
+export async function findLatestRun(
+  reportsDirectory: string,
+  agent: Agent,
+  fixture: string,
+): Promise<{ reportsDirectory: string; directory: string; runId?: string }> {
   const fixtureDirectory = reportDirectory(agent, fixture, reportsDirectory);
   // Run IDs sort by start time; unfinished runs have no duration.json yet.
   const runId = (await runFolders(fixtureDirectory)).find((id) =>
@@ -115,10 +127,10 @@ export async function claimReportRun(
     let run = { reportsDirectory, directory };
     if (runId) {
       // A concurrent startup may have archived the run since it was selected.
-      const found = await findReportRun(reportsDirectory, agent, fixture, [
+      const found = await findRequestedRun(reportsDirectory, agent, fixture, [
         runId,
       ]);
-      if (found.runId !== runId)
+      if (!found)
         throw new Error(
           `Run ${runId} no longer exists for ${agent}/${fixture} in ${reportsDirectory}.`,
         );

@@ -10,7 +10,11 @@ import {
 } from "./evals/comparison";
 import { resolveOutputDirectory } from "./evals/execution-options";
 import { selectComparisonFixtures } from "./evals/fixture-selection";
-import { findReportRun, parseRunIds } from "./evals/report-files";
+import {
+  findLatestRun,
+  findRequestedRun,
+  parseRunIds,
+} from "./evals/report-files";
 import { AGENTS, Agent, REPORTS_DIRECTORY } from "./evals/scores";
 import { Fixture } from "./evals/types";
 
@@ -43,13 +47,10 @@ if (values.input) {
   for (const agent of AGENTS) {
     const missing: Fixture[] = [];
     for (const fixture of fixtures) {
-      const run = await findReportRun(
-        reportsDirectory,
-        agent,
-        fixture.name,
-        runIds,
-      );
-      if (!existsSync(path.join(run.directory, "scores.csv")))
+      const run = runIds.length
+        ? await findRequestedRun(reportsDirectory, agent, fixture.name, runIds)
+        : await findLatestRun(reportsDirectory, agent, fixture.name);
+      if (!run || !existsSync(path.join(run.directory, "scores.csv")))
         missing.push(fixture);
     }
     if (missing.length === 0) {

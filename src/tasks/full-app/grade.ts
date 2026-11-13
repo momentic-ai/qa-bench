@@ -6,7 +6,8 @@ import { selectComparisonFixtures } from "../../evals/fixture-selection";
 import {
   claimReportRun,
   createRunId,
-  findReportRun,
+  findLatestRun,
+  findRequestedRun,
 } from "../../evals/report-files";
 import { setupSandboxCleanup } from "../../evals/sandbox";
 import {
@@ -79,20 +80,28 @@ export async function gradeFullAppEval(options: FullAppOptions): Promise<void> {
   const fixtures = await selectComparisonFixtures(options.fixtures);
   const runs = await Promise.all(
     fixtures.map((fixture) =>
-      findReportRun(
-        options.outputDirectory,
-        agent,
-        fixture.name,
-        options.runIds,
-      ),
+      options.runIds.length
+        ? findRequestedRun(
+            options.outputDirectory,
+            agent,
+            fixture.name,
+            options.runIds,
+          )
+        : findLatestRun(options.outputDirectory, agent, fixture.name),
     ),
   );
   const unmatched = options.runIds.filter(
-    (id) => !runs.some((run) => run.runId === id),
+    (id) => !runs.some((run) => run?.runId === id),
   );
   if (unmatched.length > 0) {
     throw new Error(
       `No ${agent} reports for --run-id ${unmatched.join(", ")} among the selected fixtures in ${reportDirectory(agent, undefined, options.outputDirectory)}.`,
+    );
+  }
+  const uncovered = fixtures.filter((_, index) => !runs[index]);
+  if (uncovered.length > 0) {
+    throw new Error(
+      `No ${agent} reports for --run-id ${options.runIds.join(", ")} in ${uncovered.map((fixture) => fixture.name).join(", ")}; pass a run ID for every selected fixture.`,
     );
   }
   // Each regrade gets its own summary so other invocations' summaries are never rewritten.
@@ -106,7 +115,7 @@ export async function gradeFullAppEval(options: FullAppOptions): Promise<void> {
   try {
     cleanup.signal.throwIfAborted();
     for (const [index, fixture] of fixtures.entries()) {
-      await grader.onComplete(fixture, runs[index].runId, cleanup.signal);
+      await grader.onComplete(fixture, runs[index]?.runId, cleanup.signal);
     }
   } catch (error) {
     if (

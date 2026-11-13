@@ -5,7 +5,12 @@ import path from "node:path";
 
 import { loadKnownInvalid } from "../grading/assessment";
 import { readGroundTruth } from "./ground-truth";
-import { findReportRun, runLabel, verifyCaseMetadata } from "./report-files";
+import {
+  findLatestRun,
+  findRequestedRun,
+  runLabel,
+  verifyCaseMetadata,
+} from "./report-files";
 import { loadGroundTruth } from "./reports";
 import {
   AGENTS,
@@ -82,12 +87,13 @@ export async function loadComparison(
       outsideKnownInvalidHash = outsideKnownInvalid.hash;
     }
     for (const agent of agents) {
-      const run = await findReportRun(
-        reportsDirectory,
-        agent,
-        fixture.name,
-        runIds,
-      );
+      const run = runIds.length
+        ? await findRequestedRun(reportsDirectory, agent, fixture.name, runIds)
+        : await findLatestRun(reportsDirectory, agent, fixture.name);
+      if (!run)
+        throw new Error(
+          `No ${agent} scores for --run-id ${runIds.join(", ")} in ${fixture.name}.`,
+        );
       if (run.runId) selectedRuns.add(run.runId);
       const file = path.join(run.directory, "scores.csv");
       const rows = await readScores(file);
