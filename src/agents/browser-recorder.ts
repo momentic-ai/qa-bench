@@ -93,6 +93,7 @@ class RecordedBrowser {
       if (frame !== page.mainFrame()) return;
       running = running
         .then(() => page.screencast.stop())
+        .catch(() => {})
         .then(() => page.screencast.start(options));
       running.catch(() => {});
     });
