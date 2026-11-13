@@ -76,9 +76,10 @@ function planClips(bugs: Bug[], frames: Frame[]) {
     const finishedAt = Math.min(at, last.at + SETTLE_MS);
     const startedAt = Math.max(
       frames[0].at,
+      finishedAt - MAX_CLIP_MS,
       previous !== undefined && finishedAt - previous >= MIN_CLIP_MS
         ? previous
-        : finishedAt - MAX_CLIP_MS,
+        : -Infinity,
     );
     previous = finishedAt;
     if (finishedAt - startedAt >= 100)
