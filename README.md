@@ -75,7 +75,8 @@ pnpm build-template --cpu 4 --memory 8
 | `E2B_API_KEY`                          | All runs                                              |
 | `OPENAI_API_KEY`                       | All runs (grading), Codex                             |
 | `ANTHROPIC_API_KEY`                    | Claude Code                                           |
-| `BROWSERBASE_API_KEY`                  | Codex and Claude Code, unless using `--browser local` |
+| `BROWSERBASE_API_KEY`                  | Codex and Claude Code on the default browser          |
+| `KERNEL_API_KEY`                       | Codex and Claude Code with `--browser kernel`         |
 | `MOMENTIC_API_KEY`                     | Mo, unless signed in with `qa login`                  |
 | `DEVIN_ORGANIZATION_ID`, `DEVIN_TOKEN` | Devin ([setup](src/agents/devin/README.md))           |
 
@@ -162,6 +163,12 @@ Results also include Codex with `gpt-6.1-terra` and Claude Code with
   browser. e2e
   needs Node.js 22.22.3 or later 22.x, or 24.8 or later. Like
   `codex-agent-browser`, these runs have no shell sandbox.
+- `--browser kernel` replaces Browserbase with headless
+  [Kernel](https://www.kernel.sh) browsers, one per agent as above. Cost is
+  Kernel's active uptime times browser memory at its GB-second rate, and
+  `merge` labels these runs separately. With `--prevent-cheating`, Kernel's
+  egress allowlist limits the browser to the fixture host, including
+  subresources and requests, not just page navigation.
 - `--browser local` replaces Browserbase with headless Chromium on the host.
   Playwright MCP runs then have no subagents, and `merge` labels them separately.
 - Mo manages its own subagents, and `--max-concurrent-sub-agents` caps them.

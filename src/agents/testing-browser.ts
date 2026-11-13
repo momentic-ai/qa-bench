@@ -13,6 +13,7 @@ import {
   validateAgentBrowser,
 } from "./agent-browser";
 import { BrowserbaseSessions } from "./codex/browserbase";
+import { KernelSessions } from "./codex/kernel";
 import { E2EModel } from "./e2e/config";
 import {
   addE2ECost,
@@ -143,7 +144,7 @@ type BrowserToolSetup = Omit<
 /** One coding-agent run's browser and the tool the agent drives it with. */
 export abstract class TestingBrowser {
   readonly artifacts: string;
-  private browsers: BrowserbaseSessions | undefined;
+  private browsers: BrowserbaseSessions | KernelSessions | undefined;
   protected unsandboxedShell = true;
   /** Whether answer sites are blocked even on a local browser. */
   protected blocksSitesLocally = false;
@@ -162,9 +163,9 @@ export abstract class TestingBrowser {
   }
 
   static async validate(browser: Browser) {
-    if (browser === "local") await validateLocalChromium();
-    else if (!process.env.BROWSERBASE_API_KEY)
-      throw new Error("BROWSERBASE_API_KEY is required.");
+    if (browser === "local") return validateLocalChromium();
+    const key = browser === "kernel" ? "KERNEL_API_KEY" : "BROWSERBASE_API_KEY";
+    if (!process.env[key]) throw new Error(`${key} is required.`);
   }
 
   protected abstract setup(workspace: string): Promise<BrowserToolSetup>;
@@ -220,18 +221,24 @@ export abstract class TestingBrowser {
         throw new Error("--prevent-cheating needs the fixture URL.");
       allowedDomains = [this.context.targetUrl.hostname];
     }
-    this.browsers = new BrowserbaseSessions(
-      path.join(this.context.runDirectory, "browser-sessions"),
-      process.env.BROWSERBASE_API_KEY || "",
-      {
-        allowedDomains,
-        keepAlive: this.keepAlive,
-        timeoutSeconds: Math.min(
-          21600,
-          Math.ceil((this.context.timeLimitMs ?? 120 * 60_000) / 1000) + 120,
-        ),
-      },
-    );
+    const directory = path.join(this.context.runDirectory, "browser-sessions");
+    const timeoutSeconds =
+      Math.ceil((this.context.timeLimitMs ?? 120 * 60_000) / 1000) + 120;
+    this.browsers =
+      this.options.browser === "kernel"
+        ? new KernelSessions(directory, process.env.KERNEL_API_KEY || "", {
+            allowedHosts: allowedDomains,
+            timeoutSeconds,
+          })
+        : new BrowserbaseSessions(
+            directory,
+            process.env.BROWSERBASE_API_KEY || "",
+            {
+              allowedDomains,
+              keepAlive: this.keepAlive,
+              timeoutSeconds: Math.min(21600, timeoutSeconds),
+            },
+          );
     return {
       args: [],
       env: { PLAYWRIGHT_MCP_CDP_ENDPOINT: await this.browsers.start() },

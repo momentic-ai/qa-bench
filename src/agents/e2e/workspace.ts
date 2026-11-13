@@ -33,7 +33,7 @@ export function e2eInstructions(fixture: Fixture) {
 
 /**
  * Sets up the project the e2e skill expects: the CLI, the skill, and a config
- * that targets the fixture. `broker` is a Browserbase broker URL; without it
+ * that targets the fixture. `broker` is a hosted-browser broker URL; without it
  * e2e launches local Chromium.
  */
 export async function prepareE2E({

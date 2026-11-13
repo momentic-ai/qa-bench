@@ -50,7 +50,7 @@ export interface EvalAgent {
   collectResults(signal: AbortSignal): Promise<AgentResults>;
 }
 
-export type Browser = "browserbase" | "local";
+export type Browser = "browserbase" | "kernel" | "local";
 
 export type EvalAgentDefinition = {
   name: string;
