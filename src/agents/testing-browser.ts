@@ -12,6 +12,8 @@ import {
   prepareAgentBrowser,
   validateAgentBrowser,
 } from "./agent-browser";
+import { BrowserRecorder } from "./browser-recorder";
+import { cutBugVideos } from "./bug-videos";
 import { BrowserbaseSessions } from "./codex/browserbase";
 import { E2EModel } from "./e2e/config";
 import {
@@ -20,7 +22,11 @@ import {
   prepareE2E,
   validateE2E,
 } from "./e2e/workspace";
-import { localBrowserConnection, validateLocalChromium } from "./local-browser";
+import {
+  LocalChromium,
+  localBrowserConnection,
+  validateLocalChromium,
+} from "./local-browser";
 
 const require = createRequire(import.meta.url);
 export const DISABLED_BROWSER_TOOL = "browser_run_code_unsafe";
@@ -115,6 +121,8 @@ const ANSWER_SOURCES = ANSWER_DOMAINS.flatMap((domain) => [
 export type BrowserOptions = {
   browser: Browser;
   preventCheating: boolean;
+  /** Records each browser and cuts a video clip per bug. */
+  recordBugs: boolean;
   /** Where the agent discovers skills. */
   skillOwner: ".agents" | ".claude";
   e2eModel: E2EModel;
@@ -143,7 +151,11 @@ type BrowserToolSetup = Omit<
 /** One coding-agent run's browser and the tool the agent drives it with. */
 export abstract class TestingBrowser {
   readonly artifacts: string;
-  private browsers: BrowserbaseSessions | undefined;
+  private browsers: BrowserbaseSessions | LocalChromium | undefined;
+  /** The run's browser frames and their log, for cutting bug videos. */
+  private browserLog: string;
+  private frames: string;
+  private recorder: BrowserRecorder | undefined;
   protected unsandboxedShell = true;
   /** Whether answer sites are blocked even on a local browser. */
   protected blocksSitesLocally = false;
@@ -155,6 +167,10 @@ export abstract class TestingBrowser {
     readonly options: BrowserOptions,
   ) {
     this.artifacts = path.join(context.runDirectory, "browser-artifacts");
+    this.browserLog = path.join(context.runDirectory, "browser-log.jsonl");
+    this.frames = path.join(context.runDirectory, "browser-frames");
+    if (options.recordBugs)
+      this.recorder = new BrowserRecorder(this.browserLog, this.frames);
   }
 
   static for(tool: BrowserTool) {
@@ -209,11 +225,42 @@ export abstract class TestingBrowser {
     await this.browsers?.stop();
   }
 
+  /** Saves the last frames; runs before the agent and its browser shut down. */
+  async stopRecording() {
+    await this.recorder?.stop();
+  }
+
+  /** Cuts a video clip for each bug from the browsers' frames, then deletes the frames. */
+  async recordBugs(
+    bugs: { id: string; submittedAt: string }[],
+    signal: AbortSignal,
+  ) {
+    try {
+      return await cutBugVideos({
+        browserLog: this.browserLog,
+        bugs,
+        reportDirectory: this.context.reportDirectory,
+        signal,
+      });
+    } finally {
+      await rm(this.frames, { recursive: true, force: true });
+      await rm(this.browserLog, { force: true });
+    }
+  }
+
   protected async connect(): Promise<{
     args: string[];
     env: Record<string, string>;
   }> {
-    if (this.options.browser === "local") return localBrowserConnection();
+    if (this.options.browser === "local") {
+      const { recorder } = this;
+      if (!recorder) return localBrowserConnection();
+      this.browsers = new LocalChromium((url) => recorder.record(url));
+      return {
+        args: [],
+        env: { PLAYWRIGHT_MCP_CDP_ENDPOINT: await this.browsers.start() },
+      };
+    }
     let allowedDomains: string[] | undefined;
     if (this.options.preventCheating) {
       if (!this.context.targetUrl)

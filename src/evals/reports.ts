@@ -41,7 +41,10 @@ export type KnownInvalidFinding = z.infer<typeof KnownInvalidFindingSchema>;
 
 export const ReportSchema = z
   .object({
-    bugs: z.array(FindingSchema.strict()),
+    bugs: z.array(
+      // A coding agent's bug video, cut from its browser recording.
+      FindingSchema.extend({ recording: z.unknown().optional() }).strict(),
+    ),
     areasExplored: z.array(z.string()),
     limitations: z.array(z.string()),
   })
