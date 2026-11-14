@@ -110,6 +110,20 @@
         "Open the release page and the asset link."
       ],
       "reason": "Unsupported feature: Gitea 1.24.7 has no external (link) release assets; external_url is a Forgejo API field. Gitea's API docs list only a multipart 'attachment' or an octet-stream body, and the New/Edit Release UI offers only file uploads. routers/api/v1/repo/release_attachment.go treats a non-multipart body as the file content, so the empty body that was sent was stored as received."
+    },
+    {
+      "name": "Saving a stale release editor silently overwrites newer release notes",
+      "summary": "If a release's edit form was opened before someone else saved changes, saving it (even after changing only the title) restores the older notes and pre-release setting without any warning, discarding the newer edits.",
+      "expected": "Saving an out-of-date release edit form warns that the release changed, or keeps the newer notes it didn't touch.",
+      "actual": "After tab B saved new notes, saving tab A's stale form with only a title change left the release with the original notes; the newer notes were lost with no warning.",
+      "reproSteps": [
+        "Create a release with some notes.",
+        "Open its edit form in two tabs.",
+        "In the second tab, change the notes and click Update Release.",
+        "In the first tab, without reloading, change only the title and click Update Release.",
+        "Check the release's title and notes."
+      ],
+      "reason": "Works as intended: a stale multi-tab save that overwrites newer saved data is last-write-wins. Nothing on this screen says the save will leave the other fields alone, and conflict warnings elsewhere in Gitea are a nice-to-have here, not a promise."
     }
   ]
 }
