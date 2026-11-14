@@ -46,6 +46,7 @@ import {
   gradingPrompt,
   toAssessment,
 } from "./grading-contract";
+import { GradingPromptRunner } from "./proxy";
 
 const root = path.resolve(import.meta.dirname, "../..");
 const RUNNERS: Record<Agent, BenchmarkAgent> = {
@@ -84,9 +85,15 @@ export async function gradeFixture(
     runId?: string;
     runner?: BenchmarkAgent;
     signal?: AbortSignal;
+    runPrompt?: GradingPromptRunner;
   } = {},
 ) {
   options.signal?.throwIfAborted();
+  const gradingMethod = options.runPrompt
+    ? createHash("sha256")
+        .update(`${GRADING_METHOD_SHA256}:openai-compatible-proxy`)
+        .digest("hex")
+    : GRADING_METHOD_SHA256;
   const runner = options.runner ?? RUNNERS[agent];
   let directory: string;
   if (options.reportsDirectory) {
@@ -128,6 +135,7 @@ export async function gradeFixture(
     bugs,
     codex,
     options.signal,
+    options.runPrompt,
   );
   let outsideKnownHits = 0;
   let outsideKnownInvalid = 0;
@@ -165,6 +173,7 @@ export async function gradeFixture(
       findingIndices.map((index) => bugs[index]),
       codex,
       options.signal,
+      options.runPrompt,
     );
     const partition = partitionAreaAssessment(
       judged,
@@ -223,7 +232,7 @@ export async function gradeFixture(
     JSON.stringify(
       {
         judge: "gpt-6.1-sol/high",
-        grading_method_sha256: GRADING_METHOD_SHA256,
+        grading_method_sha256: gradingMethod,
         gradingPromptTemplate: GRADING_PROMPT_TEMPLATE,
         groundTruth,
         knownHits: matchedBugs,
@@ -253,7 +262,7 @@ export async function gradeFixture(
       .digest("hex"),
     known_invalid_sha256: knownInvalid.hash,
     judge: "gpt-6.1-sol/high",
-    grading_method_sha256: GRADING_METHOD_SHA256,
+    grading_method_sha256: gradingMethod,
     ground_truth: groundTruth.length,
     bugs: bugs.length,
     flags: flags.length,
@@ -299,6 +308,7 @@ export async function judge(
   bugs: Finding[],
   codex: Codex,
   signal?: AbortSignal,
+  runPrompt?: GradingPromptRunner,
 ): Promise<Assessment> {
   signal?.throwIfAborted();
   if (bugs.length === 0) {
@@ -314,14 +324,20 @@ export async function judge(
   const prompt = gradingPrompt(fixture.name, groundTruth, knownInvalid, bugs);
   // One retry absorbs an occasional malformed judge answer.
   for (let attempt = 1; ; attempt++) {
-    const thread = codex.startThread({
-      ...GRADING_THREAD_OPTIONS,
-      workingDirectory: root,
-    });
-    const { finalResponse } = await thread.run(prompt, {
-      signal,
-      outputSchema: GRADING_OUTPUT_SCHEMA,
-    });
+    let finalResponse: string;
+    if (runPrompt) {
+      finalResponse = await runPrompt(prompt, signal);
+    } else {
+      const thread = codex.startThread({
+        ...GRADING_THREAD_OPTIONS,
+        workingDirectory: root,
+      });
+      const result = await thread.run(prompt, {
+        signal,
+        outputSchema: GRADING_OUTPUT_SCHEMA,
+      });
+      finalResponse = result.finalResponse;
+    }
     try {
       return dedupeAssessment(
         toAssessment(

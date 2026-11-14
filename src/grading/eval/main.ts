@@ -9,6 +9,7 @@ import { FindingSchema, KnownBug } from "../../evals/reports";
 import { Fixture } from "../../evals/types";
 import { KnownInvalidFinding, loadKnownInvalid } from "../assessment";
 import { judge } from "../grading";
+import { createGradingProxy } from "../proxy";
 
 // Several references are accepted when labels duplicate one bug.
 const ReferenceSchema = z.union([z.string(), z.array(z.string()).min(2)]);
@@ -46,7 +47,8 @@ const CasesSchema = z
   })
   .strict();
 
-if (!process.env.OPENAI_API_KEY) {
+const runPrompt = createGradingProxy();
+if (!runPrompt && !process.env.OPENAI_API_KEY) {
   throw new Error("OPENAI_API_KEY is required for the grader eval.");
 }
 const { cases } = CasesSchema.parse(
@@ -96,6 +98,8 @@ async function runCase({
     knownInvalid,
     [finding],
     codex,
+    undefined,
+    runPrompt,
   );
   const [match] = assessment.matches;
   const [invalid] = assessment.invalidMatches;

@@ -73,11 +73,18 @@ pnpm build-template --cpu 4 --memory 8
 | Environment variable                   | Needed for                                            |
 | -------------------------------------- | ----------------------------------------------------- |
 | `E2B_API_KEY`                          | All runs                                              |
-| `OPENAI_API_KEY`                       | All runs (grading), Codex                             |
+| `OPENAI_API_KEY`                       | Grading unless `GRADING_API_KEY` is set, and Codex    |
 | `ANTHROPIC_API_KEY`                    | Claude Code                                           |
 | `BROWSERBASE_API_KEY`                  | Codex and Claude Code, unless using `--browser local` |
 | `MOMENTIC_API_KEY`                     | Mo, unless signed in with `qa login`                  |
 | `DEVIN_ORGANIZATION_ID`, `DEVIN_TOKEN` | Devin ([setup](src/agents/devin/README.md))           |
+
+To grade through an OpenAI-compatible Responses proxy, set `GRADING_BASE_URL`
+(for example, `https://gateway.example/v1`). Use `GRADING_API_KEY` for its bearer
+key, or omit it to reuse `OPENAI_API_KEY`. Optional `GRADING_HEADERS` is a JSON
+object of string header values. These settings affect grading only. The grader
+keeps its configured model and reasoning effort, and proxy failures stop grading
+without falling back to direct OpenAI.
 
 Mo runs on Momentic's hosted service, so it needs a Momentic account and the
 [`qa` CLI](https://www.npmjs.com/package/qa). Runs require version 0.34.0:
