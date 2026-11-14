@@ -73,7 +73,7 @@ pnpm build-template --cpu 4 --memory 8
 | Environment variable                   | Needed for                                            |
 | -------------------------------------- | ----------------------------------------------------- |
 | `E2B_API_KEY`                          | All runs                                              |
-| `OPENAI_API_KEY`                       | All runs (grading), Codex                             |
+| `OPENAI_API_KEY`                       | Grading unless `GRADING_API_KEY` is set, and Codex    |
 | `ANTHROPIC_API_KEY`                    | Claude Code                                           |
 | `BROWSERBASE_API_KEY`                  | Codex and Claude Code, unless using `--browser local` |
 | `MOMENTIC_API_KEY`                     | Mo, unless signed in with `qa login`                  |
