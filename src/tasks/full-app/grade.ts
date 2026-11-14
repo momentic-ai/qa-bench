@@ -19,6 +19,7 @@ import {
 } from "../../evals/scores";
 import { Fixture } from "../../evals/types";
 import { gradeFixture } from "../../grading/grading";
+import { createGradingProxy } from "../../grading/proxy";
 import { FullAppOptions } from "./options";
 
 export function createFullAppGrader(
@@ -27,7 +28,8 @@ export function createFullAppGrader(
   reportsDirectory: string,
   summaryId: string,
 ) {
-  if (!process.env.OPENAI_API_KEY) {
+  const runPrompt = createGradingProxy();
+  if (!runPrompt && !process.env.OPENAI_API_KEY) {
     throw new Error("OPENAI_API_KEY is required for grading.");
   }
   const codex = new Codex({ apiKey: process.env.OPENAI_API_KEY });
@@ -55,6 +57,7 @@ export function createFullAppGrader(
             reportsDirectory: run.reportsDirectory,
             runId,
             signal,
+            runPrompt,
           }),
         );
       } finally {
