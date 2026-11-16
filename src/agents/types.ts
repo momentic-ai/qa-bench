@@ -1,4 +1,4 @@
-import { Fixture } from "./types";
+import { Fixture } from "../fixtures/types";
 
 export const MO_EFFORTS = ["low", "medium", "high", "max"] as const;
 export type MoEffort = (typeof MO_EFFORTS)[number];
@@ -66,4 +66,10 @@ export type EvalAgentDefinition = {
     context: AgentContext,
     signal: AbortSignal,
   ): EvalAgent | Promise<EvalAgent>;
+};
+
+export type AgentCost = {
+  estimatedUsd: number | null;
+  costComplete?: boolean;
+  [key: string]: unknown;
 };

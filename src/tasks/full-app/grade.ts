@@ -1,82 +1,13 @@
-import { Codex } from "@openai/codex-sdk";
-import { mkdir } from "node:fs/promises";
-import path from "node:path";
-
 import { selectComparisonFixtures } from "../../evals/fixture-selection";
 import {
-  claimReportRun,
   createRunId,
   findLatestRun,
   findRequestedRun,
 } from "../../evals/report-files";
-import { setupSandboxCleanup } from "../../evals/sandbox";
-import {
-  Agent,
-  AgentSchema,
-  Score,
-  reportDirectory,
-  writeScores,
-} from "../../evals/scores";
-import { Fixture } from "../../evals/types";
-import { gradeFixture } from "../../grading/grading";
-import { createGradingProxy } from "../../grading/proxy";
+import { AgentSchema, reportDirectory } from "../../evals/scores";
+import { setupSandboxCleanup } from "../../fixtures/cleanup";
+import { FullAppGrader } from "./grader";
 import { FullAppOptions } from "./options";
-
-export function createFullAppGrader(
-  agent: Agent,
-  fixtures: Fixture[],
-  reportsDirectory: string,
-  summaryId: string,
-) {
-  const runPrompt = createGradingProxy();
-  if (!runPrompt && !process.env.OPENAI_API_KEY) {
-    throw new Error("OPENAI_API_KEY is required for grading.");
-  }
-  const codex = new Codex({ apiKey: process.env.OPENAI_API_KEY });
-  const scores: Score[] = [];
-  const summary = path.join(
-    reportDirectory(agent, undefined, reportsDirectory),
-    `scores-${summaryId}.csv`,
-  );
-  return {
-    async onComplete(
-      fixture: Fixture,
-      runId: string | undefined,
-      signal: AbortSignal,
-    ): Promise<void> {
-      const run = await claimReportRun(
-        reportsDirectory,
-        agent,
-        fixture.name,
-        runId,
-        signal,
-      );
-      try {
-        scores.push(
-          await gradeFixture(fixture, agent, codex, {
-            reportsDirectory: run.reportsDirectory,
-            runId,
-            signal,
-            runPrompt,
-          }),
-        );
-      } finally {
-        await run.release();
-      }
-    },
-    async save(): Promise<void> {
-      if (scores.length === 0) return;
-      await mkdir(path.dirname(summary), { recursive: true });
-      await writeScores(
-        summary,
-        fixtures.flatMap((fixture) =>
-          scores.filter((score) => score.fixture === fixture.name),
-        ),
-      );
-      process.stdout.write(`${agent} summary written to ${summary}\n`);
-    },
-  };
-}
 
 export async function gradeFullAppEval(options: FullAppOptions): Promise<void> {
   const agent = AgentSchema.parse(options.agent);
@@ -107,8 +38,7 @@ export async function gradeFullAppEval(options: FullAppOptions): Promise<void> {
       `No ${agent} reports for --run-id ${options.runIds.join(", ")} in ${uncovered.map((fixture) => fixture.name).join(", ")}; pass a run ID for every selected fixture.`,
     );
   }
-  // Each regrade gets its own summary so other invocations' summaries are never rewritten.
-  const grader = createFullAppGrader(
+  const grader = new FullAppGrader(
     agent,
     fixtures,
     options.outputDirectory,
@@ -118,7 +48,7 @@ export async function gradeFullAppEval(options: FullAppOptions): Promise<void> {
   try {
     cleanup.signal.throwIfAborted();
     for (const [index, fixture] of fixtures.entries()) {
-      await grader.onComplete(fixture, runs[index]?.runId, cleanup.signal);
+      await grader.grade(fixture, runs[index]?.runId, cleanup.signal);
     }
   } catch (error) {
     if (

@@ -3,13 +3,9 @@ import path from "node:path";
 import { setTimeout as delay } from "node:timers/promises";
 import { z } from "zod";
 
-import {
-  AgentContext,
-  EvalAgent,
-  EvalAgentDefinition,
-} from "../../evals/agent";
-import { writeJson } from "../../evals/json-file";
 import { ReportSchema } from "../../evals/reports";
+import { writeJson } from "../../shared/json-file";
+import { AgentContext, EvalAgent, EvalAgentDefinition } from "../types";
 import { DevinApiError, DevinQaClient } from "./qa-client";
 import {
   fixtureHostnames,

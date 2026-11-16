@@ -4,10 +4,10 @@ import { setTimeout as delay } from "node:timers/promises";
 import { fileURLToPath } from "node:url";
 import { z } from "zod";
 
-import { runCommand } from "../evals/command";
-import { Fixture } from "../evals/types";
+import { runCommand } from "../shared/command";
 import { deleteFixtureSandbox, sandboxLifetimeMs } from "./e2b";
-import { createFixtureSandbox, fixtureTemplate } from "./launch-fixtures";
+import { createFixtureSandbox, fixtureTemplate } from "./sandbox";
+import { Fixture } from "./types";
 
 export const STARTUP_TIMEOUT_MS = 15 * 60_000;
 
@@ -83,7 +83,7 @@ export async function setupFixture(
         [
           "--import",
           import.meta.resolve("tsx"),
-          fileURLToPath(new URL("./launch-fixture.ts", import.meta.url)),
+          fileURLToPath(new URL("./launch-worker.ts", import.meta.url)),
         ],
         {
           signal,

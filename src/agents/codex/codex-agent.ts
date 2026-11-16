@@ -3,15 +3,7 @@ import { createRequire } from "node:module";
 import path from "node:path";
 import { z } from "zod";
 
-import {
-  AgentContext,
-  Browser,
-  CODEX_MODELS,
-  CodexModel,
-  EvalAgentDefinition,
-} from "../../evals/agent";
-import { getCodexCost } from "../../evals/cost";
-import { writeJson } from "../../evals/json-file";
+import { writeJson } from "../../shared/json-file";
 import { BrowserTool } from "../agent-browser";
 import { CodingAgent } from "../coding-agent";
 import {
@@ -20,10 +12,18 @@ import {
   TestingBrowser,
 } from "../testing-browser";
 import {
+  AgentContext,
+  Browser,
+  CODEX_MODELS,
+  CodexModel,
+  EvalAgentDefinition,
+} from "../types";
+import {
   CodexAppServer,
   CodexNotification,
   loginCodexWithApiKey,
 } from "./codex-app-server";
+import { getCodexCost } from "./cost";
 import { FINDINGS_TOOLS } from "./findings-store";
 
 const require = createRequire(import.meta.url);

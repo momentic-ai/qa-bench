@@ -2,29 +2,15 @@ import { readFile, readdir } from "node:fs/promises";
 import path from "node:path";
 import { z } from "zod";
 
-import { runMoCommand } from "./mo-cli";
+import { openaiPrices as prices } from "../model-pricing";
 
-export async function getMoCost(
-  sessionId: string,
-  signal: AbortSignal,
-): Promise<unknown> {
-  const stdout = await runMoCommand(["cost", sessionId], {
-    signal,
-  });
-  return JSON.parse(stdout);
-}
+export const CodexCostSchema = z
+  .object({
+    estimatedUsd: z.number().nonnegative().nullable(),
+    costComplete: z.boolean().optional(),
+  })
+  .passthrough();
 
-type TokenPrices = {
-  input: number;
-  cachedInput: number;
-  cacheWrite: number;
-  output: number;
-};
-export type AgentCost = {
-  estimatedUsd: number | null;
-  costComplete?: boolean;
-  [key: string]: unknown;
-};
 export type CodexCost = {
   estimatedUsd: number;
   byModel: Record<string, ModelUsage>;
@@ -57,34 +43,6 @@ const TokenEventSchema = z
     info: z.object({ last_token_usage: UsageSchema.nullish() }).nullish(),
   })
   .passthrough();
-
-// Standard USD prices per million tokens: https://developers.openai.com/api/docs/pricing
-const prices: Record<string, { short: TokenPrices; long: TokenPrices }> = {
-  "gpt-6.1-sol": {
-    short: { input: 2, cachedInput: 0.1, cacheWrite: 2.5, output: 10 },
-    long: { input: 4, cachedInput: 0.2, cacheWrite: 5, output: 15 },
-  },
-  "gpt-6.1-terra": {
-    short: { input: 1, cachedInput: 0.05, cacheWrite: 1.25, output: 5 },
-    long: { input: 2, cachedInput: 0.1, cacheWrite: 2.5, output: 7.5 },
-  },
-  "gpt-6-sol": {
-    short: { input: 2, cachedInput: 0.2, cacheWrite: 2.5, output: 10 },
-    long: { input: 4, cachedInput: 0.4, cacheWrite: 5, output: 15 },
-  },
-  "gpt-6-luna": {
-    short: { input: 0.1, cachedInput: 0.01, cacheWrite: 0.125, output: 0.5 },
-    long: { input: 0.2, cachedInput: 0.02, cacheWrite: 0.25, output: 0.75 },
-  },
-  "gpt-5.6-luna": {
-    short: { input: 0.2, cachedInput: 0.02, cacheWrite: 0.25, output: 1.2 },
-    long: { input: 0.4, cachedInput: 0.04, cacheWrite: 0.5, output: 1.8 },
-  },
-  "gpt-5.6-terra": {
-    short: { input: 2, cachedInput: 0.2, cacheWrite: 2.5, output: 12 },
-    long: { input: 4, cachedInput: 0.4, cacheWrite: 5, output: 18 },
-  },
-};
 
 export async function getCodexCost(codexHome: string): Promise<CodexCost> {
   const sessions = path.join(codexHome, "sessions");
@@ -181,55 +139,4 @@ export async function getCodexCost(codexHome: string): Promise<CodexCost> {
     byModel,
     pricingSource: "https://developers.openai.com/api/docs/pricing",
   };
-}
-
-// Standard USD prices per million tokens: https://platform.claude.com/docs/en/about-claude/pricing
-const anthropicPrices: Record<string, TokenPrices> = {
-  "claude-opus-5-5": { input: 4, cachedInput: 0.2, cacheWrite: 5, output: 20 },
-  "claude-sonnet-5-5": {
-    input: 2,
-    cachedInput: 0.2,
-    cacheWrite: 2.5,
-    output: 10,
-  },
-};
-const E2ECallSchema = z.object({
-  provider: z.enum(["openai", "anthropic"]),
-  model: z.string(),
-  usage: z.object({
-    inputTokens: z.object({
-      total: z.number().optional(),
-      cacheRead: z.number().optional(),
-      cacheWrite: z.number().optional(),
-    }),
-    outputTokens: z.object({ total: z.number().optional() }),
-  }),
-});
-
-/** Prices the explorer model calls that e2e's metered model appends to `journal`. */
-export async function getE2EModelCost(journal: string) {
-  let estimatedUsd = 0;
-  let calls = 0;
-  for (const line of (await readFile(journal, "utf8")).split("\n")) {
-    if (!line) continue;
-    const { provider, model, usage } = E2ECallSchema.parse(JSON.parse(line));
-    const input = usage.inputTokens.total ?? 0;
-    const cacheRead = usage.inputTokens.cacheRead ?? 0;
-    const cacheWrite = usage.inputTokens.cacheWrite ?? 0;
-    const rate =
-      provider === "anthropic"
-        ? anthropicPrices[model]
-        : input > 272_000
-          ? prices[model]?.long
-          : prices[model]?.short;
-    if (!rate) throw new Error(`No price for e2e model ${model}`);
-    estimatedUsd +=
-      ((input - cacheRead - cacheWrite) * rate.input +
-        cacheRead * rate.cachedInput +
-        cacheWrite * rate.cacheWrite +
-        (usage.outputTokens.total ?? 0) * rate.output) /
-      1_000_000;
-    calls++;
-  }
-  return { estimatedUsd, calls };
 }

@@ -8,18 +8,16 @@ import { claudeRunner } from "../agents/claude/runner";
 import { codexRunner } from "../agents/codex/runner";
 import { devinQaRunner } from "../agents/devin/qa-reader";
 import { moRunner } from "../agents/mo/runner";
-import { readGroundTruth } from "../evals/ground-truth";
-import { verifyCaseMetadata } from "../evals/report-files";
+import { AgentReportReader } from "../agents/report-reader";
 import {
-  DurationSchema,
-  Finding,
   KnownBug,
+  KnownInvalidFinding,
   loadGroundTruth,
-} from "../evals/reports";
-import {
-  OutsideAreaReview,
-  writeReviewArtifacts,
-} from "../evals/review-artifacts";
+  loadKnownInvalid,
+  readGroundTruth,
+} from "../evals/ground-truth";
+import { verifyCaseMetadata } from "../evals/report-files";
+import { DurationSchema, Finding } from "../evals/reports";
 import {
   Agent,
   ScoreSchema,
@@ -28,15 +26,9 @@ import {
   throughput,
   writeScores,
 } from "../evals/scores";
-import { BenchmarkAgent, Fixture } from "../evals/types";
+import { Fixture } from "../fixtures/types";
 import { partitionAreaAssessment } from "./area-assessment";
-import {
-  Assessment,
-  KnownInvalidFinding,
-  dedupeAssessment,
-  loadKnownInvalid,
-  scoreAssessment,
-} from "./assessment";
+import { Assessment, dedupeAssessment, scoreAssessment } from "./assessment";
 import {
   GRADING_METHOD_SHA256,
   GRADING_OUTPUT_SCHEMA,
@@ -45,11 +37,12 @@ import {
   JudgeOutputSchema,
   gradingPrompt,
   toAssessment,
-} from "./grading-contract";
+} from "./contract";
 import { GradingPromptRunner } from "./proxy";
+import { OutsideAreaReview, writeReviewArtifacts } from "./review-artifacts";
 
 const root = path.resolve(import.meta.dirname, "../..");
-const RUNNERS: Record<Agent, BenchmarkAgent> = {
+const RUNNERS: Record<Agent, AgentReportReader> = {
   mo: moRunner,
   "devin-qa": devinQaRunner,
   "codex-playwright-mcp": codexRunner,
@@ -83,7 +76,7 @@ export async function gradeFixture(
   options: {
     reportsDirectory?: string;
     runId?: string;
-    runner?: BenchmarkAgent;
+    runner?: AgentReportReader;
     signal?: AbortSignal;
     runPrompt?: GradingPromptRunner;
   } = {},

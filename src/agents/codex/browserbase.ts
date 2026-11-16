@@ -4,13 +4,13 @@ import path from "node:path";
 import { setTimeout as delay } from "node:timers/promises";
 import { z } from "zod";
 
+import { writeJson } from "../../shared/json-file";
 import {
   BrowserSessionCost,
   browserCost,
   browserCostError,
   browserbaseSessionCost,
-} from "../../evals/browser-cost";
-import { writeJson } from "../../evals/json-file";
+} from "../browser-cost";
 
 const SessionSchema = z.object({
   id: z.string(),

@@ -5,7 +5,7 @@ import { test } from "node:test";
 import { z } from "zod";
 
 import { selectComparisonFixtures } from "../evals/fixture-selection";
-import { judge } from "./grading";
+import { judge } from "./grade-fixture";
 import { createGradingProxy } from "./proxy";
 
 test("QA bench grades through the authenticated proxy and does not fall back after a 401", async () => {

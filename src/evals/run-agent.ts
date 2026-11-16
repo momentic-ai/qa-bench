@@ -1,6 +1,6 @@
 import { setTimeout as delay } from "node:timers/promises";
 
-import { AgentResults, EvalAgent } from "./agent";
+import { AgentResults, EvalAgent } from "../agents/types";
 
 const FINALIZATION_MS = 60_000;
 

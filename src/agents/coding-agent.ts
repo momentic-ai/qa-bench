@@ -2,15 +2,7 @@ import { mkdir, mkdtemp, rm } from "node:fs/promises";
 import { tmpdir } from "node:os";
 import path from "node:path";
 
-import {
-  AgentContext,
-  AgentExecution,
-  Browser,
-  EvalAgent,
-  EvalAgentDefinition,
-} from "../evals/agent";
-import { AgentCost } from "../evals/cost";
-import { writeJson } from "../evals/json-file";
+import { writeJson } from "../shared/json-file";
 import { BrowserTool } from "./agent-browser";
 import { FindingsStore } from "./codex/findings-store";
 import { E2EModel } from "./e2e/config";
@@ -19,6 +11,14 @@ import {
   PreparedBrowser,
   TestingBrowser,
 } from "./testing-browser";
+import {
+  AgentContext,
+  AgentCost,
+  AgentExecution,
+  Browser,
+  EvalAgent,
+  EvalAgentDefinition,
+} from "./types";
 
 type CodingAgentClass = {
   new (

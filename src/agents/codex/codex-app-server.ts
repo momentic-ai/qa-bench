@@ -2,7 +2,7 @@ import { spawn } from "node:child_process";
 import { createInterface } from "node:readline";
 import { z } from "zod";
 
-import { runCommand } from "../../evals/command";
+import { runCommand } from "../../shared/command";
 
 const TurnSchema = z
   .object({ id: z.string(), status: z.string(), error: z.unknown().nullish() })

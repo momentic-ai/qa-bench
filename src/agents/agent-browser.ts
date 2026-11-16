@@ -5,7 +5,7 @@ import path from "node:path";
 import { promisify } from "node:util";
 import { z } from "zod";
 
-import { writeJson } from "../evals/json-file";
+import { writeJson } from "../shared/json-file";
 
 const require = createRequire(import.meta.url);
 const command = require.resolve("agent-browser/bin/agent-browser.js");

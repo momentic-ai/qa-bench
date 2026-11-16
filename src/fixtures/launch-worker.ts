@@ -1,9 +1,9 @@
 import { Sandbox } from "@e2b/code-interpreter";
 import { z } from "zod";
 
-import { FixtureDeploymentSchema, FixtureSchema } from "../evals/types";
 import { sandboxLifetimeMs } from "./e2b";
-import { launchFixture } from "./launch-fixtures";
+import { launchFixture } from "./sandbox";
+import { FixtureDeploymentSchema, FixtureSchema } from "./types";
 
 const input = z.object({
   sandboxId: z.string(),

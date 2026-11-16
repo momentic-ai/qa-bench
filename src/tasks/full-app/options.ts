@@ -8,7 +8,7 @@ import {
   CodexModel,
   MO_EFFORTS,
   MoEffort,
-} from "../../evals/agent";
+} from "../../agents/types";
 import {
   executionOptions,
   parseExecutionOptions,

@@ -3,20 +3,16 @@ import { mkdir, writeFile } from "node:fs/promises";
 import path from "node:path";
 import { parseArgs } from "node:util";
 
+import { Fixture } from "../fixtures/types";
 import {
   loadComparison,
   loadInputComparison,
   renderComparison,
-} from "./evals/comparison";
-import { resolveOutputDirectory } from "./evals/execution-options";
-import { selectComparisonFixtures } from "./evals/fixture-selection";
-import {
-  findLatestRun,
-  findRequestedRun,
-  parseRunIds,
-} from "./evals/report-files";
-import { AGENTS, Agent, REPORTS_DIRECTORY } from "./evals/scores";
-import { Fixture } from "./evals/types";
+} from "./comparison";
+import { resolveOutputDirectory } from "./execution-options";
+import { selectComparisonFixtures } from "./fixture-selection";
+import { findLatestRun, findRequestedRun, parseRunIds } from "./report-files";
+import { AGENTS, Agent, REPORTS_DIRECTORY } from "./scores";
 
 const { values } = parseArgs({
   options: {

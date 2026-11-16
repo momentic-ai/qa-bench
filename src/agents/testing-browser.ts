@@ -3,15 +3,13 @@ import { createRequire } from "node:module";
 import { tmpdir } from "node:os";
 import path from "node:path";
 
-import { AgentContext, Browser } from "../evals/agent";
-import { combinedCost } from "../evals/browser-cost";
-import { AgentCost } from "../evals/cost";
 import {
   BrowserTool,
   closeAgentBrowsers,
   prepareAgentBrowser,
   validateAgentBrowser,
 } from "./agent-browser";
+import { combinedCost } from "./browser-cost";
 import { BrowserRecorder } from "./browser-recorder";
 import { cutBugVideos } from "./bug-videos";
 import { BrowserbaseSessions } from "./codex/browserbase";
@@ -27,6 +25,7 @@ import {
   localBrowserConnection,
   validateLocalChromium,
 } from "./local-browser";
+import { AgentContext, AgentCost, Browser } from "./types";
 
 const require = createRequire(import.meta.url);
 export const DISABLED_BROWSER_TOOL = "browser_run_code_unsafe";

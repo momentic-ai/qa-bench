@@ -2,8 +2,9 @@ import { mkdir, rm, stat, writeFile } from "node:fs/promises";
 import path from "node:path";
 import { z } from "zod";
 
-import { Assessment, KnownInvalidFinding } from "../grading/assessment";
-import { Finding, KnownBug } from "./reports";
+import { KnownBug, KnownInvalidFinding } from "../evals/ground-truth";
+import { Finding } from "../evals/reports";
+import { Assessment } from "./assessment";
 
 export type OutsideAreaReview = {
   knownHits: { findingIndex: number; reference: KnownBug; reason: string }[];

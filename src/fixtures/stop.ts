@@ -1,6 +1,6 @@
 import { parseArgs } from "node:util";
 
-import { deleteFixtureSandbox } from "./fixtures/e2b";
+import { deleteFixtureSandbox } from "./e2b";
 
 try {
   const { positionals } = parseArgs({ allowPositionals: true, strict: true });

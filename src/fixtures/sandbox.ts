@@ -1,12 +1,12 @@
 import { Sandbox } from "@e2b/code-interpreter";
 
-import { BenchmarkSandbox, Fixture } from "../evals/types";
 import {
   dockerTemplateName,
   executeFixtureCommand,
   sandboxLifetimeMs,
 } from "./e2b";
 import { launchSourceFixture } from "./source-launcher";
+import { BenchmarkSandbox, Fixture } from "./types";
 
 export function fixtureTemplate(fixture: Fixture) {
   const resources = fixture.sandboxResources ?? { cpu: 2, memory: 4, disk: 10 };

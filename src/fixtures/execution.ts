@@ -1,6 +1,6 @@
-import { setupSandboxCleanup } from "../evals/sandbox";
-import { BenchmarkSandbox, WebFixture } from "../evals/types";
+import { setupSandboxCleanup } from "./cleanup";
 import { setupFixture } from "./setup-fixture";
+import { BenchmarkSandbox, Fixture } from "./types";
 
 export class FixtureExecution implements AsyncDisposable {
   private readonly cleanup;
@@ -13,7 +13,7 @@ export class FixtureExecution implements AsyncDisposable {
     return this.cleanup.signal;
   }
 
-  async provision(fixture: WebFixture, timeLimitMs: number) {
+  async provision(fixture: Fixture, timeLimitMs: number) {
     this.signal.throwIfAborted();
     const setup = await setupFixture(fixture, {
       // Startup and artifact collection must not consume the agent's execution budget.

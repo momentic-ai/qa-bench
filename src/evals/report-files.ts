@@ -13,14 +13,16 @@ import path from "node:path";
 import { setTimeout } from "node:timers/promises";
 import { isDeepStrictEqual } from "node:util";
 
-import { CLAUDE_MODELS, CODEX_MODELS } from "./agent";
+import { CLAUDE_MODELS, CODEX_MODELS } from "../agents/types";
+import { Fixture } from "../fixtures/types";
 import { DurationSchema } from "./reports";
 import { Agent, reportDirectory } from "./scores";
-import { Fixture } from "./types";
 
 const RUN_ID_PATTERN =
   /^\d{4}-\d{2}-\d{2}T\d{2}-\d{2}-\d{2}-\d{3}Z-[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/;
 const CLAIM_FILE = "claim.lock";
+const CLAIM_TIMEOUT_MS = 10_000;
+const CLAIM_POLL_INTERVAL_MS = 100;
 
 export function createRunId() {
   const startedAt = new Date().toISOString().replace(/[:.]/g, "-");
@@ -122,9 +124,13 @@ export async function claimReportRun(
   runId: string | undefined,
   signal?: AbortSignal,
 ) {
-  let directory = reportDirectory(agent, fixture, reportsDirectory);
-  for (let attempt = 0; attempt < 100; attempt++) {
-    let run = { reportsDirectory, directory };
+  const deadline = Date.now() + CLAIM_TIMEOUT_MS;
+  while (true) {
+    signal?.throwIfAborted();
+    let run = {
+      reportsDirectory,
+      directory: reportDirectory(agent, fixture, reportsDirectory),
+    };
     if (runId) {
       // A concurrent startup may have archived the run since it was selected.
       const found = await findRequestedRun(reportsDirectory, agent, fixture, [
@@ -136,17 +142,22 @@ export async function claimReportRun(
         );
       run = found;
     }
-    directory = run.directory;
+    signal?.throwIfAborted();
+    const { directory } = run;
     const result = await claim(directory);
     if (result === "claimed")
       return { ...run, runId, release: () => release(directory) };
     if (result === "missing" && !runId)
       return { ...run, runId, release: async () => {} };
-    await setTimeout(100, undefined, { signal });
+    const remainingMs = deadline - Date.now();
+    if (remainingMs <= 0)
+      throw new Error(
+        `${directory} is being graded by another process; delete ${CLAIM_FILE} there if none is running.`,
+      );
+    await setTimeout(Math.min(CLAIM_POLL_INTERVAL_MS, remainingMs), undefined, {
+      signal,
+    });
   }
-  throw new Error(
-    `${directory} is being graded by another process; delete ${CLAIM_FILE} there if none is running.`,
-  );
 }
 
 export async function archivePreviousReports(
