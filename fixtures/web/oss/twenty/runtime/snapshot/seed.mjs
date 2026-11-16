@@ -123,19 +123,25 @@ try {
 }
 await graphql("mutation { skipSyncEmailOnboardingStep { success } }");
 await graphql("mutation { sendInvitations(emails: []) { __typename } }");
+// Older revisions predate the isAutoSkipped argument.
+async function onboardingStep(name, args) {
+  try {
+    await graphql(`mutation { ${name}(${args}, isAutoSkipped: true) { success } }`);
+  } catch (error) {
+    if (!error.errors?.every((item) => item.message.includes('Unknown argument "isAutoSkipped"')))
+      throw error;
+    await graphql(`mutation { ${name}(${args}) { success } }`);
+  }
+}
 for (let attempt = 0; attempt < 3; attempt++) {
   const { currentUser: ready } = await graphql(
     "{ currentUser { onboardingStatus } }",
   );
   if (ready.onboardingStatus === "COMPLETED") break;
   if (ready.onboardingStatus === "APPS_INSTALLATION") {
-    await graphql(
-      "mutation { triggerInstallAppsOnboardingStep(universalIdentifiers: [], isAutoSkipped: true) { success } }",
-    );
+    await onboardingStep("triggerInstallAppsOnboardingStep", "universalIdentifiers: []");
   } else if (ready.onboardingStatus === "BOOK_CALL") {
-    await graphql(
-      "mutation { completeBookCallOnboardingStep(hasBookedCall: false, isAutoSkipped: true) { success } }",
-    );
+    await onboardingStep("completeBookCallOnboardingStep", "hasBookedCall: false");
   } else {
     throw new Error(`Twenty setup is incomplete: ${ready.onboardingStatus}`);
   }
