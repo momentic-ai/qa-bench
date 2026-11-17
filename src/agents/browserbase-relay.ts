@@ -1,5 +1,6 @@
 import { randomUUID } from "node:crypto";
 import { IncomingMessage, createServer } from "node:http";
+import net from "node:net";
 import { Duplex } from "node:stream";
 import tls from "node:tls";
 import { z } from "zod";
@@ -76,16 +77,20 @@ function pipeWebSocket(
   head: Buffer,
   browser: URL,
 ) {
-  const upstream = tls.connect({
-    host: browser.hostname,
-    port: Number(browser.port) || 443,
-    servername: browser.hostname,
-  });
+  // Browserbase uses wss; a recorded local Chromium uses ws.
+  const secure = browser.protocol === "wss:";
+  const upstream = secure
+    ? tls.connect({
+        host: browser.hostname,
+        port: Number(browser.port) || 443,
+        servername: browser.hostname,
+      })
+    : net.connect({ host: browser.hostname, port: Number(browser.port) || 80 });
   const headers = [`Host: ${browser.host}`];
   for (let i = 0; i < request.rawHeaders.length; i += 2)
     if (request.rawHeaders[i].toLowerCase() !== "host")
       headers.push(`${request.rawHeaders[i]}: ${request.rawHeaders[i + 1]}`);
-  upstream.once("secureConnect", () => {
+  upstream.once(secure ? "secureConnect" : "connect", () => {
     upstream.write(
       `GET ${browser.pathname}${browser.search} HTTP/1.1\r\n${headers.join("\r\n")}\r\n\r\n`,
     );
