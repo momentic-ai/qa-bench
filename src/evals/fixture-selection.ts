@@ -7,10 +7,10 @@ import {
   resolveAppFixture,
   selectBenchmarkFixtures,
   selectFixtureNames,
-} from "../fixtures/files";
+} from "../fixtures/catalog";
+import { Fixture } from "../fixtures/types";
 import { PRODUCT_AREAS_DIRECTORY } from "./dataset";
 import { readGroundTruth } from "./ground-truth";
-import { Fixture } from "./types";
 
 export async function selectComparisonFixtures(
   selection?: string,

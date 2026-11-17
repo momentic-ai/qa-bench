@@ -1,13 +1,9 @@
 import { readFile } from "node:fs/promises";
 import path from "node:path";
 
-import {
-  BenchmarkSandbox,
-  Fixture,
-  FixtureDeploymentFile,
-} from "../evals/types";
+import { selectRuntimeScript } from "./catalog";
 import { START_DOCKER, executeFixtureCommand } from "./e2b";
-import { selectRuntimeScript } from "./files";
+import { BenchmarkSandbox, Fixture, FixtureDeploymentFile } from "./types";
 
 export async function launchSourceFixture(
   sandbox: BenchmarkSandbox,

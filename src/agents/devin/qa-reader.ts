@@ -3,9 +3,9 @@ import path from "node:path";
 
 import { readReportDuration } from "../../evals/report-files";
 import { ReportSchema } from "../../evals/reports";
-import { BenchmarkAgent } from "../../evals/types";
+import { AgentReportReader } from "../report-reader";
 
-export const devinQaRunner: BenchmarkAgent = {
+export const devinQaRunner: AgentReportReader = {
   name: "Devin QA",
   reportDirectory: "devin-qa",
   async getReport(directory) {

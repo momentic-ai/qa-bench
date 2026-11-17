@@ -1,7 +1,7 @@
-import { fixtureAccounts } from "./evals/bugbash-brief";
-import { WebFixture } from "./evals/types";
-import { deleteFixtureSandbox } from "./fixtures/e2b";
-import { STARTUP_TIMEOUT_MS, setupFixture } from "./fixtures/setup-fixture";
+import { fixtureAccounts } from "./accounts";
+import { deleteFixtureSandbox } from "./e2b";
+import { STARTUP_TIMEOUT_MS, setupFixture } from "./setup-fixture";
+import { Fixture } from "./types";
 
 export interface FixtureStartOptions {
   timeoutMs: number;
@@ -18,7 +18,7 @@ export interface StartableFixture {
   start(options: FixtureStartOptions): Promise<StartedFixture>;
 }
 
-export function e2bFixture(fixture: WebFixture): StartableFixture {
+export function e2bFixture(fixture: Fixture): StartableFixture {
   return {
     name: fixture.name,
     async start({ timeoutMs, signal }) {

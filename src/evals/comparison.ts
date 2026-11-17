@@ -3,15 +3,18 @@ import { createHash } from "node:crypto";
 import { existsSync } from "node:fs";
 import path from "node:path";
 
-import { loadKnownInvalid } from "../grading/assessment";
-import { readGroundTruth } from "./ground-truth";
+import { Fixture } from "../fixtures/types";
+import {
+  loadGroundTruth,
+  loadKnownInvalid,
+  readGroundTruth,
+} from "./ground-truth";
 import {
   findLatestRun,
   findRequestedRun,
   runLabel,
   verifyCaseMetadata,
 } from "./report-files";
-import { loadGroundTruth } from "./reports";
 import {
   AGENTS,
   Agent,
@@ -22,7 +25,6 @@ import {
   reportDirectory,
   totalScores,
 } from "./scores";
-import { Fixture } from "./types";
 
 const SUITE_NAME = "OSS bug bash";
 

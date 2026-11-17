@@ -4,11 +4,15 @@ import path from "node:path";
 import { z } from "zod";
 
 import { selectComparisonFixtures } from "../../evals/fixture-selection";
-import { readGroundTruth } from "../../evals/ground-truth";
-import { FindingSchema, KnownBug } from "../../evals/reports";
-import { Fixture } from "../../evals/types";
-import { KnownInvalidFinding, loadKnownInvalid } from "../assessment";
-import { judge } from "../grading";
+import {
+  KnownBug,
+  KnownInvalidFinding,
+  loadKnownInvalid,
+  readGroundTruth,
+} from "../../evals/ground-truth";
+import { FindingSchema } from "../../evals/reports";
+import { Fixture } from "../../fixtures/types";
+import { judge } from "../grade-fixture";
 import { createGradingProxy } from "../proxy";
 
 // Several references are accepted when labels duplicate one bug.

@@ -2,13 +2,13 @@ import { readFile } from "node:fs/promises";
 import path from "node:path";
 import { z } from "zod";
 
-import { writeJson } from "../../evals/json-file";
 import {
   BugRecording,
   BugRecordingSchema,
   CodingAgentReportSchema,
   FindingSchema,
 } from "../../evals/reports";
+import { writeJson } from "../../shared/json-file";
 
 const SubmittedBugSchema = z
   .object({ id: z.string().min(1), bug: FindingSchema.strict() })

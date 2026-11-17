@@ -3,10 +3,11 @@ import { cp, symlink, writeFile } from "node:fs/promises";
 import path from "node:path";
 import { promisify } from "node:util";
 
-import { fixtureAccounts } from "../../evals/bugbash-brief";
-import { AgentCost, getE2EModelCost } from "../../evals/cost";
-import { Fixture } from "../../evals/types";
+import { fixtureAccounts } from "../../fixtures/accounts";
+import { Fixture } from "../../fixtures/types";
+import { AgentCost } from "../types";
 import { E2EModel } from "./config";
+import { getE2EModelCost } from "./cost";
 
 const root = path.resolve(import.meta.dirname, "../../..");
 

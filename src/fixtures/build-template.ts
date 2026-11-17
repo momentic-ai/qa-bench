@@ -4,7 +4,7 @@ import path from "node:path";
 import { setTimeout as delay } from "node:timers/promises";
 import { parseArgs } from "node:util";
 
-import { DOCKER_INSTALL, dockerTemplateName } from "./fixtures/e2b";
+import { DOCKER_INSTALL, dockerTemplateName } from "./e2b";
 
 async function main() {
   const { values } = parseArgs({
@@ -41,7 +41,7 @@ async function main() {
       "--cpu and --memory must be positive integers (memory in GiB).",
     );
   }
-  const directory = path.resolve(import.meta.dirname, "../build/templates");
+  const directory = path.resolve(import.meta.dirname, "../../build/templates");
   const name = dockerTemplateName({ cpu, memory });
   const resources = { cpu, memory, disk: 10 };
   const template = Template()

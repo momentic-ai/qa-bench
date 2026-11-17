@@ -1,6 +1,6 @@
 import { Sandbox } from "@e2b/code-interpreter";
 
-import { deleteFixtureSandbox } from "../fixtures/e2b";
+import { deleteFixtureSandbox } from "./e2b";
 
 export type SandboxCleanup = {
   signal: AbortSignal;

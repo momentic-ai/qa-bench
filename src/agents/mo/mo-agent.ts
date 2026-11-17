@@ -3,20 +3,16 @@ import path from "node:path";
 import { setTimeout } from "node:timers/promises";
 import { z } from "zod";
 
-import {
-  AgentContext,
-  EvalAgent,
-  EvalAgentDefinition,
-} from "../../evals/agent";
-import { getMoCost } from "../../evals/cost";
-import { writeJson } from "../../evals/json-file";
-import { runMoCommand, validateMoCli } from "../../evals/mo-cli";
+import { writeJson } from "../../shared/json-file";
+import { AgentContext, EvalAgent, EvalAgentDefinition } from "../types";
+import { runMoCommand, validateMoCli } from "./cli";
+import { MoReadSchema, MoStatusSchema } from "./cli-schemas";
+import { getMoCost } from "./cost";
 import {
   MoCostSchema,
   MoFindingsSchema,
   MoReportSchema,
-} from "../../evals/reports";
-import { MoReadSchema, MoStatusSchema } from "./cli-schemas";
+} from "./report-schemas";
 
 const SessionSchema = z.object({ sessionId: z.string().min(1) });
 

@@ -1,12 +1,6 @@
 import { Sandbox } from "@e2b/code-interpreter";
 import { z } from "zod";
 
-import { FindingSchema, GroundTruthSchema } from "./reports";
-
-export { FindingSchema, GroundTruthSchema as AppGroundTruthSchema };
-export type Finding = z.infer<typeof FindingSchema>;
-export type GroundTruth = z.infer<typeof GroundTruthSchema>;
-
 export const ProductAreaSchema = z
   .object({
     name: z.string().min(1),
@@ -78,21 +72,5 @@ export type Fixture = z.infer<typeof FixtureSchema> & {
   groundTruthFile: string;
   fullAppGroundTruthFile?: string;
 };
-export type FullAppFixture = Fixture;
-export type WebFixture = Fixture;
 
 export type BenchmarkSandbox = Sandbox;
-
-export interface BenchmarkReport {
-  bugs: Finding[];
-  flags?: Finding[];
-  costUsd: number | null;
-  costComplete: boolean;
-  durationSeconds: number;
-}
-
-export interface BenchmarkAgent {
-  name: string;
-  reportDirectory: string;
-  getReport(directory: string): Promise<BenchmarkReport>;
-}

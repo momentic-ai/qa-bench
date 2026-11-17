@@ -1,4 +1,4 @@
-import { runCommand } from "./command";
+import { runCommand } from "../../shared/command";
 
 const MO_CLI_VERSION = "0.34.0";
 

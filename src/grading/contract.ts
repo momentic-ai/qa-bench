@@ -1,8 +1,13 @@
 import { createHash } from "node:crypto";
 import { z } from "zod";
 
-import { Finding, KnownBug, SeveritySchema } from "../evals/reports";
-import { Assessment, KnownInvalidFinding } from "./assessment";
+import {
+  KnownBug,
+  KnownInvalidFinding,
+  SeveritySchema,
+} from "../evals/ground-truth";
+import { Finding } from "../evals/reports";
+import { Assessment } from "./assessment";
 
 export const GRADING_THREAD_OPTIONS = {
   model: "gpt-6.1-sol",

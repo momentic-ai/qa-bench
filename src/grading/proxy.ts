@@ -2,7 +2,7 @@ import { createOpenAI } from "@ai-sdk/openai";
 import { Output, streamText } from "ai";
 import { z } from "zod";
 
-import { GRADING_THREAD_OPTIONS, JudgeOutputSchema } from "./grading-contract";
+import { GRADING_THREAD_OPTIONS, JudgeOutputSchema } from "./contract";
 
 export type GradingPromptRunner = (
   prompt: string,

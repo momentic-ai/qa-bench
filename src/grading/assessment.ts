@@ -1,31 +1,4 @@
-import { createHash } from "node:crypto";
-import path from "node:path";
-
-import { readDataset } from "../evals/dataset";
-import { KnownBug, KnownInvalidSchema } from "../evals/reports";
-
-export {
-  KnownInvalidFindingSchema,
-  KnownInvalidSchema,
-} from "../evals/reports";
-export type { KnownInvalidFinding } from "../evals/reports";
-
-export async function loadKnownInvalid(fixtureDirectory: string) {
-  let contents: string;
-  try {
-    contents = await readDataset(
-      path.join(fixtureDirectory, "known-invalid.json"),
-    );
-  } catch (err) {
-    if (!(err instanceof Error && "code" in err && err.code === "ENOENT")) {
-      // Malformed or unreadable references must fail instead of silently changing grades.
-      throw err;
-    }
-    contents = '{"bugs":[]}\n';
-  }
-  const { bugs } = KnownInvalidSchema.parse(JSON.parse(contents));
-  return { bugs, hash: createHash("sha256").update(contents).digest("hex") };
-}
+import { KnownBug } from "../evals/ground-truth";
 
 type Reason = { findingIndex: number; reason: string };
 export type Assessment = {

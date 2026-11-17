@@ -116,7 +116,7 @@ Each run is graded when it finishes and saved to
 ### Brief
 
 Every agent gets the same short brief from
-[`bugbash-brief.ts`](src/evals/bugbash-brief.ts): the app URL, test accounts, the
+[`bugbash-brief.ts`](src/tasks/full-app/bugbash-brief.ts): the app URL, test accounts, the
 area's scope and entry points, and the rule not to read benchmark files. Codex,
 Claude Code and Devin are also told which browser to use and how to save
 findings. Devin's prompt adds its
@@ -220,7 +220,7 @@ own:
 Findings that match another area's labels are recorded separately and left out
 of every metric below. The judge is a model, so regrading can change a few
 matches. Its full prompt is in
-[`grading-contract.ts`](src/grading/grading-contract.ts). `pnpm grader-eval`
+[`contract.ts`](src/grading/contract.ts). `pnpm grader-eval`
 checks the judge against reviewed findings in
 [`cases.json`](src/grading/eval/cases.json).
 

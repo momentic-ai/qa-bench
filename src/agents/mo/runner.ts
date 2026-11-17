@@ -2,14 +2,14 @@ import { readFile } from "node:fs/promises";
 import path from "node:path";
 
 import { readOptionalCost, readReportDuration } from "../../evals/report-files";
+import { AgentReportReader } from "../report-reader";
 import {
   MoCostSchema,
   MoFindingsSchema,
   MoReportSchema,
-} from "../../evals/reports";
-import { BenchmarkAgent } from "../../evals/types";
+} from "./report-schemas";
 
-export const moRunner: BenchmarkAgent = {
+export const moRunner: AgentReportReader = {
   name: "Mo",
   reportDirectory: "mo",
   async getReport(directory) {

@@ -4,8 +4,8 @@ import path from "node:path";
 import { promisify } from "node:util";
 import { z } from "zod";
 
-import { Fixture, FixtureRecipeSchema, FixtureSchema } from "../evals/types";
 import { DeploymentLayer, resolveDeployment } from "./deployment";
+import { Fixture, FixtureRecipeSchema, FixtureSchema } from "./types";
 
 const runCommand = promisify(execFile);
 

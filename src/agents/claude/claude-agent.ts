@@ -21,18 +21,18 @@ import { finished } from "node:stream/promises";
 import { promisify } from "node:util";
 import { z } from "zod";
 
-import {
-  Browser,
-  CLAUDE_MODELS,
-  ClaudeModel,
-  EvalAgentDefinition,
-} from "../../evals/agent";
-import { writeJson } from "../../evals/json-file";
+import { writeJson } from "../../shared/json-file";
 import { BrowserTool } from "../agent-browser";
 import { CODEX_COMMAND, CODEX_PACKAGE } from "../codex/codex-agent";
 import { FINDINGS_TOOLS, FindingsStore } from "../codex/findings-store";
 import { CodingAgent } from "../coding-agent";
 import { DISABLED_BROWSER_TOOL, PreparedBrowser } from "../testing-browser";
+import {
+  Browser,
+  CLAUDE_MODELS,
+  ClaudeModel,
+  EvalAgentDefinition,
+} from "../types";
 import { BrowserProxy } from "./browser-proxy";
 import { ToolSchema, sdkMcpServer } from "./sdk-mcp";
 

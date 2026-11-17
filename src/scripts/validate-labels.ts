@@ -1,7 +1,7 @@
 import { readFile, readdir } from "node:fs/promises";
 import path from "node:path";
 
-import { GroundTruthSchema, KnownInvalidSchema } from "../evals/reports";
+import { GroundTruthSchema, KnownInvalidSchema } from "../evals/ground-truth";
 
 const schemas = {
   "ground-truth.json": GroundTruthSchema,

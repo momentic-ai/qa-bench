@@ -1,8 +1,8 @@
 import { parseArgs } from "node:util";
 
-import { e2bFixture, runFixtures } from "./fixtures";
-import { listAppFixtureNames, selectBenchmarkFixtures } from "./fixtures/files";
-import { STARTUP_TIMEOUT_MS } from "./fixtures/setup-fixture";
+import { listAppFixtureNames, selectBenchmarkFixtures } from "./catalog";
+import { e2bFixture, runFixtures } from "./run-fixtures";
+import { STARTUP_TIMEOUT_MS } from "./setup-fixture";
 
 try {
   const { values, positionals } = parseArgs({

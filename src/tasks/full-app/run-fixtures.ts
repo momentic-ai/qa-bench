@@ -1,21 +1,21 @@
 import { mkdir } from "node:fs/promises";
 import path from "node:path";
 
-import { FixtureExecution } from "../fixtures/execution";
+import { EvalAgentDefinition, MoEffort } from "../../agents/types";
+import { selectComparisonFixtures } from "../../evals/fixture-selection";
 import {
-  DEFAULT_TIME_LIMIT_MS,
-  FullAppOptions,
-} from "../tasks/full-app/options";
-import { EvalAgentDefinition, MoEffort } from "./agent";
+  archivePreviousReports,
+  saveCaseMetadata,
+} from "../../evals/report-files";
+import { runAgent } from "../../evals/run-agent";
+import { runWorkers } from "../../evals/run-workers";
+import { FixtureExecution } from "../../fixtures/execution";
+import { BenchmarkSandbox, Fixture } from "../../fixtures/types";
+import { writeJson } from "../../shared/json-file";
 import { bugbashBrief } from "./bugbash-brief";
-import { selectComparisonFixtures } from "./fixture-selection";
-import { writeJson } from "./json-file";
-import { archivePreviousReports, saveCaseMetadata } from "./report-files";
-import { runAgent } from "./run-agent";
-import { runWorkers } from "./run-workers";
-import { BenchmarkSandbox, Fixture } from "./types";
+import { DEFAULT_TIME_LIMIT_MS, FullAppOptions } from "./options";
 
-const packageDirectory = path.resolve(import.meta.dirname, "../..");
+const packageDirectory = path.resolve(import.meta.dirname, "../../..");
 
 export async function runFullAppFixtures({
   agent: definition,
