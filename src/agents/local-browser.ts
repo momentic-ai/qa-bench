@@ -121,6 +121,8 @@ export class LocalChromium {
   private browsers: Chromium[] = [];
   private server = createServer();
   private route = `/${randomUUID()}/json/version/`;
+  private launches = new Set<Promise<unknown>>();
+  private stopping = false;
 
   constructor(private onStart: (webSocketUrl: string) => void) {}
 
@@ -131,14 +133,23 @@ export class LocalChromium {
         response.writeHead(404).end();
         return;
       }
+      if (this.stopping) {
+        response.writeHead(503).end();
+        return;
+      }
+      const launch = launchChromium(this.browsers);
+      this.launches.add(launch);
       try {
-        const webSocketUrl = await launchChromium(this.browsers);
+        const webSocketUrl = await launch;
+        if (this.stopping) throw new Error("Local Chromium is stopping.");
         this.onStart(webSocketUrl);
         response
           .writeHead(200, { "Content-Type": "application/json" })
           .end(JSON.stringify({ webSocketDebuggerUrl: webSocketUrl }));
       } catch {
         response.writeHead(502).end("Local Chromium did not start");
+      } finally {
+        this.launches.delete(launch);
       }
     });
     await new Promise<void>((resolve, reject) => {
@@ -157,7 +168,9 @@ export class LocalChromium {
   }
 
   async stop() {
+    this.stopping = true;
     this.server.close();
+    await Promise.allSettled(this.launches);
     await Promise.all(this.browsers.map(stopChromium));
   }
 }

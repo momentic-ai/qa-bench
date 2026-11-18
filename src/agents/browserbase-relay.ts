@@ -20,7 +20,8 @@ export async function startBrowserbaseRelay(supervisor: string) {
   const browsers = new Map<string, URL>();
 
   const server = createServer(async (request, response) => {
-    if (request.method !== "GET" || !request.url?.startsWith("/json/version")) {
+    const { pathname } = new URL(request.url ?? "/", "http://relay");
+    if (request.method !== "GET" || !/^\/json\/version\/?$/.test(pathname)) {
       response.writeHead(404).end();
       return;
     }

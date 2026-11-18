@@ -36,12 +36,17 @@ export async function prepareAgentBrowser(
     ? await startBrowserbaseRelay(supervisor)
     : undefined;
   const executableIndex = browser.args.indexOf("--executable-path");
-  await writeJson(
-    config,
-    relay
-      ? { cdp: String(relay.port) }
-      : { executablePath: browser.args[executableIndex + 1] },
-  );
+  try {
+    await writeJson(
+      config,
+      relay
+        ? { cdp: String(relay.port) }
+        : { executablePath: browser.args[executableIndex + 1] },
+    );
+  } catch (err) {
+    await relay?.close();
+    throw err;
+  }
   return {
     env: {
       PATH: `${bin}${path.delimiter}${process.env.PATH || ""}`,
