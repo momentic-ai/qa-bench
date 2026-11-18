@@ -146,8 +146,8 @@ export class LocalChromium {
         response
           .writeHead(200, { "Content-Type": "application/json" })
           .end(JSON.stringify({ webSocketDebuggerUrl: webSocketUrl }));
-      } catch {
-        response.writeHead(502).end("Local Chromium did not start");
+      } catch (err) {
+        response.writeHead(502).end(String(err));
       } finally {
         this.launches.delete(launch);
       }

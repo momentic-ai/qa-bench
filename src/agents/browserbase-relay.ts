@@ -18,6 +18,8 @@ const VersionSchema = z.object({ webSocketDebuggerUrl: z.url() });
  */
 export async function startBrowserbaseRelay(supervisor: string) {
   const browsers = new Map<string, URL>();
+  const sockets = new Set<Duplex>();
+  const closing = new AbortController();
 
   const server = createServer(async (request, response) => {
     const { pathname } = new URL(request.url ?? "/", "http://relay");
@@ -26,22 +28,27 @@ export async function startBrowserbaseRelay(supervisor: string) {
       return;
     }
     try {
-      const browser = await newBrowser(supervisor);
+      const browser = await newBrowser(supervisor, closing.signal);
       const id = `/${randomUUID()}`;
       browsers.set(id, browser);
       const local = `ws://127.0.0.1:${request.socket.localPort}${id}`;
       response
         .writeHead(200, { "Content-Type": "application/json" })
         .end(JSON.stringify({ webSocketDebuggerUrl: local }));
-    } catch {
-      response.writeHead(502).end();
+    } catch (err) {
+      response.writeHead(502).end(String(err));
     }
   });
 
   server.on("upgrade", (request, socket, head) => {
     const browser = browsers.get(request.url ?? "");
-    if (browser) pipeWebSocket(request, socket, head, browser);
-    else socket.destroy();
+    if (!browser || closing.signal.aborted) {
+      socket.destroy();
+      return;
+    }
+    sockets.add(socket);
+    socket.once("close", () => sockets.delete(socket));
+    pipeWebSocket(request, socket, head, browser);
   });
 
   await new Promise<void>((resolve, reject) => {
@@ -55,17 +62,20 @@ export async function startBrowserbaseRelay(supervisor: string) {
     port: address.port,
     close: () =>
       new Promise<void>((resolve) => {
+        closing.abort();
+        for (const socket of sockets) socket.destroy();
         server.closeAllConnections();
         server.close(() => resolve());
       }),
   };
 }
 
-async function newBrowser(supervisor: string) {
+async function newBrowser(supervisor: string, closing: AbortSignal) {
   const response = await fetch(new URL("json/version/", supervisor), {
-    signal: AbortSignal.timeout(30_000),
+    signal: AbortSignal.any([closing, AbortSignal.timeout(30_000)]),
   });
-  if (!response.ok) throw new Error(`HTTP ${response.status}`);
+  if (!response.ok)
+    throw new Error(`HTTP ${response.status}: ${await response.text()}`);
   return new URL(
     VersionSchema.parse(await response.json()).webSocketDebuggerUrl,
   );
