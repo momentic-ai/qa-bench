@@ -1,6 +1,8 @@
 import { ChildProcess, spawn } from "node:child_process";
+import { randomUUID } from "node:crypto";
 import { once } from "node:events";
 import { access, mkdtemp, readFile, rm } from "node:fs/promises";
+import { createServer } from "node:http";
 import { createRequire } from "node:module";
 import { tmpdir } from "node:os";
 import path from "node:path";
@@ -53,51 +55,100 @@ async function closeBrowser(webSocketUrl: string) {
   socket.send(JSON.stringify({ id: 1, method: "Browser.close" }));
 }
 
+type Chromium = { child: ChildProcess; profile: string; webSocketUrl?: string };
+
+/** Launches a headless Chromium with a debugging port. */
+async function launchChromium(browsers: Chromium[]) {
+  const profile = await mkdtemp(path.join(tmpdir(), "qa-bench-chromium-"));
+  const child = spawn(
+    chromiumExecutable(),
+    [
+      "--headless=new",
+      "--remote-debugging-port=0",
+      `--user-data-dir=${profile}`,
+      "--no-first-run",
+      "--no-default-browser-check",
+      "about:blank",
+    ],
+    { stdio: "ignore" },
+  );
+  const browser: Chromium = { child, profile };
+  browsers.push(browser);
+  let failed: Error | undefined;
+  child.once("error", (err) => (failed = err));
+  // Chromium writes its chosen port and browser path here once it listens.
+  const portFile = path.join(profile, "DevToolsActivePort");
+  for (let attempt = 0; attempt < 100; attempt++) {
+    if (failed) throw failed;
+    if (!running(child)) throw new Error("Local Chromium exited on start.");
+    const [port, browserPath] = (
+      await readFile(portFile, "utf8").catch(() => "")
+    ).split("\n");
+    if (browserPath) {
+      browser.webSocketUrl = `ws://127.0.0.1:${port}${browserPath}`;
+      return browser.webSocketUrl;
+    }
+    await delay(100);
+  }
+  throw new Error("Local Chromium did not start.");
+}
+
+async function stopChromium({ child, profile, webSocketUrl }: Chromium) {
+  if (running(child)) {
+    const exited = once(child, "exit");
+    // A clean shutdown waits for Chromium's helper processes, which still
+    // write to the profile after a SIGTERM.
+    const closed = webSocketUrl
+      ? closeBrowser(webSocketUrl)
+      : Promise.reject(new Error("Local Chromium did not start."));
+    await closed.catch(() => child.kill());
+    const timeout = AbortSignal.timeout(10_000);
+    await Promise.race([exited, once(timeout, "abort")]);
+    if (running(child)) {
+      child.kill("SIGKILL");
+      await exited;
+    }
+  }
+  await rm(profile, { recursive: true, force: true, maxRetries: 5 });
+}
+
 /**
- * A headless Chromium with a debugging port, which the agent's tool and the
- * bug-video recorder both connect to.
+ * A local CDP endpoint that launches a new headless Chromium for each
+ * connection, like the Browserbase broker. The agent's tool and the bug-video
+ * recorder both connect to each one.
  */
 export class LocalChromium {
-  private process: ChildProcess | undefined;
-  private profile: string | undefined;
-  private webSocketUrl: string | undefined;
+  private browsers: Chromium[] = [];
+  private server = createServer();
+  private route = `/${randomUUID()}/json/version/`;
 
   constructor(private onStart: (webSocketUrl: string) => void) {}
 
-  /** Launches the browser and returns its CDP endpoint. */
+  /** Starts the endpoint and returns its URL. */
   async start() {
-    this.profile = await mkdtemp(path.join(tmpdir(), "qa-bench-chromium-"));
-    this.process = spawn(
-      chromiumExecutable(),
-      [
-        "--headless=new",
-        "--remote-debugging-port=0",
-        `--user-data-dir=${this.profile}`,
-        "--no-first-run",
-        "--no-default-browser-check",
-        "about:blank",
-      ],
-      { stdio: "ignore" },
-    );
-    let failed: Error | undefined;
-    this.process.once("error", (err) => (failed = err));
-    // Chromium writes its chosen port and browser path here once it listens.
-    const portFile = path.join(this.profile, "DevToolsActivePort");
-    for (let attempt = 0; attempt < 100; attempt++) {
-      if (failed) throw failed;
-      if (!running(this.process))
-        throw new Error("Local Chromium exited on start.");
-      const [port, browserPath] = (
-        await readFile(portFile, "utf8").catch(() => "")
-      ).split("\n");
-      if (browserPath) {
-        this.webSocketUrl = `ws://127.0.0.1:${port}${browserPath}`;
-        this.onStart(this.webSocketUrl);
-        return `http://127.0.0.1:${port}/`;
+    this.server.on("request", async (request, response) => {
+      if (request.method !== "GET" || request.url !== this.route) {
+        response.writeHead(404).end();
+        return;
       }
-      await delay(100);
-    }
-    throw new Error("Local Chromium did not start.");
+      try {
+        const webSocketUrl = await launchChromium(this.browsers);
+        this.onStart(webSocketUrl);
+        response
+          .writeHead(200, { "Content-Type": "application/json" })
+          .end(JSON.stringify({ webSocketDebuggerUrl: webSocketUrl }));
+      } catch {
+        response.writeHead(502).end("Local Chromium did not start");
+      }
+    });
+    await new Promise<void>((resolve, reject) => {
+      this.server.once("error", reject);
+      this.server.listen(0, "127.0.0.1", resolve);
+    });
+    const address = this.server.address();
+    if (!address || typeof address === "string")
+      throw new Error("Missing local Chromium address.");
+    return `http://127.0.0.1:${address.port}${this.route.replace(/json\/version\/$/, "")}`;
   }
 
   /** A local browser has no hosting cost. */
@@ -106,24 +157,8 @@ export class LocalChromium {
   }
 
   async stop() {
-    const child = this.process;
-    if (running(child)) {
-      const exited = once(child, "exit");
-      // A clean shutdown waits for Chromium's helper processes, which still
-      // write to the profile after a SIGTERM.
-      const closed = this.webSocketUrl
-        ? closeBrowser(this.webSocketUrl)
-        : Promise.reject(new Error("Local Chromium did not start."));
-      await closed.catch(() => child.kill());
-      const timeout = AbortSignal.timeout(10_000);
-      await Promise.race([exited, once(timeout, "abort")]);
-      if (running(child)) {
-        child.kill("SIGKILL");
-        await exited;
-      }
-    }
-    if (this.profile)
-      await rm(this.profile, { recursive: true, force: true, maxRetries: 5 });
+    this.server.close();
+    await Promise.all(this.browsers.map(stopChromium));
   }
 }
 

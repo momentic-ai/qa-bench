@@ -13,8 +13,8 @@ const VersionSchema = z.object({ webSocketDebuggerUrl: z.url() });
  * A new agent-browser session reads /json/version from its --cdp port, then
  * connects to the returned WebSocket path on that same port, whatever host the
  * response names. So each /json/version request takes a new browser from the
- * Browserbase supervisor and answers with a local path, and connections to that
- * path are piped to the browser.
+ * broker (Browserbase, or local Chromium when recording) and answers with a
+ * local path, and connections to that path are piped to the browser.
  */
 export async function startBrowserbaseRelay(supervisor: string) {
   const browsers = new Map<string, URL>();
