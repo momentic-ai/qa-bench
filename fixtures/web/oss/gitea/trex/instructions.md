@@ -72,6 +72,7 @@ What to observe for each area:
 - **Templates, JS and modals** (`templates/`, `web_src/js`): use the affected pages directly. The admin pages are under `/-/admin` from pr-32646 on, and under `/admin` on older bases. Watch the browser console for errors.
 - **API changes**: call `/api/v1/...` with basic auth and check status codes and JSON. The Swagger UI is at `/api/swagger`.
 - **Actions**: off by default, as in the eval. If the change touches Actions, run `export GITEA__actions__ENABLED=true` before `gitea-trex reset`; each start reapplies the setting.
+- **Devtest pages** (`templates/devtest`, `routers/web/devtest`): Gitea runs in prod mode, as in the eval, so `/devtest` returns 404. Test the changed components on the real pages that use them, such as `/-/admin/emails` or the issue list.
 - **Permissions**: create a non-admin user with `POST /admin/users` (`must_change_password: false`) and repeat the flow as that user. Signed-out visitors are sent to the sign-in page.
 
 Every PR checkout also gets `gitea-trex test-backend` on the touched packages and `gitea-trex test-frontend` when `web_src/` changes.

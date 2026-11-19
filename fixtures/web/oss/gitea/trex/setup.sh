@@ -25,7 +25,7 @@ if [ "$(id -u)" != 0 ] && sudo -n true 2>/dev/null; then SUDO="sudo -n"; fi
 # Asks the compiler, since Debian keeps some headers in multiarch directories.
 has_header() { echo "#include <$1>" | gcc -E - >/dev/null 2>&1; }
 missing() {
-  for c in git make gcc curl xz tar sqlite3 jq; do command -v "$c" >/dev/null || echo "$c"; done
+  for c in git git-lfs make gcc curl xz tar sqlite3 jq; do command -v "$c" >/dev/null || echo "$c"; done
   if command -v gcc >/dev/null; then
     for h in zlib.h expat.h curl/curl.h openssl/ssl.h; do has_header "$h" || echo "$h"; done
   fi
@@ -40,7 +40,7 @@ if [ -n "$need" ]; then
   export DEBIAN_FRONTEND=noninteractive
   $SUDO apt-get update -qq
   $SUDO apt-get install -y -qq --no-install-recommends \
-    git make gcc libc6-dev curl ca-certificates xz-utils tar sqlite3 jq \
+    git git-lfs make gcc libc6-dev curl ca-certificates xz-utils tar sqlite3 jq \
     zlib1g-dev libexpat1-dev libcurl4-openssl-dev libssl-dev
   need=$(missing)
   if [ -n "$need" ]; then echo "ERROR: still missing $(echo $need)" >&2; exit 1; fi
