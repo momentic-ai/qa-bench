@@ -179,7 +179,6 @@ installed() { grep -q '^INSTALL_LOCK *= *true' "$CONF" 2>/dev/null; }
 write_config() {
   mkdir -p "$WORK"/gitea/{conf,log} "$WORK"/git
   cat >"$CONF" <<EOF
-RUN_MODE = dev
 RUN_USER = $GITEA_RUN_USER
 
 [server]
@@ -205,11 +204,12 @@ EOF
 apply_env() {
   (
     . "$RECIPE/runtime/snapshot/env.sh"
-    if ./gitea config edit-ini --help >/dev/null 2>&1; then
-      ./gitea config edit-ini --config "$CONF" --apply-env --in-place
-    else
+    # Older Gitea ships the converter in contrib/; newer folds it into `gitea config edit-ini`.
+    if [ -d contrib/environment-to-ini ]; then
       [ -x "$WORK/environment-to-ini" ] || go build -o "$WORK/environment-to-ini" ./contrib/environment-to-ini
       "$WORK/environment-to-ini" --config "$CONF"
+    else
+      ./gitea config edit-ini --config "$CONF" --apply-env --in-place
     fi
   ) >"$WORK/gitea/log/env.log" 2>&1 || { cat "$WORK/gitea/log/env.log" >&2; exit 1; }
 }
