@@ -164,7 +164,7 @@ REPO=$(git rev-parse --show-toplevel 2>/dev/null || pwd)
 cd "$REPO"
 . "$TREX_HOME/activate"
 
-# The recipe scripts read these; values match the eval except for local paths.
+# Inputs the recipe scripts read: this host's URL, paths and user, and the eval's account.
 export FIXTURE_HOST=localhost FIXTURE_PORT=$PORT FIXTURE_URL=$URL GITEA_LOCAL_URL=$URL
 export GITEA_DATA=$WORK GITEA_RUN_USER=$(id -un) GITEA_CUSTOM=$WORK/gitea
 FIXTURE_USERNAME=$(jq -r .username "$RECIPE/fixture.json")
@@ -175,7 +175,7 @@ gitea() { ./gitea "$@" -c "$CONF" -w "$REPO"; }
 
 installed() { grep -q '^INSTALL_LOCK *= *true' "$CONF" 2>/dev/null; }
 
-# Settings the snapshot image gets from its Docker template; the recipe's env.sh and installer set the rest.
+# Host-specific base settings; the recipe's env.sh and installer set the rest.
 write_config() {
   mkdir -p "$WORK"/gitea/{conf,log} "$WORK"/git
   cat >"$CONF" <<EOF
