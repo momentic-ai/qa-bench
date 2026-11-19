@@ -10,7 +10,7 @@ export function createFullAppAgent(
   agent: Agent,
   options: Pick<
     FullAppOptions,
-    "browser" | "codexModel" | "claudeModel" | "preventCheating" | "recordBugs"
+    "browser" | "codexModel" | "claudeModel" | "recordBugs"
   >,
 ): EvalAgentDefinition {
   switch (agent) {
@@ -29,7 +29,6 @@ export function createFullAppAgent(
             ? "agent-browser"
             : "playwright-mcp",
         options.codexModel,
-        options.preventCheating,
         options.recordBugs,
       );
     case "claude-playwright-mcp":
@@ -43,7 +42,6 @@ export function createFullAppAgent(
             ? "agent-browser"
             : "playwright-mcp",
         options.claudeModel,
-        options.preventCheating,
         options.recordBugs,
       );
   }

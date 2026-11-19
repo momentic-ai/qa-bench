@@ -4,36 +4,49 @@ import path from "node:path";
 
 import { writeJson } from "../shared/json-file";
 import { BrowserTool } from "./agent-browser";
+import { BrowserCost } from "./browser-cost";
 import { FindingsStore } from "./codex/findings-store";
 import { E2EModel } from "./e2e/config";
+import { ContainerAgent } from "./sandbox/container-agent";
+import { ensureSandboxImage } from "./sandbox/image";
 import {
   BrowserOptions,
   PreparedBrowser,
   TestingBrowser,
 } from "./testing-browser";
 import {
-  AgentContext,
   AgentCost,
   AgentExecution,
   Browser,
+  CodingAgentContext,
   EvalAgent,
   EvalAgentDefinition,
 } from "./types";
 
+/** A run's agent settings, sent to its container. */
+export type CodingAgentSettings = {
+  family: "codex" | "claude";
+  browser: Browser;
+  browserTool: BrowserTool;
+  model: string;
+  recordBugs: boolean;
+};
+
 type CodingAgentClass = {
   new (
-    context: AgentContext,
+    context: CodingAgentContext,
     model: string,
     browser: TestingBrowser,
   ): CodingAgent;
   family: "codex" | "claude";
   apiKey: string;
+  /** The model API host the sandbox allows. */
+  apiHost: string;
   skillOwner: BrowserOptions["skillOwner"];
   e2eProvider: E2EModel["provider"];
-  validate(): Promise<void>;
 };
 
-/** Codex or Claude Code, run locally against one fixture; subclasses drive the model. */
+/** Codex or Claude Code in a run's container; subclasses drive the model. */
 export abstract class CodingAgent implements EvalAgent {
   readonly preparesEnvironment = true;
   protected findings: FindingsStore;
@@ -42,18 +55,21 @@ export abstract class CodingAgent implements EvalAgent {
   /** How the agent names the findings tools, such as "reporting.". */
   protected abstract findingsToolPrefix: string;
 
-  static async validate() {}
-
   static definition(
     this: CodingAgentClass,
     browser: Browser,
     browserTool: BrowserTool,
     model: string,
-    preventCheating: boolean,
     recordBugs: boolean,
   ): EvalAgentDefinition {
     const name = `${this.family}-${browserTool}`;
-    const Tool = TestingBrowser.for(browserTool);
+    const settings: CodingAgentSettings = {
+      family: this.family,
+      browser,
+      browserTool,
+      model,
+      recordBugs,
+    };
     return {
       name,
       reportSubdirectory: name,
@@ -64,7 +80,8 @@ export abstract class CodingAgent implements EvalAgent {
         ...(browserTool === "playwright-mcp"
           ? { subagents: browser !== "local" }
           : {}),
-        ...(preventCheating ? { preventCheating } : {}),
+        // Saved runs without it could browse the open web; merge labels them apart.
+        preventCheating: true,
         ...(recordBugs ? { recordBugs } : {}),
       },
       validateEnvironment: async () => {
@@ -73,26 +90,40 @@ export abstract class CodingAgent implements EvalAgent {
           throw new Error("Bug recording needs a local, non-e2e browser.");
         if (!process.env[this.apiKey])
           throw new Error(`${this.apiKey} is required.`);
-        await Tool.validate(browser);
-        await this.validate();
+        await TestingBrowser.for(browserTool).validate(browser);
+        await ensureSandboxImage();
       },
       create: (context) =>
-        new this(
-          context,
-          model,
-          new Tool(context, {
-            browser,
-            preventCheating,
-            recordBugs,
-            skillOwner: this.skillOwner,
-            e2eModel: { provider: this.e2eProvider, id: model },
-          }),
-        ),
+        new ContainerAgent(context, settings, {
+          apiKey: this.apiKey,
+          apiHost: this.apiHost,
+        }),
     };
   }
 
+  /** Builds the agent the container's driver runs. */
+  static create(
+    this: CodingAgentClass,
+    context: CodingAgentContext,
+    settings: CodingAgentSettings,
+    broker?: string,
+  ) {
+    const Tool = TestingBrowser.for(settings.browserTool);
+    return new this(
+      context,
+      settings.model,
+      new Tool(context, {
+        browser: settings.browser,
+        recordBugs: settings.recordBugs,
+        skillOwner: this.skillOwner,
+        e2eModel: { provider: this.e2eProvider, id: settings.model },
+        broker,
+      }),
+    );
+  }
+
   constructor(
-    protected context: AgentContext,
+    protected context: CodingAgentContext,
     protected model: string,
     protected browser: TestingBrowser,
   ) {
@@ -150,13 +181,18 @@ export abstract class CodingAgent implements EvalAgent {
     }
   }
 
-  async collectResults(signal: AbortSignal) {
+  /** `browserCost` comes from the harness's Browserbase broker. */
+  async collectResults(signal: AbortSignal, browserCost?: BrowserCost) {
     signal.throwIfAborted();
     const reportFile = path.join(this.context.reportDirectory, "report.json");
     let report = await this.findings.collect();
     await writeJson(reportFile, report);
     const model = await this.modelCost();
-    const cost = await this.browser.cost(model.cost, model.complete);
+    const cost = await this.browser.cost(
+      model.cost,
+      model.complete,
+      browserCost,
+    );
     await writeJson(path.join(this.context.reportDirectory, "cost.json"), cost);
     if (this.browser.options.recordBugs)
       try {

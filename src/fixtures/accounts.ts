@@ -1,6 +1,6 @@
-import { Fixture, FixtureAccount } from "./types";
+import { Fixture, FixtureAccount, FixtureCredentials } from "./types";
 
-export function fixtureAccounts(fixture: Fixture): FixtureAccount[] {
+export function fixtureAccounts(fixture: FixtureCredentials): FixtureAccount[] {
   const accounts = [
     {
       name: "fixture",
