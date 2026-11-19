@@ -52,7 +52,7 @@ The environment uses the eval's own Gitea recipe from qa-bench (`fixtures/web/os
 
 `gitea-trex reset` wipes `/tmp/gitea-trex`, starts fresh, reseeds, and runs the eval's check for its starting state: that one admin and no repos or other data. Use it between scenarios, and always after switching to a different base era, because an older binary can't open a newer database.
 
-Create the data each scenario needs, through the UI or the API with basic auth: `curl -H 'Content-Type: application/json' http://<user>:<password>@localhost:3000/api/v1/...`. Create repos (`POST /user/repos`), branches, files (`POST /repos/{owner}/{repo}/contents/{path}`), issues, labels, pull requests (`POST /repos/{owner}/{repo}/pulls`) and extra users (`POST /admin/users`). You can also clone a repo over HTTP, commit, and push branches to build diffs or PRs. For wiki tests, create the first page in the UI, or with `POST /repos/{owner}/{repo}/wiki/new` on 2024+ bases (2021 has no wiki API). Then push to `<repo>.wiki.git` if you need specific files.
+Create the data each scenario needs, through the UI or the API with basic auth: `curl -H 'Content-Type: application/json' http://<user>:<password>@localhost:3000/api/v1/...`. Create repos (`POST /user/repos`), branches, files (`POST /repos/{owner}/{repo}/contents/{path}`), issues, labels, pull requests (`POST /repos/{owner}/{repo}/pulls`) and extra users (`POST /admin/users`). You can also clone a repo over HTTP, commit, and push branches to build diffs or PRs. For wiki tests, create the first page in the wiki UI, then clone `<repo>.wiki.git` over HTTP and push any other pages. Don't use the wiki API: on the 2024 bases it reads branch `master` while new wikis use `main`, so it returns 404 even when the write worked.
 
 ## Tests
 
