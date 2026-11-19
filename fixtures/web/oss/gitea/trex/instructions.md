@@ -57,9 +57,9 @@ Create the data each scenario needs, through the UI or the API with basic auth: 
 ## Tests
 
 - Go, focused: `gitea-trex test-backend ./services/gitdiff/... ./modules/markup/...`. This adds the right tags and uses `-mod=vendor` automatically on the 2021 base. Model and service tests load YAML fixtures from `models/fixtures` into a temporary SQLite database. They don't need the running server.
-- Go integration (SQLite): `. /opt/trex/activate && make test-sqlite#TestName`. On 2024+ bases the tests are in `tests/integration`; on 2021 they're in `integrations/`. These build a separate test binary and use fixture repos from `tests/gitea-repositories-meta` (or `integrations/gitea-repositories-meta`). They're slow, so pick specific tests.
+- Go integration (SQLite): after `. /opt/trex/activate`, run `make test-sqlite#TestName` on the 2021 and 2024 bases, or `make test-integration#TestName` on the 2026 bases, which use SQLite by default. On 2024+ bases the tests are in `tests/integration`; on 2021 they're in `integrations/`. These build a separate test binary and use fixture repos from `tests/gitea-repositories-meta` (or `integrations/gitea-repositories-meta`). They're slow, so pick specific tests.
 - Frontend: `gitea-trex test-frontend [files]` runs Jest on the 2021 base and Vitest on later ones.
-- Lint (optional): `make lint-js`, `make lint-css` or `make lint-go` after activating. These may download linters through the Go module proxy.
+- Lint (optional), after activating: `make lint-js`, `make lint-css` or `make lint-go`; on the 2021 base, `make lint-frontend` or `make lint-backend`. These may download linters through the Go module proxy.
 
 ## End-to-end testing approach
 
