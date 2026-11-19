@@ -327,7 +327,7 @@ class PlaywrightMcp extends TestingBrowser {
 class AgentBrowser extends TestingBrowser {
   // Shared agent-browser sessions must survive disconnects.
   protected keepAlive = true;
-  private environment: Record<string, string> | undefined;
+  private prepared: Awaited<ReturnType<typeof prepareAgentBrowser>> | undefined;
 
   static async validate(browser: Browser) {
     await validateAgentBrowser();
@@ -335,20 +335,24 @@ class AgentBrowser extends TestingBrowser {
   }
 
   protected async setup(workspace: string) {
-    this.environment = await prepareAgentBrowser(
+    this.prepared = await prepareAgentBrowser(
       workspace,
       await this.connect(),
       this.options.skillOwner,
     );
-    return { env: this.environment };
+    return { env: this.prepared.env };
   }
 
   async close() {
     try {
-      if (this.environment)
-        await closeAgentBrowsers(this.environment, this.artifacts);
+      if (this.prepared)
+        await closeAgentBrowsers(this.prepared.env, this.artifacts);
     } finally {
-      await super.close();
+      try {
+        await this.prepared?.close();
+      } finally {
+        await super.close();
+      }
     }
   }
 }

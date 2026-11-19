@@ -157,8 +157,8 @@ Results also include Codex with `gpt-6.1-terra` and Claude Code with
   each subagent get their own Browserbase browser.
 - `*-agent-browser` agents use the pinned
   [agent-browser](https://www.npmjs.com/package/agent-browser) CLI and its
-  bundled skill. Each run connects to one Browserbase browser, and the agent
-  decides how to share it.
+  bundled skill. Agents share one Browserbase browser unless they pass a new
+  `--session` name, which gets its own browser, as it would locally.
 - `*-e2e` agents run a bug bash with the pinned
   [e2e](https://www.npmjs.com/package/e2e) CLI and its bundled skill: they plan
   charters, run `e2e explore` for each, and save the bugs that a failing repro
