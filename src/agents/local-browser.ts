@@ -59,9 +59,10 @@ type Chromium = { child: ChildProcess; profile: string; webSocketUrl?: string };
 
 /** Launches a headless Chromium with a debugging port. */
 async function launchChromium(browsers: Chromium[]) {
+  const executable = chromiumExecutable();
   const profile = await mkdtemp(path.join(tmpdir(), "qa-bench-chromium-"));
   const child = spawn(
-    chromiumExecutable(),
+    executable,
     [
       "--headless=new",
       "--remote-debugging-port=0",
