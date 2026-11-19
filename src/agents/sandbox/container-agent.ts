@@ -1,14 +1,13 @@
 import { once } from "node:events";
 import { mkdir, writeFile } from "node:fs/promises";
-import { Server, Socket, createServer } from "node:net";
 import path from "node:path";
+import { Duplex } from "node:stream";
 
 import { BrowserbaseSessions } from "../codex/browserbase";
 import type { CodingAgentSettings } from "../coding-agent";
 import { AgentContext, AgentResults, EvalAgent } from "../types";
 import {
   CONFIG_FILE,
-  CONTROL_SOCKET,
   DriverConfig,
   ReplySchema,
   onMessage,
@@ -21,8 +20,7 @@ export class ContainerAgent implements EvalAgent {
   readonly preparesEnvironment = true;
   private runtime: SandboxRuntime | undefined;
   private broker: BrowserbaseSessions | undefined;
-  private server: Server | undefined;
-  private socket: Socket | undefined;
+  private socket: Duplex | undefined;
   private nextId = 1;
   private calls = new Map<
     number,
@@ -98,13 +96,7 @@ export class ContainerAgent implements EvalAgent {
       path.join(runtime.directory, CONFIG_FILE),
       JSON.stringify(config),
     );
-    const server = createServer();
-    this.server = server;
-    await new Promise<void>((resolve, reject) => {
-      server.once("error", reject);
-      server.listen(path.join(runtime.directory, CONTROL_SOCKET), resolve);
-    });
-    const connection = once(server, "connection", { signal });
+    const connection = once(runtime, "control", { signal });
     const driver = runtime.exec(
       "node_modules/.bin/tsx",
       ["src/agents/sandbox/driver.ts"],
@@ -113,7 +105,7 @@ export class ContainerAgent implements EvalAgent {
     const exited = once(driver, "exit").then(([code]) => {
       throw new Error(`The agent's container driver exited with code ${code}.`);
     });
-    const [socket] = (await Promise.race([connection, exited])) as [Socket];
+    const [socket] = (await Promise.race([connection, exited])) as [Duplex];
     this.socket = socket;
     onMessage(socket, (reply) => this.receive(reply));
     socket.on("error", () => socket.destroy());
@@ -145,7 +137,6 @@ export class ContainerAgent implements EvalAgent {
       )) as AgentResults;
     } finally {
       this.socket?.destroy();
-      this.server?.close();
       await this.runtime?.close();
     }
   }

@@ -1,5 +1,5 @@
 // Runs inside the run's container: builds the agent from the harness's config and
-// answers its EvalAgent calls over the control socket.
+// answers its EvalAgent calls over the control channel.
 import { readFile } from "node:fs/promises";
 import { connect } from "node:net";
 import path from "node:path";
@@ -8,7 +8,7 @@ import { ClaudeAgent } from "../claude/claude-agent";
 import { CodexAgent } from "../codex/codex-agent";
 import {
   CONFIG_FILE,
-  CONTROL_SOCKET,
+  CONTROL_PORT,
   DriverConfig,
   RequestSchema,
   errorMessage,
@@ -31,8 +31,8 @@ const agent = Agent.create(
   config.broker,
 );
 
-const socket = connect(path.join(CONTAINER_DIRECTORY, CONTROL_SOCKET));
-// The harness closes the socket when it's done with the run.
+const socket = connect(CONTROL_PORT, "127.0.0.1");
+// The harness closes the channel when it's done with the run.
 socket.on("close", () => process.exit(0));
 // Kept after a call returns: start's signal governs the running agent.
 const signals = new Map<number, AbortController>();

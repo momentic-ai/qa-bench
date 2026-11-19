@@ -15,6 +15,5 @@ RUN for core in node_modules/.pnpm/playwright-core@*/node_modules/playwright-cor
       node "$core/cli.js" install --with-deps chromium; \
     done \
   && chmod -R a+rX /ms-playwright
-COPY sandbox/relay.mjs /opt/sandbox/relay.mjs
 # Last, so code changes rebuild only this layer.
 COPY src src

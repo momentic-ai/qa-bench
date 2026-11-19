@@ -1,14 +1,15 @@
-import { Socket } from "node:net";
 import { createInterface } from "node:readline";
+import { Duplex } from "node:stream";
 import { z } from "zod";
 
 import { BrowserCost } from "../browser-cost";
 import type { CodingAgentSettings } from "../coding-agent";
 import type { CodingAgentContext } from "../types";
 
-// Both live in CONTAINER_DIRECTORY.
+// In CONTAINER_DIRECTORY.
 export const CONFIG_FILE = "config.json";
-export const CONTROL_SOCKET = "control.sock";
+/** Where the driver reaches the harness, through the container's relay. */
+export const CONTROL_PORT = 3129;
 
 /** What the driver needs to build the run's agent. */
 export type DriverConfig = {
@@ -44,13 +45,13 @@ export const ReplySchema = z.union([
 ]);
 
 /** Messages are JSON lines. */
-export function onMessage(socket: Socket, handle: (message: unknown) => void) {
+export function onMessage(socket: Duplex, handle: (message: unknown) => void) {
   createInterface({ input: socket }).on("line", (line) =>
     handle(JSON.parse(line)),
   );
 }
 
-export function sendMessage(socket: Socket, message: unknown) {
+export function sendMessage(socket: Duplex, message: unknown) {
   if (!socket.destroyed) socket.write(`${JSON.stringify(message)}\n`);
 }
 

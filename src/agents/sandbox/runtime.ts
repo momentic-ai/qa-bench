@@ -1,5 +1,6 @@
 import { execFile, spawn } from "node:child_process";
 import { randomUUID } from "node:crypto";
+import { EventEmitter } from "node:events";
 import {
   access,
   mkdir,
@@ -15,26 +16,36 @@ import { promisify } from "node:util";
 
 import { EgressProxy, EgressRule } from "./egress-proxy";
 import { sandboxImage } from "./image";
+import { Mux } from "./mux";
 
 const exec = promisify(execFile);
 // WORKDIR in sandbox/Dockerfile.
 const TOOLS = "/opt/tools";
-const PROXY_PORT = 3128;
+export const PROXY_PORT = 3128;
 /** The proxy every process in the container uses; browsers take it as a flag. */
 export const CONTAINER_PROXY = `http://127.0.0.1:${PROXY_PORT}`;
 /** Where the container sees the runtime's directory. */
 export const CONTAINER_DIRECTORY = "/run/qa-bench";
+const RELAY = ["node_modules/.bin/tsx", "src/agents/sandbox/relay.ts"];
 
-/** One container per run, with no network beyond the egress proxy. */
-export class SandboxRuntime {
+/**
+ * One container per run, with no network beyond the egress proxy. Its relay
+ * reaches the harness over `docker run`'s stdin and stdout, since Docker Desktop
+ * can't pass Unix sockets through bind mounts. Emits "control" with the
+ * driver's stream.
+ */
+export class SandboxRuntime extends EventEmitter {
   private name = `qa-bench-${randomUUID().slice(0, 12)}`;
+  private exited = false;
 
   private constructor(
     /** The host side of CONTAINER_DIRECTORY. */
     readonly directory: string,
     private proxy: EgressProxy,
     private mounts: string[],
-  ) {}
+  ) {
+    super();
+  }
 
   /**
    * Starts the container with the run and report directories mounted at their host paths.
@@ -54,12 +65,7 @@ export class SandboxRuntime {
     const directory = await mkdtemp(path.join(tmpdir(), "qa-bench-egress-"));
     const log = path.join(runDirectory, "egress-denied.log");
     await writeFile(log, "", { flag: "a" });
-    const proxy = new EgressProxy(
-      path.join(directory, "egress.sock"),
-      rules,
-      log,
-    );
-    await proxy.start();
+    const proxy = new EgressProxy(rules, log);
     const runtime = new SandboxRuntime(directory, proxy, [
       runDirectory,
       reportDirectory,
@@ -72,51 +78,62 @@ export class SandboxRuntime {
         process.getuid && process.getgid
           ? ["--user", `${process.getuid()}:${process.getgid()}`]
           : [];
-      await exec("docker", [
-        "run",
-        "--detach",
-        "--rm",
-        "--init",
-        "--name",
-        runtime.name,
-        "--label",
-        "qa-bench.sandbox=1",
-        "--network",
-        "none",
-        // Only root uses it, below; the agent runs as the host user without it.
-        "--cap-add",
-        "NET_ADMIN",
-        // Chromium crashes with Docker's default 64 MB /dev/shm.
-        "--shm-size=1g",
-        ...user,
-        ...[runDirectory, reportDirectory].flatMap((mount) => [
+      const image = await sandboxImage();
+      const container = spawn(
+        "docker",
+        [
+          "run",
+          "--interactive",
+          "--rm",
+          "--init",
+          "--name",
+          runtime.name,
+          "--label",
+          "qa-bench.sandbox=1",
+          "--network",
+          "none",
+          // Only root uses it, below; the agent runs as the host user without it.
+          "--cap-add",
+          "NET_ADMIN",
+          // Chromium crashes with Docker's default 64 MB /dev/shm.
+          "--shm-size=1g",
+          ...user,
+          ...[runDirectory, reportDirectory].flatMap((mount) => [
+            "--volume",
+            `${mount}:${mount}`,
+          ]),
+          ...[log, ...readOnly].flatMap((mount) => [
+            "--volume",
+            `${mount}:${mount}:ro`,
+          ]),
           "--volume",
-          `${mount}:${mount}`,
-        ]),
-        ...[log, ...readOnly].flatMap((mount) => [
-          "--volume",
-          `${mount}:${mount}:ro`,
-        ]),
-        "--volume",
-        `${directory}:${CONTAINER_DIRECTORY}`,
-        "--env",
-        `HOME=${home}`,
-        ...["HTTPS_PROXY", "https_proxy"].flatMap((name) => [
+          `${directory}:${CONTAINER_DIRECTORY}`,
           "--env",
-          `${name}=${CONTAINER_PROXY}`,
-        ]),
-        // Forwarded harness ports are local; everything else goes through the proxy.
-        ...["NO_PROXY", "no_proxy"].flatMap((name) => [
+          `HOME=${home}`,
+          ...["HTTPS_PROXY", "https_proxy"].flatMap((name) => [
+            "--env",
+            `${name}=${CONTAINER_PROXY}`,
+          ]),
+          // Forwarded harness ports are local; everything else goes through the proxy.
+          ...["NO_PROXY", "no_proxy"].flatMap((name) => [
+            "--env",
+            `${name}=127.0.0.1,localhost`,
+          ]),
           "--env",
-          `${name}=127.0.0.1,localhost`,
-        ]),
-        "--env",
-        "NODE_USE_ENV_PROXY=1",
-        await sandboxImage(),
-        "node",
-        "/opt/sandbox/relay.mjs",
-        "keep",
-      ]);
+          "NODE_USE_ENV_PROXY=1",
+          image,
+          ...RELAY,
+        ],
+        // Its own process group, so the terminal's Ctrl-C doesn't stop the run's container.
+        { stdio: ["pipe", "pipe", "inherit"], detached: true },
+      );
+      for (const event of ["error", "exit"])
+        container.once(event, () => (runtime.exited = true));
+      new Mux(container.stdin, container.stdout, "host", (name, stream) => {
+        if (name === "proxy") proxy.handle(stream);
+        else if (name !== "control" || !runtime.emit("control", stream))
+          stream.destroy();
+      });
       await runtime.ready(PROXY_PORT);
       // Chrome treats a container with only loopback as offline (navigator.onLine is
       // false), so give it an interface that leads nowhere.
@@ -170,8 +187,7 @@ export class SandboxRuntime {
       "exec",
       "--detach",
       this.name,
-      "node",
-      "/opt/sandbox/relay.mjs",
+      ...RELAY,
       "forward",
       String(port),
     ]);
@@ -181,6 +197,7 @@ export class SandboxRuntime {
   private async ready(port: number) {
     const marker = path.join(this.directory, `ready-${port}`);
     for (let attempt = 0; attempt < 100; attempt++) {
+      if (this.exited) throw new Error("The sandbox container exited.");
       if (
         await access(marker).then(
           () => true,
@@ -195,7 +212,7 @@ export class SandboxRuntime {
 
   async close() {
     await exec("docker", ["rm", "--force", this.name]).catch(() => {});
-    await this.proxy.close();
+    this.proxy.close();
     await rm(this.directory, { recursive: true, force: true });
     // Symlinks and pipes the agent left could redirect or stall the harness's later writes and reads.
     for (const mount of this.mounts)

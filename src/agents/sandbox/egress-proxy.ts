@@ -1,45 +1,28 @@
 import { appendFile } from "node:fs/promises";
 import net from "node:net";
+import { Duplex } from "node:stream";
 
 /** A host the sandbox may reach: an exact name, or `*.example.com` for its subdomains. */
 export type EgressRule = { host: string; port: number };
 
 /**
- * The sandbox's only way out: an HTTP CONNECT proxy on a Unix socket that
- * tunnels to allowed hosts and logs every refusal.
+ * The sandbox's only way out: an HTTP CONNECT proxy for the container's streams
+ * that tunnels to allowed hosts and logs every refusal.
  */
 export class EgressProxy {
-  private clients = new Set<net.Socket>();
-  private server = net.createServer((client) => {
-    this.clients.add(client);
-    client.on("close", () => this.clients.delete(client));
-    this.handle(client);
-  });
+  private clients = new Set<Duplex>();
 
   constructor(
-    private socketPath: string,
     private rules: EgressRule[],
     private deniedLog: string,
   ) {}
-
-  async start() {
-    await new Promise<void>((resolve, reject) => {
-      this.server.once("error", reject);
-      this.server.listen(this.socketPath, resolve);
-    });
-  }
 
   allow(rule: EgressRule) {
     this.rules.push(rule);
   }
 
-  async close() {
-    const closed = new Promise<void>((resolve) =>
-      this.server.close(() => resolve()),
-    );
-    // A tunnel whose upstream closed first stays paused and would never close.
+  close() {
     for (const client of this.clients) client.destroy();
-    await closed;
   }
 
   private allowed(host: string, port: number) {
@@ -51,7 +34,9 @@ export class EgressProxy {
     );
   }
 
-  private handle(client: net.Socket) {
+  handle(client: Duplex) {
+    this.clients.add(client);
+    client.on("close", () => this.clients.delete(client));
     let head = Buffer.alloc(0);
     const onData = (chunk: Buffer) => {
       head = Buffer.concat([head, chunk]);
