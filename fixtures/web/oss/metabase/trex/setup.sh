@@ -151,7 +151,8 @@ export JAVA_HOME PATH TREX_JDK TREX_NODE TREX_PM
 export PGHOST=127.0.0.1 PGPORT=5432 PGUSER=postgres
 export MB_EDITION=oss INTERACTIVE=false CI=true
 export CYPRESS_INSTALL_BINARY=0 PUPPETEER_SKIP_DOWNLOAD=true PLAYWRIGHT_SKIP_BROWSER_DOWNLOAD=1
-export NODE_OPTIONS="${NODE_OPTIONS:---max-old-space-size=8192}"
+# Appended, so it overrides a smaller heap limit the VM may preset.
+export NODE_OPTIONS="${NODE_OPTIONS:-} --max-old-space-size=8192"
 unset _trex_root _trex_java _trex_nvmrc _trex_pg _trex_bun
 ACTIVATE
 } >"$PREFIX/activate"
@@ -198,22 +199,25 @@ EOF
   chmod +x "$WORK/run-metabase.sh"
 }
 
-# Writes a recipe script with the snapshot image's paths mapped to $WORK and
-# this checkout, and without su-exec (Postgres runs as this user).
+# Copies the recipe's runtime scripts to $WORK/recipe with the snapshot image's
+# paths mapped to $WORK and this checkout, and without su-exec (Postgres runs
+# as this user), then prints the copy of the script named by $1.
 recipe_file() {
-  local out="$WORK/recipe-$(basename "$1")"
-  sed -e "s|/fixture/app/|$RECIPE/runtime/|g" \
-    -e "s|/fixture/seeded-state|$WORK/seeded-state|g" \
-    -e "s|/fixture/metabase.db|$WORK/metabase.db|g" \
-    -e "s|/tmp/metabase.db|$WORK/metabase.db|g" \
-    -e "s|exec /app/run_metabase.sh|exec $WORK/run-metabase.sh|g" \
-    -e "s|/var/lib/postgresql/data|$WORK/pg|g" \
-    -e "s|/run/postgresql|$WORK/run|g" \
-    -e "s|/tmp/postgres.log|$WORK/postgres.log|g" \
-    -e "s|su-exec postgres ||g" \
-    -e "s|initdb -D|initdb -U postgres -D|g" \
-    "$RECIPE/runtime/$1" >"$out"
-  echo "$out"
+  if [ ! -d "$WORK/recipe" ]; then
+    mkdir -p "$WORK" && cp -r "$RECIPE/runtime" "$WORK/recipe"
+    find "$WORK/recipe" -name '*.sh' -exec sed -i \
+      -e "s|/fixture/app/|$WORK/recipe/|g" \
+      -e "s|/fixture/seeded-state|$WORK/seeded-state|g" \
+      -e "s|/fixture/metabase.db|$WORK/metabase.db|g" \
+      -e "s|/tmp/metabase.db|$WORK/metabase.db|g" \
+      -e "s|exec /app/run_metabase.sh|exec $WORK/run-metabase.sh|g" \
+      -e "s|/var/lib/postgresql/data|$WORK/pg|g" \
+      -e "s|/run/postgresql|$WORK/run|g" \
+      -e "s|/tmp/postgres.log|$WORK/postgres.log|g" \
+      -e "s|su-exec postgres ||g" \
+      -e "s|initdb -D|initdb -U postgres -D|g" {} +
+  fi
+  echo "$WORK/recipe/$1"
 }
 
 cmd_env() {
@@ -235,8 +239,8 @@ cmd_frontend() {
     $TREX_PM run build-release
     $TREX_PM run build-release:static-viz
   else
-    NODE_ENV=production yarn build
-    NODE_ENV=production yarn build-static-viz
+    WEBPACK_BUNDLE=production yarn build
+    WEBPACK_BUNDLE=production yarn build-static-viz
   fi
 }
 
@@ -292,7 +296,8 @@ cmd_start() {
 cmd_seed() {
   ready || cmd_start
   if [ ! -f "$WORK/seeded-state" ]; then
-    node "$RECIPE/runtime/snapshot/seed.mjs"
+    # The seed needs fetch, which the 2022 base's Node 16 lacks.
+    "$TREX_HOME/node22/bin/node" "$RECIPE/runtime/snapshot/seed.mjs"
     touch "$WORK/seeded-state"
   fi
   echo "Seeded $FIXTURE_USERNAME (password $FIXTURE_PASSWORD)"

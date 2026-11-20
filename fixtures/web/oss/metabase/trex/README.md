@@ -14,10 +14,10 @@ command pins the recipe to this checkout's commit, which must be on GitHub:
 ```bash
 sed "s/^QA_BENCH_REF=.*/QA_BENCH_REF=$(git -C "$CONFIG" rev-parse HEAD)/" "$CONFIG/setup.sh" | greptile environment setup-script set
 greptile environment setup-instructions set < "$CONFIG/instructions.md"
-greptile environment network-policy set build custom --domain '*.githubusercontent.com' --domain api.adoptium.net --domain build.shibboleth.net --domain deb.debian.org --domain download.clojure.org --domain files.pythonhosted.org --domain github.com --domain nodejs.org --domain pypi.org --domain repo.clojars.org --domain repo1.maven.org --domain s3.amazonaws.com --domain security.debian.org
-greptile environment network-policy set review custom --domain build.shibboleth.net --domain repo.clojars.org --domain repo1.maven.org --domain s3.amazonaws.com
+greptile environment network-policy set build custom --domain api.adoptium.net --domain build.shibboleth.net --domain deb.debian.org --domain download.clojure.org --domain files.pythonhosted.org --domain github.com --domain '*.githubusercontent.com' --domain nodejs.org --domain pypi.org --domain registry.yarnpkg.com --domain repo.clojars.org --domain repo1.maven.org --domain s3.amazonaws.com --domain security.debian.org
+greptile environment network-policy set review custom --domain build.shibboleth.net --domain registry.yarnpkg.com --domain repo.clojars.org --domain repo1.maven.org --domain s3.amazonaws.com
 greptile environment build --follow
 ```
 
-Custom network policies always allow `registry.npmjs.org`, which the build uses
-for JS packages. The build takes over an hour. It installs the JDK and Node versions the PR bases need, the Clojure CLI and Postgres, builds this checkout's frontend, and warms JS and Maven caches for each `codex/pr-*/base` branch.
+Custom network policies always allow `registry.npmjs.org`, but Yarn fetches
+from its default `registry.yarnpkg.com`, so both policies allow that too. The build takes over an hour. It installs the JDK and Node versions the PR bases need, the Clojure CLI and Postgres, builds this checkout's frontend, and warms JS and Maven caches for each `codex/pr-*/base` branch.

@@ -111,7 +111,8 @@ export PATH TREX_NODE
 export PGHOST=127.0.0.1 PGPORT=5432 PGUSER=postgres
 export YARN_ENABLE_TELEMETRY=0 YARN_ENABLE_PROGRESS_BARS=false NX_DAEMON=false NX_NO_CLOUD=true
 export CYPRESS_INSTALL_BINARY=0 PUPPETEER_SKIP_DOWNLOAD=true PLAYWRIGHT_SKIP_BROWSER_DOWNLOAD=1
-export NODE_OPTIONS="${NODE_OPTIONS:---max-old-space-size=8192}"
+# Appended, so it overrides a smaller heap limit the VM may preset.
+export NODE_OPTIONS="${NODE_OPTIONS:-} --max-old-space-size=8192"
 unset _trex_root _trex_nvmrc _trex_pg
 ACTIVATE
 } >"$PREFIX/activate"
@@ -144,22 +145,25 @@ ready() { curl -fs -o /dev/null --max-time 5 "$URL/healthz"; }
 # A zombie has exited; it only waits for its parent to reap it.
 alive() { kill -0 "$1" 2>/dev/null && [ "$(ps -o stat= -p "$1" | cut -c1)" != Z ]; }
 
-# Writes a recipe script with the snapshot image's paths mapped to this
-# checkout and $WORK, and without su-exec (Postgres runs as this user).
+# Copies the recipe's runtime scripts to $WORK/recipe with the snapshot image's
+# paths mapped to $WORK and this checkout, and without su-exec (Postgres runs
+# as this user), then prints the copy of the script named by $1.
 recipe_file() {
-  local out="$WORK/recipe-$(basename "$1")"
-  sed -e "s|/fixture/app/|$RECIPE/runtime/|g" \
-    -e "s|/fixture/seeded-state|$WORK/seeded-state|g" \
-    -e "s|/app/entrypoint.sh|$REPO/packages/twenty-docker/twenty/entrypoint.sh|g" \
-    -e "s|/app/|$REPO/|g" \
-    -e "s|/var/lib/postgresql/data|$WORK/pg|g" \
-    -e "s|/run/postgresql|$WORK/run|g" \
-    -e "s|/tmp/postgres.log|$WORK/postgres.log|g" \
-    -e "s|su-exec postgres ||g" \
-    -e "s|initdb -D|initdb -U postgres -D|g" \
-    -e "s|redis-server --daemonize yes|redis-server --daemonize yes --dir $WORK|g" \
-    "$RECIPE/runtime/$1" >"$out"
-  echo "$out"
+  if [ ! -d "$WORK/recipe" ]; then
+    mkdir -p "$WORK" && cp -r "$RECIPE/runtime" "$WORK/recipe"
+    find "$WORK/recipe" -name '*.sh' -exec sed -i \
+      -e "s|/fixture/app/|$WORK/recipe/|g" \
+      -e "s|/fixture/seeded-state|$WORK/seeded-state|g" \
+      -e "s|/app/entrypoint.sh|$REPO/packages/twenty-docker/twenty/entrypoint.sh|g" \
+      -e "s|/app/|$REPO/|g" \
+      -e "s|/var/lib/postgresql/data|$WORK/pg|g" \
+      -e "s|/run/postgresql|$WORK/run|g" \
+      -e "s|/tmp/postgres.log|$WORK/postgres.log|g" \
+      -e "s|su-exec postgres ||g" \
+      -e "s|initdb -D|initdb -U postgres -D|g" \
+      -e "s|redis-server --daemonize yes|redis-server --daemonize yes --dir $WORK|g" {} +
+  fi
+  echo "$WORK/recipe/$1"
 }
 
 cmd_env() {

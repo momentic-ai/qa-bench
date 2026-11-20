@@ -14,10 +14,14 @@ command pins the recipe to this checkout's commit, which must be on GitHub:
 ```bash
 sed "s/^QA_BENCH_REF=.*/QA_BENCH_REF=$(git -C "$CONFIG" rev-parse HEAD)/" "$CONFIG/setup.sh" | greptile environment setup-script set
 greptile environment setup-instructions set < "$CONFIG/instructions.md"
-greptile environment network-policy set build custom --domain deb.debian.org --domain github.com --domain nodejs.org --domain security.debian.org
-greptile environment network-policy set review custom --domain github.com
+greptile environment network-policy set build custom --domain deb.debian.org --domain github.com --domain '*.githubusercontent.com' --domain nodejs.org --domain registry.yarnpkg.com --domain security.debian.org
+greptile environment network-policy set review custom --domain github.com --domain '*.githubusercontent.com' --domain registry.yarnpkg.com
 greptile environment build --follow
 ```
 
-Custom network policies always allow `registry.npmjs.org`, which the build uses
-for JS packages. The build takes about an hour. It installs the Node versions the PR bases need, Postgres and Redis, builds this checkout, and warms the Yarn cache for each `codex/pr-*/base` branch.
+Custom network policies always allow `registry.npmjs.org`, but Yarn fetches
+from its default `registry.yarnpkg.com`, and `sharp` and `canvas` download
+prebuilt binaries from GitHub releases during `yarn install`, so both policies
+allow those too. The build takes about an hour. It installs the Node versions
+the PR bases need, Postgres and Redis, builds this checkout, and warms the Yarn
+cache for each `codex/pr-*/base` branch.
