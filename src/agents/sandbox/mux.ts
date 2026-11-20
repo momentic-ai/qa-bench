@@ -4,14 +4,25 @@ const OPEN = 0;
 const DATA = 1;
 const END = 2;
 const RESET = 3;
+const CREDIT = 4;
 const HEADER = 9;
+// Bytes a stream may send that its reader hasn't consumed yet.
+const WINDOW = 1 << 20;
+
+type Channel = {
+  stream: Duplex;
+  receive(data: Buffer): void;
+  grant(bytes: number): void;
+};
 
 /**
  * Named byte streams over one pipe pair, such as `docker run -i`'s stdin and
  * stdout. Each frame is a type, a stream id and a length-prefixed payload.
+ * Each side returns credit as its reader consumes data, so a slow reader
+ * stalls only its own stream's sender.
  */
 export class Mux {
-  private streams = new Map<number, Duplex>();
+  private streams = new Map<number, Channel>();
   private pending = Buffer.alloc(0);
   private nextId: number;
 
@@ -27,7 +38,7 @@ export class Mux {
     output.on("error", () => {});
     input.on("data", (chunk: Buffer) => this.receive(chunk));
     input.on("close", () => {
-      for (const stream of this.streams.values()) stream.destroy();
+      for (const { stream } of this.streams.values()) stream.destroy();
     });
   }
 
@@ -40,11 +51,26 @@ export class Mux {
   }
 
   private stream(id: number) {
+    let credit = WINDOW;
+    let owed = 0;
+    let blocked: (() => void) | undefined;
     const stream: Duplex = new Duplex({
-      read() {},
+      // Node calls this when the reader wants more data.
+      read: () => {
+        if (owed < WINDOW / 2) return;
+        const bytes = Buffer.alloc(4);
+        bytes.writeUInt32BE(owed);
+        owed = 0;
+        this.send(CREDIT, id, bytes);
+      },
       write: (chunk: Buffer, _encoding, done) => {
-        if (this.send(DATA, id, chunk)) done();
-        else this.output.once("drain", () => done());
+        const send = () => {
+          credit -= chunk.length;
+          if (this.send(DATA, id, chunk)) done();
+          else this.output.once("drain", () => done());
+        };
+        if (credit > 0) send();
+        else blocked = send;
       },
       final: (done) => {
         this.send(END, id);
@@ -60,7 +86,20 @@ export class Mux {
         done(err);
       },
     });
-    this.streams.set(id, stream);
+    this.streams.set(id, {
+      stream,
+      receive: (data) => {
+        owed += data.length;
+        stream.push(data);
+      },
+      grant: (bytes) => {
+        credit += bytes;
+        if (credit <= 0 || !blocked) return;
+        const send = blocked;
+        blocked = undefined;
+        send();
+      },
+    });
     return stream;
   }
 
@@ -85,13 +124,15 @@ export class Mux {
         this.onStream(payload.toString(), this.stream(id));
         continue;
       }
-      const stream = this.streams.get(id);
-      if (!stream) continue;
-      if (type === DATA) stream.push(payload);
-      else if (type === END) stream.push(null);
+      const channel = this.streams.get(id);
+      if (!channel) continue;
+      if (type === DATA) channel.receive(payload);
+      else if (type === CREDIT) {
+        if (length === 4) channel.grant(payload.readUInt32BE(0));
+      } else if (type === END) channel.stream.push(null);
       else {
         this.streams.delete(id);
-        stream.destroy();
+        channel.stream.destroy();
       }
     }
   }
