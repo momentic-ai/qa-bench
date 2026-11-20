@@ -81,8 +81,15 @@ export class SandboxRuntime extends EventEmitter {
       for (const folder of [home, ...readOnly])
         await mkdir(folder, { recursive: true });
       const user =
-        process.getuid && process.getgid
-          ? ["--user", `${process.getuid()}:${process.getgid()}`]
+        process.getuid && process.getgid && process.getgroups
+          ? [
+              "--user",
+              `${process.getuid()}:${process.getgid()}`,
+              // The host user's other groups, which may be what lets it write the run's folders.
+              ...process
+                .getgroups()
+                .flatMap((group) => ["--group-add", String(group)]),
+            ]
           : [];
       const image = await sandboxImage();
       const container = spawn(
@@ -178,6 +185,9 @@ export class SandboxRuntime extends EventEmitter {
           HOME: process.env.HOME,
           DOCKER_HOST: process.env.DOCKER_HOST,
           DOCKER_CONTEXT: process.env.DOCKER_CONTEXT,
+          DOCKER_CONFIG: process.env.DOCKER_CONFIG,
+          DOCKER_CERT_PATH: process.env.DOCKER_CERT_PATH,
+          DOCKER_TLS_VERIFY: process.env.DOCKER_TLS_VERIFY,
           ...env,
         },
         stdio: ["ignore", "inherit", "inherit"],
