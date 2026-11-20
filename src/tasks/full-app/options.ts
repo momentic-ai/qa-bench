@@ -91,7 +91,7 @@ export function parseFullAppOptions(args: string[]): FullAppOptions {
   }
   if (values["prevent-cheating"])
     process.stderr.write(
-      "--prevent-cheating is no longer needed: Codex and Claude Code runs always stay off the web.\n",
+      "--prevent-cheating is no longer needed: Codex and Claude Code runs always block answer sites.\n",
     );
   if (values["record-bugs"]) {
     if (

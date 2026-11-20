@@ -181,7 +181,8 @@ The [sandbox](#sandbox) refuses them for the agent's shell and local Chromium,
 Playwright MCP refuses them too, and Browserbase pages are limited to the fixture host.
 Codex web search is off, and Claude Code omits WebSearch and WebFetch. Agents
 are told some sites are blocked and record flows that need one as coverage
-limitations. `merge` labels saved runs from before this as `open web`.
+limitations. `merge` labels saved runs from before the sandbox `open web`, or
+`prevent-cheating` if they used that old flag.
 
 Shared agent-browser sessions are kept alive across disconnects. Browserbase sessions get the requested time budget plus two minutes, up to the provider's six-hour limit.
 

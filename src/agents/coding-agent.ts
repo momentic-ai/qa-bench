@@ -80,8 +80,8 @@ export abstract class CodingAgent implements EvalAgent {
         ...(browserTool === "playwright-mcp"
           ? { subagents: browser !== "local" }
           : {}),
-        // Saved runs without it could browse the open web; merge labels them apart.
-        preventCheating: true,
+        // Saved runs without it ran outside the sandbox; merge labels them apart.
+        sandbox: true,
         ...(recordBugs ? { recordBugs } : {}),
       },
       validateEnvironment: async () => {
