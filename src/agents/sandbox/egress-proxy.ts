@@ -1,3 +1,4 @@
+import type { LookupAddress } from "node:dns";
 import { lookup } from "node:dns/promises";
 import { appendFile } from "node:fs/promises";
 import net from "node:net";
@@ -108,7 +109,7 @@ export class EgressProxy {
     );
   }
 
-  /** The address to connect to, or undefined to refuse. */
+  /** A rule host's name, the checked addresses of any other host, or undefined to refuse. */
   private async resolve(host: string, port: number) {
     if (this.ruleAllows(host, port)) return host;
     if (net.isIP(host) || this.blocked.some((domain) => domain.test(host)))
@@ -121,8 +122,7 @@ export class EgressProxy {
       )
     )
       return undefined;
-    // The checked address, so a second lookup can't return a private one.
-    return addresses[0].address;
+    return addresses;
   }
 
   /** Resolves false, after reporting it, when the write fails. */
@@ -156,9 +156,9 @@ export class EgressProxy {
         .toLowerCase()
         .replace(/\.+$/, "");
       const port = request?.port ?? 0;
-      let address: string | undefined;
+      let target: string | LookupAddress[] | undefined;
       try {
-        address =
+        target =
           host && port > 0 && port < 65_536
             ? await this.resolve(host, port)
             : undefined;
@@ -167,7 +167,7 @@ export class EgressProxy {
         return;
       }
       if (client.destroyed) return;
-      if (!request || !host || !address) {
+      if (!request || !host || !target) {
         void this.log(this.logs.denied, line);
         client.end("HTTP/1.1 403 Forbidden\r\nContent-Length: 0\r\n\r\n");
         return;
@@ -179,20 +179,44 @@ export class EgressProxy {
           (written) => written || this.logged.delete(key),
         );
       }
-      const upstream = net.connect(port, address, () => {
-        if (request.forward) upstream.write(request.forward);
-        else client.write("HTTP/1.1 200 Connection Established\r\n\r\n");
-        const rest = head.subarray(end + 4);
-        if (rest.length) upstream.write(rest);
-        client.pipe(upstream).pipe(client);
+      const checked = target;
+      let connected = false;
+      const upstream = net.connect(
+        {
+          port,
+          host,
+          // Only the checked addresses, so a second lookup can't return a private one.
+          lookup:
+            typeof checked === "string"
+              ? undefined
+              : (_name, _options, callback) => callback(null, checked),
+          autoSelectFamily: true,
+          timeout: 30_000,
+        },
+        () => {
+          connected = true;
+          upstream.setTimeout(0);
+          if (request.forward) upstream.write(request.forward);
+          else client.write("HTTP/1.1 200 Connection Established\r\n\r\n");
+          const rest = head.subarray(end + 4);
+          if (rest.length) upstream.write(rest);
+          client.pipe(upstream).pipe(client);
+        },
+      );
+      const fail = () => {
+        client.destroy();
+        upstream.destroy();
+      };
+      upstream.on("timeout", () =>
+        upstream.destroy(new Error("Connection timed out")),
+      );
+      upstream.on("error", () => {
+        if (connected) return fail();
+        upstream.destroy();
+        client.end("HTTP/1.1 502 Bad Gateway\r\nContent-Length: 0\r\n\r\n");
       });
+      client.on("error", fail);
       client.on("close", () => upstream.destroy());
-      for (const socket of [client, upstream]) {
-        socket.on("error", () => {
-          client.destroy();
-          upstream.destroy();
-        });
-      }
     };
     client.on("data", onData);
     client.on("error", () => client.destroy());
