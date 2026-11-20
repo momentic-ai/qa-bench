@@ -196,7 +196,8 @@ export class SandboxRuntime extends EventEmitter {
 
   private async ready(port: number) {
     const marker = path.join(this.directory, `ready-${port}`);
-    for (let attempt = 0; attempt < 100; attempt++) {
+    // Startup can take several seconds on a loaded machine.
+    for (const deadline = Date.now() + 60_000; Date.now() < deadline; ) {
       if (this.exited) throw new Error("The sandbox container exited.");
       if (
         await access(marker).then(
