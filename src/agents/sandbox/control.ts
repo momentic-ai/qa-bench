@@ -44,11 +44,15 @@ export const ReplySchema = z.union([
   z.object({ completed: z.literal(true), error: z.string().optional() }),
 ]);
 
-/** Messages are JSON lines. */
+/** Messages are JSON lines. A line that can't be handled ends the channel. */
 export function onMessage(socket: Duplex, handle: (message: unknown) => void) {
-  createInterface({ input: socket }).on("line", (line) =>
-    handle(JSON.parse(line)),
-  );
+  createInterface({ input: socket }).on("line", (line) => {
+    try {
+      handle(JSON.parse(line));
+    } catch (err) {
+      socket.destroy(err instanceof Error ? err : new Error(String(err)));
+    }
+  });
 }
 
 export function sendMessage(socket: Duplex, message: unknown) {

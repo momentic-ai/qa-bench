@@ -65,5 +65,7 @@ onMessage(socket, async (message) => {
     sendMessage(socket, { id: request.id, result });
   } catch (err) {
     sendMessage(socket, { id: request.id, error: errorMessage(err) });
+  } finally {
+    if (request.method !== "start") signals.delete(request.id);
   }
 });
