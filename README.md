@@ -62,9 +62,9 @@ where they are invalid.
 ## Run it
 
 You need Node.js 22.12+, pnpm, and an [E2B](https://e2b.dev) account. Codex
-and Claude Code runs also need [Docker](https://docs.docker.com/get-docker/);
-the first run builds their [sandbox image](#sandbox). Build the E2B templates
-once per E2B org. Twenty needs the larger one.
+and Claude Code runs also need [Docker](https://docs.docker.com/get-docker/), not
+in rootless mode; the first run builds their [sandbox image](#sandbox). Build
+the E2B templates once per E2B org. Twenty needs the larger one.
 
 ```bash
 pnpm install

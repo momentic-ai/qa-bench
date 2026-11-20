@@ -1,7 +1,8 @@
-import { spawn } from "node:child_process";
+import { execFile, spawn } from "node:child_process";
 import { createHash } from "node:crypto";
 import { readFile, readdir, stat } from "node:fs/promises";
 import path from "node:path";
+import { promisify } from "node:util";
 
 const REPO_ROOT = path.resolve(import.meta.dirname, "../../..");
 
@@ -58,6 +59,18 @@ function docker(args: string[], stdio: "ignore" | "inherit") {
 
 /** Builds the sandbox image if this checkout's version of it doesn't exist yet. */
 export async function ensureSandboxImage() {
+  const { stdout } = await promisify(execFile)("docker", [
+    "info",
+    "--format",
+    "{{json .SecurityOptions}}",
+  ]).catch((err: unknown) => {
+    throw new Error(
+      `Docker is required for Codex and Claude Code runs: ${err}`,
+    );
+  });
+  // Rootless Docker maps the container's user to a subordinate UID that can't write the run's folders.
+  if (stdout.includes("name=rootless"))
+    throw new Error("Codex and Claude Code runs need Docker in rootful mode.");
   const image = await sandboxImage();
   if ((await docker(["image", "inspect", image], "ignore")) === 0) return;
   process.stderr.write(`Building ${image}; this happens once per change.\n`);
