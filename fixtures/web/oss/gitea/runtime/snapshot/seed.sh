@@ -1,7 +1,7 @@
 #!/bin/sh
 set -eu
-export USER=git
-export GITEA_CUSTOM=/data/gitea
+# GITEA_DATA, GITEA_RUN_USER and GITEA_LOCAL_URL default to the snapshot image's layout.
+data=${GITEA_DATA:-/data}
 
 database_type=$(curl --fail --silent --show-error --max-time 30 "$FIXTURE_URL/" | sed -n 's/.*name="db_type"[^>]*value="\([^"]*\)".*/\1/p')
 if [ -z "$database_type" ]; then
@@ -11,16 +11,16 @@ fi
 curl --fail --silent --show-error --max-time 60 \
   --data-urlencode "db_type=$database_type" \
   --data-urlencode charset=utf8 \
-  --data-urlencode db_path=/data/gitea/gitea.db \
+  --data-urlencode "db_path=$data/gitea/gitea.db" \
   --data-urlencode 'app_name=Harbor Engineering' \
-  --data-urlencode repo_root_path=/data/git/repositories \
-  --data-urlencode lfs_root_path=/data/git/lfs \
-  --data-urlencode run_user=git \
+  --data-urlencode "repo_root_path=$data/git/repositories" \
+  --data-urlencode "lfs_root_path=$data/git/lfs" \
+  --data-urlencode "run_user=${GITEA_RUN_USER:-git}" \
   --data-urlencode "domain=$FIXTURE_HOST" \
   --data-urlencode "http_port=$FIXTURE_PORT" \
   --data-urlencode ssh_port=0 \
   --data-urlencode "app_url=$FIXTURE_URL/" \
-  --data-urlencode log_root_path=/data/gitea/log \
+  --data-urlencode "log_root_path=$data/gitea/log" \
   --data-urlencode offline_mode=on \
   --data-urlencode disable_gravatar=on \
   --data-urlencode disable_registration=on \
@@ -32,7 +32,7 @@ curl --fail --silent --show-error --max-time 60 \
   --data-urlencode admin_email=admin@example.test \
   "$FIXTURE_URL/" > /dev/null
 attempt=0
-until [ "$(curl --fail --silent --connect-timeout 2 --max-time 5 --user "$FIXTURE_USERNAME:$FIXTURE_PASSWORD" --output /tmp/gitea-user.json --write-out '%{http_code}' http://localhost:3000/api/v1/user)" = 200 ]; do
+until [ "$(curl --fail --silent --connect-timeout 2 --max-time 5 --user "$FIXTURE_USERNAME:$FIXTURE_PASSWORD" --output /tmp/gitea-user.json --write-out '%{http_code}' "${GITEA_LOCAL_URL:-http://localhost:3000}/api/v1/user")" = 200 ]; do
   attempt=$((attempt + 1))
   if [ "$attempt" -ge 30 ]; then
     echo 'Gitea account was not ready after 30 checks.' >&2
