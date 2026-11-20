@@ -24,26 +24,35 @@ async function listen(
 // Opens a tunnel to the host's 127.0.0.1:<port> with the proxy's CONNECT.
 function tunnel(port: number) {
   return (client: net.Socket) => {
-    client.pause();
     const upstream = net.connect(PROXY_PORT, "127.0.0.1");
     upstream.write(
       `CONNECT 127.0.0.1:${port} HTTP/1.1\r\nHost: 127.0.0.1:${port}\r\n\r\n`,
     );
+    // Reads the client until the tunnel is up, so a hangup is seen and cancels it.
+    const early: Buffer[] = [];
+    const hold = (chunk: Buffer) => early.push(chunk);
+    const cancel = () => {
+      client.destroy();
+      upstream.destroy();
+    };
+    client.on("data", hold);
+    client.once("end", cancel);
     let head = Buffer.alloc(0);
     const onData = (chunk: Buffer) => {
       head = Buffer.concat([head, chunk]);
       const end = head.indexOf("\r\n\r\n");
       if (end === -1) return;
       upstream.off("data", onData);
+      client.off("data", hold);
+      client.off("end", cancel);
       if (!/^HTTP\/1\.[01] 200/.test(head.toString("latin1"))) {
-        client.destroy();
-        upstream.destroy();
+        cancel();
         return;
       }
       const rest = head.subarray(end + 4);
       if (rest.length) client.write(rest);
+      for (const chunk of early) upstream.write(chunk);
       pipeBoth(client, upstream);
-      client.resume();
     };
     upstream.on("data", onData);
     upstream.on("error", () => client.destroy());

@@ -13,6 +13,7 @@ import {
   browserCostError,
   browserbaseSessionCost,
 } from "../browser-cost";
+import { pipeBoth } from "../sandbox/mux";
 
 const SessionSchema = z.object({
   id: z.string(),
@@ -181,17 +182,25 @@ export class BrowserbaseSessions {
     for (const socket of [client, upstream]) {
       this.relays.add(socket);
       socket.on("close", () => this.relays.delete(socket));
-      socket.on("error", () => {
-        client.destroy();
-        upstream.destroy();
-      });
     }
+    // Reads the client until TLS is up, so a hangup is seen and cancels the connection.
+    const early = [head];
+    const hold = (chunk: Buffer) => early.push(chunk);
+    const cancel = () => {
+      client.destroy();
+      upstream.destroy();
+    };
+    client.on("data", hold);
+    client.once("end", cancel);
+    for (const socket of [client, upstream]) socket.on("error", cancel);
     upstream.once("secureConnect", () => {
+      client.off("data", hold);
+      client.off("end", cancel);
       upstream.write(
         `GET ${target.pathname}${target.search} HTTP/1.1\r\nHost: ${target.host}\r\n${headers.join("\r\n")}\r\n\r\n`,
       );
-      if (head.length) upstream.write(head);
-      client.pipe(upstream).pipe(client);
+      for (const chunk of early) if (chunk.length) upstream.write(chunk);
+      pipeBoth(client, upstream);
     });
   }
 
