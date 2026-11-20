@@ -12,6 +12,7 @@ curl --fail --silent --show-error --max-time 60 \
   --data-urlencode "db_type=$database_type" \
   --data-urlencode charset=utf8 \
   --data-urlencode db_path=/data/gitea/gitea.db \
+  --data-urlencode app_data_path=/data/gitea \
   --data-urlencode 'app_name=Harbor Engineering' \
   --data-urlencode repo_root_path=/data/git/repositories \
   --data-urlencode lfs_root_path=/data/git/lfs \
