@@ -12,6 +12,10 @@ RECIPE_TGZ_B64=
 GO_VERSIONS="1.17.13 1.19.13 1.24.6 1.26.6 1.27.3"
 NODE_VERSIONS="16.20.2 22.16.0 24.22.1"
 REPO_ROOT=$(pwd)
+# Greptile stops the setup script after 30 minutes, so warming stops starting new
+# bases after this many seconds and leaves the rest to build on demand.
+WARM_BUDGET=${TREX_WARM_BUDGET:-1440}
+SETUP_START=$(date +%s)
 
 echo "== system"
 uname -a
@@ -190,7 +194,8 @@ cmd_stop() {
   local pid
   pid=$(cat "$WORK/grafana.pid" 2>/dev/null || true)
   if [ -n "$pid" ] && kill "$pid" 2>/dev/null; then
-    for _ in $(seq 1 30); do alive "$pid" || break; sleep 1; done
+    for _ in $(seq 1 60); do alive "$pid" || break; sleep 1; done
+    if alive "$pid"; then kill -9 "$pid" 2>/dev/null || true; sleep 1; fi
     if alive "$pid"; then echo "Grafana (pid $pid) did not stop" >&2; exit 1; fi
   fi
   rm -f "$WORK/grafana.pid"
@@ -294,6 +299,10 @@ if [ "${TREX_SKIP_WARM:-}" != 1 ]; then
     '+refs/heads/codex/*/base:refs/remotes/origin/codex/*/base'
   results=() failed=0
   for ref in $(git for-each-ref --format='%(refname:short)' 'refs/remotes/origin/codex/*/base'); do
+    if [ $(($(date +%s) - SETUP_START)) -ge "$WARM_BUDGET" ]; then
+      results+=("skip $ref")
+      continue
+    fi
     name=$(echo "$ref" | tr '/' '-')
     dir="$PREFIX/warm/$name"
     rm -rf "$dir"

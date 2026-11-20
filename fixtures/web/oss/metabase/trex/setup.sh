@@ -11,6 +11,10 @@ JDK_MAJORS="11 21 25"
 NODE_VERSIONS="16.20.2 18.20.8 22.23.2"
 CLOJURE_VERSION=1.12.0.1488
 REPO_ROOT=$(pwd)
+# Greptile stops the setup script after 30 minutes, so warming stops starting new
+# bases after this many seconds and leaves the rest to build on demand.
+WARM_BUDGET=${TREX_WARM_BUDGET:-1440}
+SETUP_START=$(date +%s)
 
 echo "== system"
 uname -a
@@ -367,6 +371,10 @@ if [ "${TREX_SKIP_WARM:-}" != 1 ]; then
     '+refs/heads/codex/*/base:refs/remotes/origin/codex/*/base'
   results=() failed=0
   for ref in $(git for-each-ref --format='%(refname:short)' 'refs/remotes/origin/codex/*/base'); do
+    if [ $(($(date +%s) - SETUP_START)) -ge "$WARM_BUDGET" ]; then
+      results+=("skip $ref")
+      continue
+    fi
     name=$(echo "$ref" | tr '/' '-')
     dir="$PREFIX/warm/$name"
     rm -rf "$dir"

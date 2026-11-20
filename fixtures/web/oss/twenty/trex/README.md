@@ -22,6 +22,9 @@ greptile environment build --follow
 Custom network policies always allow `registry.npmjs.org`, but Yarn fetches
 from its default `registry.yarnpkg.com`, and `sharp` and `canvas` download
 prebuilt binaries from GitHub releases during `yarn install`, so both policies
-allow those too. The build takes about an hour. It installs the Node versions
-the PR bases need, Postgres and Redis, builds this checkout, and warms the Yarn
-cache for each `codex/pr-*/base` branch.
+allow those too.
+
+Greptile stops the setup script after 30 minutes. The script installs the Node
+versions the PR bases need, Postgres and Redis, builds and smoke-tests this
+checkout, then warms the Yarn cache for `codex/pr-*/base` branches until 24
+minutes have passed. Bases it skips install on demand.

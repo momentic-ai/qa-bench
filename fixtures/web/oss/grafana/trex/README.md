@@ -22,4 +22,9 @@ greptile environment build --follow
 ```
 
 Custom network policies always allow `registry.npmjs.org`, but Yarn fetches
-from its default `registry.yarnpkg.com`, so both policies allow that too. The build takes over an hour. It installs every Go and Node version the PR bases need, builds this checkout, and warms Yarn and Go build caches for each `codex/pr-*/base` branch.
+from its default `registry.yarnpkg.com`, so both policies allow that too.
+
+Greptile stops the setup script after 30 minutes. The script installs every Go
+and Node version the PR bases need, builds and smoke-tests this checkout, then
+warms Yarn and Go build caches for `codex/pr-*/base` branches until 24 minutes
+have passed. Bases it skips build on demand.

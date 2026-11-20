@@ -9,6 +9,10 @@ QA_BENCH_REF=main
 
 NODE_VERSIONS="18.20.8 24.16.0 26.12.1"
 REPO_ROOT=$(pwd)
+# Greptile stops the setup script after 30 minutes, so warming stops starting new
+# bases after this many seconds and leaves the rest to build on demand.
+WARM_BUDGET=${TREX_WARM_BUDGET:-1440}
+SETUP_START=$(date +%s)
 
 echo "== system"
 uname -a
@@ -159,6 +163,7 @@ recipe_file() {
       -e "s|/var/lib/postgresql/data|$WORK/pg|g" \
       -e "s|/run/postgresql|$WORK/run|g" \
       -e "s|/tmp/postgres.log|$WORK/postgres.log|g" \
+      -e "s|su-exec postgres psql|command psql|g" \
       -e "s|su-exec postgres ||g" \
       -e "s|initdb -D|initdb -U postgres -D|g" \
       -e "s|redis-server --daemonize yes|redis-server --daemonize yes --dir $WORK|g" {} +
@@ -306,6 +311,10 @@ if [ "${TREX_SKIP_WARM:-}" != 1 ]; then
     '+refs/heads/codex/*/base:refs/remotes/origin/codex/*/base'
   results=() failed=0
   for ref in $(git for-each-ref --format='%(refname:short)' 'refs/remotes/origin/codex/*/base'); do
+    if [ $(($(date +%s) - SETUP_START)) -ge "$WARM_BUDGET" ]; then
+      results+=("skip $ref")
+      continue
+    fi
     name=$(echo "$ref" | tr '/' '-')
     dir="$PREFIX/warm/$name"
     rm -rf "$dir"
