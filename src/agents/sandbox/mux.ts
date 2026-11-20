@@ -65,13 +65,19 @@ export class Mux {
         this.send(CREDIT, id, bytes);
       },
       write: (chunk: Buffer, _encoding, done) => {
-        const send = () => {
-          credit -= chunk.length;
-          if (this.send(DATA, id, chunk)) done();
-          else this.output.once("drain", () => done());
+        // Sends what the credit covers, then waits for more.
+        const next = (offset: number) => {
+          if (offset === chunk.length) return done();
+          if (credit <= 0) {
+            blocked = () => next(offset);
+            return;
+          }
+          const part = chunk.subarray(offset, offset + credit);
+          credit -= part.length;
+          if (this.send(DATA, id, part)) next(offset + part.length);
+          else this.output.once("drain", () => next(offset + part.length));
         };
-        if (credit > 0) send();
-        else blocked = send;
+        next(0);
       },
       final: (done) => {
         this.send(END, id);
