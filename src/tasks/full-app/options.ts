@@ -48,6 +48,7 @@ export function parseFullAppOptions(args: string[]): FullAppOptions {
       "grade-only": { type: "boolean", default: false },
       "run-id": { type: "string", multiple: true },
       browser: { type: "string" },
+      "prevent-cheating": { type: "boolean", default: false },
       "record-bugs": { type: "boolean", default: false },
     },
     strict: true,
@@ -88,6 +89,10 @@ export function parseFullAppOptions(args: string[]): FullAppOptions {
       claudeModel = parseModel(CLAUDE_MODELS, values.model);
     else throw new Error("--model applies only to Codex and Claude agents.");
   }
+  if (values["prevent-cheating"])
+    process.stderr.write(
+      "--prevent-cheating is no longer needed: Codex and Claude Code runs always stay off the web.\n",
+    );
   if (values["record-bugs"]) {
     if (
       !values.agent?.startsWith("codex-") &&
