@@ -105,6 +105,8 @@ ${credentials}
   );
   return {
     PATH: `${path.join(root, "node_modules/.bin")}${path.delimiter}${process.env.PATH || ""}`,
+    // Also stops e2e's daily update check against the npm registry.
+    E2E_TELEMETRY_DISABLED: "1",
     ...Object.fromEntries(
       accounts.map(({ name, password }) => [passwordVariable(name), password]),
     ),

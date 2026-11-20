@@ -1,4 +1,4 @@
-import { mkdir, rm } from "node:fs/promises";
+import { mkdir, rm, writeFile } from "node:fs/promises";
 import { createRequire } from "node:module";
 import path from "node:path";
 import { z } from "zod";
@@ -64,6 +64,11 @@ export class CodexAgent extends CodingAgent {
   ) {
     const { workspace } = this;
     await mkdir(this.codexHome, { recursive: true });
+    // Codex syncs its plugin catalog from GitHub and chatgpt.com at startup, which the egress proxy refuses.
+    await writeFile(
+      path.join(this.codexHome, "config.toml"),
+      "[features]\nplugins = false\n",
+    );
     // The container's environment, including its proxy settings.
     const env = { ...process.env, ...setup.env, CODEX_HOME: this.codexHome };
     await loginCodexWithApiKey(
