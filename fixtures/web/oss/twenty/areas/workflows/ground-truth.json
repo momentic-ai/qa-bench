@@ -2092,6 +2092,186 @@
         "Observe the left branch hidden behind the details panel; pan the canvas to reveal the nodes."
       ],
       "severity": 1
+    },
+    {
+      "name": "Typed task due date is omitted from workflow output",
+      "summary": "Entering 11/20/2026 in a Create Record task's Due Date field leaves that date displayed in configuration, but testing creates the task with dueAt null. The title and In progress status are returned correctly.",
+      "expected": "The entered due date is used for the task, or incomplete date/time input is clearly rejected before execution.",
+      "actual": "The configuration displays 11/20/2026, but output shows dueAt null while title QA-Action Task Output and status IN_PROGRESS are correct. The output assertion confirmed dueAt null.",
+      "reproSteps": [
+        "Create a fresh QA-Action workflow with a manual trigger and Create Record action for Tasks.",
+        "Enter title QA-Action Task Output and select In progress status.",
+        "Click Due Date, type 11/20/2026, press Enter and click outside; verify the date remains displayed. Leave the time unspecified.",
+        "Enter body QA-Action task body and test the workflow.",
+        "Open the Create Record execution output and inspect dueAt."
+      ],
+      "severity": 3
+    },
+    {
+      "name": "Updating a version view does not retain the displayed ascending sort",
+      "summary": "Clicking 'Update view' after setting Name sort to ascending fails with 'Migration execution failed', leaving the update button visible and reverting the view to descending sort upon refresh",
+      "expected": "Clicking 'Update view' saves the ascending Name sort without error, retaining the v1, v2, v3 order after refresh.",
+      "actual": "A 'Migration execution failed.' toast appears upon clicking 'Update view', the change is not saved, and after refreshing the view displays a descending Name sort chip with rows v3, v2, v1.",
+      "reproSteps": [
+        [
+          "Create a fresh QA-Version workflow with a manual trigger and Code action; activate three snapshots by changing action input between activations.",
+          "In Workflow Versions, create a fresh QA-Version view.",
+          "Group by Workflow and add the new workflow using New group search.",
+          "Choose Sort > Name, toggle to descending and Update view.",
+          "Choose Sort > Name again to display ascending order v1, v2, v3.",
+          "Click Update view and wait; the update button remains.",
+          "Refresh and inspect the Name sort chip and displayed order."
+        ],
+        [
+          "In Apple workspace generate distinct Runs-prefixed runs including Runs QA Delay and Runs QA Success.",
+          "Filter names to Runs QA and save a new run view named Runs QA Browse; group by Workflow run status.",
+          "Add Name sorting from Sort and click its chip to switch to descending; verify Failed group shows Runs QA Success before Runs QA Delay.",
+          "Click Update view and wait; it remains visible. Reload the view and see sorting removed.",
+          "Repeat adding descending Name sorting and clicking Update view; the pending-change button still remains after waiting."
+        ]
+      ],
+      "severity": 3
+    },
+    {
+      "name": "Workflow form field label reverts after reload",
+      "summary": "Editing a Form text field label to Mobile comment updates the preview, but re-selecting Text in the Type dropdown resets the preview to Text and reloading preserves that reset.",
+      "expected": "Re-selecting the current Text type should retain the custom label in the preview and settings, including after reload.",
+      "actual": "Re-selecting Text resets the preview label to Text while the Label input still shows Mobile comment; after reload the label is Text.",
+      "reproSteps": [
+        "At 390px width, create a workflow with Launch manually trigger and a Form action.",
+        "Add a text field, open its Input settings, replace the Label with Mobile comment, and blur it.",
+        "Observe Mobile comment in the preview.",
+        "Open Type and re-select the already-selected Text option; observe the preview reset to Text while Label still reads Mobile comment.",
+        "Reload the workflow and reopen Form; observe Text instead of Mobile comment."
+      ],
+      "severity": 3
+    },
+    {
+      "name": "Update Record cannot clear a selected email field",
+      "summary": "With Emails explicitly selected in Update Record and Primary Email blank, testing fails with “Failed to update: No fields to update.” The input record already has a saved email address.",
+      "expected": "An explicitly selected email field can be cleared on the existing Person, or the configuration explains how to clear it before running.",
+      "actual": "The run fails with “Failed to update: No fields to update” despite Emails being selected.",
+      "reproSteps": [
+        "/objects/workflows",
+        "As Tim Apple, create a fresh manual workflow.",
+        "Add Create or Update Record for People with first name QA-D2, last name Workflow Mapping and primary email qa-data-d2@example.com; test to create a Person.",
+        "Add Update Record for People targeting the preceding Person dynamic output.",
+        "Select Emails under Fields to update and leave Primary Email empty.",
+        "Test and inspect the failed Update Record output."
+      ],
+      "severity": 3
+    },
+    {
+      "name": "Tablet versions table cannot scroll to the full Runs column",
+      "summary": "At 768×1024, the workflow Versions table clips the rightmost Runs column. Horizontal scrolling over the table does not reveal the hidden portion.",
+      "expected": "Horizontal scrolling reveals the entire rightmost table column and its relation controls.",
+      "actual": "Runs chips remain cut off at the viewport edge after horizontal scroll attempts. A whole-page multimodal check confirmed clipping and no visible horizontal scrollbar or alternative horizontal navigation control. Read-only inspection showed table scroll width 827 versus 768 viewport and scrollLeft remaining 0.",
+      "reproSteps": [
+        "/objects/workflowVersions",
+        "Set viewport to 768×1024 and open Workflow Versions.",
+        "Inspect the rightmost Runs column, containing run relation chips.",
+        "Scroll horizontally right over table content, including near its bottom.",
+        "Inspect the unchanged clipped Runs column."
+      ],
+      "severity": 3
+    },
+    {
+      "name": "Update Record cannot remove a task status with No Status",
+      "summary": "Selecting Status to update and leaving its explicit No Status option fails with No fields to update on a Task created In progress.",
+      "expected": "No Status removes the existing Task status.",
+      "actual": "Update fails with Failed to update: No fields to update.",
+      "reproSteps": [
+        "/objects/workflows",
+        "Create manual workflow with Create or Update Record Tasks title QA-D2 Task mapping 20261102 and Status In progress.",
+        "Add Update Record Tasks using preceding Task output.",
+        "Select Status field and No Status value.",
+        "Test and inspect Update Record output."
+      ],
+      "severity": 3
+    },
+    {
+      "name": "Discard Draft cannot recover a restored workflow",
+      "summary": "Clicking Discard Draft has no effect, leaving the workflow in Draft status with only the manual trigger.",
+      "expected": "Clicking Discard Draft removes the draft (or prompts a confirmation dialog) and updates the workflow state.",
+      "actual": "Clicking Discard Draft produces no response: the Draft badge and Discard Draft button persist, and the canvas remains unchanged without any dialog or error message.",
+      "reproSteps": [
+        "/objects/workflows",
+        "Create manual-trigger workflow with Delay, activate and deactivate.",
+        "Delete Delay in a draft, then discard the draft.",
+        "Delete and restore the workflow; refresh to reveal revived Draft with only manual trigger.",
+        "Click Discard Draft and inspect the settled editor."
+      ],
+      "severity": 3
+    },
+    {
+      "name": "Send Email attachment remove button is covered by the body editor",
+      "summary": "With CC, BCC and In-Reply-To expanded, clicking the attachment's x leaves the file attached and focuses the body editor instead.",
+      "expected": "The attachment x removes the selected file.",
+      "actual": "qa-core-attachment.txt remains listed after repeated clicks. A page-wide AI check confirms the file is still configured; the visible x position instead receives focus in the body editor.",
+      "reproSteps": [
+        "/objects/workflows",
+        "Open a Send Email action with subject and body; add CC, BCC and In-Reply-To via Advanced options.",
+        "Upload a controlled text file qa-core-attachment.txt and refresh to confirm persistence.",
+        "Click the x on the attachment chip."
+      ],
+      "severity": 3
+    },
+    {
+      "name": "Invalid custom cron disappears without validation feedback",
+      "summary": "Replacing a valid five-minute custom cron with not-a-cron and clicking the trigger clears the expression and upcoming preview without explaining the invalid input.",
+      "expected": "Invalid cron input is rejected with understandable validation feedback, allowing correction without silently clearing the schedule.",
+      "actual": "The entered not-a-cron disappears; the field shows the gray 0 */1 * * * placeholder and the upcoming execution panel disappears. A whole-page AI assertion confirmed no validation message; targeted read-only inspection confirms the textbox is empty.",
+      "reproSteps": [
+        "/objects/workflows",
+        "Create a disposable workflow, choose On a schedule and Cron (Custom).",
+        "Select all in Expression, type */5 * * * *, click the trigger and confirm every 5 minutes preview.",
+        "Select all Expression text and replace it with not-a-cron.",
+        "Click the On a schedule trigger node."
+      ],
+      "severity": 3
+    },
+    {
+      "name": "Iterator ends with an error when its loop contains If/else",
+      "summary": "Testing an Iterator containing If/else and a one-second Delay executes the matching branch but leaves Iterator failed with “Workflow has been ended before this step was completed.” The run is labeled Completed.",
+      "expected": "The Iterator completes its single item successfully and reports all items processed.",
+      "actual": "Iterator shows red X, hasProcessedAllItems=false and error Workflow has been ended before this step was completed, although If/else and Delay succeed and run status says Completed.",
+      "reproSteps": [
+        "/objects/workflows",
+        "Create manual workflow and add Iterator with alpha item.",
+        "Add If/else in loop and set Iterator Current Item Is alpha.",
+        "Refresh to expose branch placeholders; add Delay 1 second on If branch.",
+        "Click Test and wait for completion.",
+        "Open run and select Iterator to inspect Output."
+      ],
+      "severity": 3
+    },
+    {
+      "name": "Draft Email Body editor covers Upload file when CC, BCC and In-Reply-To are shown",
+      "summary": "At 1440×900 with CC, BCC and In-Reply-To visible, the Body editor's area extends over the Attachments Upload file button. Clicking Upload file focuses Body and no file chooser opens.",
+      "expected": "Clicking Upload file opens a file chooser so the user can attach a file.",
+      "actual": "The click lands on the Body editor (the focused element is the ProseMirror Body), and no file chooser opens. The elementFromPoint check at the button's center returns the Body contenteditable, so the editor is sitting on top of the button.",
+      "reproSteps": [
+        "Use the saved signed-in session and a 1440×900 viewport.",
+        "Open /object/workflow/f6619506-8f18-4462-92b0-3b453041431c",
+        "Click the Draft Email node. Its settings already show To, CC, BCC and In-Reply-To.",
+        "Click Upload file under Attachments at the bottom of the panel.",
+        "Observe that Body gets focus and no file chooser opens."
+      ],
+      "severity": 3
+    },
+    {
+      "name": "Number form accepts Infinity but saves null",
+      "summary": "Entering Infinity into a Number form field leaves Submit enabled; the completed form output silently contains null instead of the entered value.",
+      "expected": "Reject unsupported non-finite numeric input with validation rather than completing and silently replacing it with null.",
+      "actual": "Submit remains enabled for Infinity. Run completes; qaQuantity output is null. A whole-page multimodal assertion confirmed null output and no validation error or warning.",
+      "reproSteps": [
+        "/object/workflow/c95c78b4-48d2-56f6-8e15-36ff8572f1d8",
+        "Duplicate Quick Lead into a unique QA workflow in Apple workspace.",
+        "Open Quick Lead Form, add a Number field and name it QA Quantity.",
+        "Test Workflow and enter Infinity into QA Quantity.",
+        "Submit, then open Quick Lead Form output in the completed test."
+      ],
+      "severity": 3
     }
   ]
 }

@@ -964,6 +964,183 @@
         "Observe that the state is back to Open and the search box is empty."
       ],
       "severity": 3
+    },
+    {
+      "name": "Switching issue trackers resets contributor-only time tracking",
+      "summary": "A built-in tracker saved with 'Let Only Contributors Track Time' unchecked returns with that option checked after switching to an external tracker and back. The previously saved time-tracking access configuration is silently changed.",
+      "expected": "Returning to the built-in tracker retains the saved unchecked contributor-only restriction rather than silently changing time-tracking access.",
+      "actual": "Let Only Contributors Track Time is checked after returning to the built-in tracker, although it had been saved unchecked before switching.",
+      "reproSteps": [
+        "As repository owner, create a disposable public repository and open Settings > Advanced Settings.",
+        "Keep built-in issue tracker and time tracking enabled. Uncheck Let Only Contributors Track Time, save and read it back.",
+        "Select Use External Issue Tracker; enter https://example.com/ as URL and https://example.com/?user={user}&repo={repo}&issue={index} as URL format, choose Numeric and save.",
+        "Select Use Built-In Issue Tracker again without changing time tracking options; save.",
+        "Reopen issue settings and inspect Let Only Contributors Track Time."
+      ],
+      "severity": 3
+    },
+    {
+      "name": "Closing an issue leaves another user's timer running",
+      "summary": "Alex's timer remains active after eval closes the issue. Returning as Alex shows the closed issue with Stop timer and Discard timer still available, despite the start banner promising automatic stopping when the issue closes.",
+      "expected": "Closing the issue stops its running timers, as advertised by the timer-start banner.",
+      "actual": "The issue is Closed but Alex's timer continues: the global elapsed timer remains and the menu offers Stop timer and Discard timer.",
+      "reproSteps": [
+        "As eval, open the repository Issues list and create a disposable issue.",
+        "As alex in another authorized session, open that issue and choose Time Tracker > Start timer.",
+        "As eval, open the same issue and click Close Issue.",
+        "As alex, return to the closed issue and open the Time Tracker menu."
+      ],
+      "severity": 3
+    },
+    {
+      "name": "Clearing enhancement records removal of documentation instead",
+      "summary": "Clearing the sole enhancement label correctly empties the sidebar, but the activity log says eval removed the documentation label.",
+      "expected": "The activity records removal of enhancement, the label that was actually cleared.",
+      "actual": "Sidebar becomes No Label, but latest activity says eval removed the documentation label. The multimodal assertion confirms that log text.",
+      "reproSteps": [
+        "/eval/harbor-handbook/issues",
+        "As eval owner create an isolated QA-SIDEBAR issue with documentation label, then close it.",
+        "Add enhancement as a second label; refresh.",
+        "Deselect documentation and refresh; verify enhancement is the only sidebar label.",
+        "Open Labels and click Clear labels; dismiss dropdown and refresh.",
+        "Read the latest label activity."
+      ],
+      "severity": 3
+    },
+    {
+      "name": "Deleting another user's time log attributes deletion to the log owner",
+      "summary": "When eval deletes alex's 11-minute time log, the issue activity says “alex deleted spent time.” The misleading actor persists after refresh even though eval performed and confirmed the deletion.",
+      "expected": "Deletion activity identifies eval, the user who deleted the log, while removing alex's time contribution.",
+      "actual": "The time contribution is removed correctly, but the activity identifies alex as the deleting user: “alex deleted spent time”.",
+      "reproSteps": [
+        "/eval/harbor-handbook/issues",
+        "Create an isolated QA-TIME issue in eval/harbor-handbook.",
+        "As alex, open the issue Time Tracker menu, choose Add Time and save 11 minutes.",
+        "Switch to eval, open the same issue and delete alex's 11-minute time log using its trash button and Confirm.",
+        "Inspect deletion activity and refresh."
+      ],
+      "severity": 3
+    },
+    {
+      "name": "Canceling an issue edit after a tracker switch shows a raw attachment error",
+      "summary": "An issue editor left open while the repository switches to external tracking displays a red JSON parsing error when Cancel is clicked. The original body is retained, but the message is an internal exception rather than an explanation of the tracker change.",
+      "expected": "Cancel discards the edit without a raw parsing exception; if the issue surface is no longer available, provide understandable feedback or redirect to the configured tracker.",
+      "actual": "A red banner says: Failed to load attachments: SyntaxError: Unexpected token 'N', \"Not found.\" is not valid JSON.",
+      "reproSteps": [
+        "/eval/QA-SETTINGS-VALIDATION/issues/1",
+        "Use a disposable repository with a built-in issue, not active seeded repositories. During observation, numeric/alphanumeric/regex Markdown previews were exercised before Cancel; final mode was regexp ISSUE-([0-9]+). No attachments were present.",
+        "As repository owner, enable built-in tracking on a disposable repository and open an existing issue.",
+        "Edit the issue body and leave the editor open.",
+        "In another tab, switch that repository to external tracking with a valid URL and save.",
+        "Return to the original issue editor, preview Markdown, then click Cancel."
+      ],
+      "severity": 5
+    },
+    {
+      "name": "Clicking an issue label resets global search mode",
+      "summary": "A Fuzzy search for ALPHA GLOBAL finds the documentation-labeled QA-GLOBAL-ALPHA-1031 issue. Clicking its documentation label changes the search to Exact and replaces the matching result with No results.",
+      "expected": "Adding the label filter should preserve Fuzzy search and keep the labeled matching issue visible.",
+      "actual": "Search mode changes to Exact and the list shows No results with zero open issues. Whole-page assertion confirmed no results anywhere on the page.",
+      "reproSteps": [
+        "/issues",
+        "Create an open issue titled QA-GLOBAL-ALPHA-1031 in an accessible repository with an existing documentation label.",
+        "Open global Issues, select Fuzzy search mode and submit ALPHA GLOBAL.",
+        "Click the documentation label on the matching issue row."
+      ],
+      "severity": 3
+    },
+    {
+      "name": "Numeric external tracker references are not linked in README",
+      "summary": "With the external issue tracker number format set to Numeric #1234, a README containing '#123' renders the issue reference as plain text rather than a link to the external issue tracker.",
+      "expected": "The numeric issue reference '#123' in README.md should render as a link to the configured external issue tracker URL.",
+      "actual": "'#123' renders as plain text without a link.",
+      "reproSteps": [
+        "As eval, create a disposable initialized repository.",
+        "Edit README.md to contain 'Numeric #123.', 'Alphanumeric TASK-456.', and 'Other ISSUE-789.' in separate paragraphs and commit.",
+        "Open repository Settings, enable external issue tracker; use URL https://example.com/ and format https://example.com/{user}/{repo}/issues/{index}.",
+        "Select Numeric #1234 and save Advanced Settings.",
+        "Open the saved README and inspect #123."
+      ],
+      "severity": 3
+    },
+    {
+      "name": "Revoked time tracking access displays a JSON parsing error",
+      "summary": "Submitting an already-open Add Time dialog after contributor-only tracking is enabled shows a raw network/JSON parsing error instead of an understandable permission message.",
+      "expected": "The addition is denied with a clear message that time tracking is restricted to contributors.",
+      "actual": "A red banner says “Network error: SyntaxError: Unexpected token 'N', \"Not found.\" is not valid JSON”; the dialog remains open. Total stays 1 hour 20 minutes.",
+      "reproSteps": [
+        "/eval/mo-tracker-settings-1031/settings",
+        "In public disposable repo eval/mo-tracker-settings-1031, disable Let Only Contributors Track Time and save as eval.",
+        "As alex, verify public issue access and unavailable repository settings, then open issue #1 Add Time and enter 7 minutes without submitting.",
+        "In another tab as eval, enable Let Only Contributors Track Time and save.",
+        "Restore alex session in the second tab, return to the stale Add Time dialog and submit."
+      ],
+      "severity": 5
+    },
+    {
+      "name": "Stale dependency submission opens a raw error page",
+      "summary": "Adding a dependency from an issue tab loaded before dependencies were disabled results in a bare CanCreateIssueDependencies error page.",
+      "expected": "Reject adding the dependency with user-friendly feedback on a usable issue page.",
+      "actual": "The page is replaced with a blank white screen showing only 'CanCreateIssueDependencies'.",
+      "reproSteps": [
+        "/eval/mo-tracker-settings-1031/settings",
+        "As eval with dependencies enabled, open issue #1 and select issue #4 Tracker stale dependency target in Add dependency without submitting.",
+        "In another tab disable Enable Dependencies For Issues and Pull Requests and save settings.",
+        "Return to the stale issue tab and click the dependency plus button."
+      ],
+      "severity": 5
+    },
+    {
+      "name": "Sorting global issues removes the selected label filter",
+      "summary": "Selecting Newest from the Sort dropdown on a label-filtered global issues list clears the filter and displays all open issues.",
+      "expected": "Sorting by Newest updates the sort order while retaining the active label filter.",
+      "actual": "Selecting Newest navigates to an unfiltered list showing all 17 open issues, including unlabeled ones.",
+      "reproSteps": [
+        "/issues",
+        "Open global Issues as eval with open issues both with and without the documentation label.",
+        "Click a documentation label in an issue row (tested QA LISTS Alpha release 731).",
+        "Verify only documentation-labeled issues remain.",
+        "Open Sort and select Newest (also observed with Oldest)."
+      ],
+      "severity": 3
+    },
+    {
+      "name": "Discard timer saves elapsed time instead of discarding it",
+      "summary": "Choosing Discard timer creates a worked-for-16-seconds log and sets Total Time Spent to 16 seconds on an issue with no prior tracked time.",
+      "expected": "Discard timer stops the current session without adding elapsed time to tracked time, distinct from Stop timer.",
+      "actual": "The timer stops but a “worked for 16 seconds” log is created and Total Time Spent becomes 16 seconds.",
+      "reproSteps": [
+        "/eval/harbor-handbook/issues",
+        "As eval create disposable QA-TIME issues B and C and make B depend on C.",
+        "Start timer on C, then start timer on B.",
+        "Try Close Issue on B; it is rejected because C is open and timer remains running.",
+        "Open Time Tracker gear and choose Discard timer."
+      ],
+      "severity": 3
+    },
+    {
+      "name": "Repository issue search is case-sensitive",
+      "summary": "Searching MoList-1959 on repository Issues returns Alpha (#6) and Beta (#8), but searching molist-1959 returns 0 Open, 0 Closed, No results.",
+      "expected": "Searching for title text finds the same issues no matter how the letters are capitalized.",
+      "actual": "The lowercase query molist-1959 returned \"No results\" with 0 Open and 0 Closed.",
+      "reproSteps": [
+        "Signed in as eval (saved session), open /eval/harbor-handbook/issues?q=MoList-1959. Both open issues are listed: #8 MoList-1959 Beta and #6 MoList-1959 Alpha.",
+        "In the search box, type molist-1959 and press Enter.",
+        "Result: 0 Open, 0 Closed, No results."
+      ],
+      "severity": 3
+    },
+    {
+      "name": "Five-digit due date year is discarded without validation feedback",
+      "summary": "Submitting 10000-01-01 in an issue's Due Date field reloads the page, clears the entered date, leaves \"No due date set.\", and shows no visible validation or confirmation message.",
+      "expected": "Save the entered date or display a clear validation error for the unsupported year without silently discarding the input.",
+      "actual": "After submitting 01/01/10000 and reloading, the Due Date input clears to mm/dd/yyyy, the sidebar still reads \"No due date set.\", and no validation error or confirmation message is visible in the viewport.",
+      "reproSteps": [
+        "Sign in as eval and create a disposable issue with no due date; this was tested on a closed issue.",
+        "Enter 10000-01-01 in Due Date and click the plus button.",
+        "Inspect the date field and page feedback."
+      ],
+      "severity": 3
     }
   ]
 }
