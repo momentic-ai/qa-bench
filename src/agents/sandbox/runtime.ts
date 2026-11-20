@@ -116,10 +116,9 @@ export class SandboxRuntime extends EventEmitter {
           `${directory}:${CONTAINER_DIRECTORY}`,
           "--env",
           `HOME=${home}`,
-          ...["HTTPS_PROXY", "https_proxy"].flatMap((name) => [
-            "--env",
-            `${name}=${CONTAINER_PROXY}`,
-          ]),
+          ...["HTTP_PROXY", "http_proxy", "HTTPS_PROXY", "https_proxy"].flatMap(
+            (name) => ["--env", `${name}=${CONTAINER_PROXY}`],
+          ),
           // Forwarded harness ports are local; everything else goes through the proxy.
           ...["NO_PROXY", "no_proxy"].flatMap((name) => [
             "--env",

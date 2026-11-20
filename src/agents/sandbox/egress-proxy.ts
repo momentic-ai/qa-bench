@@ -33,7 +33,37 @@ for (const [address, prefix] of [
   PRIVATE.addSubnet(address, prefix, "ipv6");
 
 /**
- * The sandbox's only way out: an HTTP CONNECT proxy for the container's streams.
+ * A CONNECT request's destination, or a plain-HTTP request's destination and
+ * the head to send it, in origin form.
+ */
+function proxyRequest(head: Buffer) {
+  const [line, ...headers] = head.toString("latin1").split("\r\n");
+  const connect = /^CONNECT ([^\s:]+|\[[^\]]+\]):(\d+) HTTP\/1\.[01]$/.exec(
+    line,
+  );
+  if (connect) return { host: connect[1], port: Number(connect[2]) };
+  const plain = /^([A-Z]+) (http:\/\/\S+) HTTP\/1\.[01]$/.exec(line);
+  const url = plain && URL.parse(plain[2]);
+  if (!plain || !url) return undefined;
+  const forward = [
+    `${plain[1]} ${url.pathname}${url.search} HTTP/1.1`,
+    ...headers.filter(
+      (header) => !/^(proxy-connection|connection|keep-alive):/i.test(header),
+    ),
+    // One request per connection: a later one would reach this host whatever it names.
+    "Connection: close",
+    "",
+    "",
+  ].join("\r\n");
+  return {
+    host: url.hostname,
+    port: Number(url.port) || 80,
+    forward: Buffer.from(forward, "latin1"),
+  };
+}
+
+/**
+ * The sandbox's only way out: an HTTP proxy for the container's streams.
  * It tunnels to public hosts except the `blocked` domains, and to `rules` hosts.
  * Other bare IP addresses are refused, so a blocked site can't be reached by address.
  * It logs each allowed host once and every refusal.
@@ -92,9 +122,7 @@ export class EgressProxy {
   }
 
   private log(file: string, line: string) {
-    void appendFile(file, `${new Date().toISOString()} ${line}\n`).catch(
-      () => {},
-    );
+    return appendFile(file, `${new Date().toISOString()} ${line}\n`);
   }
 
   handle(client: Duplex) {
@@ -111,33 +139,38 @@ export class EgressProxy {
       client.off("data", onData);
       client.pause();
       const line = head.subarray(0, head.indexOf("\r\n")).toString("latin1");
-      const match = /^CONNECT ([^\s:]+|\[[^\]]+\]):(\d+) HTTP\/1\.[01]$/.exec(
-        line,
-      );
-      const host = match?.[1]
+      const request = proxyRequest(head.subarray(0, end));
+      const host = request?.host
         .replace(/^\[|\]$/g, "")
         .toLowerCase()
         .replace(/\.+$/, "");
-      const port = Number(match?.[2]);
+      const port = request?.port ?? 0;
       let address: string | undefined;
       try {
-        address = host ? await this.resolve(host, port) : undefined;
+        address =
+          host && port > 0 && port < 65_536
+            ? await this.resolve(host, port)
+            : undefined;
       } catch {
         client.end("HTTP/1.1 502 Bad Gateway\r\nContent-Length: 0\r\n\r\n");
         return;
       }
       if (client.destroyed) return;
-      if (!host || !address) {
-        this.log(this.logs.denied, line);
+      if (!request || !host || !address) {
+        void this.log(this.logs.denied, line).catch(() => {});
         client.end("HTTP/1.1 403 Forbidden\r\nContent-Length: 0\r\n\r\n");
         return;
       }
-      if (!this.logged.has(`${host}:${port}`)) {
-        this.logged.add(`${host}:${port}`);
-        this.log(this.logs.allowed, `${host}:${port}`);
+      const key = `${host}:${port}`;
+      if (!this.logged.has(key)) {
+        this.logged.add(key);
+        void this.log(this.logs.allowed, key).catch(() =>
+          this.logged.delete(key),
+        );
       }
       const upstream = net.connect(port, address, () => {
-        client.write("HTTP/1.1 200 Connection Established\r\n\r\n");
+        if (request.forward) upstream.write(request.forward);
+        else client.write("HTTP/1.1 200 Connection Established\r\n\r\n");
         const rest = head.subarray(end + 4);
         if (rest.length) upstream.write(rest);
         client.pipe(upstream).pipe(client);
