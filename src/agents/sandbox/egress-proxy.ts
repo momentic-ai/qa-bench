@@ -48,8 +48,11 @@ function proxyRequest(head: Buffer) {
   const forward = [
     `${plain[1]} ${url.pathname}${url.search} HTTP/1.1`,
     ...headers.filter(
-      (header) => !/^(proxy-connection|connection|keep-alive):/i.test(header),
+      (header) =>
+        !/^(host|proxy-connection|connection|keep-alive):/i.test(header),
     ),
+    // The checked host, so a shared CDN address can't be asked for a blocked site.
+    `Host: ${url.host}`,
     // One request per connection: a later one would reach this host whatever it names.
     "Connection: close",
     "",
