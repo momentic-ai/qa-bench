@@ -853,6 +853,87 @@
         "Observe the URL now has search_mode=exact and 'No matching results found' is shown."
       ],
       "severity": 3
+    },
+    {
+      "name": "Renaming a branch to an existing namespace opens a server error page",
+      "summary": "Renaming a QA branch to qa-branches-1031 while qa-branches-1031/nested exists replaces the repository screen with 500 Internal Server Error and a Git fatal-error message.",
+      "expected": "Reject the conflicting name with understandable validation in the branch workflow, preserving the original branch and allowing correction.",
+      "actual": "A 500 Internal Server Error page appears, with RenameBranch exit status 128 and a fatal branch rename failure saying refs/heads/qa-branches-1031/nested exists and refs/heads/qa-branches-1031 cannot be created.",
+      "reproSteps": [
+        "/eval/harbor-handbook",
+        "As Harbor Admin create unique QA branches under a common prefix, such as qa-branches-1031/nested and qa-branches-1031/hash#percent%26.",
+        "In Branches, rename the second branch to the common prefix qa-branches-1031.",
+        "Click Confirm."
+      ],
+      "severity": 5
+    },
+    {
+      "name": "Apply patch rejects a valid new-file diff",
+      "summary": "Applying a two-file patch in Gitea Apply Patch that creates qa-upload/patch-added.txt and updates qa-upload/mo-upload-note.txt fails with \"new file qa-upload/patch-added.txt depends on old contents\".",
+      "expected": "Committing the two-file patch creates qa-upload/patch-added.txt and updates qa-upload/mo-upload-note.txt.",
+      "actual": "The page displays Unable to apply patch \"Error: Stdout: Stderr: error: new file qa-upload/patch-added.txt depends on old contents Err: exit status 128\".",
+      "reproSteps": [
+        "Open repository as eval and create a unique branch from main.",
+        "Upload qa-upload/mo-upload-note.txt containing three lines: Upload workflow fixture; Version: two; Unicode: café — harbor.",
+        "Open Add File > Apply Patch.",
+        "Paste a standard Git diff creating qa-upload/patch-added.txt with new file mode 100644, --- /dev/null, +++ b/qa-upload/patch-added.txt and @@ -0,0 +1,2 @@ adding Created via patch and Second line. Append an existing-file diff changing Version: two to Version: three.",
+        "Enter Apply multi-file patch as summary, enable Signed-off-by, and commit."
+      ],
+      "severity": 3
+    },
+    {
+      "name": "Unchanged CRLF file shows every line as changed in preview",
+      "summary": "Opening a CRLF text file and selecting Preview Changes without editing displays all three unchanged lines as deleted and added. The Commit Changes button remains disabled because no edit was made.",
+      "expected": "An unchanged file should report no changes in its preview.",
+      "actual": "The preview displays three deleted and three added lines with identical text despite no edits.",
+      "reproSteps": [
+        "/eval/harbor-handbook",
+        "Existing fixture: qa-web-child-0720/qa-web-crlf-0720.txt, seeded with First CRLF marker 0720, Second CRLF marker 0720, Third CRLF marker 0720; all terminate in CRLF. Read-only Raw verification found 3 CRLF and 0 lone LF before opening editor.",
+        "On a unique QA branch, upload a small text file containing three CRLF-terminated lines.",
+        "Open the file and choose Edit File.",
+        "Without changing filename or content, select Preview Changes."
+      ],
+      "severity": 3
+    },
+    {
+      "name": "Code search ignores the selected repository branch",
+      "summary": "With branch docs/release-owners selected, searching for 'release captain' via Search code reports no matches even though docs/releases.md on that branch visibly contains the phrase.",
+      "expected": "Searching code while a branch is selected finds matching content on that branch, or clearly indicates and allows changing the searched branch.",
+      "actual": "The search results page displays 'No matching results found.' for 'release captain' with no branch selector or scope indicator, failing to find the content visible on docs/release-owners.",
+      "reproSteps": [
+        "Open harbor-handbook Code and choose docs/release-owners from the branch selector.",
+        "Open docs/releases.md and observe 'The release captain coordinates the checklist.'",
+        "Return to the Code tab, which retains docs/release-owners.",
+        "Search for release captain using Search code."
+      ],
+      "severity": 3
+    },
+    {
+      "name": "Editing one CRLF line converts the entire saved file to LF",
+      "summary": "Appending ' edited' to the first line of a three-line CRLF file results in a commit diff showing three additions and three deletions instead of modifying only the edited line.",
+      "expected": "Editing only the first line should produce a commit diff affecting only that line.",
+      "actual": "The commit diff reports 3 additions and 3 deletions, showing all three lines (including unchanged lines 2 and 3) as removed and added.",
+      "reproSteps": [
+        "/eval/harbor-handbook",
+        "Fixture qa-web-child-0720/qa-web-crlf-0720.txt. Initial CRLF version commit df16f8b2f37dd8c1a7fc0 (full link available in history); affected saved commit 26b1e16d20603aa2063709de57cdd5f22ec583ac. Upload was only fixture setup. This is saved normalization, distinct from the already reported unchanged preview symptom.",
+        "Upload a three-line CRLF text file on a disposable QA branch.",
+        "Open Edit File and append ' edited' to the first line only.",
+        "Commit directly and open the resulting commit diff."
+      ],
+      "severity": 3
+    },
+    {
+      "name": "Reapplying a binary addition patch creates an empty commit",
+      "summary": "Applying the same binary new-file patch twice creates a second commit despite making no file changes. The new commit page says “Diff Content Not Available.”",
+      "expected": "The repeated new-file patch should reject the existing file or indicate there are no new changes, without adding an empty commit.",
+      "actual": "A new Apply Patch commit is created whose parent is the original binary-addition commit. Its page displays Diff Content Not Available; a whole-page assertion confirmed no changed files are listed.",
+      "reproSteps": [
+        "As eval, create an isolated qa-patch-* branch.",
+        "Generate a Git binary addition patch for a 21-byte file containing NUL bytes and apply it through Apply Patch.",
+        "Reopen Apply Patch on the same branch and paste the identical addition patch again.",
+        "Click Commit Changes and inspect the resulting new commit."
+      ],
+      "severity": 3
     }
   ]
 }

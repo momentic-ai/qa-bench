@@ -1839,6 +1839,92 @@
         "Return to the second tab, click Save and keep Replace original question selected, then Save.",
         "Reload the question and inspect title and row count."
       ]
+    },
+    {
+      "name": "Editing saved SQL clears an unchanged parameter value",
+      "summary": "Adding a harmless SQL comment to a saved parameterized query clears Qa Title from “Rustic Paper Wallet” to blank. Rerunning then fails with missing required parameter qa_title instead of returning the same product.",
+      "expected": "Adding a comment while leaving the variable unchanged retains its current value; rerunning returns ID 1 and Rustic Paper Wallet.",
+      "actual": "Qa Title becomes blank. Query displays “Cannot run the query: missing required parameters: #{\"qa_title\"}” and Showing 0 rows. Multimodal assertion confirmed the parameter input was blank and no ID 1 result remained.",
+      "reproSteps": [
+        "/",
+        "Sign in and create New > SQL query using Sample Database.",
+        "Enter SELECT ID, TITLE FROM PRODUCTS WHERE TITLE = {{qa_title}}; and set Qa Title to Rustic Paper Wallet.",
+        "Run and verify ID 1, Rustic Paper Wallet; save under a unique QA-SQL name.",
+        "Refresh saved question, confirm parameter and result, and open editor.",
+        "Place cursor at start and insert /* QA */ without deleting existing SQL or changing the parameter.",
+        "Run with Control+Enter."
+      ],
+      "severity": 3
+    },
+    {
+      "name": "SQL rerun ignores deleted optional-clause brackets",
+      "summary": "Deleting the closing ]] in an already-run SQL template changes the visible editor, but rerunning still returns BASE 7 as if the original valid query were intact.",
+      "expected": "Run uses the SQL currently visible in the editor; the unmatched optional-clause delimiter should produce an error rather than successfully running the query.",
+      "actual": "The editor displays 'SELECT 7 AS BASE [[, {{qa_optional}} AS OPTIONAL_VALUE' with unmatched brackets, but rerunning the query returns a successful table with BASE 7 and no error.",
+      "reproSteps": [
+        "/",
+        "As Harbor Admin, choose New > SQL query with Sample Database.",
+        "Enter SELECT 7 AS BASE [[, {{qa_optional}} AS OPTIONAL_VALUE]] and run with Qa Optional empty.",
+        "Focus the editor, move to the end and press Backspace twice to remove closing ]].",
+        "Click Run query, then rerun again after the result settles."
+      ],
+      "severity": 3
+    },
+    {
+      "name": "Single-value search parameter accepts a second selection but keeps the first value",
+      "summary": "With Search box and 'A single value' selected, choosing Negative while Seven is selected adds a second chip, and clicking Update filter retains Seven and result 7.",
+      "expected": "A single-value search box should replace Seven with Negative (or prevent adding a second chip) and update the filter to the selected value.",
+      "actual": "The search box popover accepts both Seven and Negative chips simultaneously, and clicking Update filter keeps Seven with result 7 unchanged.",
+      "reproSteps": [
+        "/",
+        "As Harbor, create a new SQL question on Sample Database with SELECT {{order_id}} AS chosen_id;",
+        "Set order_id type Number, default 0, and enable Always require a value.",
+        "Choose Dropdown list, Edit, Custom list; enter separate lines 0,Zero; 7,Seven; -12.5,Negative and click Done.",
+        "Keep A single value selected. Select Seven in top parameter widget, Update filter and run; observe 7.",
+        "Switch widget mode to Search box. Open parameter widget and select Negative while Seven remains selected.",
+        "Click Update filter and run. Observe Seven and result 7; popover can display both Seven and Negative chips."
+      ],
+      "severity": 3
+    },
+    {
+      "name": "SQL date range disagrees with the data reference sidebar",
+      "summary": "Running MIN/MAX on Orders.Created_at returns years 2025–2029 while the same field's data reference says 2022–2026. The times and month/day match but both boundary years differ by three.",
+      "expected": "The date range shown for Orders.CREATED_AT agrees with MIN/MAX of that field, or clearly indicates that it is stale.",
+      "actual": "Results show April 30, 2025, 6:56 PM and April 19, 2029, 2:07 PM; sidebar shows April 30, 2022, 6:56 PM and April 19, 2026, 2:07 PM.",
+      "reproSteps": [
+        "/",
+        "Sign in and choose New > SQL query > Sample Database.",
+        "Open Orders in the data reference sidebar, then CREATED_AT.",
+        "Enter SELECT MIN(created_at) AS earliest_date, MAX(created_at) AS latest_date FROM orders; and run it.",
+        "Compare query results with Earliest date and Latest date in the CREATED_AT sidebar."
+      ],
+      "severity": 3
+    },
+    {
+      "name": "Reversed numeric range silently swaps minimum and maximum",
+      "summary": "Entering Discount minimum 10 and maximum 1 applies a different range, 1 through 10. Reopening shows the swapped values and the query returns 1,845 matching orders rather than retaining or rejecting the entered bounds.",
+      "expected": "Reject an invalid minimum greater than maximum with validation, or preserve the entered bounds rather than silently changing the minimum and maximum.",
+      "actual": "The applied chip reads Discount is between 1 and 10, returns 1,845 rows, and reopening shows Min 1 and Max 10.",
+      "reproSteps": [
+        "Open Sample Database Orders in the query builder.",
+        "Add or edit Discount with Between operator.",
+        "Enter 10 in Min and 1 in Max.",
+        "Apply the filter and reopen its chip."
+      ],
+      "severity": 3
+    },
+    {
+      "name": "Run shortcut executes empty SQL despite disabled Run button",
+      "summary": "Clearing all SQL disables Run and Save, but Ctrl+Enter still submits the empty editor. It replaces successful results with “Only SELECT statements are allowed in a native query.”",
+      "expected": "The Run keyboard shortcut respects the disabled state and does not submit empty SQL.",
+      "actual": "An empty query is executed and results are replaced by An error occurred in your query / Only SELECT statements are allowed in a native query.",
+      "reproSteps": [
+        "As Harbor Admin open New > SQL query, choose Sample Database, and run a valid SELECT query.",
+        "Focus the SQL editor, select all text and delete it.",
+        "Observe the disabled Run button and placeholder SELECT * FROM TABLE_NAME.",
+        "Press Ctrl+Enter while the editor is empty."
+      ],
+      "severity": 3
     }
   ]
 }

@@ -2272,6 +2272,166 @@
         "Submit, then open Quick Lead Form output in the completed test."
       ],
       "severity": 3
+    },
+    {
+      "name": "Expanding Create Record Notes body crashes the configuration panel",
+      "summary": "At 768×1000, clicking the expand icon on the Body field of a Create Record (Notes) action replaces the panel with the “Sorry, something went wrong” error boundary instead of opening an expanded editor.",
+      "expected": "The body opens in an expanded editor and stays editable.",
+      "actual": "The panel shows “Sorry, something went wrong”, “Please refresh the page.” and a Reload button. The console logs TypeError: Cannot read properties of undefined (reading 'children') in useNavigateSettings.",
+      "reproSteps": [
+        "Sign in with the reporter's saved session and set the viewport to 768×1000.",
+        "Open /object/workflow/c462e020-0baa-428a-a9f4-efa1cb228063 (a duplicated draft workflow).",
+        "Click the Create Record action, which has Object Notes, Title QA-TABLET Output and Body Tablet workflow output check.",
+        "Click the expand icon at the top-right of the Body field (about 707,251 CSS)."
+      ],
+      "severity": 5
+    },
+    {
+      "name": "Workflow import replaces mapped Active status with Draft",
+      "summary": "A CSV row mapped to Active shows [\"ACTIVE\"] in Validate Data, but after confirming import its workflow shows Draft, including after refresh.",
+      "expected": "The imported Statuses should match the mapped values shown in Validate Data, or the importer should clearly reject unsupported status values.",
+      "actual": "Both imported workflows show Draft. The row previewed as [\"ACTIVE\"] still shows Draft after refresh; the multimodal assertion confirmed the row shows Draft rather than Active.",
+      "reproSteps": [
+        "/objects/workflows",
+        "Open Workflows in the Apple workspace as Tim Apple and choose Command Menu > Import Workflows.",
+        "Upload a CSV with columns Workflow Title, Extra, Statuses and fresh rows QA Import Map A,ignore me,Draft and QA Import Map B,ignored too,Active.",
+        "Map Workflow Title to Name and Extra to Do not import. Retain Statuses mapping and verify Draft maps to Draft and Active to Active.",
+        "Choose Next Step, then Back, verify mappings remain, and choose Next Step again. Validate Data shows A with [\"DRAFT\"] and B with [\"ACTIVE\"].",
+        "Confirm import and inspect the new workflows, then refresh."
+      ],
+      "severity": 3
+    },
+    {
+      "name": "Changing Select to Multi-Select leaves a stale label in input settings",
+      "summary": "After changing a saved Select field labeled 'QA Task Choice' to Multi-Select, the form preview reads 'Multi-Select' while the Label setting still reads 'QA Task Choice'.",
+      "expected": "The preview label and Label setting agree after changing type, whether the custom label is retained or reset.",
+      "actual": "The preview label becomes Multi-Select, but the Label setting continues to show QA Task Choice.",
+      "reproSteps": [
+        "/object/workflow/c95c78b4-48d2-56f6-8e15-36ff8572f1d8",
+        "Open Quick Lead in the Apple workspace and use Command Menu > Duplicate Workflow; name the copy uniquely.",
+        "If duplicate nodes overlap, use Command Menu > Tidy up Workflow, then open Quick Lead Form.",
+        "Add Field, choose Type Select, choose Field Task > Status, and replace Label with QA Task Choice.",
+        "Refresh and reopen the form field; verify the saved label and Select type.",
+        "Change Type to Multi-Select and inspect the preview label and Label setting."
+      ],
+      "severity": 3
+    },
+    {
+      "name": "Workflow activates with an unfinished trigger condition",
+      "summary": "A Record is created or updated workflow can be activated while its condition still reads “Select a field / Is / Enter value.” The unfinished rule remains visible in the Active workflow without validation feedback.",
+      "expected": "Activation should identify the incomplete condition and require completing/removing it, rather than leave an unfinished rule on an Active workflow.",
+      "actual": "Workflow becomes Active with Select a field / Is / Enter value still present. A whole-page multimodal assertion confirmed there is no validation warning or error.",
+      "reproSteps": [
+        "/objects/workflows",
+        "Create a fresh QA workflow as Desktop1440.",
+        "Choose Record is created or updated with Record Type Workflows.",
+        "Click Add first filter and leave both field and value unset.",
+        "Add Search Records with Object Workflows as a harmless action.",
+        "Click Activate in the header (opening Command Menu made it visible in this fixture).",
+        "Reopen the trigger configuration."
+      ],
+      "severity": 3
+    },
+    {
+      "name": "Import validation row checkboxes cannot select rows for removal",
+      "summary": "Clicking the checkbox beside an invalid CSV row leaves it unchecked and the Remove control disabled. The same happens with a coordinate click and Space on the focused checkbox.",
+      "expected": "Selecting a validation row should check its checkbox and enable Remove so the row can be excluded before import.",
+      "actual": "The checkbox stays unchecked after clicking and pressing Space; Remove remains disabled and the invalid row stays visible. A multimodal assertion confirmed unchecked state and disabled Remove.",
+      "reproSteps": [
+        "/objects/workflows",
+        "In Apple workspace Workflows as Tim Apple, choose Command Menu > Import Workflows.",
+        "Upload CSV Name,Id,Statuses with rows QA Import Invalid,not-a-uuid,Mystery and QA Import Duplicate,,Draft (twice) and an empty Name/Id row with Draft.",
+        "Keep automatic Name, Id and Statuses mappings and choose Next Step.",
+        "Enable Show only rows with errors. The invalid UUID row is shown.",
+        "Choose Confirm then Cancel in the Finish flow with errors warning.",
+        "Click the checkbox beside the invalid row, attempt Remove, then click the checkbox again and press Space."
+      ],
+      "severity": 3
+    },
+    {
+      "name": "Stopping a non-matching Filter run remains stuck Stopping",
+      "summary": "Stop changes the stalled Iterator/Filter run from Running to Stopping, but it does not reach Stopped after a further minute.",
+      "expected": "Stop terminates this short workflow and displays a settled stopped status.",
+      "actual": "Status remains Stopping for the entire 60-second whole-page assertion check; Stop control disappears.",
+      "reproSteps": [
+        "/objects/workflows",
+        "Create manual workflow with Iterator items alpha and Filter in its loop: Current Item Is alphabeta.",
+        "Test workflow and open run output; Filter returns matchesFilter false while run remains Running.",
+        "Click Stop and wait at least 60 seconds."
+      ],
+      "severity": 3
+    },
+    {
+      "name": "Malformed Excel import stays stuck on Processing after an error",
+      "summary": "A malformed XLSX produces an 'Unknown Namespace:' error toast but the upload dialog remains on Processing... after the toast disappears. It offers no replacement-file or restart control.",
+      "expected": "After a file parsing error the importer should leave the processing state and offer a clear way to choose a valid replacement file or restart.",
+      "actual": "The toast disappears while Processing... remains. A 20-second recovery assertion failed; a subsequent multimodal assertion confirmed no Select file or Restart Import control anywhere on the page and only the close button available.",
+      "reproSteps": [
+        "/objects/workflows",
+        "Open Apple workspace Workflows as Tim Apple and choose Command Menu > Import Workflows.",
+        "Create a malformed XLSX as a ZIP archive containing only [Content_Types].xml whose contents are broken xml.",
+        "Select that .xlsx file.",
+        "Observe Unknown Namespace: error toast; wait for the error to disappear and inspect the import dialog."
+      ],
+      "severity": 3
+    },
+    {
+      "name": "Search Records ignores the displayed filter after switching objects back",
+      "summary": "Switching Search Records from Workflows to Notes and back restores the previous Id Is mapped-Id filter visually, but the next execution returns an unrelated workflow and totalCount 55 instead of the one matching QA record.",
+      "expected": "Execution applies the displayed Id Is filter and returns the known upstream workflow with totalCount 1, or the editor clearly shows that the filter was removed.",
+      "actual": "The editor still displayed Id Is mapped Id, but execution returned 'Create company when adding a new person' with totalCount 55, an unfiltered result. Reopening the action still showed the Id filter.",
+      "reproSteps": [
+        "/objects/workflows",
+        "Create a manual workflow with Search Records returning a known QA workflow, Pick Record, and a downstream Search Records.",
+        "Configure the downstream action for Workflows with Id Is mapped from the upstream Search Records First Workflow Id; test and verify one matching output.",
+        "Change downstream Object to Notes, then back to Workflows without editing its filters.",
+        "Observe the previous Id Is mapped Id filter displayed again and test the workflow.",
+        "Inspect downstream output and reopen its configuration."
+      ],
+      "severity": 3
+    },
+    {
+      "name": "Deleting a node from a workflow cycle creates a self-loop",
+      "summary": "Deleting one of two connected Delay actions leaves an orphaned dangling connector line on the remaining action, and testing the workflow skips that action.",
+      "expected": "Deleting the duplicate Delay action completely removes all associated connection lines rather than leaving a severed dangling edge on the remaining node.",
+      "actual": "A disconnected dangling connector line remains attached to the output port of the remaining Delay node, persists after refresh, and running Test marks the workflow Completed while skipping the Delay action.",
+      "reproSteps": [
+        "/objects/workflows",
+        "Create own QA Builder workflow with manual trigger connected to two one-second Delay actions.",
+        "Connect both Delay actions to each other in both directions.",
+        "Delete the duplicate Delay from its node panel.",
+        "Refresh, then Test the remaining workflow."
+      ],
+      "severity": 3
+    },
+    {
+      "name": "Cyclic workflow test silently skips connected actions",
+      "summary": "A manual workflow with two connected Delay actions forming a cycle tests as Completed while neither action executes. No cycle warning or error is shown.",
+      "expected": "An unsupported cycle produces actionable validation, or connected actions execute according to supported cycle semantics; a test should not silently complete without executing any connected actions.",
+      "actual": "Test #6 shows Completed and checked trigger, but both connected Delay nodes are grey without execution checkmarks. Default multimodal assertion confirmed no cycle warning or error anywhere on page.",
+      "reproSteps": [
+        "/objects/workflows",
+        "Use own QA Builder workflow with Launch manually connected directly to two one-second Delay actions.",
+        "Connect first Delay to second, then second back to first to form a cycle.",
+        "Refresh and confirm connections persist.",
+        "Click Test and inspect the settled result."
+      ],
+      "severity": 3
+    },
+    {
+      "name": "Grouping Workflow Runs by Workflow leaves an ungrouped list",
+      "summary": "Changing a run view's grouping from status to Workflow removes all group headings, leaving runs ungrouped and interleaved",
+      "expected": "Runs are partitioned into groups with headers corresponding to their linked workflow",
+      "actual": "Selecting Workflow grouping displays an ungrouped, interleaved list of runs without workflow headers, and the run count indicator in the view header disappears",
+      "reproSteps": [
+        "/objects/workflowRuns?viewId=1a6296b2-26ec-4936-9afc-92632b8a701d",
+        "Sign in as fixture user in Apple workspace and open Workflow Runs with runs from several workflows.",
+        "Create a custom Table view through Options > Create custom view.",
+        "Choose Options > Group > Workflow run status; enable Hide empty groups.",
+        "Choose Options > Group > Group by > Workflow.",
+        "Observe the settled run table."
+      ],
+      "severity": 3
     }
   ]
 }

@@ -80,6 +80,12 @@
           "Enter a unique title and save it with Enter.",
           "Reload the Note’s creation page, then click outside the empty title editor or press Tab without entering a replacement title.",
           "Reload and confirm the saved title has been erased. On a fresh equivalent Note, press Escape instead to confirm the saved name is retained."
+        ],
+        [
+          "Set the browser viewport to 390 CSS pixels wide and open Companies as Tim Apple.",
+          "Use the top-right menu to create a company. Type a unique name into the focused Name field and press Enter.",
+          "On Home, double-click Annual Revenue, enter 125000 USD and press Enter. Verify $125k appears.",
+          "Refresh the record, then click Timeline without typing in the Name field."
         ]
       ]
     },
@@ -1366,6 +1372,93 @@
         "Upload a CSV with Title, Start Date, End Date, Location, Description and one row: QA-tablet calendar check, 2026-11-07T14:00:00Z, 2026-11-07T15:00:00Z, QA-tablet room, QA-tablet tablet import details.",
         "Keep the automatically matched fields and click Next Step.",
         "Cancel the Exit import flow dialog and click Next Step again."
+      ],
+      "severity": 3
+    },
+    {
+      "name": "File rename accepts an empty filename",
+      "summary": "Clearing the name of a text attachment and pressing Enter saves it as '.txt'. The empty base filename persists after reload without validation feedback.",
+      "expected": "An empty filename is rejected and the previous name is retained, allowing the user to enter a valid name.",
+      "actual": "The file is saved and displayed as '.txt', including after reload, with no validation error or warning shown.",
+      "reproSteps": [
+        "As Tim Apple, open Google company Files tab.",
+        "Upload a disposable text file; open its More options menu and select Rename.",
+        "Clear the filename input completely and press Enter.",
+        "Reload the record Files tab."
+      ],
+      "severity": 3
+    },
+    {
+      "name": "Task timeline places reopening inside an older update before completion",
+      "summary": "After Tim reopens a task completed by Jony, its timeline still shows Jony's Done update as newest. Tim's later To do change and cleared fields appear in his older pre-completion update instead.",
+      "expected": "Tim's later reopening and field removals should appear after Jony's completion in the timeline, preserving the earlier setup history and chronological order.",
+      "actual": "Current fields show To do, empty Assignee and empty Due Date, but the top timeline event still says You updated Status to Done (2 minutes ago). Tim's lower event (4 minutes ago) now contains To do, Assignee Empty and Due Date Empty where earlier it showed the original due date and Jony assignment. Multimodal assertion confirmed this contradictory ordering.",
+      "reproSteps": [
+        "/objects/tasks",
+        "As Tim Apple, create a unique Salesforce-related task, assign Jony Ive, set due date November 2 2026 9:30 AM and enter approval-request note.",
+        "Switch to Jony Ive and complete that task using its completion circle on Salesforce Tasks.",
+        "Open task Timeline and observe newer Jony Done event above Tim's earlier setup event.",
+        "Switch to Tim Apple, uncheck task completion circle to reopen it, choose No Assignee and clear Due Date; reload to verify these changes.",
+        "Switch to Jony Ive and open the task Timeline."
+      ],
+      "severity": 3
+    },
+    {
+      "name": "Editing a saved note link shows an empty URL",
+      "summary": "After adding a link and reloading the note, selecting the linked word and opening the link toolbar shows an empty Edit URL input instead of its saved URL.",
+      "expected": "Edit URL displays the existing https://example.com/planning destination so it can be reviewed and edited.",
+      "actual": "After reload, the selected word 'reference' remains styled as a blue underlined link, but clicking the floating toolbar link icon opens the Edit URL popup with an empty input showing only the 'Edit URL' placeholder.",
+      "reproSteps": [
+        "As fixture, create a note containing Planning reference.",
+        "Select reference and use the floating toolbar link icon to enter https://example.com/planning; press Enter.",
+        "Reload and confirm reference remains linked.",
+        "Select reference again and click the floating toolbar link icon."
+      ],
+      "severity": 3
+    },
+    {
+      "name": "Removing a duplicated note relation shows empty but returns after refresh",
+      "summary": "Unchecking Salesforce in the Relations picker immediately clears the field, but refreshing the page restores a Salesforce relation chip.",
+      "expected": "Unchecking Salesforce in Relations should persistently remove it, keeping the field empty after refresh.",
+      "actual": "Relations displays empty immediately after unchecking, but one Salesforce chip reappears after refreshing.",
+      "reproSteps": [
+        "/objects/companies",
+        "Same fixture as confirmed restore duplication bugs: note d14356fc-394a-4b36-9fc1-a445a82ad477. This is inconsistent immediate versus persisted removal behavior while recovering duplicate links.",
+        "Create a Salesforce-linked note as Jony.",
+        "Remove Salesforce as Tim and re-add it as Jony.",
+        "Append a Salesforce mention as Phil.",
+        "Delete note as Jony; Restore as Tim, producing two Salesforce Relations chips.",
+        "As Phil, edit Relations and uncheck the selected Salesforce checkbox, then close picker.",
+        "Observe empty Relations, then refresh."
+      ],
+      "severity": 3
+    },
+    {
+      "name": "Calendar import saves events that end before they start",
+      "summary": "Importing a calendar CSV with Start Date 2027-03-08T11:00:00Z and End Date 2027-03-08T10:00:00Z succeeds. The resulting event persists a reversed interval, displaying 3:00 AM start and 2:00 AM end on March 8 in Los Angeles time.",
+      "expected": "Validate Data should reject or flag an event whose End Date precedes its Start Date rather than saving a negative-duration event.",
+      "actual": "Import completed and count increased. The saved event shows Start Date March 8 2027 3:00 AM and End Date March 8 2027 2:00 AM after refresh. A default multimodal assertion confirmed those values and no validation error anywhere on the page.",
+      "reproSteps": [
+        "/object/calendarEvent/20202020-018d-4e7c-8001-123456789cde",
+        "CSV fixture available at /tmp/mo-calendar-invalid.csv. Original event ID b2729cb3-8ac7-4714-90d7-ffbb1dfd58e2; created ID obtained from import response to open same record because global search did not include Calendar events. Browser timezone America/Los_Angeles.",
+        "As Tim Apple in Apple workspace, open a Calendar event full record, use Command Menu > Go to Calendar events.",
+        "Open Command Menu > Import Calendar events.",
+        "Upload a fresh CSV with headers Title,Start Date,End Date,Description and one row: MO-TIMELINE-CALENDAR-REVERSED-20261031,2027-03-08T11:00:00Z,2027-03-08T10:00:00Z,Disposable reversed interval validation.",
+        "Keep auto-matched fields, click Next Step then Confirm.",
+        "Open the imported event full record and refresh; compare Start Date and End Date."
+      ],
+      "severity": 3
+    },
+    {
+      "name": "Notes Export View CSV omits the visible Relations column",
+      "summary": "The All Notes view shows a Relations column, and the note \"QA Export Ledger 7H42\" is linked to Mark Young. The note.csv file from Export View has no Relations column, so the export leaves out the linked person.",
+      "expected": "Export View should include the Relations column shown in the view, with Mark Young as the linked record for the note.",
+      "actual": "The CSV headers are: Id, Title, Body / BlockNote, Body / Markdown, Created by / Source, Created by / Workspace Member, Created by / Name, Created by / Context, Creation date. The note's row has no Relations data and does not mention Mark Young or his record ID.",
+      "reproSteps": [
+        "Sign in as Tim Apple (tim@apple.dev) using the saved session and open /objects/notes",
+        "Check that the All Notes grid shows the note 'QA Export Ledger 7H42' with Mark Young in the Relations column.",
+        "Click the three-dot (Command Menu) button at the top right and choose Export View.",
+        "Open the downloaded note.csv: there is no Relations header, and the note's row has no Mark Young data."
       ],
       "severity": 3
     }
