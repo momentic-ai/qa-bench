@@ -16,13 +16,15 @@ set to a monorepo checkout:
 recipe=$(tar -C "$MONO/packages/eval/mo-evals/fixtures/web/oss/grafana" -cz fixture.json runtime/snapshot | base64 -w0)
 sed "s|^RECIPE_TGZ_B64=.*|RECIPE_TGZ_B64=$recipe|" "$CONFIG/setup.sh" | greptile environment setup-script set
 greptile environment setup-instructions set < "$CONFIG/instructions.md"
-greptile environment network-policy set build custom --domain deb.debian.org --domain dl.google.com --domain github.com --domain nodejs.org --domain proxy.golang.org --domain registry.yarnpkg.com --domain security.debian.org --domain storage.googleapis.com --domain sum.golang.org
-greptile environment network-policy set review custom --domain proxy.golang.org --domain registry.yarnpkg.com --domain storage.googleapis.com --domain sum.golang.org
+greptile environment network-policy set build custom --domain codeload.github.com --domain deb.debian.org --domain dl.google.com --domain github.com --domain nodejs.org --domain proxy.golang.org --domain registry.yarnpkg.com --domain security.debian.org --domain storage.googleapis.com --domain sum.golang.org
+greptile environment network-policy set review custom --domain codeload.github.com --domain github.com --domain proxy.golang.org --domain registry.yarnpkg.com --domain storage.googleapis.com --domain sum.golang.org
 greptile environment build --follow
 ```
 
 Custom network policies always allow `registry.npmjs.org`, but Yarn fetches
-from its default `registry.yarnpkg.com`, so both policies allow that too.
+from its default `registry.yarnpkg.com`, and GitHub-hosted packages (`github:`
+and `git+https` entries in `yarn.lock`) from `github.com` and
+`codeload.github.com`, so both policies allow those.
 
 Greptile stops the setup script after 30 minutes. The script installs every Go
 and Node version the PR bases need, builds and smoke-tests this checkout, then
