@@ -37,9 +37,10 @@ export class Mux {
     this.nextId = side === "host" ? 1 : 2;
     output.on("error", () => {});
     input.on("data", (chunk: Buffer) => this.receive(chunk));
-    input.on("close", () => {
-      for (const { stream } of this.streams.values()) stream.destroy();
-    });
+    for (const end of [input, output])
+      end.on("close", () => {
+        for (const { stream } of this.streams.values()) stream.destroy();
+      });
   }
 
   open(name: string) {
