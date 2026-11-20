@@ -31,7 +31,6 @@ export type FullAppOptions = {
   claudeModel?: ClaudeModel;
   outputDirectory: string;
   browser: Browser;
-  preventCheating?: boolean;
   /** Records each browser and cuts a video clip per bug. */
   recordBugs?: boolean;
 };
@@ -90,19 +89,10 @@ export function parseFullAppOptions(args: string[]): FullAppOptions {
       claudeModel = parseModel(CLAUDE_MODELS, values.model);
     else throw new Error("--model applies only to Codex and Claude agents.");
   }
-  if (values["prevent-cheating"]) {
-    if (
-      !values.agent?.startsWith("codex-") &&
-      !values.agent?.startsWith("claude-")
-    )
-      throw new Error(
-        "--prevent-cheating applies only to Codex and Claude agents.",
-      );
-    if (values["grade-only"])
-      throw new Error(
-        "--prevent-cheating applies to new runs, not --grade-only.",
-      );
-  }
+  if (values["prevent-cheating"])
+    process.stderr.write(
+      "--prevent-cheating is no longer needed: Codex and Claude Code runs always block answer sites.\n",
+    );
   if (values["record-bugs"]) {
     if (
       !values.agent?.startsWith("codex-") &&
@@ -130,7 +120,6 @@ export function parseFullAppOptions(args: string[]): FullAppOptions {
     effort,
     codexModel,
     claudeModel,
-    ...(values["prevent-cheating"] ? { preventCheating: true } : {}),
     ...(values["record-bugs"] ? { recordBugs: true } : {}),
     outputDirectory: outputDirectory ?? REPORTS_DIRECTORY,
     gradeOnly: values["grade-only"],

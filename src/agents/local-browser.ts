@@ -1,13 +1,15 @@
 import { ChildProcess, spawn } from "node:child_process";
 import { randomUUID } from "node:crypto";
 import { once } from "node:events";
-import { access, mkdtemp, readFile, rm } from "node:fs/promises";
+import { mkdtemp, readFile, rm } from "node:fs/promises";
 import { createServer } from "node:http";
 import { createRequire } from "node:module";
 import { tmpdir } from "node:os";
 import path from "node:path";
 import { setTimeout as delay } from "node:timers/promises";
 import { z } from "zod";
+
+import { CONTAINER_PROXY } from "./sandbox/runtime";
 
 const playwright = createRequire(
   createRequire(import.meta.url).resolve("@playwright/mcp/package.json"),
@@ -40,7 +42,6 @@ export function localBrowserConnection() {
       executablePath,
     ],
     env: {},
-    filesystem: { [path.dirname(path.dirname(executablePath))]: "read" },
   };
 }
 
@@ -69,6 +70,9 @@ async function launchChromium(browsers: Chromium[]) {
       `--user-data-dir=${profile}`,
       "--no-first-run",
       "--no-default-browser-check",
+      // Playwright's default too; the container is the sandbox.
+      "--no-sandbox",
+      `--proxy-server=${CONTAINER_PROXY}`,
       "about:blank",
     ],
     { stdio: "ignore" },
@@ -173,16 +177,5 @@ export class LocalChromium {
     this.server.close();
     await Promise.allSettled(this.launches);
     await Promise.all(this.browsers.map(stopChromium));
-  }
-}
-
-export async function validateLocalChromium() {
-  const executable = chromiumExecutable();
-  try {
-    await access(executable);
-  } catch {
-    throw new Error(
-      `Local Chromium is missing at ${executable}. Install it with: node ${path.join(path.dirname(playwright.resolve("playwright-core/package.json")), "cli.js")} install --with-deps chromium`,
-    );
   }
 }

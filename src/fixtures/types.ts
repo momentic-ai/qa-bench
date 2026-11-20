@@ -73,4 +73,10 @@ export type Fixture = z.infer<typeof FixtureSchema> & {
   fullAppGroundTruthFile?: string;
 };
 
+/** A fixture's name and accounts, without its files or labels. */
+export type FixtureCredentials = Pick<
+  Fixture,
+  "name" | "username" | "password" | "additionalAccounts"
+>;
+
 export type BenchmarkSandbox = Sandbox;

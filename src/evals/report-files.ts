@@ -324,7 +324,11 @@ const OPTIONAL_MODELS: string[] = [
   ...CLAUDE_MODELS.slice(1),
 ];
 
-/** Agent name plus any non-default run settings recorded in duration.json. */
+/**
+ * Agent name plus any non-default run settings recorded in duration.json. A Codex
+ * or Claude run whose duration.json lacks `sandbox` predates the sandbox and is
+ * labeled `prevent-cheating` or `open web`; one without duration.json gets no label.
+ */
 export async function runLabel(agent: string, runDirectory: string) {
   const file = path.join(runDirectory, "duration.json");
   const config = existsSync(file)
@@ -334,7 +338,8 @@ export async function runLabel(agent: string, runDirectory: string) {
   if (OPTIONAL_MODELS.includes(config.model)) settings.push(config.model);
   if (config.browser === "local") settings.push("local browser");
   if (config.subagents === false) settings.push("no subagents");
-  if (config.preventCheating) settings.push("prevent-cheating");
+  if (/^(codex|claude)-/.test(agent) && existsSync(file) && !config.sandbox)
+    settings.push(config.preventCheating ? "prevent-cheating" : "open web");
   if (config.effort && config.effort !== "medium")
     settings.push(`${config.effort} effort`);
   return settings.length ? `${agent} (${settings.join(", ")})` : agent;

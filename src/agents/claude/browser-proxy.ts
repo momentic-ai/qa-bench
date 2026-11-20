@@ -18,7 +18,6 @@ export type BrowserLaunch = {
   command: string;
   args: string[];
   env: Record<string, string>;
-  disabledTools: string[];
 };
 
 class PlaywrightProcess {
@@ -176,16 +175,10 @@ export class BrowserProxy {
             this.tools = undefined;
             throw err;
           });
-        return z
-          .object({ tools: z.array(ToolSchema) })
-          .parse(await this.tools)
-          .tools.filter(
-            (tool) => !this.launch.disabledTools.includes(tool.name),
-          );
+        return z.object({ tools: z.array(ToolSchema) }).parse(await this.tools)
+          .tools;
       },
       callTool: async (call) => {
-        if (this.launch.disabledTools.includes(call.name))
-          throw new Error(`Unknown tool: ${call.name}`);
         const toolUseId = call._meta?.["claudecode/toolUseId"];
         const agent = (toolUseId && this.callers.get(toolUseId)) ?? PARENT;
         if (toolUseId) this.callers.delete(toolUseId);

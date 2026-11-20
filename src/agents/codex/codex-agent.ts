@@ -1,4 +1,4 @@
-import { mkdir, rm } from "node:fs/promises";
+import { mkdir, rm, writeFile } from "node:fs/promises";
 import { createRequire } from "node:module";
 import path from "node:path";
 import { z } from "zod";
@@ -6,16 +6,12 @@ import { z } from "zod";
 import { writeJson } from "../../shared/json-file";
 import { BrowserTool } from "../agent-browser";
 import { CodingAgent } from "../coding-agent";
+import { PreparedBrowser, TestingBrowser } from "../testing-browser";
 import {
-  DISABLED_BROWSER_TOOL,
-  PreparedBrowser,
-  TestingBrowser,
-} from "../testing-browser";
-import {
-  AgentContext,
   Browser,
   CODEX_MODELS,
   CodexModel,
+  CodingAgentContext,
   EvalAgentDefinition,
 } from "../types";
 import {
@@ -27,11 +23,8 @@ import { getCodexCost } from "./cost";
 import { FINDINGS_TOOLS } from "./findings-store";
 
 const require = createRequire(import.meta.url);
-export const CODEX_PACKAGE = require.resolve("@openai/codex/package.json");
-export const CODEX_COMMAND = path.join(
-  path.dirname(CODEX_PACKAGE),
-  "bin/codex.js",
-);
+const CODEX_PACKAGE = require.resolve("@openai/codex/package.json");
+const CODEX_COMMAND = path.join(path.dirname(CODEX_PACKAGE), "bin/codex.js");
 
 // The brief can exceed the goal limit, so the objective points to the first turn, which carries it in full.
 const GOAL_OBJECTIVE =
@@ -42,6 +35,7 @@ export class CodexAgent extends CodingAgent {
   static apiKey = "OPENAI_API_KEY";
   static skillOwner = ".agents" as const;
   static e2eProvider = "openai" as const;
+  static apiHost = "api.openai.com";
   protected findingsToolPrefix = "";
   private server: CodexAppServer | undefined;
   private codexHome: string;
@@ -53,7 +47,11 @@ export class CodexAgent extends CodingAgent {
     error: unknown;
   }[] = [];
 
-  constructor(context: AgentContext, model: string, browser: TestingBrowser) {
+  constructor(
+    context: CodingAgentContext,
+    model: string,
+    browser: TestingBrowser,
+  ) {
     super(context, model, browser);
     this.codexHome = path.join(context.runDirectory, "codex-home");
   }
@@ -66,15 +64,13 @@ export class CodexAgent extends CodingAgent {
   ) {
     const { workspace } = this;
     await mkdir(this.codexHome, { recursive: true });
-    const env = {
-      ...setup.env,
-      PATH: setup.env?.PATH ?? process.env.PATH ?? "",
-      HOME: process.env.HOME || "",
-      USERPROFILE: process.env.USERPROFILE || "",
-      SYSTEMROOT: process.env.SYSTEMROOT || "",
-      CODEX_HOME: this.codexHome,
-      OPENAI_API_KEY: process.env.OPENAI_API_KEY || "",
-    };
+    // Codex syncs its plugin catalog from GitHub and chatgpt.com at startup, which the egress proxy refuses.
+    await writeFile(
+      path.join(this.codexHome, "config.toml"),
+      "[features]\nplugins = false\n",
+    );
+    // The container's environment, including its proxy settings.
+    const env = { ...process.env, ...setup.env, CODEX_HOME: this.codexHome };
     await loginCodexWithApiKey(
       CODEX_COMMAND,
       env,
@@ -102,15 +98,12 @@ export class CodexAgent extends CodingAgent {
           cwd: workspace,
           runtimeWorkspaceRoots: [workspace],
           approvalPolicy: "never",
-          // Codex's Linux sandbox kills background processes when each command
-          // exits, which would take the agent-browser daemon and its refs with it.
-          ...(setup.unsandboxedShell ? { sandbox: "danger-full-access" } : {}),
+          // The container is the sandbox; Codex's would kill the agent-browser daemon.
+          sandbox: "danger-full-access",
           dynamicTools: FINDINGS_TOOLS,
           config: {
             model_reasoning_effort: "medium",
-            ...(this.browser.options.preventCheating
-              ? { web_search: "disabled" }
-              : {}),
+            web_search: "disabled",
             mcp_servers: setup.playwright
               ? {
                   playwright: {
@@ -119,7 +112,6 @@ export class CodexAgent extends CodingAgent {
                     tool_timeout_sec: 120,
                     default_tools_approval_mode: "approve",
                     required: true,
-                    disabled_tools: [DISABLED_BROWSER_TOOL],
                   },
                 }
               : {},
@@ -230,14 +222,7 @@ export function codexAgent(
   browser: Browser,
   browserTool: BrowserTool = "playwright-mcp",
   model: CodexModel = CODEX_MODELS[0],
-  preventCheating = false,
   recordBugs = false,
 ): EvalAgentDefinition {
-  return CodexAgent.definition(
-    browser,
-    browserTool,
-    model,
-    preventCheating,
-    recordBugs,
-  );
+  return CodexAgent.definition(browser, browserTool, model, recordBugs);
 }
