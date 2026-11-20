@@ -324,7 +324,11 @@ const OPTIONAL_MODELS: string[] = [
   ...CLAUDE_MODELS.slice(1),
 ];
 
-/** Agent name plus any non-default run settings recorded in duration.json. */
+/**
+ * Agent name plus any non-default run settings recorded in duration.json. A Codex
+ * or Claude run whose duration.json lacks `sandbox` predates the sandbox and is
+ * labeled `prevent-cheating` or `open web`; one without duration.json gets no label.
+ */
 export async function runLabel(agent: string, runDirectory: string) {
   const file = path.join(runDirectory, "duration.json");
   const config = existsSync(file)
