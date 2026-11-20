@@ -885,6 +885,108 @@
         "Refresh and inspect PR settings."
       ],
       "severity": 3
+    },
+    {
+      "name": "Changing the base branch silently discards attachment-only drafts",
+      "summary": "Uploading an attachment to the pull request form without modifying the title or description, then selecting another base branch, discards the attachment without an unsaved changes warning.",
+      "expected": "Warn before navigating away from the form or preserve the uploaded attachment across branch changes.",
+      "actual": "The page navigates immediately upon selecting a new branch without any warning, and reopening the creation form shows the attachment is gone.",
+      "reproSteps": [
+        "/eval/harbor-handbook",
+        "Existing disposable branches qa/pr-create-repeat, qa/pr-creation-validation and qa/creation-attachments provide changed comparisons. Preserve shared PR #5. Use any small text file for the upload.",
+        "Open comparison qa/pr-create-repeat...qa/creation-attachments and click New Pull Request.",
+        "Leave the default title Add creation attachment fixture and description empty. Upload a small text file named attachment-only.txt and wait for successful upload.",
+        "Change the merge-into branch to qa/pr-creation-validation.",
+        "Click New Pull Request again and inspect the attachment area."
+      ],
+      "severity": 3
+    },
+    {
+      "name": "Empty Comment review asks the author to describe requested changes",
+      "summary": "Submitting an empty Comment review displays “You need to leave a comment indicating the requested change(s).” even though Comment was selected and the author cannot request changes on their own PR.",
+      "expected": "Validation should ask for a review comment without implying that the author selected Request changes.",
+      "actual": "The validation banner says “You need to leave a comment indicating the requested change(s).” after submitting Comment.",
+      "reproSteps": [
+        "/eval/harbor-handbook/pulls/5",
+        "Open an open pull request as its author, with no pending inline review comments.",
+        "Open Files Changed and click Review.",
+        "Leave Review comment empty and click Comment."
+      ],
+      "severity": 1
+    },
+    {
+      "name": "Inline comment edit indicator appears only after reload",
+      "summary": "Saving an edit to an inline review comment updates its text immediately but leaves its header without an edited indicator.",
+      "expected": "Saving the edit immediately displays an edited indicator in the comment header alongside the updated text.",
+      "actual": "The edited text appears immediately, but no edited indicator is added to the comment header.",
+      "reproSteps": [
+        "Create a disposable branch with a changed text file and open a pull request.",
+        "On Files Changed, add an inline comment, start a review and submit it as Comment.",
+        "Open that published inline comment's ellipsis menu and choose Edit.",
+        "Change its text to 'Markdown review comment edited after publishing.' and Save.",
+        "Observe that the new text appears but its header has no edited marker. Reload to see the edited marker appear."
+      ],
+      "severity": 1
+    },
+    {
+      "name": "Removed review request remains displayed when draft reload is cancelled",
+      "summary": "Removing a reviewer while PR edits are in progress leaves the reviewer displayed in the sidebar and dropdown on the active tab, despite the review request being removed on the server.",
+      "expected": "Removing a reviewer should update the Reviewers sidebar and dropdown on the current page to reflect the removal.",
+      "actual": "The current page continues displaying maya as a requested reviewer, while a separate tab confirms the review request was removed on the server ('No Reviewers' and removal timeline event).",
+      "reproSteps": [
+        "/eval/harbor-handbook/pulls",
+        "Open own disposable PR and request maya as reviewer.",
+        "Enter a new discussion comment draft; in observed run a PR title draft was also open.",
+        "Click the trash icon beside maya in Reviewers and cancel the resulting leave-page/reload warning.",
+        "Observe maya still listed in the original sidebar.",
+        "Open the same PR in a new tab: No Reviewers and the review-request removal event are shown."
+      ],
+      "severity": 3
+    },
+    {
+      "name": "Mentioning you omits pull requests whose comment mentions eval",
+      "summary": "I created PR #18, \"qa-global mention check mo7\", in eval/harbor-handbook from the fresh branch qa-global-mo7 (made from docs/release-owners) into main. Then I posted a comment that mentions @eval, and it shows as a linked mention in the conversation. On the global Pull Requests page with Mentioning you selected and the search set to qa-global, the page shows 0 Open, 0 Closed, a Mentioning you count of 0, and No results.",
+      "expected": "PR #18 shows up under Mentioning you, because its conversation contains a saved @eval mention.",
+      "actual": "Mentioning you shows a count of 0, 0 Open / 0 Closed, and \"No results\" for qa-global.",
+      "reproSteps": [
+        "Signed in as eval (saved session), open /eval/harbor-handbook/src/branch/docs/release-owners",
+        "In the branch dropdown, type qa-global-mo7 and click 'Create branch qa-global-mo7'",
+        "Open /eval/harbor-handbook/compare/main...qa-global-mo7, click New Pull Request, set the title to 'qa-global mention check mo7' and click Create Pull Request (this created PR #18)",
+        "Post the comment 'qa-global mentiontoken-Otter @eval please inspect ownership coverage.' and confirm it appears with @eval linked",
+        "Open /pulls?type=mentioned&state=open&q=qa-global (Mentioning you filter)",
+        "Observe: Mentioning you count 0, 0 Open, No results"
+      ],
+      "severity": 3
+    },
+    {
+      "name": "Title editor stays open after save when draft reload is cancelled",
+      "summary": "Saving a pull request title while an unsent comment draft is present prompts a leave-page warning. Cancelling that warning leaves the title editor open with no indication that the title was saved.",
+      "expected": "The saved title should appear in read mode while the separate comment draft remains available.",
+      "actual": "The title is saved, as shown in a newly opened tab, but the original tab still shows the title input and Save/Cancel controls.",
+      "reproSteps": [
+        "As eval, open a disposable pull request.",
+        "Edit its title to a new value.",
+        "Enter an unsent draft in Leave a comment.",
+        "Save the title and cancel the browser leave-page warning.",
+        "Observe that the title editor remains open without save confirmation.",
+        "Open the same pull request in a new tab and observe the new title in read mode."
+      ],
+      "severity": 1
+    },
+    {
+      "name": "Rejected merge still reports automatic merge eligibility after base conflict",
+      "summary": "When main's base-only.txt is updated while the PR merge confirmation form is open, confirming the merge rejects it with an error directing users to review status and status checks, and leaves the PR claiming it can be merged automatically.",
+      "expected": "Rejecting the merge updates the PR's mergeability status and indicates the conflict rather than continuing to claim it can be merged automatically and pointing to review/status checks.",
+      "actual": "At 00:07.200, an error banner states 'This pull request is not ready to be merged, check review status and status checks.' while the PR still displays 'This pull request can be merged automatically.' and retains the 'Create merge commit' confirmation button with no conflicting file identified.",
+      "reproSteps": [
+        "Sign in as eval and create an initialized disposable repository.",
+        "Create a branch changing base-only.txt from 'Second independent base advance' to 'Feature stale merge input', and open a PR targeting main.",
+        "Open Create merge commit confirmation while PR is automatically mergeable.",
+        "In another tab edit main's base-only.txt to 'Main changed while merge form open' and commit.",
+        "Return to the unchanged PR tab and confirm Create merge commit.",
+        "Observe rejected merge alongside unchanged automatic-merge status and confirmation button."
+      ],
+      "severity": 3
     }
   ]
 }
