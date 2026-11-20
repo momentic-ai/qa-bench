@@ -196,10 +196,10 @@ Each Codex or Claude Code run executes in its own Docker container built from
 driver inside. The container sees only the run's own folders, and the harness
 grades what it writes. Its only network route is a proxy on the host, which
 reaches public sites except `ANSWER_DOMAINS`, plus the fixture and the harness's
-Browserbase broker, which keeps the Browserbase key on the host. It refuses bare
-IP addresses and private ones, such as the host's own services and cloud
-metadata. Each allowed host is logged once to the run's `egress-allowed.log`,
-and each refused request to `egress-denied.log`. Browserbase
+Browserbase broker, which keeps the Browserbase key on the host. Apart from
+those, it refuses bare IP addresses and private ones, such as the host's own
+services and cloud metadata. Each allowed host and port is logged once to the
+run's `egress-allowed.log`, and each refused request to `egress-denied.log`. Browserbase
 browsers run outside the container; Browserbase keeps their pages on the fixture
 host, though a page can still load resources from other sites.
 

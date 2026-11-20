@@ -7,7 +7,8 @@ import { Duplex } from "node:stream";
 export type EgressRule = { host: string; port: number };
 
 // Loopback, private, link-local (cloud metadata), shared, multicast and reserved
-// ranges, plus Azure's platform address, so the sandbox can't reach the host or its network.
+// ranges, plus Azure's platform address, so the sandbox can't reach the host or
+// its network except through its rules.
 const PRIVATE = new net.BlockList();
 for (const [address, prefix] of [
   ["0.0.0.0", 8],
@@ -69,7 +70,7 @@ function proxyRequest(head: Buffer) {
  * The sandbox's only way out: an HTTP proxy for the container's streams.
  * It tunnels to public hosts except the `blocked` domains, and to `rules` hosts.
  * Other bare IP addresses are refused, so a blocked site can't be reached by address.
- * It logs each allowed host once and every refusal.
+ * It logs each allowed host and port once, and every refusal.
  */
 export class EgressProxy {
   private clients = new Set<Duplex>();
@@ -124,8 +125,15 @@ export class EgressProxy {
     return addresses[0].address;
   }
 
+  /** Resolves false, after reporting it, when the write fails. */
   private log(file: string, line: string) {
-    return appendFile(file, `${new Date().toISOString()} ${line}\n`);
+    return appendFile(file, `${new Date().toISOString()} ${line}\n`).then(
+      () => true,
+      (err: unknown) => {
+        process.stderr.write(`Couldn't write ${file}: ${err}\n`);
+        return false;
+      },
+    );
   }
 
   handle(client: Duplex) {
@@ -160,15 +168,15 @@ export class EgressProxy {
       }
       if (client.destroyed) return;
       if (!request || !host || !address) {
-        void this.log(this.logs.denied, line).catch(() => {});
+        void this.log(this.logs.denied, line);
         client.end("HTTP/1.1 403 Forbidden\r\nContent-Length: 0\r\n\r\n");
         return;
       }
       const key = `${host}:${port}`;
       if (!this.logged.has(key)) {
         this.logged.add(key);
-        void this.log(this.logs.allowed, key).catch(() =>
-          this.logged.delete(key),
+        void this.log(this.logs.allowed, key).then(
+          (written) => written || this.logged.delete(key),
         );
       }
       const upstream = net.connect(port, address, () => {
