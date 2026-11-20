@@ -174,10 +174,11 @@ Results also include Codex with `gpt-6.1-terra` and Claude Code with
 ### Web access
 
 Coding agents could find examples of these bugs online instead of testing the
-fixture against its intended behavior, so Codex and Claude Code runs stay off
-the web. The [sandbox](#sandbox) keeps the agent's shell and local Chromium off
-it. Browserbase pages are limited to the fixture host, and Playwright MCP refuses
-the sites in `ANSWER_DOMAINS` ([`testing-browser.ts`](src/agents/testing-browser.ts)).
+fixture against its intended behavior, so Codex and Claude Code runs can't reach
+the sites in `ANSWER_DOMAINS` ([`testing-browser.ts`](src/agents/testing-browser.ts)):
+code hosts, the published dataset, upstream forums, archives and search engines.
+The [sandbox](#sandbox) refuses them for the agent's shell and local Chromium,
+Playwright MCP refuses them too, and Browserbase pages are limited to the fixture host.
 Codex web search is off, and Claude Code omits WebSearch and WebFetch. Agents
 are told some sites are blocked and record flows that need one as coverage
 limitations. `merge` labels saved runs from before this as `open web`.
@@ -192,9 +193,12 @@ Gitea's "New Migration" from GitHub.
 Each Codex or Claude Code run executes in its own Docker container built from
 [`sandbox/Dockerfile`](sandbox/Dockerfile), with the agent, its tools and its
 driver inside. The container sees only the run's own folders, and the harness
-grades what it writes. Its only network route allows the model API, the fixture
-and the harness's Browserbase broker, which keeps the Browserbase key on the
-host. Blocked requests are logged to the run's `egress-denied.log`. Browserbase
+grades what it writes. Its only network route is a proxy on the host, which
+reaches public sites except `ANSWER_DOMAINS`, plus the fixture and the harness's
+Browserbase broker, which keeps the Browserbase key on the host. It refuses bare
+IP addresses and private ones, such as the host's own services and cloud
+metadata. Each allowed host is logged once to the run's `egress-allowed.log`,
+and each refused request to `egress-denied.log`. Browserbase
 browsers run outside the container; Browserbase keeps their pages on the fixture
 host, though a page can still load resources from other sites.
 

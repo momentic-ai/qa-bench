@@ -1,21 +1,61 @@
+import { lookup } from "node:dns/promises";
 import { appendFile } from "node:fs/promises";
 import net from "node:net";
 import { Duplex } from "node:stream";
 
-/** A host the sandbox may reach: an exact name, or `*.example.com` for its subdomains. */
+/** A host the sandbox may reach even when it's private: an exact name, or `*.example.com` for its subdomains. */
 export type EgressRule = { host: string; port: number };
 
+// Loopback, private, link-local (cloud metadata), shared, multicast and reserved
+// ranges, plus Azure's platform address, so the sandbox can't reach the host or its network.
+const PRIVATE = new net.BlockList();
+for (const [address, prefix] of [
+  ["0.0.0.0", 8],
+  ["10.0.0.0", 8],
+  ["100.64.0.0", 10],
+  ["127.0.0.0", 8],
+  ["168.63.129.16", 32],
+  ["169.254.0.0", 16],
+  ["172.16.0.0", 12],
+  ["192.0.0.0", 24],
+  ["192.168.0.0", 16],
+  ["198.18.0.0", 15],
+  ["224.0.0.0", 3],
+] as const)
+  PRIVATE.addSubnet(address, prefix, "ipv4");
+for (const [address, prefix] of [
+  ["::", 127],
+  ["64:ff9b::", 96],
+  ["fc00::", 7],
+  ["fe80::", 10],
+  ["ff00::", 8],
+] as const)
+  PRIVATE.addSubnet(address, prefix, "ipv6");
+
 /**
- * The sandbox's only way out: an HTTP CONNECT proxy for the container's streams
- * that tunnels to allowed hosts and logs every refusal.
+ * The sandbox's only way out: an HTTP CONNECT proxy for the container's streams.
+ * It tunnels to public hosts except the `blocked` domains, and to `rules` hosts.
+ * Other bare IP addresses are refused, so a blocked site can't be reached by address.
+ * It logs each allowed host once and every refusal.
  */
 export class EgressProxy {
   private clients = new Set<Duplex>();
+  private logged = new Set<string>();
+  private blocked: RegExp[];
 
   constructor(
     private rules: EgressRule[],
-    private deniedLog: string,
-  ) {}
+    /** Domains refused with their subdomains; `*` matches any text, as in `google.*`. */
+    blocked: string[],
+    private logs: { allowed: string; denied: string },
+  ) {
+    this.blocked = blocked.map(
+      (domain) =>
+        new RegExp(
+          `^(.*\\.)?${domain.replace(/[.+?^${}()|[\]\\]/g, "\\$&").replaceAll("*", ".*")}$`,
+        ),
+    );
+  }
 
   allow(rule: EgressRule) {
     this.rules.push(rule);
@@ -25,7 +65,7 @@ export class EgressProxy {
     for (const client of this.clients) client.destroy();
   }
 
-  private allowed(host: string, port: number) {
+  private ruleAllows(host: string, port: number) {
     return this.rules.some(
       (rule) =>
         rule.port === port &&
@@ -34,11 +74,34 @@ export class EgressProxy {
     );
   }
 
+  /** The address to connect to, or undefined to refuse. */
+  private async resolve(host: string, port: number) {
+    if (this.ruleAllows(host, port)) return host;
+    if (net.isIP(host) || this.blocked.some((domain) => domain.test(host)))
+      return undefined;
+    const addresses = await lookup(host, { all: true });
+    if (
+      !addresses.length ||
+      addresses.some(({ address, family }) =>
+        PRIVATE.check(address, family === 6 ? "ipv6" : "ipv4"),
+      )
+    )
+      return undefined;
+    // The checked address, so a second lookup can't return a private one.
+    return addresses[0].address;
+  }
+
+  private log(file: string, line: string) {
+    void appendFile(file, `${new Date().toISOString()} ${line}\n`).catch(
+      () => {},
+    );
+  }
+
   handle(client: Duplex) {
     this.clients.add(client);
     client.on("close", () => this.clients.delete(client));
     let head = Buffer.alloc(0);
-    const onData = (chunk: Buffer) => {
+    const onData = async (chunk: Buffer) => {
       head = Buffer.concat([head, chunk]);
       const end = head.indexOf("\r\n\r\n");
       if (end === -1) {
@@ -46,21 +109,34 @@ export class EgressProxy {
         return;
       }
       client.off("data", onData);
+      client.pause();
       const line = head.subarray(0, head.indexOf("\r\n")).toString("latin1");
       const match = /^CONNECT ([^\s:]+|\[[^\]]+\]):(\d+) HTTP\/1\.[01]$/.exec(
         line,
       );
-      const host = match?.[1].replace(/^\[|\]$/g, "").toLowerCase();
+      const host = match?.[1]
+        .replace(/^\[|\]$/g, "")
+        .toLowerCase()
+        .replace(/\.+$/, "");
       const port = Number(match?.[2]);
-      if (!host || !this.allowed(host, port)) {
-        void appendFile(
-          this.deniedLog,
-          `${new Date().toISOString()} ${line}\n`,
-        ).catch(() => {});
+      let address: string | undefined;
+      try {
+        address = host ? await this.resolve(host, port) : undefined;
+      } catch {
+        client.end("HTTP/1.1 502 Bad Gateway\r\nContent-Length: 0\r\n\r\n");
+        return;
+      }
+      if (client.destroyed) return;
+      if (!host || !address) {
+        this.log(this.logs.denied, line);
         client.end("HTTP/1.1 403 Forbidden\r\nContent-Length: 0\r\n\r\n");
         return;
       }
-      const upstream = net.connect(port, host, () => {
+      if (!this.logged.has(`${host}:${port}`)) {
+        this.logged.add(`${host}:${port}`);
+        this.log(this.logs.allowed, `${host}:${port}`);
+      }
+      const upstream = net.connect(port, address, () => {
         client.write("HTTP/1.1 200 Connection Established\r\n\r\n");
         const rest = head.subarray(end + 4);
         if (rest.length) upstream.write(rest);

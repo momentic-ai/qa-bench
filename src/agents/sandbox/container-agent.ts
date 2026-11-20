@@ -5,6 +5,7 @@ import { Duplex } from "node:stream";
 
 import { BrowserbaseSessions } from "../codex/browserbase";
 import type { CodingAgentSettings } from "../coding-agent";
+import { ANSWER_DOMAINS } from "../testing-browser";
 import { AgentContext, AgentResults, EvalAgent } from "../types";
 import {
   CONFIG_FILE,
@@ -57,6 +58,7 @@ export class ContainerAgent implements EvalAgent {
       runDirectory: context.runDirectory,
       reportDirectory: context.reportDirectory,
       readOnly: broker ? [sessions] : [],
+      blocked: ANSWER_DOMAINS,
       rules: [
         { host: agent.apiHost, port: 443 },
         ...(targetUrl

@@ -55,17 +55,23 @@ export class SandboxRuntime extends EventEmitter {
     runDirectory,
     reportDirectory,
     rules,
+    blocked,
     readOnly = [],
   }: {
     runDirectory: string;
     reportDirectory: string;
     rules: EgressRule[];
+    blocked: string[];
     readOnly?: string[];
   }) {
     const directory = await mkdtemp(path.join(tmpdir(), "qa-bench-egress-"));
-    const log = path.join(runDirectory, "egress-denied.log");
-    await writeFile(log, "", { flag: "a" });
-    const proxy = new EgressProxy(rules, log);
+    const logs = {
+      allowed: path.join(runDirectory, "egress-allowed.log"),
+      denied: path.join(runDirectory, "egress-denied.log"),
+    };
+    for (const log of Object.values(logs))
+      await writeFile(log, "", { flag: "a" });
+    const proxy = new EgressProxy(rules, blocked, logs);
     const runtime = new SandboxRuntime(directory, proxy, [
       runDirectory,
       reportDirectory,
@@ -102,7 +108,7 @@ export class SandboxRuntime extends EventEmitter {
             "--volume",
             `${mount}:${mount}`,
           ]),
-          ...[log, ...readOnly].flatMap((mount) => [
+          ...[...Object.values(logs), ...readOnly].flatMap((mount) => [
             "--volume",
             `${mount}:${mount}:ro`,
           ]),

@@ -20,7 +20,7 @@ const require = createRequire(import.meta.url);
 // Sites holding upstream issues, fixes or this benchmark's labels, copies of them,
 // and search engines that lead to them. Playwright matches a bare host exactly, so
 // each domain also gets a `*.` pattern; `*` spans dots, so `google.*` covers google.co.uk.
-const ANSWER_DOMAINS = [
+export const ANSWER_DOMAINS = [
   // Code hosts, plus GitHub viewers, mirrors and raw-file proxies
   "github.com",
   "githubusercontent.com",
