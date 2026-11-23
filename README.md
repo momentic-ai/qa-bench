@@ -84,7 +84,10 @@ To grade through an OpenAI-compatible Responses proxy, set `GRADING_BASE_URL`
 key, or omit it to reuse `OPENAI_API_KEY`. Optional `GRADING_HEADERS` is a JSON
 object of string header values. These settings affect grading only. The grader
 keeps its configured model and reasoning effort, and proxy failures stop grading
-without falling back to direct OpenAI.
+without falling back to direct OpenAI. Set `GRADING_FALLBACK_BASE_URL` to try a
+second proxy once after a transient provider failure. It uses the same key,
+headers, model, reasoning effort, and cancellation signal. Authentication and
+validation failures do not trigger fallback.
 
 Mo runs on Momentic's hosted service, so it needs a Momentic account and the
 [`qa` CLI](https://www.npmjs.com/package/qa). Runs require version 0.34.0:
