@@ -11,6 +11,7 @@ import { createGradingProxy } from "./proxy";
 test("QA bench grades through the authenticated proxy and does not fall back after a 401", async () => {
   const previousUrl = process.env.GRADING_BASE_URL;
   const previousKey = process.env.GRADING_API_KEY;
+  const previousFallback = process.env.GRADING_FALLBACK_BASE_URL;
   const previousHeaders = process.env.GRADING_HEADERS;
   const requests: {
     path: string | undefined;
@@ -18,7 +19,8 @@ test("QA bench grades through the authenticated proxy and does not fall back aft
     tag: string | undefined;
     body: { reasoning: { effort: string }; store: boolean };
   }[] = [];
-  let unauthorized = false;
+  let fallbackFailure = false;
+  let primaryFailure: number | "stream" | undefined;
   const output = {
     findings: [
       {
@@ -49,9 +51,36 @@ test("QA bench grades through the authenticated proxy and does not fall back aft
         })
         .parse(JSON.parse(body)),
     });
-    if (unauthorized) {
-      response.writeHead(401, { "content-type": "application/json" });
-      response.end(JSON.stringify({ error: { message: "Unauthorized" } }));
+    if (fallbackFailure && request.url === "/azure/v1/responses") {
+      response.writeHead(503, { "content-type": "application/json" });
+      response.end(JSON.stringify({ error: { message: "Azure unavailable" } }));
+      return;
+    }
+    if (primaryFailure && request.url === "/custom/v1/responses") {
+      if (primaryFailure === "stream") {
+        response.writeHead(200, { "content-type": "text/event-stream" });
+        response.end(
+          `data: ${JSON.stringify({
+            type: "error",
+            sequence_number: 0,
+            code: "server_is_overloaded",
+            message:
+              "Our servers are currently overloaded. Please try again later.",
+            param: null,
+          })}\n\n`,
+        );
+      } else {
+        response.writeHead(primaryFailure, {
+          "content-type": "application/json",
+        });
+        response.end(
+          JSON.stringify({
+            error: {
+              message: primaryFailure === 401 ? "Unauthorized" : "Unavailable",
+            },
+          }),
+        );
+      }
       return;
     }
     response.writeHead(200, { "content-type": "text/event-stream" });
@@ -84,6 +113,7 @@ test("QA bench grades through the authenticated proxy and does not fall back aft
     const address = server.address();
     assert(address && typeof address !== "string");
     process.env.GRADING_BASE_URL = `http://127.0.0.1:${address.port}/custom/v1`;
+    process.env.GRADING_FALLBACK_BASE_URL = `http://127.0.0.1:${address.port}/azure/v1`;
     process.env.GRADING_HEADERS = JSON.stringify({ "x-test-tag": "grader" });
     process.env.GRADING_API_KEY = "first-key";
     const first = createGradingProxy();
@@ -117,12 +147,39 @@ test("QA bench grades through the authenticated proxy and does not fall back aft
       assert.equal(request.body.reasoning.effort, "high");
       assert.equal(request.body.store, false);
     }
-    unauthorized = true;
+    for (const failure of [429, 503, "stream"] as const) {
+      primaryFailure = failure;
+      const start = requests.length;
+      assert.deepEqual(JSON.parse(await first("Grade the finding.")), output);
+      assert.deepEqual(
+        requests.slice(start).map((request) => request.path),
+        ["/custom/v1/responses", "/azure/v1/responses"],
+      );
+      assert(
+        requests
+          .slice(start)
+          .every(
+            (request) =>
+              request.authorization === "Bearer first-key" &&
+              request.tag === "grader",
+          ),
+      );
+    }
+    fallbackFailure = true;
+    const beforeFallbackFailure = requests.length;
+    await assert.rejects(first("Grade the finding."), /Azure unavailable/);
+    assert.equal(requests.length, beforeFallbackFailure + 2);
+    primaryFailure = 401;
+    const beforeUnauthorized = requests.length;
     await assert.rejects(
       judge(fixture, [], [], [finding], codex, undefined, first),
+      /Unauthorized/,
     );
-    assert.equal(requests.length, 3);
+    assert.equal(requests.length, beforeUnauthorized + 1);
   } finally {
+    if (previousFallback === undefined)
+      delete process.env.GRADING_FALLBACK_BASE_URL;
+    else process.env.GRADING_FALLBACK_BASE_URL = previousFallback;
     if (previousUrl === undefined) delete process.env.GRADING_BASE_URL;
     else process.env.GRADING_BASE_URL = previousUrl;
     if (previousHeaders === undefined) delete process.env.GRADING_HEADERS;
