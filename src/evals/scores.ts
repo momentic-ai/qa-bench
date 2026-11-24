@@ -4,8 +4,6 @@ import path from "node:path";
 import { Readable } from "node:stream";
 import { z } from "zod";
 
-import { GRADING_JUDGE } from "../grading/contract";
-
 export const AgentSchema = z.enum([
   "mo",
   "devin-qa",
@@ -64,7 +62,7 @@ export const ScoreSchema = z
     agent: AgentSchema,
     ground_truth_sha256: z.string(),
     known_invalid_sha256: z.string(),
-    judge: z.enum([GRADING_JUDGE, "gpt-6.1-sol/high"]),
+    judge: z.string(),
     grading_method_sha256: z
       .string()
       .regex(/^[a-f0-9]{64}$/)
