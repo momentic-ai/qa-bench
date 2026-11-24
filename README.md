@@ -41,11 +41,15 @@ reflected. Per-area results are in
 | Codex, GPT-6.1 Sol, e2e\*               | 20    | 77.3            | 83.7            | 6.0%           | 90.3%             | 205.6         | $2.08                    |
 | Codex, GPT-6.1 Terra, Playwright MCP    | 20    | 83.3            | 82.7            | 5.9%           | 81.6%             | 177.0         | $0.53                    |
 | Codex, GPT-6.1 Sol, agent-browser       | 20    | 68.0            | 64.3            | 4.6%           | 76.3%             | 144.3         | $0.96                    |
+| Browser Use Pi, GPT-6.1 Sol\*           | 20    | 57.7            | 61.3            | 4.4%           | 93.9%             | 148.0         | $1.53                    |
 | Claude Code, Opus 5.5, Playwright MCP   | 20    | 38.0            | 59.0            | 4.2%           | 79.5%             | 122.7         | $4.09                    |
 | Codex, GPT-6.1 Terra, agent-browser     | 20    | 59.3            | 57.7            | 4.1%           | 76.2%             | 126.3         | $0.27                    |
 | Claude Code, Opus 5.5, e2e\*            | 20    | 39.4            | 57.3            | 4.1%           | 89.6%             | 127.3         | $8.98                    |
+| Browser Use Pi, GPT-6.1 Terra\*         | 20    | 55.0            | 51.0            | 3.7%           | 85.5%             | 107.0         | $0.58                    |
 | Claude Code, Opus 5.5, agent-browser    | 20    | 24.0            | 41.0            | 2.9%           | 77.0%             | 81.0          | $2.45                    |
 | Devin                                   | 20    | 16.0            | 27.0            | 1.9%           | 84.4%             | 65.0          | $3.89                    |
+| Browser Use\*                           | 20    | 19.0            | 22.0            | 1.6%           | 86.9%             | 44.7          | $0.27                    |
+| Browser Use Pi, GPT-6 Luna\*            | 20    | 17.3            | 18.3            | 1.3%           | 90.2%             | 35.0          | $0.22                    |
 | Claude Code, Sonnet 5.5, Playwright MCP | 20    | 12.0            | 15.0            | 1.1%           | 72.6%             | 26.7          | $2.08                    |
 | Claude Code, Sonnet 5.5, agent-browser  | 20    | 8.7             | 13.0            | 0.9%           | 65.0%             | 20.0          | $0.68                    |
 
@@ -56,7 +60,8 @@ e2e on Gitea repository settings at 60 minutes. OpenAI's cybersecurity policy
 refused one of those runs three times, so that area has two.
 
 \* Pending label review. The e2e runs left 106 distinct findings (135 reports)
-that match no label; the other rows have none. Reviewing them will raise
+that match no label. The Browser Use runs left 10–27% of their 60-minute
+reports unmatched. The other rows have none. Reviewing them will raise
 Correct and Recall where they are real bugs, and can lower Precision and Score
 where they are invalid.
 
