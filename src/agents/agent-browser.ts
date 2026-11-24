@@ -82,7 +82,3 @@ export async function closeAgentBrowsers(
     });
   }
 }
-
-export async function validateAgentBrowser() {
-  await exec(process.execPath, [command, "--version"], { timeout: 10_000 });
-}

@@ -61,8 +61,10 @@ where they are invalid.
 
 ## Run it
 
-You need Node.js 22.12+, pnpm, and an [E2B](https://e2b.dev) account. Build the
-sandbox templates once per E2B org. Twenty needs the larger one.
+You need Node.js 22.12+, pnpm, and an [E2B](https://e2b.dev) account. Codex
+and Claude Code runs also need [Docker](https://docs.docker.com/get-docker/), not
+in rootless mode; the first run builds their [sandbox image](#sandbox). Build
+the E2B templates once per E2B org. Twenty needs the larger one.
 
 ```bash
 pnpm install
@@ -102,7 +104,7 @@ record test cases or add its model cost.
 Run one agent on one area, then compare saved runs:
 
 ```bash
-pnpm eval --agent codex-playwright-mcp --prevent-cheating --fixtures saleor/areas/vouchers --minutes 30
+pnpm eval --agent codex-playwright-mcp --fixtures saleor/areas/vouchers --minutes 30
 pnpm merge --fixtures saleor/areas/vouchers
 ```
 
@@ -153,9 +155,6 @@ Results also include Codex with `gpt-6.1-terra` and Claude Code with
 
 ### Browsers and subagents
 
-- `codex-agent-browser` runs without Codex's sandbox, because the sandbox kills
-  the agent-browser daemon after each command on Linux. Its shell can write
-  anywhere your user can, so run it on a machine or VM you're happy to expose.
 - `*-playwright-mcp` agents use Playwright MCP on Browserbase. The parent and
   each subagent get their own Browserbase browser.
 - `*-agent-browser` agents use the pinned
@@ -169,43 +168,43 @@ Results also include Codex with `gpt-6.1-terra` and Claude Code with
   browser, the model, the fixture accounts as e2e credentials (passwords come
   from the environment), and video recording. e2e's own agent uses the coding
   agent's model at medium effort, and each e2e process gets its own Browserbase
-  browser. e2e
-  needs Node.js 22.22.3 or later 22.x, or 24.8 or later. Like
-  `codex-agent-browser`, these runs have no shell sandbox.
-- `--browser local` replaces Browserbase with headless Chromium on the host.
+  browser.
+- `--browser local` replaces Browserbase with headless Chromium in the sandbox.
   Playwright MCP runs then have no subagents, and `merge` labels them separately.
 - Mo manages its own subagents, and `--max-concurrent-sub-agents` caps them.
   Devin runs in one session with no child sessions.
 
 ### Web access
 
-Coding agents can search the web and find examples of these bugs online instead
-of testing the fixture against its intended behavior. We recommend
-`--prevent-cheating` for Codex and Claude Code runs. The flag is off by
-default so new runs stay comparable with saved ones, and `merge` labels runs
-that use it separately.
+Coding agents could find examples of these bugs online instead of testing the
+fixture against its intended behavior, so Codex and Claude Code runs can't reach
+the sites in `ANSWER_DOMAINS` ([`testing-browser.ts`](src/agents/testing-browser.ts)):
+code hosts, the published dataset, upstream forums, archives and search engines.
+The [sandbox](#sandbox) refuses them for the agent's shell and local Chromium,
+Playwright MCP refuses them too, and Browserbase pages are limited to the fixture host.
+Codex web search is off, and Claude Code omits WebSearch and WebFetch. Agents
+are told some sites are blocked and record flows that need one as coverage
+limitations. `merge` labels saved runs from before the sandbox `open web`, or
+`prevent-cheating` if they used that old flag.
 
-The flag turns off Codex web search, makes Playwright MCP refuse the sites in
-`ANSWER_DOMAINS` ([`testing-browser.ts`](src/agents/testing-browser.ts)), limits
-Browserbase pages to the fixture host, and tells the agent to record a blocked site
-as a coverage limitation. Playwright MCP runs already use Codex's read-only
-sandbox, which has no network access.
+Shared agent-browser sessions are kept alive across disconnects. Browserbase sessions get the requested time budget plus two minutes, up to the provider's six-hour limit.
 
-Claude Code already omits WebSearch and WebFetch from its tool list. With the flag, it also applies the browser restrictions above. Shared agent-browser sessions are kept alive across disconnects. Browserbase sessions get the requested time budget plus two minutes, up to the provider's six-hour limit.
+This doesn't stop fixtures that fetch from code hosts on the server, such as
+Gitea's "New Migration" from GitHub.
 
-The flag doesn't stop fixtures that fetch from code hosts on the server, such
-as Gitea's "New Migration" from GitHub.
+### Sandbox
 
-**`--prevent-cheating` is not a network firewall for agent-browser or e2e runs.** The flag
-is accepted there, but it only turns off web search and, on Browserbase, limits
-page navigation to the fixture host. With `--browser local` its browser isn't
-restricted, and it runs without Codex's sandbox on any browser, so the agent can
-still `curl` GitHub or the dataset. To run it without answer lookups, restrict the network outside
-qa-bench. On Linux, run `pnpm eval` under
-[nsjail](https://github.com/google/nsjail) or a similar sandbox with egress
-limited to the hosts the run needs (the fixture, OpenAI, E2B and Browserbase).
-On macOS, where nsjail doesn't run, do the same inside a Linux VM or container
-(for example Docker or OrbStack) with an egress firewall.
+Each Codex or Claude Code run executes in its own Docker container built from
+[`sandbox/Dockerfile`](sandbox/Dockerfile), with the agent, its tools and its
+driver inside. The container sees only the run's own folders, and the harness
+grades what it writes. Its only network route is a proxy on the host, which
+reaches public sites except `ANSWER_DOMAINS`, plus the fixture and the harness's
+Browserbase broker, which keeps the Browserbase key on the host. Apart from
+those, it refuses bare IP addresses and private ones, such as the host's own
+services and cloud metadata. Each allowed host and port is logged once to the
+run's `egress-allowed.log`, and each refused request to `egress-denied.log`. Browserbase
+browsers run outside the container; Browserbase keeps their pages on the fixture
+host, though a page can still load resources from other sites.
 
 ## Scoring
 

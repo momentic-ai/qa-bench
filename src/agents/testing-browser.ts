@@ -1,38 +1,26 @@
-import { cp, mkdir, mkdtemp, rm } from "node:fs/promises";
+import { cp, mkdir, rm } from "node:fs/promises";
 import { createRequire } from "node:module";
-import { tmpdir } from "node:os";
 import path from "node:path";
 
 import {
   BrowserTool,
   closeAgentBrowsers,
   prepareAgentBrowser,
-  validateAgentBrowser,
 } from "./agent-browser";
-import { combinedCost } from "./browser-cost";
+import { BrowserCost, combinedCost } from "./browser-cost";
 import { BrowserRecorder } from "./browser-recorder";
 import { cutBugVideos } from "./bug-videos";
-import { BrowserbaseSessions } from "./codex/browserbase";
 import { E2EModel } from "./e2e/config";
-import {
-  addE2ECost,
-  e2eInstructions,
-  prepareE2E,
-  validateE2E,
-} from "./e2e/workspace";
-import {
-  LocalChromium,
-  localBrowserConnection,
-  validateLocalChromium,
-} from "./local-browser";
-import { AgentContext, AgentCost, Browser } from "./types";
+import { addE2ECost, e2eInstructions, prepareE2E } from "./e2e/workspace";
+import { LocalChromium, localBrowserConnection } from "./local-browser";
+import { CONTAINER_PROXY } from "./sandbox/runtime";
+import { AgentCost, Browser, CodingAgentContext } from "./types";
 
 const require = createRequire(import.meta.url);
-export const DISABLED_BROWSER_TOOL = "browser_run_code_unsafe";
 // Sites holding upstream issues, fixes or this benchmark's labels, copies of them,
 // and search engines that lead to them. Playwright matches a bare host exactly, so
 // each domain also gets a `*.` pattern; `*` spans dots, so `google.*` covers google.co.uk.
-const ANSWER_DOMAINS = [
+export const ANSWER_DOMAINS = [
   // Code hosts, plus GitHub viewers, mirrors and raw-file proxies
   "github.com",
   "githubusercontent.com",
@@ -119,12 +107,13 @@ const ANSWER_SOURCES = ANSWER_DOMAINS.flatMap((domain) => [
 
 export type BrowserOptions = {
   browser: Browser;
-  preventCheating: boolean;
   /** Records each browser and cuts a video clip per bug. */
   recordBugs: boolean;
   /** Where the agent discovers skills. */
   skillOwner: ".agents" | ".claude";
   e2eModel: E2EModel;
+  /** The harness's Browserbase broker URL. */
+  broker?: string;
 };
 
 export type PreparedBrowser = {
@@ -135,34 +124,25 @@ export type PreparedBrowser = {
     env: Record<string, string>;
   };
   env?: Record<string, string>;
-  /** agent-browser and e2e need network access and background processes from the shell. */
-  unsandboxedShell: boolean;
   subagents?: boolean;
   /** Appended to the task brief. */
   instructions?: string;
 };
 
-type BrowserToolSetup = Omit<
-  PreparedBrowser,
-  "instructions" | "unsandboxedShell"
->;
+type BrowserToolSetup = Omit<PreparedBrowser, "instructions">;
 
 /** One coding-agent run's browser and the tool the agent drives it with. */
 export abstract class TestingBrowser {
   readonly artifacts: string;
-  private browsers: BrowserbaseSessions | LocalChromium | undefined;
+  private browsers: LocalChromium | undefined;
   /** The run's browser frames and their log, for cutting bug videos. */
   private browserLog: string;
   private frames: string;
   private recorder: BrowserRecorder | undefined;
-  protected unsandboxedShell = true;
-  /** Whether answer sites are blocked even on a local browser. */
-  protected blocksSitesLocally = false;
-  protected keepAlive = false;
   protected instructions: string | undefined;
 
   constructor(
-    protected context: AgentContext,
+    protected context: CodingAgentContext,
     readonly options: BrowserOptions,
   ) {
     this.artifacts = path.join(context.runDirectory, "browser-artifacts");
@@ -177,8 +157,7 @@ export abstract class TestingBrowser {
   }
 
   static async validate(browser: Browser) {
-    if (browser === "local") await validateLocalChromium();
-    else if (!process.env.BROWSERBASE_API_KEY)
+    if (browser !== "local" && !process.env.BROWSERBASE_API_KEY)
       throw new Error("BROWSERBASE_API_KEY is required.");
   }
 
@@ -186,28 +165,19 @@ export abstract class TestingBrowser {
 
   async prepare(workspace: string): Promise<PreparedBrowser> {
     const setup = await this.setup(workspace);
-    const { browser, preventCheating } = this.options;
-    const sitesBlocked = this.blocksSitesLocally || browser !== "local";
     const instructions = [
       this.instructions,
-      preventCheating &&
-        sitesBlocked &&
-        "Some external sites are blocked. Record flows that need one as coverage limitations, not bugs.",
-    ]
-      .filter(Boolean)
-      .join("\n\n");
-    return {
-      instructions,
-      unsandboxedShell: this.unsandboxedShell,
-      ...setup,
-    };
+      "Some external sites are blocked. Record flows that need one as coverage limitations, not bugs.",
+    ].join("\n\n");
+    return { instructions, ...setup };
   }
 
+  /** `browser` is the broker's Browserbase charge. */
   async cost(
     model: AgentCost | null,
     modelComplete: boolean,
+    browser?: BrowserCost,
   ): Promise<AgentCost | null> {
-    const browser = await this.browsers?.cost();
     return browser
       ? {
           ...model,
@@ -260,39 +230,17 @@ export abstract class TestingBrowser {
         env: { PLAYWRIGHT_MCP_CDP_ENDPOINT: await this.browsers.start() },
       };
     }
-    let allowedDomains: string[] | undefined;
-    if (this.options.preventCheating) {
-      if (!this.context.targetUrl)
-        throw new Error("--prevent-cheating needs the fixture URL.");
-      allowedDomains = [this.context.targetUrl.hostname];
-    }
-    this.browsers = new BrowserbaseSessions(
-      path.join(this.context.runDirectory, "browser-sessions"),
-      process.env.BROWSERBASE_API_KEY || "",
-      {
-        allowedDomains,
-        keepAlive: this.keepAlive,
-        timeoutSeconds: Math.min(
-          21600,
-          Math.ceil((this.context.timeLimitMs ?? 120 * 60_000) / 1000) + 120,
-        ),
-      },
-    );
+    if (!this.options.broker)
+      throw new Error("Browserbase runs need the harness's broker.");
     return {
       args: [],
-      env: { PLAYWRIGHT_MCP_CDP_ENDPOINT: await this.browsers.start() },
+      env: { PLAYWRIGHT_MCP_CDP_ENDPOINT: this.options.broker },
     };
   }
 }
 
 class PlaywrightMcp extends TestingBrowser {
-  protected unsandboxedShell = false;
-  protected blocksSitesLocally = true;
-  private temporaryDirectory: string | undefined;
-
   protected async setup() {
-    const temporaryDirectory = await mkdtemp(path.join(tmpdir(), "pw-eval-"));
-    this.temporaryDirectory = temporaryDirectory;
     await mkdir(this.artifacts, { recursive: true });
     const browser = await this.connect();
     return {
@@ -305,34 +253,22 @@ class PlaywrightMcp extends TestingBrowser {
             "cli.js",
           ),
           ...browser.args,
+          // For a browser Playwright MCP launches itself.
+          ...(browser.args.length ? ["--proxy-server", CONTAINER_PROXY] : []),
           "--output-dir",
           this.artifacts,
-          ...(this.options.preventCheating
-            ? ["--blocked-origins", ANSWER_SOURCES.join(";")]
-            : []),
+          "--blocked-origins",
+          ANSWER_SOURCES.join(";"),
         ],
-        env: { ...browser.env, TMPDIR: temporaryDirectory },
+        env: browser.env,
       },
       subagents: this.options.browser !== "local",
     };
   }
-
-  async close() {
-    await super.close();
-    if (this.temporaryDirectory)
-      await rm(this.temporaryDirectory, { recursive: true, force: true });
-  }
 }
 
 class AgentBrowser extends TestingBrowser {
-  // Shared agent-browser sessions must survive disconnects.
-  protected keepAlive = true;
   private prepared: Awaited<ReturnType<typeof prepareAgentBrowser>> | undefined;
-
-  static async validate(browser: Browser) {
-    await validateAgentBrowser();
-    await super.validate(browser);
-  }
 
   protected async setup(workspace: string) {
     this.prepared = await prepareAgentBrowser(
@@ -361,12 +297,6 @@ class E2E extends TestingBrowser {
   private journal: string | undefined;
   private workspace: string | undefined;
 
-  static async validate(browser: Browser) {
-    await validateE2E();
-    // e2e downloads its own pinned Chromium.
-    if (browser !== "local") await super.validate(browser);
-  }
-
   protected async setup(workspace: string) {
     this.workspace = workspace;
     this.instructions = e2eInstructions(this.context.fixture);
@@ -392,8 +322,12 @@ class E2E extends TestingBrowser {
     };
   }
 
-  async cost(model: AgentCost | null, modelComplete: boolean) {
-    const cost = await super.cost(model, modelComplete);
+  async cost(
+    model: AgentCost | null,
+    modelComplete: boolean,
+    browser?: BrowserCost,
+  ) {
+    const cost = await super.cost(model, modelComplete, browser);
     return this.journal ? addE2ECost(cost, this.journal) : cost;
   }
 

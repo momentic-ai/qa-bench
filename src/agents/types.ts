@@ -1,4 +1,4 @@
-import { Fixture } from "../fixtures/types";
+import { Fixture, FixtureCredentials } from "../fixtures/types";
 
 export const MO_EFFORTS = ["low", "medium", "high", "max"] as const;
 export type MoEffort = (typeof MO_EFFORTS)[number];
@@ -19,6 +19,12 @@ export type AgentContext = {
   reportDirectory: string;
   runDirectory: string;
 };
+
+/** What a coding agent in the sandbox knows of its run. */
+export type CodingAgentContext = Pick<
+  AgentContext,
+  "agentName" | "targetUrl" | "timeLimitMs" | "reportDirectory" | "runDirectory"
+> & { fixture: FixtureCredentials };
 
 export type AgentResults = {
   bugCount: number;

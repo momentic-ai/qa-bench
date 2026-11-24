@@ -1,10 +1,8 @@
-import { execFile } from "node:child_process";
 import { cp, symlink, writeFile } from "node:fs/promises";
 import path from "node:path";
-import { promisify } from "node:util";
 
 import { fixtureAccounts } from "../../fixtures/accounts";
-import { Fixture } from "../../fixtures/types";
+import { FixtureCredentials } from "../../fixtures/types";
 import { AgentCost } from "../types";
 import { E2EModel } from "./config";
 import { getE2EModelCost } from "./cost";
@@ -15,7 +13,7 @@ const root = path.resolve(import.meta.dirname, "../../..");
 const MIN_PASSWORD_LENGTH = 6;
 
 /** Brief text for an e2e run: how it's set up and which accounts e2e can sign in as. */
-export function e2eInstructions(fixture: Fixture) {
+export function e2eInstructions(fixture: FixtureCredentials) {
   const accounts = fixture.username ? fixtureAccounts(fixture) : [];
   const usable = accounts.filter(
     (account) => account.password.length >= MIN_PASSWORD_LENGTH,
@@ -48,7 +46,7 @@ export async function prepareE2E({
 }: {
   workspace: string;
   skillOwner: ".agents" | ".claude";
-  fixture: Fixture;
+  fixture: FixtureCredentials;
   targetUrl: URL;
   model: E2EModel;
   journal: string;
@@ -107,19 +105,12 @@ ${credentials}
   );
   return {
     PATH: `${path.join(root, "node_modules/.bin")}${path.delimiter}${process.env.PATH || ""}`,
+    // Also stops e2e's daily update check against the npm registry.
+    E2E_TELEMETRY_DISABLED: "1",
     ...Object.fromEntries(
       accounts.map(({ name, password }) => [passwordVariable(name), password]),
     ),
   };
-}
-
-/** Fails on a Node.js that e2e's loader can't run on, as the agent's shell would. */
-export async function validateE2E() {
-  await promisify(execFile)(
-    path.join(root, "node_modules/.bin/e2e"),
-    ["--version"],
-    { timeout: 30_000 },
-  );
 }
 
 /** Adds e2e's model spend to the agent's cost; an unreadable journal leaves it incomplete. */
