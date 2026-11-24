@@ -1,15 +1,15 @@
 import { execFile } from "node:child_process";
-import { cp, symlink, writeFile } from "node:fs/promises";
+import { copyFile, cp, symlink, writeFile } from "node:fs/promises";
 import path from "node:path";
 import { promisify } from "node:util";
 
-import { fixtureAccounts } from "../../fixtures/accounts";
-import { Fixture } from "../../fixtures/types";
-import { AgentCost } from "../types";
-import { E2EModel } from "./config";
+import { AgentCost } from "../../../agents/types";
+import { fixtureAccounts } from "../../../fixtures/accounts";
+import { Fixture } from "../../../fixtures/types";
 import { getE2EModelCost } from "./cost";
+import { E2EModel, E2ESetup, E2E_SETUP_VARIABLE } from "./harness";
 
-const root = path.resolve(import.meta.dirname, "../../..");
+const root = path.resolve(import.meta.dirname, "../../../..");
 
 // e2e refuses credentials with shorter passwords.
 const MIN_PASSWORD_LENGTH = 6;
@@ -34,8 +34,9 @@ export function e2eInstructions(fixture: Fixture) {
 
 /**
  * Sets up the project the e2e skill expects: the CLI, the skill, and a config
- * that targets the fixture. `broker` is a Browserbase broker URL; without it
- * e2e launches local Chromium.
+ * that targets the fixture. Returns the agent shell's environment, which the
+ * config reads its settings from. `broker` is a Browserbase broker URL;
+ * without it e2e launches local Chromium.
  */
 export async function prepareE2E({
   workspace,
@@ -63,53 +64,30 @@ export async function prepareE2E({
     path.join(workspace, skillOwner, "skills/e2e"),
     { recursive: true },
   );
+  for (const file of ["e2e.config.ts", "harness.ts"])
+    await copyFile(
+      path.join(import.meta.dirname, file),
+      path.join(workspace, file),
+    );
   await writeFile(journal, "");
-  const engine = broker
-    ? `web({ connect: { cdpEndpoint: () => ${JSON.stringify(broker)} } })`
-    : "web()";
-  const effort =
-    model.provider === "openai"
-      ? { openai: { reasoningEffort: "medium" } }
-      : { anthropic: { effort: "medium" } };
-  // Passwords come from the environment, as e2e expects, not from the config file.
   const accounts = (fixture.username ? fixtureAccounts(fixture) : []).filter(
     (account) => account.password.length >= MIN_PASSWORD_LENGTH,
   );
-  const passwordVariable = (name: string) =>
-    `E2E_PASSWORD_${name.toUpperCase().replaceAll("-", "_")}`;
-  const credentials = accounts
-    .map(
-      ({ name, username }) =>
-        `    ${JSON.stringify(name)}: { username: ${JSON.stringify(username)}, password: process.env.${passwordVariable(name)} ?? "" },`,
-    )
-    .join("\n");
-  await writeFile(
-    path.join(workspace, "e2e.config.ts"),
-    `import type { E2EConfig } from "e2e";
-import { web } from "@e2e-dev/web";
-import { meteredModel } from ${JSON.stringify(path.join(import.meta.dirname, "config.ts"))};
-
-export default {
-  targets: [{ engine: ${engine}, app: { url: ${JSON.stringify(targetUrl.href)} } }],
-  // Each explore and repro records a replay for reviewing its findings.
-  video: "on",
-  credentials: {
-${credentials}
-  },
-  agents: {
-    default: {
-      model: meteredModel(${JSON.stringify(model)}, ${JSON.stringify(journal)}),
-      providerOptions: ${JSON.stringify(effort)},
-    },
-  },
-} satisfies E2EConfig;
-`,
-  );
+  const setup: E2ESetup = {
+    targetUrl: targetUrl.href,
+    broker,
+    model,
+    journal,
+    credentials: Object.fromEntries(
+      accounts.map(({ name, username, password }) => [
+        name,
+        { username, password },
+      ]),
+    ),
+  };
   return {
     PATH: `${path.join(root, "node_modules/.bin")}${path.delimiter}${process.env.PATH || ""}`,
-    ...Object.fromEntries(
-      accounts.map(({ name, password }) => [passwordVariable(name), password]),
-    ),
+    [E2E_SETUP_VARIABLE]: JSON.stringify(setup),
   };
 }
 

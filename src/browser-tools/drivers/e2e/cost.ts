@@ -1,7 +1,10 @@
 import { readFile } from "node:fs/promises";
 import { z } from "zod";
 
-import { anthropicPrices, openaiPrices as prices } from "../model-pricing";
+import {
+  anthropicPrices,
+  openaiPrices as prices,
+} from "../../../agents/model-pricing";
 
 const E2ECallSchema = z.object({
   provider: z.enum(["openai", "anthropic"]),

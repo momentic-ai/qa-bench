@@ -12,7 +12,7 @@ import path from "node:path";
 import { promisify } from "node:util";
 import { z } from "zod";
 
-import { BugRecording } from "../evals/reports";
+import { BugRecording } from "../../evals/reports";
 
 const exec = promisify(execFile);
 /** A pinned ffmpeg, so cutting doesn't depend on the machine's ffmpeg. */
