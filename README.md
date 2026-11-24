@@ -209,7 +209,7 @@ On macOS, where nsjail doesn't run, do the same inside a Linux VM or container
 
 ## Scoring
 
-A judge model (`gpt-6.1-sol`, high reasoning) compares each
+A judge model (`gpt-6-luna`, high reasoning) compares each
 finding with the area's [labels](#labels) and classifies each finding on its
 own:
 

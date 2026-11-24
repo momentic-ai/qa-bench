@@ -10,13 +10,16 @@ import { Finding } from "../evals/reports";
 import { Assessment } from "./assessment";
 
 export const GRADING_THREAD_OPTIONS = {
-  model: "gpt-6.1-sol",
+  model: "gpt-6-luna",
   modelReasoningEffort: "high",
   skipGitRepoCheck: true,
   sandboxMode: "read-only",
   approvalPolicy: "never",
   webSearchMode: "disabled",
 } as const;
+export const GRADING_JUDGE =
+  `${GRADING_THREAD_OPTIONS.model}/${GRADING_THREAD_OPTIONS.modelReasoningEffort}` as const;
+
 const INDEX = z.number().int().nonnegative();
 export const JudgeOutputSchema = z
   .object({

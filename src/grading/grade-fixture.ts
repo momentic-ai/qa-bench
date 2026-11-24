@@ -30,6 +30,7 @@ import { Fixture } from "../fixtures/types";
 import { partitionAreaAssessment } from "./area-assessment";
 import { Assessment, dedupeAssessment, scoreAssessment } from "./assessment";
 import {
+  GRADING_JUDGE,
   GRADING_METHOD_SHA256,
   GRADING_OUTPUT_SCHEMA,
   GRADING_PROMPT_TEMPLATE,
@@ -224,7 +225,7 @@ export async function gradeFixture(
     path.join(directory, "grading.json"),
     JSON.stringify(
       {
-        judge: "gpt-6.1-sol/high",
+        judge: GRADING_JUDGE,
         grading_method_sha256: gradingMethod,
         gradingPromptTemplate: GRADING_PROMPT_TEMPLATE,
         groundTruth,
@@ -254,7 +255,7 @@ export async function gradeFixture(
       .update(groundTruthFile)
       .digest("hex"),
     known_invalid_sha256: knownInvalid.hash,
-    judge: "gpt-6.1-sol/high",
+    judge: GRADING_JUDGE,
     grading_method_sha256: gradingMethod,
     ground_truth: groundTruth.length,
     bugs: bugs.length,
