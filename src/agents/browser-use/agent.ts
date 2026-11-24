@@ -3,12 +3,16 @@ import path from "node:path";
 import { setTimeout as delay } from "node:timers/promises";
 import { z } from "zod";
 
-import { hostedAgentRules } from "../../evals/hosted-agent-rules";
-import { LenientReportSchema, ReportSchema } from "../../evals/reports";
+import {
+  CodingAgentReportSchema,
+  LenientReportSchema,
+  ReportSchema,
+} from "../../evals/reports";
 import { writeJson } from "../../shared/json-file";
-import { fixtureHostnames } from "../devin/qa-security";
+import { hostedAgentRules } from "../hosted-agents";
 import { AgentContext, EvalAgent, EvalAgentDefinition } from "../types";
-import { BrowserUseApiError, BrowserUseClient } from "./client";
+import { BrowserUseBugVideos } from "./bug-videos";
+import { BrowserUseApiError, BrowserUseClient, browserUsd } from "./client";
 
 const REPORT_FILE = "qa-report.json";
 const TERMINAL = new Set(["completed", "failed", "cancelled"]);
@@ -41,6 +45,8 @@ export class BrowserUseAgent implements EvalAgent {
   private session: z.infer<typeof SessionSchema> | undefined;
   private workspaceId: string | undefined;
   private networkPolicyId: string | undefined;
+  private browserId: string | undefined;
+  private readonly videos: BrowserUseBugVideos | undefined;
   /** Runs replaced by an interrupting follow-up; their terminal states do not end the session. */
   private readonly interruptedRunIds = new Set<string>();
   private stopping = false;
@@ -49,9 +55,15 @@ export class BrowserUseAgent implements EvalAgent {
 
   constructor(
     private readonly context: AgentContext,
-    private readonly preventCheating = false,
+    private readonly options: BrowserUseOptions,
     private readonly client = BrowserUseClient.fromEnvironment(),
-  ) {}
+  ) {
+    if (options.recordBugs)
+      this.videos = new BrowserUseBugVideos(
+        context.runDirectory,
+        context.reportDirectory,
+      );
+  }
 
   async start(
     message: string,
@@ -69,20 +81,11 @@ export class BrowserUseAgent implements EvalAgent {
       }),
     );
     this.workspaceId = workspace.id;
-    if (this.preventCheating) {
-      // Blocks browser navigation only; the agent's built-in search stays prompt-restricted.
-      this.networkPolicyId = z.object({ id: z.string().min(1) }).parse(
-        await this.client.request("network-policies", {
-          method: "POST",
-          body: {
-            name: `momentic-qa-${randomUUID()}`,
-            defaultAction: "block",
-            allow: { domains: fixtureHostnames(this.context.targetUrl) },
-          },
-          signal,
-        }),
-      ).id;
-    }
+    if (this.options.preventCheating)
+      this.networkPolicyId = await this.client.createFixturePolicy(
+        this.context.targetUrl,
+        signal,
+      );
     const task = `${message}
 
 ${hostedAgentRules({
@@ -102,6 +105,7 @@ ${hostedAgentRules({
     this.launch = this.createRun(task, workspace.id);
     await this.launch;
     signal.throwIfAborted();
+    await this.watchBrowser(signal);
     return { completion: this.observe(signal) };
   }
 
@@ -134,6 +138,27 @@ ${hostedAgentRules({
       status: "queued",
     };
     await this.saveSession();
+  }
+
+  private async watchBrowser(signal: AbortSignal) {
+    if (!this.session) return;
+    const browser = await this.client.findSessionBrowser(
+      this.session.sessionId,
+      signal,
+    );
+    this.browserId = browser?.id;
+    if (!this.videos) return;
+    if (!browser?.cdpUrl) {
+      process.stderr.write(
+        "Bug videos skipped: Browser Use exposed no CDP URL.\n",
+      );
+      return;
+    }
+    this.videos.start(
+      browser.cdpUrl,
+      (poll) => this.readWorkspaceReport(poll),
+      20_000,
+    );
   }
 
   async send(message: string, signal: AbortSignal) {
@@ -204,13 +229,12 @@ ${hostedAgentRules({
   private async stopSession() {
     try {
       await this.stopRuns();
+      await this.videos?.stop();
+      // The session keeps its browser for follow-ups until an idle timeout.
+      if (this.browserId) await this.client.stopBrowser(this.browserId);
     } finally {
-      // Projects hold at most 100 policies.
       if (this.networkPolicyId)
-        await this.client.request(
-          `network-policies/${encodeURIComponent(this.networkPolicyId)}`,
-          { method: "DELETE" },
-        );
+        await this.client.deletePolicy(this.networkPolicyId);
     }
   }
 
@@ -254,14 +278,17 @@ ${hostedAgentRules({
     );
     // The final answer is reconciled; the workspace file survives a cutoff.
     const output = LenientReportSchema.safeParse(run.output);
-    const report = output.success
+    const saved = output.success
       ? output.data
       : await this.readWorkspaceReport(signal);
-    if (!report)
+    if (!saved)
       throw new Error("Browser Use did not persist a structured report.");
+    const report = this.videos
+      ? await this.videos.attach(saved, signal)
+      : saved;
     await writeJson(
       path.join(this.context.reportDirectory, "report.json"),
-      ReportSchema.parse(report),
+      CodingAgentReportSchema.parse(report),
     );
     let costUsd: number | null = null;
     try {
@@ -271,12 +298,20 @@ ${hostedAgentRules({
           { signal },
         ),
       );
-      costUsd = Number(cost.totalCostUsd);
-      // Session cost covers model, search, browser and proxy usage.
+      const browser = this.browserId
+        ? await this.client.getBrowser(this.browserId, signal)
+        : undefined;
+      const browserCost = browser ? browserUsd(browser) : null;
+      // The session's browser cost can read 0 until its browser stops; read the browser itself.
+      costUsd =
+        Number(cost.llmCostUsd) +
+        Number(cost.searchCostUsd) +
+        (browserCost ?? 0);
       await writeJson(path.join(this.context.reportDirectory, "cost.json"), {
         ...cost,
+        browserUsd: browserCost,
         estimatedUsd: costUsd,
-        costComplete: true,
+        costComplete: browserCost !== null,
       });
     } catch (error) {
       // A failed cost export must not discard otherwise usable findings.
@@ -319,7 +354,11 @@ ${hostedAgentRules({
   }
 }
 
-export function browserUseAgent(preventCheating = false): EvalAgentDefinition {
+type BrowserUseOptions = { preventCheating?: boolean; recordBugs?: boolean };
+
+export function browserUseAgent(
+  options: BrowserUseOptions = {},
+): EvalAgentDefinition {
   return {
     name: "Browser Use",
     reportSubdirectory: "browser-use",
@@ -329,11 +368,12 @@ export function browserUseAgent(preventCheating = false): EvalAgentDefinition {
       model: "browser-use-default",
       proxy: "none",
       retrieval: "prompt-restricted",
-      ...(preventCheating ? { preventCheating } : {}),
+      ...(options.preventCheating ? { preventCheating: true } : {}),
+      ...(options.recordBugs ? { recordBugs: true } : {}),
     },
     validateEnvironment() {
       BrowserUseClient.fromEnvironment();
     },
-    create: (context) => new BrowserUseAgent(context, preventCheating),
+    create: (context) => new BrowserUseAgent(context, options),
   };
 }

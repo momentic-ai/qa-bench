@@ -26,9 +26,15 @@ export function createFullAppAgent(
     case "devin-qa":
       return devinQaAgent;
     case "browser-use":
-      return browserUseAgent(options.preventCheating);
+      return browserUseAgent({
+        preventCheating: options.preventCheating,
+        recordBugs: options.recordBugs,
+      });
     case "browser-use-pi":
-      return browserUsePiAgent(options.piModel);
+      return browserUsePiAgent(options.piModel, {
+        preventCheating: options.preventCheating,
+        recordBugs: options.recordBugs,
+      });
     case "codex-playwright-mcp":
     case "codex-agent-browser":
     case "codex-e2e":

@@ -6,12 +6,14 @@ import {
 } from "@browser_use/pi";
 import { readFile } from "node:fs/promises";
 import path from "node:path";
-import { setTimeout as delay } from "node:timers/promises";
-import { z } from "zod";
 
-import { hostedAgentRules } from "../../evals/hosted-agent-rules";
-import { LenientReportSchema, ReportSchema } from "../../evals/reports";
+import {
+  CodingAgentReportSchema,
+  LenientReportSchema,
+} from "../../evals/reports";
 import { writeJson } from "../../shared/json-file";
+import { hostedAgentRules } from "../hosted-agents";
+import { openaiPrices } from "../model-pricing";
 import {
   AgentContext,
   EvalAgent,
@@ -19,7 +21,8 @@ import {
   PI_MODELS,
   PiModel,
 } from "../types";
-import { BrowserUseClient } from "./client";
+import { BrowserUseBugVideos } from "./bug-videos";
+import { BrowserUseClient, CloudBrowserSchema, browserUsd } from "./client";
 
 /** Luna uses Browser Use's recommended effort; Sol and Terra match the Codex configuration. */
 const REASONING = {
@@ -44,28 +47,17 @@ const PiReportSchema = Type.Object({
   areasExplored: Type.Array(Type.String()),
   limitations: Type.Array(Type.String()),
 });
-const CloudBrowserSchema = z
-  .object({
-    id: z.string().min(1),
-    cdpUrl: z.string().nullish(),
-    browserCost: z.string().nullish(),
-    proxyCost: z.string().nullish(),
-  })
-  .passthrough();
-
-/** Prices per million tokens for models Pi's pinned catalog lacks; see cost.ts. */
+/** Models Pi's pinned catalog lacks. */
 const UNLISTED_MODELS = {
-  "gpt-6.1-sol": {
-    name: "GPT-6.1 Sol",
-    short: { input: 2, output: 10, cacheRead: 0.1, cacheWrite: 2.5 },
-    long: { input: 4, output: 15, cacheRead: 0.2, cacheWrite: 5 },
-  },
-  "gpt-6.1-terra": {
-    name: "GPT-6.1 Terra",
-    short: { input: 1, output: 5, cacheRead: 0.05, cacheWrite: 1.25 },
-    long: { input: 2, output: 7.5, cacheRead: 0.1, cacheWrite: 2.5 },
-  },
+  "gpt-6.1-sol": "GPT-6.1 Sol",
+  "gpt-6.1-terra": "GPT-6.1 Terra",
 };
+
+/** Pi's cost fields, from the per-million-token prices the Codex rows use. */
+function piPrices(id: keyof typeof UNLISTED_MODELS, tier: "short" | "long") {
+  const { input, cachedInput, cacheWrite, output } = openaiPrices[id][tier];
+  return { input, output, cacheRead: cachedInput, cacheWrite };
+}
 
 /** Register the GPT-6.1 models from gpt-6-sol's definition at their own prices. */
 function piModels() {
@@ -73,18 +65,24 @@ function piModels() {
   const base = models.getModel("openai", "gpt-6-sol");
   if (!base) throw new Error("Pi's catalog has no gpt-6-sol definition.");
   const unlisted = new Map(
-    Object.entries(UNLISTED_MODELS).map(([id, { name, short, long }]) => [
-      id,
-      {
-        ...base,
+    Object.entries(UNLISTED_MODELS).map(([id, name]) => {
+      const model = id as keyof typeof UNLISTED_MODELS;
+      return [
         id,
-        name,
-        cost: {
-          ...short,
-          tiers: base.cost.tiers?.map((tier) => ({ ...tier, ...long })),
+        {
+          ...base,
+          id,
+          name,
+          cost: {
+            ...piPrices(model, "short"),
+            tiers: base.cost.tiers?.map((tier) => ({
+              ...tier,
+              ...piPrices(model, "long"),
+            })),
+          },
         },
-      },
-    ]),
+      ];
+    }),
   );
   const getModel = models.getModel.bind(models);
   models.getModel = (provider, id) =>
@@ -96,6 +94,8 @@ function piModels() {
 export class BrowserUsePiAgent implements EvalAgent {
   readonly preparesEnvironment = true;
   private browserId: string | undefined;
+  private networkPolicyId: string | undefined;
+  private readonly videos: BrowserUseBugVideos | undefined;
   private agent: BrowserUse | undefined;
   private run: Promise<RunResult<unknown>> | undefined;
   private result: RunResult<unknown> | undefined;
@@ -105,8 +105,15 @@ export class BrowserUsePiAgent implements EvalAgent {
   constructor(
     private readonly context: AgentContext,
     private readonly model: PiModel,
+    private readonly options: PiOptions = {},
     private readonly client = BrowserUseClient.fromEnvironment(),
-  ) {}
+  ) {
+    if (options.recordBugs)
+      this.videos = new BrowserUseBugVideos(
+        context.runDirectory,
+        context.reportDirectory,
+      );
+  }
 
   private get workspace() {
     return path.join(this.context.runDirectory, "pi-workspace");
@@ -122,11 +129,19 @@ export class BrowserUsePiAgent implements EvalAgent {
       throw new Error("Browser Use Pi requires a fixture URL.");
     // Provision the browser here, as Browser.cloud would, so its ID and cost stay reachable.
     const timeLimitMs = this.context.timeLimitMs ?? DEFAULT_TIMEOUT_MS;
+    if (this.options.preventCheating)
+      this.networkPolicyId = await this.client.createFixturePolicy(
+        this.context.targetUrl,
+        signal,
+      );
     const browser = CloudBrowserSchema.parse(
       await this.client.request("browsers", {
-        version: "v3",
         method: "POST",
         body: {
+          // Browser Use's proxy answers blocked hosts with 403, so the CDP connection survives.
+          ...(this.networkPolicyId
+            ? { networkPolicyId: this.networkPolicyId }
+            : {}),
           timeout: Math.min(240, Math.ceil(timeLimitMs / 60_000) + 10),
           enableRecording: false,
           // Fixtures are public E2B hosts; a residential proxy only adds cost and latency.
@@ -145,6 +160,17 @@ export class BrowserUsePiAgent implements EvalAgent {
     if (!browser.cdpUrl)
       throw new Error("Browser Use Cloud returned no CDP URL.");
     signal.throwIfAborted();
+    this.videos?.start(
+      browser.cdpUrl,
+      async () => {
+        const text = await readFile(
+          path.join(this.workspace, REPORT_FILE),
+          "utf8",
+        );
+        return LenientReportSchema.parse(JSON.parse(text));
+      },
+      2000,
+    );
     this.agent = await BrowserUse.create({
       model: `openai/${this.model}`,
       models: piModels(),
@@ -153,7 +179,7 @@ export class BrowserUsePiAgent implements EvalAgent {
       dedicatedBrowser: true,
       workspace: this.workspace,
       // No allowedDomains: Pi's policy closes the whole CDP connection when it cannot arm a
-      // tab blocked by a dialog, and the Node worker can fetch any URL regardless.
+      // tab blocked by a dialog. The worker can fetch any URL with or without a policy.
       telemetry: false,
       log: false,
     });
@@ -216,31 +242,15 @@ ${hostedAgentRules({
     try {
       this.cancel.abort();
       this.result ??= await this.run?.catch(() => undefined);
+      await this.videos?.stop();
       await this.agent?.close();
     } finally {
-      await this.stopBrowser();
-    }
-  }
-
-  private async stopBrowser() {
-    if (!this.browserId) return;
-    const stopped = AbortSignal.timeout(120_000);
-    while (true) {
       try {
-        await this.client.request(
-          `browsers/${encodeURIComponent(this.browserId)}`,
-          {
-            version: "v3",
-            method: "PATCH",
-            body: { action: "stop" },
-            signal: stopped,
-          },
-        );
-        return;
-      } catch (error) {
-        if (!this.client.isTransient(error)) throw error;
+        if (this.browserId) await this.client.stopBrowser(this.browserId);
+      } finally {
+        if (this.networkPolicyId)
+          await this.client.deletePolicy(this.networkPolicyId);
       }
-      await delay(2000, undefined, { signal: stopped });
     }
   }
 
@@ -251,38 +261,36 @@ ${hostedAgentRules({
       path.join(this.context.reportDirectory, "browser-use-pi-result.json"),
       result,
     );
-    const report =
+    const saved =
       result.status === "completed"
         ? LenientReportSchema.parse(result.output)
         : await this.partialReport(result);
-    if (!report)
+    if (!saved)
       throw new Error("Browser Use Pi did not checkpoint a structured report.");
+    const report = this.videos
+      ? await this.videos.attach(saved, signal)
+      : saved;
     await writeJson(
       path.join(this.context.reportDirectory, "report.json"),
-      ReportSchema.parse(report),
+      CodingAgentReportSchema.parse(report),
     );
     const modelUsd = result.usage.cost.total;
-    let browserUsd: number | null = null;
+    let browserCost: number | null = null;
     try {
-      const browser = CloudBrowserSchema.parse(
-        await this.client.request(
-          `browsers/${encodeURIComponent(this.browserId ?? "")}`,
-          { version: "v3", signal },
-        ),
+      browserCost = browserUsd(
+        await this.client.getBrowser(this.browserId ?? "", signal),
       );
-      browserUsd =
-        Number(browser.browserCost ?? 0) + Number(browser.proxyCost ?? 0);
     } catch (error) {
       // A failed browser cost export must not discard otherwise usable findings.
       if (signal.aborted) throw error;
     }
-    const estimatedUsd = modelUsd + (browserUsd ?? 0);
+    const estimatedUsd = modelUsd + (browserCost ?? 0);
     // Model cost is Pi's catalog estimate; browser and proxy cost come from Browser Use.
     await writeJson(path.join(this.context.reportDirectory, "cost.json"), {
       modelUsd,
-      browserUsd,
+      browserUsd: browserCost,
       estimatedUsd,
-      costComplete: browserUsd !== null,
+      costComplete: browserCost !== null,
     });
     return {
       bugCount: report.bugs.length,
@@ -306,8 +314,11 @@ ${hostedAgentRules({
   }
 }
 
+type PiOptions = { preventCheating?: boolean; recordBugs?: boolean };
+
 export function browserUsePiAgent(
   model: PiModel = PI_MODELS[0],
+  options: PiOptions = {},
 ): EvalAgentDefinition {
   return {
     name: "Browser Use Pi",
@@ -320,12 +331,14 @@ export function browserUsePiAgent(
       browser: "browser-use-cloud",
       proxy: "none",
       retrieval: "prompt-restricted",
+      ...(options.preventCheating ? { preventCheating: true } : {}),
+      ...(options.recordBugs ? { recordBugs: true } : {}),
     },
     validateEnvironment() {
       if (!process.env.OPENAI_API_KEY)
         throw new Error("OPENAI_API_KEY is required.");
       BrowserUseClient.fromEnvironment();
     },
-    create: (context) => new BrowserUsePiAgent(context, model),
+    create: (context) => new BrowserUsePiAgent(context, model, options),
   };
 }

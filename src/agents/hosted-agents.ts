@@ -41,3 +41,17 @@ ${isolation}If a flow needs a blocked external resource, record it as a coverage
 
 Before testing, ${rules.initialize} ${rules.update} immediately after each verified bug and completed workflow. Include complete reproduction steps and observed evidence in each finding. Keep areasExplored and limitations current, and ${rules.finalize} only when the work is complete or the budget ends. ${rules.closing}`;
 }
+
+/** Only fixture hosts are eligible; never allow a shared E2B domain wildcard. */
+export function fixtureHostnames(url: URL) {
+  if (
+    url.protocol !== "https:" ||
+    url.username ||
+    url.password ||
+    !/^[a-z0-9-]+\.e2b\.app$/.test(url.hostname)
+  )
+    throw new Error(
+      "Hosted agents require an exact HTTPS E2B fixture hostname.",
+    );
+  return [url.hostname];
+}

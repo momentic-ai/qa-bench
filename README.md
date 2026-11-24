@@ -208,12 +208,12 @@ sandbox, which has no network access.
 Claude Code already omits WebSearch and WebFetch from its tool list. With the flag, it also applies the browser restrictions above. Shared agent-browser sessions are kept alive across disconnects. Browserbase sessions get the requested time budget plus two minutes, up to the provider's six-hour limit.
 
 Browser Use's API has no switch for its built-in search tool, so its runs
-record `retrieval: "prompt-restricted"` and rely on the prompt rule above. With
-`--prevent-cheating`, a Browser Use network policy blocks every browser host
-except the fixture's; it does not cover the search tool.
+record `retrieval: "prompt-restricted"` and rely on the prompt rule above.
 Browser Use Pi has no search tool, but its worker can fetch any URL, so it
-records the same setting. Its pages aren't limited to the fixture host: Pi's
-domain policy drops the whole browser connection when a page dialog blocks it.
+records the same setting. With `--prevent-cheating`, a Browser Use network
+policy blocks every browser host except the fixture's for both agents. It
+covers neither the search tool nor Pi's worker. Pi's own domain policy stays
+off, because it drops the whole browser connection when a page dialog blocks it.
 
 The flag doesn't stop fixtures that fetch from code hosts on the server, such
 as Gitea's "New Migration" from GitHub.
@@ -272,7 +272,8 @@ Costs:
 - Claude Code is the cost reported by the Agent SDK, plus estimated Browserbase
   time.
 - Mo is its reported session spend.
-- Browser Use is its reported session cost: model, search, browser and proxy.
+- Browser Use is its reported model and search cost, plus its browser's
+  reported browser and proxy cost.
 - Browser Use Pi is token usage at Pi's catalog prices, plus the reported
   browser and proxy cost.
 - Devin's cost isn't recorded by this repo. Its figures were calculated

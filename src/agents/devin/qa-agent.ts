@@ -3,16 +3,12 @@ import path from "node:path";
 import { setTimeout as delay } from "node:timers/promises";
 import { z } from "zod";
 
-import { hostedAgentRules } from "../../evals/hosted-agent-rules";
 import { ReportSchema } from "../../evals/reports";
 import { writeJson } from "../../shared/json-file";
+import { fixtureHostnames, hostedAgentRules } from "../hosted-agents";
 import { AgentContext, EvalAgent, EvalAgentDefinition } from "../types";
 import { DevinApiError, DevinQaClient } from "./qa-client";
-import {
-  fixtureHostnames,
-  prepareSecurityProfile,
-  verifyCleanOrganization,
-} from "./qa-security";
+import { prepareSecurityProfile, verifyCleanOrganization } from "./qa-security";
 
 export const SessionSchema = z.object({
   session_id: z.string().min(1),
