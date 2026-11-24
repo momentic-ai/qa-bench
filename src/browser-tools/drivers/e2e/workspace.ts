@@ -6,6 +6,7 @@ import { promisify } from "node:util";
 import { AgentCost } from "../../../agents/types";
 import { fixtureAccounts } from "../../../fixtures/accounts";
 import { Fixture } from "../../../fixtures/types";
+import { writeJson } from "../../../shared/json-file";
 import { getE2EModelCost } from "./cost";
 import { E2EModel, E2ESetup, E2E_SETUP_VARIABLE } from "./harness";
 
@@ -36,7 +37,8 @@ export function e2eInstructions(fixture: Fixture) {
  * Sets up the project the e2e skill expects: the CLI, the skill, and a config
  * that targets the fixture. Returns the agent shell's environment, which the
  * config reads its settings from. `broker` is a Browserbase broker URL;
- * without it e2e launches local Chromium.
+ * without it e2e launches local Chromium. `settingsRecord` gets the settings
+ * without passwords, as run evidence.
  */
 export async function prepareE2E({
   workspace,
@@ -45,6 +47,7 @@ export async function prepareE2E({
   targetUrl,
   model,
   journal,
+  settingsRecord,
   broker,
 }: {
   workspace: string;
@@ -53,6 +56,7 @@ export async function prepareE2E({
   targetUrl: URL;
   model: E2EModel;
   journal: string;
+  settingsRecord: string;
   broker?: string;
 }) {
   await symlink(
@@ -85,6 +89,12 @@ export async function prepareE2E({
       ]),
     ),
   };
+  await writeJson(settingsRecord, {
+    ...setup,
+    credentials: Object.fromEntries(
+      accounts.map(({ name, username }) => [name, { username }]),
+    ),
+  });
   return {
     PATH: `${path.join(root, "node_modules/.bin")}${path.delimiter}${process.env.PATH || ""}`,
     [E2E_SETUP_VARIABLE]: JSON.stringify(setup),

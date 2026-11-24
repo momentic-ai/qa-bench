@@ -37,6 +37,10 @@ export class E2E extends TestingBrowser {
         targetUrl: this.context.targetUrl,
         model: this.options.e2eModel,
         journal: this.journal,
+        settingsRecord: path.join(
+          this.context.runDirectory,
+          "e2e-settings.json",
+        ),
         broker:
           this.options.browser === "local"
             ? undefined
