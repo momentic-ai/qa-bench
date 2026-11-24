@@ -2,15 +2,16 @@ import { mkdir, mkdtemp, rm } from "node:fs/promises";
 import { tmpdir } from "node:os";
 import path from "node:path";
 
-import { writeJson } from "../shared/json-file";
-import { BrowserTool } from "./agent-browser";
-import { FindingsStore } from "./codex/findings-store";
-import { E2EModel } from "./e2e/config";
+import { testingBrowser } from "../browser-tools";
+import { E2EModel } from "../browser-tools/drivers/e2e/harness";
 import {
   BrowserOptions,
+  BrowserTool,
   PreparedBrowser,
   TestingBrowser,
-} from "./testing-browser";
+} from "../browser-tools/testing-browser";
+import { writeJson } from "../shared/json-file";
+import { FindingsStore } from "./codex/findings-store";
 import {
   AgentContext,
   AgentCost,
@@ -53,7 +54,7 @@ export abstract class CodingAgent implements EvalAgent {
     recordBugs: boolean,
   ): EvalAgentDefinition {
     const name = `${this.family}-${browserTool}`;
-    const Tool = TestingBrowser.for(browserTool);
+    const Tool = testingBrowser(browserTool);
     return {
       name,
       reportSubdirectory: name,

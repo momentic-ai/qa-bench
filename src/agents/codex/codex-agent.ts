@@ -3,14 +3,14 @@ import { createRequire } from "node:module";
 import path from "node:path";
 import { z } from "zod";
 
-import { writeJson } from "../../shared/json-file";
-import { BrowserTool } from "../agent-browser";
-import { CodingAgent } from "../coding-agent";
+import { DISABLED_BROWSER_TOOL } from "../../browser-tools/drivers/playwright-mcp";
 import {
-  DISABLED_BROWSER_TOOL,
+  BrowserTool,
   PreparedBrowser,
   TestingBrowser,
-} from "../testing-browser";
+} from "../../browser-tools/testing-browser";
+import { writeJson } from "../../shared/json-file";
+import { CodingAgent } from "../coding-agent";
 import {
   AgentContext,
   Browser,

@@ -4,15 +4,15 @@ import { createRequire } from "node:module";
 import path from "node:path";
 import { promisify } from "node:util";
 
-import { writeJson } from "../shared/json-file";
-import { startBrowserbaseRelay } from "./browserbase-relay";
+import { Browser } from "../../agents/types";
+import { writeJson } from "../../shared/json-file";
+import { startBrowserbaseRelay } from "../browsers/browserbase-relay";
+import { TestingBrowser } from "../testing-browser";
 
 const require = createRequire(import.meta.url);
 const command = require.resolve("agent-browser/bin/agent-browser.js");
 const packageDirectory = path.dirname(path.dirname(command));
 const exec = promisify(execFile);
-
-export type BrowserTool = "playwright-mcp" | "agent-browser" | "e2e";
 
 export async function prepareAgentBrowser(
   workspace: string,
@@ -85,4 +85,37 @@ export async function closeAgentBrowsers(
 
 export async function validateAgentBrowser() {
   await exec(process.execPath, [command, "--version"], { timeout: 10_000 });
+}
+
+export class AgentBrowser extends TestingBrowser {
+  // Shared agent-browser sessions must survive disconnects.
+  protected keepAlive = true;
+  private prepared: Awaited<ReturnType<typeof prepareAgentBrowser>> | undefined;
+
+  static async validate(browser: Browser) {
+    await validateAgentBrowser();
+    await super.validate(browser);
+  }
+
+  protected async setup(workspace: string) {
+    this.prepared = await prepareAgentBrowser(
+      workspace,
+      await this.connect(),
+      this.options.skillOwner,
+    );
+    return { env: this.prepared.env };
+  }
+
+  async close() {
+    try {
+      if (this.prepared)
+        await closeAgentBrowsers(this.prepared.env, this.artifacts);
+    } finally {
+      try {
+        await this.prepared?.close();
+      } finally {
+        await super.close();
+      }
+    }
+  }
 }
