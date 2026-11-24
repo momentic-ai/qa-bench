@@ -202,6 +202,7 @@ export class ClaudeAgent extends CodingAgent {
     if (playwright) {
       this.browserProxy = new BrowserProxy({
         command: playwright.command,
+        cwd: playwright.cwd,
         args: playwright.args,
         env: {
           PATH: process.env.PATH || "",
