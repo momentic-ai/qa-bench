@@ -1,0 +1,184 @@
+{
+  "bugs": [
+    {
+      "name": "Generated pull request references and activity avatars use unreachable localhost URLs",
+      "summary": "Gitea generates absolute URLs with https://localhost:5503 in user-facing merge commit references and activity avatars on the Daytona site. The localhost pull request links cannot be opened from the hosted app, and contributor avatars fail to load.",
+      "expected": "Generated links and avatar image URLs should use the hosted site's reachable origin so users can open pull request references and see contributor avatars.",
+      "actual": "A merged pull request's commit shows Reviewed-on #3 linking to https://localhost:5503/admin/D-from-template/pulls/3; clicking the corresponding localhost reference in another merged PR led to a browser connection error. The Activity > Pulse contributor avatar in admin/D-from-template uses https://localhost:5503/avatars/51965088c5db83c3fd307f308d25198a and renders broken with ERR_CONNECTION_REFUSED.",
+      "reproSteps": [
+        "On a hosted fixture, sign in as eval and create and merge a pull request.",
+        "Open the merge commit and inspect its Reviewed-on pull-request link.",
+        "Open Activity → Pulse and inspect contributor avatar URLs.",
+        "Observe URLs using https://localhost:5503 rather than the hosted fixture origin."
+      ],
+      "reason": "Human review rejected this as a Gitea product bug. The unreachable localhost URLs are a fixture/configuration issue; correct the instance public URL instead of scoring this claim as a product defect."
+    },
+    {
+      "name": "All Branches commit history omits docs/release-owners-only commit",
+      "summary": "Selecting All Branches leaves the commit history at the single main-branch commit, while comparison confirms a distinct commit on docs/release-owners.",
+      "expected": "With All Branches selected, the history should include commits from all repository branches, including the commit unique to docs/release-owners.",
+      "actual": "The selected filter remained visibly set to All Branches, but after waiting the history still showed 1 commit: “Add engineering handbook and release checklist.” The compare page for main..docs/release-owners showed the separate “Document release captain and verification responsibilities” commit.",
+      "reproSteps": [
+        "Start signed in to the Gitea test account eval (the supplied authenticated session was already active; no credentials were entered).",
+        "Open /eval/harbor-handbook/commits/branch/main.",
+        "Open the commit-scope dropdown, currently showing This Branch, and select All Branches.",
+        "Wait six seconds. Observe the selected All Branches filter, the 1 Commits count, and the only row, “Add engineering handbook and release checklist.”",
+        "Open /eval/harbor-handbook/compare/main..docs/release-owners and observe the distinct “Document release captain and verification responsibilities” commit."
+      ],
+      "reason": "User rejected the claim because All Branches selects the scope of a commit-message search; it is not an immediately applied history filter. The recording changes only the scope dropdown without submitting a query. An independent normal-UI control submitted responsibilities with All Branches and found the docs/release-owners commit; the same query limited to This Branch returned no commits."
+    },
+    {
+      "name": "Code search matched line-number link does not open the source line",
+      "summary": "The matched README.md line-number link for line 8 leaves code search unchanged instead of opening the source at that line.",
+      "expected": "Clicking matched line 8 in README.md opens that file at line 8.",
+      "actual": "After two successful clicks on the displayed line-number link and a five-second wait, the browser remained on the same search URL and the search results were unchanged.",
+      "reproSteps": [
+        "Sign in as eval and open the seeded eval/harbor-handbook repository’s code-search page.",
+        "Enter issue, choose Regexp and submit the visible search form.",
+        "In the README.md result, click the actual line-number 8 link, rather than the code text or surrounding table cell.",
+        "Observe navigation to the correct commit’s README.md#L8. Use browser Back and click View file as a separate navigation control."
+      ],
+      "reason": "User-approved rejection of the reported no-navigation failure. The recorded no-op clicks targeted the surrounding table cell, not the anchor. Independent actual-browser checks, including a fresh fixture control, clicked the line-number link and opened the correct README. View file also worked."
+    },
+    {
+      "name": "Markdown editor Preview does not render bold emphasis for unsaved text",
+      "summary": "The unsaved Markdown Preview correctly renders a heading but displays **Preview paragraph.** as regular-weight text instead of bold.",
+      "expected": "On the unsaved .md edit, Preview Changes should show the replacement diff, and Preview should render “# Preview heading” as a heading and “**Preview paragraph.**” as bold text without committing the edit.",
+      "actual": "Preview Changes showed the expected replacement diff. Preview rendered “Preview heading” as a heading but rendered “Preview paragraph.” in regular weight. The state remained unchanged after loading, and the edit was not committed.",
+      "reproSteps": [
+        "Start at /eval/harbor-handbook in the supplied authenticated browser session; verify the UI shows the signed-in account as eval. No sign-in form or credential variables were used.",
+        "Use the branch selector to create the fresh branch qa-verify76-preview-bold-20260522 from main.",
+        "Choose Add File > New File. Create qa-verify76-preview-bold-20260522.md with “# Original heading”, a blank line, and “Existing paragraph.”; commit this baseline fixture directly to the branch.",
+        "Open the new file and choose Edit. The observed edit URL is /eval/harbor-handbook/_edit/qa-verify76-preview-bold-20260522/qa-verify76-preview-bold-20260522.md.",
+        "Replace the contents with “# Preview heading”, a blank line, and “**Preview paragraph.**”.",
+        "Choose Preview Changes and confirm the displayed diff contains the unsaved replacement.",
+        "Choose Preview. Observe the heading rendered as a heading and the paragraph rendered in regular weight, not bold. Leave the edit uncommitted."
+      ],
+      "reason": "User explicitly rejected the reported absence of bold as a hallucination: the text is bold. The original native recording contains valid **Preview paragraph.** input and a rendered strong element. Independent UI inspection confirms strong uses the intended weight 600 while normal paragraph text uses 400. The evidence does not establish missing Markdown formatting."
+    },
+    {
+      "name": "Commit search leaves unrelated commits visible for a specific matching query",
+      "summary": "Commit search for \"Document release captain\" also returns \"Add engineering handbook and release checklist\".",
+      "expected": "Only commits matching the full phrase appear.",
+      "actual": "Both commits appear because each matches at least one query word.",
+      "reproSteps": [
+        "Sign in as eval and open eval/harbor-handbook, branch docs/release-owners.",
+        "Open commit history and search for \"Document release captain\"."
+      ],
+      "reason": "Works as intended: commit search uses word-based OR matching. The second commit matches \"release\"; full-phrase matching is not required."
+    },
+    {
+      "name": "Commit history no-match search shows Go formatting artifacts",
+      "summary": "Searching commit history for a term with no matches exposes Go formatting artifacts and an unrelated histories message.",
+      "expected": "A search with no matching commits should show a clear empty state without template artifacts.",
+      "actual": "Searching commit history for a term with no matches exposes Go formatting artifacts and an unrelated histories message.",
+      "reproSteps": [
+        "Open an authenticated repository and its Commits history.",
+        "Enter `no-such-commit-term-xyz` in Search commits and submit.",
+        "Observe the malformed no-results message above the populated search field."
+      ],
+      "reason": "Rejected for the pinned Gitea 1.24.7 fixture (source commit 99053ce4fa2b45f1bca5837418c0c57f793ca824): SearchCommits sets PageIsCommits and renders the commit-count branch, not the unrelated-histories translation that needs branch arguments. Searching the seeded main history for no-such-commit-term-xyz displayed 0 Commits and a clean empty area without Go formatting artifacts."
+    },
+    {
+      "name": "Commit history search leaves nonmatching commit visible",
+      "summary": "Searching the docs/release-owners commit history for “Document release captain” leaves both commits visible, including the nonmatching “Add engineering handbook and release checklist.”",
+      "expected": "Submitting the query “Document release captain” in the commit history should narrow the results to the matching commit, “Document release captain and verification responsibilities.”",
+      "actual": "After submitting with Enter and again with the search button, the query remained in the field and both commits remained visible for at least six seconds, including “Add engineering handbook and release checklist.”",
+      "reproSteps": [
+        "Load the provided saved administrator session; the browser shows the admin account signed in. No credentials were entered.",
+        "Navigate to /admin/harbor-handbook.",
+        "In the Code tab, open the branch selector and choose docs/release-owners.",
+        "Click the branch's “2 Commits” history link.",
+        "Type “Document release captain” into the “Search commits...” field and press Enter. Observe that both commits remain visible.",
+        "Click the search button, wait six seconds, and observe that both commits still remain visible, including “Add engineering handbook and release checklist.”"
+      ],
+      "reason": "The local reviewed evidence documents word-based OR commit search: the extra commit matches release in Document release captain. The assignment borrows a full-phrase/subject-exclusive search promise the product does not make. This exact observed result is intended under the recorded search contract; choose not_a_bug, independent of duplicate status."
+    },
+    {
+      "name": "Repository commit count link disappears from the Code page after a second upload commit",
+      "summary": "The report claims that after a second commit that uploads new files, the commit count link above the branch selector disappears from the repository's Code page, leaving only the branch and tag counts.",
+      "expected": "The reporter expects the commit count link to stay visible in the repository statistics bar.",
+      "actual": "After a second upload commit, the statistics bar shows only '1 Branch' and '0 Tags'; the commit count link is gone.",
+      "reproSteps": [
+        "In a repository with an initial commit, use Add File > Upload File to commit new files.",
+        "Open the repository's Code page and look at the statistics bar above the branch selector."
+      ],
+      "reason": "Not reproduced: after an upload commit the statistics bar still shows the commit count link alongside the branch and tag counts, and the code always renders it from the cached count. What can happen is that the count is briefly stale until the cache refreshes, which is a different symptom covered by the commit-count cache entries."
+    },
+    {
+      "name": "Renaming a nested file saves a concatenated root filename",
+      "summary": "Replacing contributing.md with contributing-renamed.md in the editor filename field saved docscontributing-renamed.mdcontributing.md at the repository root instead of the requested filename in docs.",
+      "expected": "The file is renamed to docs/contributing-renamed.md with original contents retained.",
+      "actual": "Saved path is docscontributing-renamed.mdcontributing.md at the repository root. Original contents remain.",
+      "reproSteps": [
+        "On a disposable branch, open docs/contributing.md and choose Edit File.",
+        "Replace the filename text with contributing-renamed.md using select-all and typing.",
+        "Commit and inspect the resulting path."
+      ],
+      "reason": "User rejected this reported select-all-and-typing rename claim after being told independent verdicts and the exact editing trigger were unverified. The accepted Backspace-on-selected-filename folder-merging defect remains valid and is explicitly outside this rejection. No independent non-reproduction or intended-behavior conclusion is claimed."
+    },
+    {
+      "name": "Exact code search is case-sensitive for multi-word queries (single words are case-insensitive)",
+      "summary": "The report says that repository code search in Exact mode matches single words regardless of case (for example RELEASE finds Release) but matches multi-word phrases only when the case is exact.",
+      "expected": "The reported expectation is that Exact mode handles case the same way for single words and phrases, so 'release checklist' finds 'Release checklist'.",
+      "actual": "Exact mode was case-sensitive for both: 'Harbor' and 'Harbor Ledger' matched, while 'harbor', 'HARBOR', 'RELEASE' and 'harbor ledger' found nothing. The default (Fuzzy) mode matched regardless of case.",
+      "reproSteps": [
+        "Open a repository's code search and choose Exact.",
+        "Search for a single word and a phrase from a file, each in different case from the file.",
+        "Repeat in the default search mode and compare."
+      ],
+      "reason": "Not a bug: there's no single-word/phrase difference. Exact mode always searches case-sensitively for the literal text, however many words it has, while the default Fuzzy mode always ignores case; matching the exact term is what the Exact option's tooltip describes. A single word appearing to match case-insensitively most likely came from a search in the default mode."
+    },
+    {
+      "name": "A directly posted parent-directory filename exposes a raw Git error",
+      "summary": "The report submits tree_path ../escape.txt directly to the New File endpoint, bypassing the rendered editor's parent-segment normalization, and receives a raw Git error.",
+      "expected": "The report expects a directly submitted ../escape.txt path to be normalized or rejected without exposing Git stderr or the server temporary path.",
+      "actual": "The hand-built form submission with tree_path ../escape.txt returns an expandable Git error. Typing ../escape.txt in the rendered editor instead normalizes the name to escape.txt. The separate UI-reachable complete filename .. has an accepted label.",
+      "reproSteps": [
+        "Open Add File > New File.",
+        "Submit a hand-built form POST with tree_path ../escape.txt, content and a commit summary, bypassing the normal filename control.",
+        "Observe the raw Git error and temporary path. Compare typing ../escape.txt through the normal control, which normalizes the parent segment."
+      ],
+      "reason": "Rejected for the UI benchmark: the demonstrated reproduction explicitly posts a crafted form value and bypasses normal editor normalization. This does not deny the endpoint behavior. It does not reject the accepted UI-entered complete filename .., and should not absorb a future report demonstrating a genuine rendered-UI path to the error."
+    },
+    {
+      "name": "Fork comparison commit header truncates a long head branch name",
+      "summary": "On a New Pull Request comparison from a fork, the commit-list header shows the head branch shortened to its first 10 characters (for example forks-draf for forks-draft/path), while the branch selectors show the full name.",
+      "expected": "The reported expectation is that the comparison commit header shows the full head branch name.",
+      "actual": "With head branch alex:forks-draft/path, the selectors show the full name but the commit-list header reads main … forks-draf. Any branch name longer than 10 characters is shortened the same way, slash or not.",
+      "reproSteps": [
+        "From a fork, push a branch whose name is longer than 10 characters, such as forks-draft/path.",
+        "Open New Pull Request comparing the base repository's main with that fork branch.",
+        "Compare the branch shown in the 'pull from' selector with the name in the commits header on the right."
+      ],
+      "reason": "User-rejected after reviewing the Mo reproduction and a screenshot. The full branch name stays visible in the branch selectors directly above, so the shortened label in the commit-list header is not treated as a product bug for this eval."
+    },
+    {
+      "name": "Whitespace-ignore filter hides whole diff but summary still reports changes",
+      "summary": "On whitespace-only commit b5550f5, the \"Ignore changes in amount of whitespace\" filter shows an empty diff area. The summary still says \"1 changed files with 2 additions and 2 deletions\", and nothing tells the user the filter is hiding the changes.",
+      "expected": "The summary should match the filtered diff, or the page should say that the whitespace filter hides all changes.",
+      "actual": "No file diff is shown. The summary still reads \"1 changed files with 2 additions and 2 deletions.\"",
+      "reproSteps": [
+        "Use the saved reporter session (eval account).",
+        "Open /eval/harbor-handbook/commit/b5550f552c175ee77873a62afa353cc52951d213?whitespace=ignore-change (the same as choosing Whitespace > Ignore changes in amount of whitespace).",
+        "The diff area is empty, but the summary says 1 changed file with 2 additions and 2 deletions."
+      ],
+      "reason": "Labeler reproduced it and judged it works as intended."
+    },
+    {
+      "name": "Cancel after a stale deletion error opens a missing-file page",
+      "summary": "After another tab deletes a file, submitting its pending deletion correctly reports that the file no longer exists. Clicking Cancel then opens a 404 for that same deleted file instead of returning to a usable repository view.",
+      "expected": "Cancel exits the failed deletion form to a usable repository view when the original file no longer exists.",
+      "actual": "Cancel navigates to the deleted file path and displays 404 Not Found with Path qa-stale.txt doesn't exist in branch/qa-stale-global-0730.",
+      "reproSteps": [
+        "/eval/harbor-handbook",
+        "As eval, create a unique QA branch with a disposable text file.",
+        "Open Delete File for that file in two tabs.",
+        "Commit deletion in the second tab.",
+        "Submit the pending deletion in the first tab; observe the no-longer-exists error.",
+        "Click Cancel."
+      ],
+      "reason": "Labeler reproduced it and judged it works as intended."
+    }
+  ]
+}

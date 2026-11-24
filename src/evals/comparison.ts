@@ -3,10 +3,18 @@ import { createHash } from "node:crypto";
 import { existsSync } from "node:fs";
 import path from "node:path";
 
-import { loadKnownInvalid } from "./assessment";
-import { readGroundTruth } from "./ground-truth";
-import { findReportRun, runLabel, verifyCaseMetadata } from "./report-files";
-import { loadGroundTruth } from "./reports";
+import { Fixture } from "../fixtures/types";
+import {
+  loadGroundTruth,
+  loadKnownInvalid,
+  readGroundTruth,
+} from "./ground-truth";
+import {
+  findLatestRun,
+  findRequestedRun,
+  runLabel,
+  verifyCaseMetadata,
+} from "./report-files";
 import {
   AGENTS,
   Agent,
@@ -17,7 +25,6 @@ import {
   reportDirectory,
   totalScores,
 } from "./scores";
-import { Fixture } from "./types";
 
 const SUITE_NAME = "OSS bug bash";
 
@@ -82,12 +89,13 @@ export async function loadComparison(
       outsideKnownInvalidHash = outsideKnownInvalid.hash;
     }
     for (const agent of agents) {
-      const run = await findReportRun(
-        reportsDirectory,
-        agent,
-        fixture.name,
-        runIds,
-      );
+      const run = runIds.length
+        ? await findRequestedRun(reportsDirectory, agent, fixture.name, runIds)
+        : await findLatestRun(reportsDirectory, agent, fixture.name);
+      if (!run)
+        throw new Error(
+          `No ${agent} scores for --run-id ${runIds.join(", ")} in ${fixture.name}.`,
+        );
       if (run.runId) selectedRuns.add(run.runId);
       const file = path.join(run.directory, "scores.csv");
       const rows = await readScores(file);
@@ -341,6 +349,7 @@ export function renderComparison(
         "Recall",
         "Precision",
         "Known hits",
+        "Extra known hits",
         "Severity sum",
         "Score",
         "Known misses",
@@ -359,6 +368,7 @@ export function renderComparison(
         percent(score.recall),
         percent(score.precision),
         score.known_hits,
+        score.extra_known_hits,
         score.severity_sum,
         score.score,
         score.known_misses,
@@ -373,7 +383,7 @@ export function renderComparison(
       ]),
     ]),
     "",
-    "Precision = known hits / (known hits + known invalid); duplicates and unverified findings are reported separately. Recall = known hits / reference bug count. Severity sum adds the stored reference severity of each unique known hit. Score = severity sum - (known misses + duplicates). Known misses count submissions matching the accepted negative dataset (also shown as known invalid). Unfound positive references affect recall only. Unverified submissions are excluded. Duplicate counts are surplus submissions: two reports of the same issue produce one duplicate. Totals use summed counts, not an average of fixture percentages. N/A means no submissions have a scored disposition. Throughput includes flags and uses summed counts divided by summed agent-run duration; correct_findings_per_minute counts known hits.",
+    "Known hits count each reference bug once; extra known hits are further findings of an already-found bug. Precision = (known hits + extra known hits + their duplicates) / (those + known invalid + their duplicates); unverified findings are excluded. Recall = known hits / reference bug count. Severity sum adds the stored reference severity of each unique known hit. Score = severity sum - (known misses + duplicates). Known misses count submissions matching the accepted negative dataset (also shown as known invalid). Unfound positive references affect recall only. Unverified submissions are excluded. Duplicates are surplus repeat matches of the same reference bug or known-invalid entry through the same reproSteps case; findings of one bug through different cases count as extra known hits, and of one known-invalid entry as further known invalid. Totals use summed counts, not an average of fixture percentages. N/A means no submissions have a scored disposition. Throughput includes flags and uses summed counts divided by summed agent-run duration; correct_findings_per_minute counts known hits.",
     "",
     "## Severity and performance",
     "",

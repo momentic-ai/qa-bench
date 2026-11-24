@@ -86,12 +86,11 @@ and the label files it was graded against.
 ## Structure
 
 Each application is a top-level folder. The files at the top level build the
-sandbox, and each area folder under `e2e/areas/` holds the brief and the labels
+sandbox, and each area folder under `areas/` holds the brief and the labels
 for that area. A `data/` folder holds the same briefs and labels as three
 tables for the Dataset Viewer: `bugs` (ground truth), `known_invalid`, and
-`areas`, one row per entry with its `app` and `area`. They leave out the
-optional judge hints, so grade against the JSON files. QA-Bench is
-evaluation-only, so each table has a single `test` split.
+`areas`, one row per entry with its `app` and `area`. The JSON files are the
+source. QA-Bench is evaluation-only, so each table has a single `test` split.
 
 ```
 data/                   # viewer tables built from the area folders
@@ -99,7 +98,7 @@ data/                   # viewer tables built from the area folders
   compose.yaml          # pinned images and services
   fixture.json          # port, test accounts, upstream repo + commit
   runtime/              # seed and snapshot scripts, seed data
-  e2e/areas/<area>/
+  areas/<area>/
     fixture.json        # area name, scope, entry points
     ground-truth.json   # known bugs
     known-invalid.json  # known false reports
@@ -113,18 +112,17 @@ there.
 `ground-truth.json` and `known-invalid.json` both hold `{ "bugs": [...] }`.
 Each entry has:
 
-| Field                                                  | Description                                                     |
-| ------------------------------------------------------ | --------------------------------------------------------------- |
-| `name`                                                 | Short title                                                     |
-| `summary`                                              | One-sentence description                                        |
-| `expected`                                             | Correct behavior                                                |
-| `actual`                                               | Observed behavior on the seeded data                            |
-| `reproSteps`                                           | Ordered steps from the entry point                              |
-| `severity`                                             | 1, 3, or 5 (ground truth only)                                  |
-| `matchingGuidance`, `matchingScope`, `owningArea`, ... | Optional hints for the judge on which reports count as this bug |
+| Field        | Description                                                                                          |
+| ------------ | ---------------------------------------------------------------------------------------------------- |
+| `name`       | Short title                                                                                          |
+| `summary`    | One-sentence description                                                                             |
+| `expected`   | Correct behavior                                                                                     |
+| `actual`     | Observed behavior on the seeded data                                                                 |
+| `reproSteps` | Ordered steps from the entry point, or a list of such cases when the bug can be reached several ways |
+| `severity`   | 1, 3, or 5 (ground truth only)                                                                       |
+| `reason`     | Why the claim was rejected (known-invalid only)                                                      |
 
-An entry from `gitea/e2e/areas/pull-requests/ground-truth.json`, with its optional
-matching hints left out:
+An entry from `gitea/areas/pull-requests/ground-truth.json`:
 
 ```json
 {
@@ -158,13 +156,13 @@ ground truth, or earlier reports, and it has no internet access beyond the
 application under test. The published runs had two exceptions (see [Web
 access](https://github.com/momentic-ai/qa-bench#web-access)): Codex web search
 was on, including in Playwright MCP runs, and in the Codex and Claude Code
-agent-browser runs the agent's shell had open web access. The harness defaults
+agent-browser and e2e runs the agent's shell had open web access. The harness defaults
 to a 2-hour limit (`--time-limit`); Momentic's published runs used 30 and 60
 minutes.
 
 Agents evaluated so far: Mo (hosted by Momentic), Codex and Claude Code (each
-through Playwright MCP or agent-browser on a hosted Browserbase browser, not a
-local one), and Devin (its native browser). In
+through Playwright MCP, agent-browser or e2e on a hosted Browserbase browser,
+not a local one), and Devin (its native browser). In
 Momentic's 60-minute runs, Mo matched 19.3% of the 1,396 labeled bugs per pass,
 against 6.2% for the best Codex configuration, 4.2% for the best Claude Code
 configuration, and 1.9% for Devin.
@@ -188,7 +186,8 @@ or neither. Repeat reports of one bug in the same run are duplicates.
 Reports that match neither list go to a `review.md` queue. A reviewer labels
 each one as a new bug or a known-invalid report, so the label set grows with
 each round. In the published results, every report has been reviewed and
-counts as one or the other.
+counts as one or the other, except the e2e runs, whose unmatched reports are
+still pending review.
 
 ## Usage
 
@@ -211,7 +210,7 @@ for the full entries:
 import json
 from pathlib import Path
 
-for area in sorted(Path("qa-bench").glob("*/e2e/areas/*")):
+for area in sorted(Path("qa-bench").glob("*/areas/*")):
     brief = json.loads((area / "fixture.json").read_text())["productArea"]
     bugs = json.loads((area / "ground-truth.json").read_text())["bugs"]
     invalid = json.loads((area / "known-invalid.json").read_text())["bugs"]

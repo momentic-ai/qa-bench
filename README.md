@@ -17,7 +17,7 @@ Each run gets a fresh copy of the app at a pinned commit, with seeded data, in
 its own E2B sandbox. Codex and Claude Code drive hosted Browserbase browsers, not
 local ones. Devin uses its own browser, both Browser Use agents use Browser Use
 Cloud browsers, and Mo uses Momentic's hosted browsers.
-Areas live in [`fixtures/oss`](fixtures/oss).
+Areas live in [`fixtures/web/oss`](fixtures/web/oss).
 
 | App      | Areas | Labeled bugs |
 | -------- | ----- | ------------ |
@@ -29,7 +29,8 @@ Areas live in [`fixtures/oss`](fixtures/oss).
 
 ## Results
 
-Graded against the labels at `e77c72b`. Per-area results are in
+Graded with the labels and grader at `e77c72b`. Later grader changes aren't
+reflected. Per-area results are in
 [`results/2026-11-02.csv`](results/2026-11-02.csv). The dataset is on
 [Hugging Face](https://huggingface.co/datasets/momentic/qa-bench).
 
@@ -37,10 +38,12 @@ Graded against the labels at `e77c72b`. Per-area results are in
 | --------------------------------------- | ----- | --------------- | --------------- | -------------- | ----------------- | ------------- | ------------------------ |
 | Mo                                      | 20    | 176.7           | 269.3           | 19.3%          | 84.2%             | 588.7         | $2.67                    |
 | Codex, GPT-6.1 Sol, Playwright MCP      | 20    | 74.7            | 86.3            | 6.2%           | 86.0%             | 207.0         | $0.80                    |
+| Codex, GPT-6.1 Sol, e2e\*               | 20    | 77.3            | 83.7            | 6.0%           | 90.3%             | 205.6         | $2.08                    |
 | Codex, GPT-6.1 Terra, Playwright MCP    | 20    | 83.3            | 82.7            | 5.9%           | 81.6%             | 177.0         | $0.53                    |
 | Codex, GPT-6.1 Sol, agent-browser       | 20    | 68.0            | 64.3            | 4.6%           | 76.3%             | 144.3         | $0.96                    |
 | Claude Code, Opus 5.5, Playwright MCP   | 20    | 38.0            | 59.0            | 4.2%           | 79.5%             | 122.7         | $4.09                    |
 | Codex, GPT-6.1 Terra, agent-browser     | 20    | 59.3            | 57.7            | 4.1%           | 76.2%             | 126.3         | $0.27                    |
+| Claude Code, Opus 5.5, e2e\*            | 20    | 39.4            | 57.3            | 4.1%           | 89.6%             | 127.3         | $8.98                    |
 | Claude Code, Opus 5.5, agent-browser    | 20    | 24.0            | 41.0            | 2.9%           | 77.0%             | 81.0          | $2.45                    |
 | Devin                                   | 20    | 16.0            | 27.0            | 1.9%           | 84.4%             | 65.0          | $3.89                    |
 | Claude Code, Sonnet 5.5, Playwright MCP | 20    | 12.0            | 15.0            | 1.1%           | 72.6%             | 26.7          | $2.08                    |
@@ -48,7 +51,14 @@ Graded against the labels at `e77c72b`. Per-area results are in
 
 Every configuration covers all 20 areas. Correct is summed over them, and
 Recall divides it by the 1,396 labels. Devin ran each area once per budget; the
-other configurations ran each area three times per budget.
+other configurations ran each area three times per budget, except Codex with
+e2e on Gitea repository settings at 60 minutes. OpenAI's cybersecurity policy
+refused one of those runs three times, so that area has two.
+
+\* Pending label review. The e2e runs left 106 distinct findings (135 reports)
+that match no label; the other rows have none. Reviewing them will raise
+Correct and Recall where they are real bugs, and can lower Precision and Score
+where they are invalid.
 
 ## Run it
 
@@ -61,22 +71,35 @@ pnpm build-template
 pnpm build-template --cpu 4 --memory 8
 ```
 
-| Environment variable                   | Needed for                                            |
-| -------------------------------------- | ----------------------------------------------------- |
-| `E2B_API_KEY`                          | All runs                                              |
-| `OPENAI_API_KEY`                       | All runs (grading), Codex, Browser Use Pi             |
-| `ANTHROPIC_API_KEY`                    | Claude Code                                           |
-| `BROWSERBASE_API_KEY`                  | Codex and Claude Code, unless using `--browser local` |
-| `MOMENTIC_API_KEY`                     | Mo, unless signed in with `qa login`                  |
-| `DEVIN_ORGANIZATION_ID`, `DEVIN_TOKEN` | Devin ([setup](src/agents/devin/README.md))           |
-| `BROWSER_USE_API_KEY`                  | Browser Use and Browser Use Pi                        |
+| Environment variable                   | Needed for                                                     |
+| -------------------------------------- | -------------------------------------------------------------- |
+| `E2B_API_KEY`                          | All runs                                                       |
+| `OPENAI_API_KEY`                       | Grading unless `GRADING_API_KEY` is set, Codex, Browser Use Pi |
+| `ANTHROPIC_API_KEY`                    | Claude Code                                                    |
+| `BROWSERBASE_API_KEY`                  | Codex and Claude Code, unless using `--browser local`          |
+| `MOMENTIC_API_KEY`                     | Mo, unless signed in with `qa login`                           |
+| `DEVIN_ORGANIZATION_ID`, `DEVIN_TOKEN` | Devin ([setup](src/agents/devin/README.md))                    |
+| `BROWSER_USE_API_KEY`                  | Browser Use and Browser Use Pi                                 |
+
+To grade through an OpenAI-compatible Responses proxy, set `GRADING_BASE_URL`
+(for example, `https://gateway.example/v1`). Use `GRADING_API_KEY` for its bearer
+key, or omit it to reuse `OPENAI_API_KEY`. Optional `GRADING_HEADERS` is a JSON
+object of string header values. These settings affect grading only. The grader
+keeps its configured model and reasoning effort, and proxy failures stop grading
+without falling back to direct OpenAI. Set `GRADING_FALLBACK_BASE_URL` to try a
+second proxy once after a transient provider failure. It uses the same key,
+headers, model, reasoning effort, and cancellation signal. Authentication and
+validation failures do not trigger fallback.
 
 Mo runs on Momentic's hosted service, so it needs a Momentic account and the
-[`qa` CLI](https://www.npmjs.com/package/qa). Runs require version 0.27.0:
+[`qa` CLI](https://www.npmjs.com/package/qa). Runs require version 0.34.0:
 
 ```bash
-npm install -g qa@0.27.0
+npm install -g qa@0.34.0
 ```
+
+Mo eval sessions start with `--no-test-cases`, so Mo's flow observer does not
+record test cases or add its model cost.
 
 Run one agent on one area, then compare saved runs:
 
@@ -86,9 +109,9 @@ pnpm merge --fixtures saleor/areas/vouchers
 ```
 
 `--agent` takes `mo`, `codex-playwright-mcp`, `claude-playwright-mcp`,
-`codex-agent-browser`, `claude-agent-browser`, `devin-qa`, `browser-use` or
-`browser-use-pi`.
-`--fixtures` takes an app (`gitea`), all of its areas (`gitea/areas`), one area, or `oss-areas`.
+`codex-agent-browser`, `claude-agent-browser`, `codex-e2e`, `claude-e2e`,
+`devin-qa`, `browser-use` or `browser-use-pi`. `--fixtures` takes an app
+(`gitea`), all of its areas (`gitea/areas`), one area, or `oss-areas`.
 
 Each run is graded when it finishes and saved to
 `reports/<agent>/<fixture>/<run-id>/`. `merge` writes `reports/comparison.md`.
@@ -98,7 +121,7 @@ Each run is graded when it finishes and saved to
 ### Brief
 
 Every agent gets the same short brief from
-[`bugbash-brief.ts`](src/evals/bugbash-brief.ts): the app URL, test accounts, the
+[`bugbash-brief.ts`](src/tasks/full-app/bugbash-brief.ts): the app URL, test accounts, the
 area's scope and entry points, and the rule not to read benchmark files. Codex,
 Claude Code and Devin are also told which browser to use and how to save
 findings. Devin's prompt adds its
@@ -123,14 +146,14 @@ to Mo.
 
 Versions are pinned in [`package.json`](package.json).
 
-| Agent          | Model and reasoning effort   | Browser                                         |
-| -------------- | ---------------------------- | ----------------------------------------------- |
-| Mo             | Chosen by Momentic's service | Hosted by Momentic                              |
-| Codex          | `gpt-6.1-sol`, medium        | Playwright MCP or agent-browser, on Browserbase |
-| Claude Code    | `claude-opus-5-5`, medium    | Playwright MCP or agent-browser, on Browserbase |
-| Devin          | Devin's defaults             | Devin's native browser                          |
-| Browser Use    | Browser Use's defaults       | Browser Use Cloud, without a proxy              |
-| Browser Use Pi | `gpt-6-luna`, high           | Browser Use Cloud, without a proxy              |
+| Agent          | Model and reasoning effort   | Browser                                              |
+| -------------- | ---------------------------- | ---------------------------------------------------- |
+| Mo             | Chosen by Momentic's service | Hosted by Momentic                                   |
+| Codex          | `gpt-6.1-sol`, medium        | Playwright MCP, agent-browser or e2e, on Browserbase |
+| Claude Code    | `claude-opus-5-5`, medium    | Playwright MCP, agent-browser or e2e, on Browserbase |
+| Devin          | Devin's defaults             | Devin's native browser                               |
+| Browser Use    | Browser Use's defaults       | Browser Use Cloud, without a proxy                   |
+| Browser Use Pi | `gpt-6-luna`, high           | Browser Use Cloud, without a proxy                   |
 
 Results also include Codex with `gpt-6.1-terra` and Claude Code with
 `claude-sonnet-5-5`. Use `--model` to run them. `--model gpt-6.1-sol` or
@@ -145,8 +168,18 @@ Results also include Codex with `gpt-6.1-terra` and Claude Code with
   each subagent get their own Browserbase browser.
 - `*-agent-browser` agents use the pinned
   [agent-browser](https://www.npmjs.com/package/agent-browser) CLI and its
-  bundled skill. Each run connects to one Browserbase browser, and the agent
-  decides how to share it.
+  bundled skill. Agents share one Browserbase browser unless they pass a new
+  `--session` name, which gets its own browser, as it would locally.
+- `*-e2e` agents run a bug bash with the pinned
+  [e2e](https://www.npmjs.com/package/e2e) CLI and its bundled skill: they plan
+  charters, run `e2e explore` for each, and save the bugs that a failing repro
+  test confirms. The workspace's `e2e.config.ts` sets the fixture URL, the
+  browser, the model, the fixture accounts as e2e credentials (passwords come
+  from the environment), and video recording. e2e's own agent uses the coding
+  agent's model at medium effort, and each e2e process gets its own Browserbase
+  browser. e2e
+  needs Node.js 22.22.3 or later 22.x, or 24.8 or later. Like
+  `codex-agent-browser`, these runs have no shell sandbox.
 - `--browser local` replaces Browserbase with headless Chromium on the host.
   Playwright MCP runs then have no subagents, and `merge` labels them separately.
 - Mo manages its own subagents, and `--max-concurrent-sub-agents` caps them.
@@ -167,7 +200,7 @@ default so new runs stay comparable with saved ones, and `merge` labels runs
 that use it separately.
 
 The flag turns off Codex web search, makes Playwright MCP refuse the sites in
-`ANSWER_DOMAINS` ([`codex-agent.ts`](src/agents/codex/codex-agent.ts)), limits
+`ANSWER_DOMAINS` ([`testing-browser.ts`](src/agents/testing-browser.ts)), limits
 Browserbase pages to the fixture host, and tells the agent to record a blocked site
 as a coverage limitation. Playwright MCP runs already use Codex's read-only
 sandbox, which has no network access.
@@ -183,7 +216,7 @@ domain policy drops the whole browser connection when a page dialog blocks it.
 The flag doesn't stop fixtures that fetch from code hosts on the server, such
 as Gitea's "New Migration" from GitHub.
 
-**`--prevent-cheating` is not a network firewall for agent-browser runs.** The flag
+**`--prevent-cheating` is not a network firewall for agent-browser or e2e runs.** The flag
 is accepted there, but it only turns off web search and, on Browserbase, limits
 page navigation to the fixture host. With `--browser local` its browser isn't
 restricted, and it runs without Codex's sandbox on any browser, so the agent can
@@ -196,30 +229,32 @@ On macOS, where nsjail doesn't run, do the same inside a Linux VM or container
 
 ## Scoring
 
-A judge model (`gpt-6.1-sol`, high reasoning) compares each
-finding with the area's [labels](#labels). It first groups reports of the same
-failure, then classifies the best report in each group:
+A judge model (`gpt-6-luna`, high reasoning) compares each
+finding with the area's [labels](#labels) and classifies each finding on its
+own:
 
-| Result    | Meaning                                                                |
-| --------- | ---------------------------------------------------------------------- |
-| Correct   | Matches a label in `ground-truth.json`. Each label matches one finding |
-| Incorrect | Matches a rejected claim in `known-invalid.json`                       |
-| Unmatched | Matches neither. It may be a new bug, and is neither right nor wrong   |
-| Dup.      | An extra report of a failure already in a group                        |
+| Result    | Meaning                                                               |
+| --------- | --------------------------------------------------------------------- |
+| Correct   | Matches a label in `ground-truth.json`. Each label counts once        |
+| Incorrect | Matches a rejected claim in `known-invalid.json`                      |
+| Unmatched | Matches neither. It may be a new bug, and is neither right nor wrong  |
+| Dup.      | Repeats a match: same label or rejected claim, through the same steps |
 
 Findings that match another area's labels are recorded separately and left out
 of every metric below. The judge is a model, so regrading can change a few
 matches. Its full prompt is in
-[`grading-contract.ts`](src/evals/grading-contract.ts).
+[`contract.ts`](src/grading/contract.ts). `pnpm grader-eval`
+checks the judge against reviewed findings in
+[`cases.json`](src/grading/eval/cases.json).
 
-| Metric           | Definition                                      |
-| ---------------- | ----------------------------------------------- |
-| Findings         | Correct + Incorrect + Unmatched + Dup.          |
-| Precision        | Correct / (Correct + Incorrect)                 |
-| Recall           | Correct / labeled bugs in the area              |
-| Score            | Severity of Correct findings − Incorrect − Dup. |
-| Cost per run     | Mean cost of a run                              |
-| Cost per correct | Cost / Correct                                  |
+| Metric           | Definition                                                           |
+| ---------------- | -------------------------------------------------------------------- |
+| Findings         | Every submitted finding                                              |
+| Precision        | Findings matching a label / (those + Incorrect), duplicates included |
+| Recall           | Correct / labels in the area                                         |
+| Score            | Severity of Correct labels − Incorrect − Dup.                        |
+| Cost per run     | Mean cost of a run                                                   |
+| Cost per correct | Cost / Correct                                                       |
 
 Severity comes from the label: 1 for cosmetic issues, 3 for functional bugs and 5
 for broken pages or raw error dumps. Unmatched findings don't affect Precision or
@@ -244,12 +279,12 @@ Costs:
 E2B and grading aren't included in cost.
 
 `scores.csv` uses `known_hits`, `known_invalid`, `unverified` and `duplicates`
-for Correct, Incorrect, Unmatched and Dup. Its `precision` field also counts
-duplicates of classified findings, so it can differ from the definition above.
+for Correct, Incorrect, Unmatched and Dup. `extra_known_hits` counts further
+findings of an already-found label.
 
 ## Labels
 
-Each area in `fixtures/oss/<app>/e2e/areas/<area>/` has:
+Each area in `fixtures/web/oss/<app>/areas/<area>/` has:
 
 - `fixture.json`: scope and entry points
 - `ground-truth.json`: confirmed bugs

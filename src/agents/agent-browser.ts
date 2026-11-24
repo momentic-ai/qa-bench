@@ -3,16 +3,16 @@ import { copyFile, cp, mkdir, symlink } from "node:fs/promises";
 import { createRequire } from "node:module";
 import path from "node:path";
 import { promisify } from "node:util";
-import { z } from "zod";
 
-import { writeJson } from "../evals/json-file";
+import { writeJson } from "../shared/json-file";
+import { startBrowserbaseRelay } from "./browserbase-relay";
 
 const require = createRequire(import.meta.url);
 const command = require.resolve("agent-browser/bin/agent-browser.js");
 const packageDirectory = path.dirname(path.dirname(command));
 const exec = promisify(execFile);
 
-export type BrowserTool = "playwright-mcp" | "agent-browser";
+export type BrowserTool = "playwright-mcp" | "agent-browser" | "e2e";
 
 export async function prepareAgentBrowser(
   workspace: string,
@@ -31,27 +31,30 @@ export async function prepareAgentBrowser(
     path.join(skills, "SKILL.md"),
   );
   const config = path.join(workspace, "agent-browser.json");
+  const supervisor = browser.env.PLAYWRIGHT_MCP_CDP_ENDPOINT;
+  const relay = supervisor
+    ? await startBrowserbaseRelay(supervisor)
+    : undefined;
   const executableIndex = browser.args.indexOf("--executable-path");
-  let cdp: string | undefined;
-  if (browser.env.PLAYWRIGHT_MCP_CDP_ENDPOINT) {
-    const response = await fetch(
-      new URL("json/version/", browser.env.PLAYWRIGHT_MCP_CDP_ENDPOINT),
-      { signal: AbortSignal.timeout(30_000) },
+  try {
+    await writeJson(
+      config,
+      relay
+        ? { cdp: String(relay.port) }
+        : { executablePath: browser.args[executableIndex + 1] },
     );
-    if (!response.ok)
-      throw new Error(`Browser connection failed: HTTP ${response.status}`);
-    cdp = z
-      .object({ webSocketDebuggerUrl: z.url() })
-      .parse(await response.json()).webSocketDebuggerUrl;
+  } catch (err) {
+    await relay?.close();
+    throw err;
   }
-  await writeJson(config, {
-    ...(cdp ? { cdp } : { executablePath: browser.args[executableIndex + 1] }),
-  });
   return {
-    PATH: `${bin}${path.delimiter}${process.env.PATH || ""}`,
-    AGENT_BROWSER_CONFIG: config,
-    AGENT_BROWSER_SOCKET_DIR: sockets,
-    AGENT_BROWSER_SCREENSHOT_DIR: screenshots,
+    env: {
+      PATH: `${bin}${path.delimiter}${process.env.PATH || ""}`,
+      AGENT_BROWSER_CONFIG: config,
+      AGENT_BROWSER_SOCKET_DIR: sockets,
+      AGENT_BROWSER_SCREENSHOT_DIR: screenshots,
+    },
+    close: () => relay?.close(),
   };
 }
 

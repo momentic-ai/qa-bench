@@ -1,8 +1,5 @@
 import { z } from "zod";
 
-import { readDataset } from "./dataset";
-
-// These standalone readers validate exported files without loading the Mo runtime.
 export const FindingSchema = z
   .object({
     name: z.string(),
@@ -14,17 +11,6 @@ export const FindingSchema = z
   .passthrough();
 export type Finding = z.infer<typeof FindingSchema>;
 
-export const SeveritySchema = z.union([
-  z.literal(1),
-  z.literal(3),
-  z.literal(5),
-]);
-export const KnownBugSchema = FindingSchema.extend({
-  severity: SeveritySchema,
-  sourceCause: z.string().min(1).optional(),
-});
-export type KnownBug = z.infer<typeof KnownBugSchema>;
-
 export const ReportSchema = z
   .object({
     bugs: z.array(FindingSchema.strict()),
@@ -32,6 +18,24 @@ export const ReportSchema = z
     limitations: z.array(z.string()),
   })
   .strict();
+
+/** A Codex or Claude bug's video clip, cut from its browser recording. */
+export const BugRecordingSchema = z
+  .object({
+    /** The clip is artifacts/<artifactId>.mp4 in the report directory. */
+    artifactId: z.string(),
+    startedAt: z.iso.datetime(),
+    finishedAt: z.iso.datetime(),
+  })
+  .strict();
+export type BugRecording = z.infer<typeof BugRecordingSchema>;
+
+/** A Codex or Claude report, whose bugs may carry a video clip. */
+export const CodingAgentReportSchema = ReportSchema.extend({
+  bugs: z.array(
+    FindingSchema.extend({ recording: BugRecordingSchema.optional() }).strict(),
+  ),
+});
 
 /** Unlike ReportSchema, strips extra keys the agent adds instead of rejecting the whole report. */
 export const LenientReportSchema = z.object({
@@ -48,35 +52,6 @@ export const LenientReportSchema = z.object({
   limitations: z.array(z.string()).default([]),
 });
 
-export const GroundTruthSchema = z
-  .object({ bugs: z.array(KnownBugSchema) })
-  .passthrough();
-
-export async function loadGroundTruth(file: string) {
-  const text = await readDataset(file);
-  const parsed = GroundTruthSchema.safeParse(JSON.parse(text));
-  if (!parsed.success) {
-    // Report every missing/invalid weight before refusing to load this fixture.
-    const severities = parsed.error.issues.filter(
-      (issue) => issue.path[0] === "bugs" && issue.path[2] === "severity",
-    );
-    for (const issue of severities) {
-      process.stderr.write(
-        `${file}: bugs[${String(issue.path[1])}].severity is missing or invalid; required severity: 1 | 3 | 5.\n`,
-      );
-    }
-    throw new Error(
-      `Cannot load ground truth ${file}: ${parsed.error.message}`,
-    );
-  }
-  return { text, bugs: parsed.data.bugs };
-}
-export const MoFindingsSchema = z.array(
-  FindingSchema.extend({ kind: z.enum(["bug", "flag"]) }),
-);
-export const MoReportSchema = z
-  .object({ findings: z.object({ bugs: z.string() }).passthrough() })
-  .passthrough();
 export const DurationSchema = z
   .object({
     duration: z.number(),
@@ -84,18 +59,5 @@ export const DurationSchema = z
     partial: z.boolean().optional(),
     errors: z.array(z.string()).optional(),
     valid: z.boolean().optional(),
-  })
-  .passthrough();
-export const MoCostSchema = z
-  .object({
-    totals: z.array(
-      z.object({ currency: z.string(), amount: z.number() }).passthrough(),
-    ),
-  })
-  .passthrough();
-export const CodexCostSchema = z
-  .object({
-    estimatedUsd: z.number().nonnegative().nullable(),
-    costComplete: z.boolean().optional(),
   })
   .passthrough();

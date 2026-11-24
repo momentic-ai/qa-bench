@@ -21,21 +21,20 @@ import { finished } from "node:stream/promises";
 import { promisify } from "node:util";
 import { z } from "zod";
 
+import { writeJson } from "../../shared/json-file";
+import { BrowserTool } from "../agent-browser";
+import { CODEX_COMMAND, CODEX_PACKAGE } from "../codex/codex-agent";
+import { FINDINGS_TOOLS, FindingsStore } from "../codex/findings-store";
+import { CodingAgent } from "../coding-agent";
+import { DISABLED_BROWSER_TOOL, PreparedBrowser } from "../testing-browser";
 import {
-  AgentContext,
   Browser,
   CLAUDE_MODELS,
   ClaudeModel,
   EvalAgentDefinition,
-} from "../../evals/agent";
-import { combinedCost } from "../../evals/browser-cost";
-import { writeJson } from "../../evals/json-file";
-import { BrowserTool, validateAgentBrowser } from "../agent-browser";
-import { CodexAgent } from "../codex/codex-agent";
-import { FindingsStore } from "../codex/findings-store";
-import { validateLocalChromium } from "../local-browser";
+} from "../types";
 import { BrowserProxy } from "./browser-proxy";
-import { startReportingServer } from "./reporting";
+import { ToolSchema, sdkMcpServer } from "./sdk-mcp";
 
 const require = createRequire(import.meta.url);
 const CLAUDE_COMMAND = path.join(
@@ -43,7 +42,6 @@ const CLAUDE_COMMAND = path.join(
   "bin",
   "claude.exe",
 );
-const DISABLED_BROWSER_TOOL = "browser_run_code_unsafe";
 // Claude Code builds name the subagent tool "Agent" or "Task".
 const SUBAGENT_TOOLS = ["Agent", "Task"];
 const ORCHESTRATION_TOOLS = [...SUBAGENT_TOOLS, "SendMessage", "TaskStop"];
@@ -56,11 +54,6 @@ const FileToolInputSchema = z
   })
   .passthrough();
 const BashInputSchema = z.object({ command: z.string() }).passthrough();
-const PlaywrightServerSchema = z.object({
-  command: z.string(),
-  args: z.array(z.string()),
-  env: z.record(z.string(), z.string()),
-});
 
 function denyTool(reason: string): SyncHookJSONOutput {
   return {
@@ -70,6 +63,25 @@ function denyTool(reason: string): SyncHookJSONOutput {
       permissionDecisionReason: reason,
     },
   };
+}
+
+function reportingServer(store: FindingsStore) {
+  return sdkMcpServer({
+    name: "reporting",
+    listTools: async () =>
+      FINDINGS_TOOLS.map(({ type: _, ...tool }) => ToolSchema.parse(tool)),
+    async callTool(call) {
+      try {
+        await store.handleTool(call.name, call.arguments);
+        return { content: [{ type: "text", text: "Saved." }] };
+      } catch (err) {
+        return {
+          isError: true,
+          content: [{ type: "text", text: String(err) }],
+        };
+      }
+    },
+  });
 }
 
 function shellQuote(value: string) {
@@ -134,23 +146,19 @@ class MessageQueue implements AsyncIterable<SDKUserMessage> {
   }
 }
 
-export class ClaudeAgent extends CodexAgent {
-  constructor(
-    context: AgentContext,
-    browserTool: BrowserTool = "playwright-mcp",
-    model: ClaudeModel = CLAUDE_MODELS[0],
-    preventCheating = false,
-  ) {
-    super(context, browserTool, model, preventCheating);
+export class ClaudeAgent extends CodingAgent {
+  static family = "claude" as const;
+  static apiKey = "ANTHROPIC_API_KEY";
+  static skillOwner = ".claude" as const;
+  static e2eProvider = "anthropic" as const;
+
+  static async validate() {
+    await promisify(execFile)(CLAUDE_COMMAND, ["--version"]);
   }
 
-  protected skillOwner = ".claude" as const;
+  protected findingsToolPrefix = "reporting.";
   private session: Query | undefined;
-  private reporting:
-    | Awaited<ReturnType<typeof startReportingServer>>
-    | undefined;
   private browserProxy: BrowserProxy | undefined;
-  private findings = new FindingsStore(this.context.reportDirectory);
   private transcript: WriteStream | undefined;
   private child: ChildProcessWithoutNullStreams | undefined;
   private exit: Promise<void> | undefined;
@@ -166,68 +174,35 @@ export class ClaudeAgent extends CodexAgent {
   }[] = [];
   private observer: Promise<void> | undefined;
   private stopping = false;
-  private modelCost: number | null = null;
+  private totalCostUsd: number | null = null;
   private turnOpen = false;
-  private workspace = "";
   private readableRoots: string[] = [];
   private shellSandbox: string[] = [];
-  private sessionId: string | undefined;
 
-  async start(
-    message: string,
+  protected async launch(
+    brief: string,
+    setup: PreparedBrowser,
     signal: AbortSignal,
-    _deadlineMs?: number,
-    onReady?: () => number,
   ) {
-    onReady?.();
-    await this.findings.initialize();
-    const workspace = await this.createWorkspace();
+    const { workspace } = this;
+    const { playwright } = setup;
+    // Playwright MCP runs use no skills.
+    const playwrightMcp = playwright !== undefined;
     const configDirectory = path.join(this.context.runDirectory, "claude-home");
-    await Promise.all([
-      mkdir(workspace, { recursive: true }),
-      mkdir(configDirectory, { recursive: true }),
-      mkdir(this.codexHome, { recursive: true }),
-    ]);
-    const setup = await this.prepare();
-    const agentBrowser = this.browserTool === "agent-browser";
-    const artifacts = path.join(this.context.runDirectory, "browser-artifacts");
-    this.workspace = workspace;
-    const readable = {
-      ":minimal": "read",
-      ":workspace_roots": "read",
-      [codexRuntimeDirectory()]: "read",
-      [path.join(this.codexHome, "tmp", "arg0")]: "read",
-      ...(process.platform === "linux"
-        ? { [await realpath("/etc/resolv.conf")]: "read" }
-        : {}),
-      [artifacts]: "read",
-    };
-    if (!agentBrowser) this.readableRoots = [workspace, artifacts];
-    if (!agentBrowser)
-      this.shellSandbox = [
-        process.execPath,
-        this.command,
-        "sandbox",
-        "--permission-profile",
-        "eval",
-        "--cd",
-        workspace,
-        "-c",
-        `permissions.eval={filesystem={${Object.entries(readable)
-          .map(
-            ([file, permission]) =>
-              `${JSON.stringify(file)}=${JSON.stringify(permission)}`,
-          )
-          .join(",")}},network={enabled=false}}`,
-        "--",
-        "bash",
-        "-c",
-      ];
-    if (!agentBrowser) {
-      const servers: Record<string, unknown> = setup.mcpServers;
-      const playwright = PlaywrightServerSchema.parse(servers.playwright);
+    await mkdir(configDirectory, { recursive: true });
+    // Claude Code's Bash has no sandbox of its own, so sandboxed runs borrow Codex's.
+    const codexHome = path.join(this.context.runDirectory, "codex-home");
+    if (!setup.unsandboxedShell) {
+      await mkdir(codexHome, { recursive: true });
+      this.readableRoots = [workspace, this.browser.artifacts];
+      this.shellSandbox = await codexSandbox(codexHome, workspace, [
+        this.browser.artifacts,
+      ]);
+    }
+    if (playwright) {
       this.browserProxy = new BrowserProxy({
         command: playwright.command,
+        cwd: playwright.cwd,
         args: playwright.args,
         env: {
           PATH: process.env.PATH || "",
@@ -237,8 +212,6 @@ export class ClaudeAgent extends CodexAgent {
         disabledTools: [DISABLED_BROWSER_TOOL],
       });
     }
-    const browserUrl = await this.browserProxy?.start();
-    this.reporting = await startReportingServer(this.findings);
     signal.throwIfAborted();
     this.transcript = createWriteStream(
       path.join(this.context.reportDirectory, "transcript.jsonl"),
@@ -248,7 +221,7 @@ export class ClaudeAgent extends CodexAgent {
       ...FILE_TOOLS,
       "Bash",
       "TodoWrite",
-      ...(agentBrowser ? ["Skill"] : []),
+      ...(playwrightMcp ? [] : ["Skill"]),
     ];
     this.session = query({
       prompt: this.input,
@@ -258,23 +231,17 @@ export class ClaudeAgent extends CodexAgent {
         model: this.model,
         effort: "medium",
         systemPrompt: { type: "preset", preset: "claude_code" },
-        settingSources: agentBrowser ? ["project"] : [],
-        ...(agentBrowser ? {} : { skills: [] }),
+        settingSources: playwrightMcp ? [] : ["project"],
+        ...(playwrightMcp ? { skills: [] } : {}),
         tools,
         allowedTools: [...tools, "mcp__playwright__*", "mcp__reporting__*"],
         disallowedTools: [`mcp__playwright__${DISABLED_BROWSER_TOOL}`],
         permissionMode: "dontAsk",
         mcpServers: {
-          ...(browserUrl
-            ? {
-                playwright: {
-                  type: "http" as const,
-                  url: browserUrl,
-                  timeout: 120_000,
-                },
-              }
+          ...(this.browserProxy
+            ? { playwright: this.browserProxy.server() }
             : {}),
-          reporting: { type: "http", url: this.reporting.url },
+          reporting: reportingServer(this.findings),
         },
         hooks: {
           PreToolUse: [{ hooks: [async (input) => this.guardTool(input)] }],
@@ -296,22 +263,14 @@ export class ClaudeAgent extends CodexAgent {
           HOME: process.env.HOME,
           ANTHROPIC_API_KEY: process.env.ANTHROPIC_API_KEY,
           CLAUDE_CONFIG_DIR: configDirectory,
-          CODEX_HOME: this.codexHome,
+          ...(this.shellSandbox.length ? { CODEX_HOME: codexHome } : {}),
           CLAUDE_CODE_DISABLE_NONESSENTIAL_TRAFFIC: "1",
           DISABLE_AUTOUPDATER: "1",
         },
         spawnClaudeCodeProcess: (options) => this.spawn(options),
       },
     });
-    this.enqueue(
-      [
-        message,
-        setup.instructions,
-        "Use reporting.submit_bug to save each bug with a stable ID, reporting.remove_bug to retract it, and reporting.record_coverage for areas explored and limitations.",
-      ]
-        .filter(Boolean)
-        .join("\n\n"),
-    );
+    this.enqueue(brief);
     this.observer = this.observe(this.session);
     void this.observer.catch(() => {});
     return { completion: this.observer };
@@ -323,9 +282,8 @@ export class ClaudeAgent extends CodexAgent {
     this.enqueue(message);
   }
 
-  async terminate() {
+  protected async stop() {
     this.stopping = true;
-    this.findings.seal();
     this.input.close();
     try {
       await this.stopProcessGroup();
@@ -336,31 +294,14 @@ export class ClaudeAgent extends CodexAgent {
         this.transcript.end();
         await finished(this.transcript);
       }
-      await Promise.all([this.reporting?.close(), this.browserProxy?.close()]);
-      await this.cleanup();
+      await this.browserProxy?.close();
     }
   }
 
-  async collectResults(signal: AbortSignal) {
-    signal.throwIfAborted();
-    const report = await this.findings.collect();
-    await writeJson(
-      path.join(this.context.reportDirectory, "report.json"),
-      report,
-    );
-    const modelCostComplete = this.modelCost !== null && !this.turnOpen;
-    const browser = await this.collectBrowserCost();
-    const cost = browser
-      ? combinedCost(this.modelCost, modelCostComplete, browser)
-      : {
-          estimatedUsd: this.modelCost,
-          costComplete: this.localBrowser && modelCostComplete,
-        };
-    await writeJson(path.join(this.context.reportDirectory, "cost.json"), cost);
+  protected async modelCost() {
     return {
-      bugCount: report.bugs.length,
-      costUsd: cost.estimatedUsd,
-      sessionId: this.sessionId,
+      cost: { estimatedUsd: this.totalCostUsd },
+      complete: this.totalCostUsd !== null && !this.turnOpen,
     };
   }
 
@@ -431,7 +372,7 @@ export class ClaudeAgent extends CodexAgent {
         );
       }
       if (message.type !== "result") continue;
-      this.modelCost = message.total_cost_usd;
+      this.totalCostUsd = message.total_cost_usd;
       this.turnOpen = false;
       if (message.subtype !== "success")
         throw new Error(
@@ -440,7 +381,7 @@ export class ClaudeAgent extends CodexAgent {
       if (this.undelivered.size === 0 && this.backgroundTasks.size === 0)
         this.input.close();
     }
-    if (!this.stopping && this.modelCost === null)
+    if (!this.stopping && this.totalCostUsd === null)
       throw new Error(`Claude Code exited without a result: ${this.stderr}`);
   }
 
@@ -552,43 +493,60 @@ export function claudeAgent(
   browserTool: BrowserTool = "playwright-mcp",
   model: ClaudeModel = CLAUDE_MODELS[0],
   preventCheating = false,
+  recordBugs = false,
 ): EvalAgentDefinition {
-  return {
-    name: `claude-${browserTool}`,
-    reportSubdirectory: `claude-${browserTool}`,
-    concurrency: browser === "local" ? 2 : Infinity,
-    config: {
-      model,
-      browser,
-      ...(preventCheating ? { preventCheating } : {}),
-      ...(browserTool === "playwright-mcp"
-        ? { subagents: browser !== "local" }
-        : {}),
-    },
-    async validateEnvironment() {
-      if (!process.env.ANTHROPIC_API_KEY)
-        throw new Error("ANTHROPIC_API_KEY is required.");
-      if (browserTool === "agent-browser") await validateAgentBrowser();
-      if (browser === "local") await validateLocalChromium();
-      else if (!process.env.BROWSERBASE_API_KEY)
-        throw new Error("BROWSERBASE_API_KEY is required.");
-      await promisify(execFile)(CLAUDE_COMMAND, ["--version"]);
-    },
-    create(context) {
-      return browser === "local"
-        ? new LocalClaudeAgent(context, browserTool, model, preventCheating)
-        : new ClaudeAgent(context, browserTool, model, preventCheating);
-    },
-  };
+  return ClaudeAgent.definition(
+    browser,
+    browserTool,
+    model,
+    preventCheating,
+    recordBugs,
+  );
 }
 
-class LocalClaudeAgent extends ClaudeAgent {
-  protected localBrowser = true;
+/**
+ * Prefix that runs `bash -c <command>` under `codex sandbox`: no network, and
+ * read-only access to the workspace, `readable` and what bash itself needs.
+ */
+async function codexSandbox(
+  codexHome: string,
+  workspace: string,
+  readable: string[],
+) {
+  const filesystem = {
+    ":minimal": "read",
+    ":workspace_roots": "read",
+    [codexRuntimeDirectory()]: "read",
+    [path.join(codexHome, "tmp", "arg0")]: "read",
+    ...(process.platform === "linux"
+      ? { [await realpath("/etc/resolv.conf")]: "read" }
+      : {}),
+    ...Object.fromEntries(readable.map((root) => [root, "read"])),
+  };
+  return [
+    process.execPath,
+    CODEX_COMMAND,
+    "sandbox",
+    "--permission-profile",
+    "eval",
+    "--cd",
+    workspace,
+    "-c",
+    `permissions.eval={filesystem={${Object.entries(filesystem)
+      .map(
+        ([file, permission]) =>
+          `${JSON.stringify(file)}=${JSON.stringify(permission)}`,
+      )
+      .join(",")}},network={enabled=false}}`,
+    "--",
+    "bash",
+    "-c",
+  ];
 }
 
 function codexRuntimeDirectory() {
   return path.dirname(
-    createRequire(require.resolve("@openai/codex/package.json")).resolve(
+    createRequire(CODEX_PACKAGE).resolve(
       `@openai/codex-${process.platform}-${process.arch}/package.json`,
     ),
   );

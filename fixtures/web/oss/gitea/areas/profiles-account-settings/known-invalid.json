@@ -1,0 +1,132 @@
+{
+  "bugs": [
+    {
+      "name": "Hidden email isn't shown to administrators on the profile despite the privacy message",
+      "summary": "The report says that with Hide Email Address enabled, the padlock tooltip on the user's own profile says the email is only visible to the user and administrators, but an administrator opening that user's profile sees no email.",
+      "expected": "The reported expectation is that an administrator sees the hidden email on the user's profile page, as the tooltip suggests.",
+      "actual": "With Hide Email Address on, the user's own profile showed the email with a padlock reading 'Your email address is only visible to you and administrators'; an administrator opening the same profile saw no email row.",
+      "reproSteps": [
+        "As a regular user, enable Hide Email Address in Settings.",
+        "Open your own profile and hover the padlock next to your email.",
+        "As an administrator, open that user's profile and look for the email."
+      ],
+      "reason": "Intended, and the message is accurate: administrators can see a hidden email, in Site Administration > User Accounts (the user list has an Email column) and on the admin Edit User page. The tooltip doesn't promise the profile page, where a hidden email is deliberately shown to no one else, administrators included (go-gitea/gitea#23900 added the padlock to say the email isn't visible to anyone apart from the user and the admins)."
+    },
+    {
+      "name": "Private profile briefly appears through a previously visited activity tab",
+      "summary": "The report says that after a user makes their profile private, another user opening the profile's Public Activity URL (?tab=activity) that they had visited before still sees the profile's name, avatar and follower counts, while the base profile URL returns 404.",
+      "expected": "The reported expectation is that the private profile's ?tab=activity URL returns 404, like the base profile URL.",
+      "actual": "After the profile was made private, every fresh load of the profile and of its ?tab=activity URL by an unrelated user returned 404, including direct navigation, reloads and new tabs. The old public page reappeared only on the browser's Back button, served from the browser's own cache; reloading that page returned 404. The base profile behaves the same way on Back.",
+      "reproSteps": [
+        "As an observer, visit another user's profile and its Public Activity tab.",
+        "As that user, set User visibility to Private in profile settings and save.",
+        "As the observer, reload the activity tab, then use the browser's Back button to return to an earlier profile page.",
+        "Check whether the server returns the profile or a 404."
+      ],
+      "reason": "Not a Gitea leak: the server checks visibility before rendering any profile tab, so the activity tab returns 404 to unrelated users once the profile is private. The only way to see the old page was the browser restoring a cached copy loaded while the profile was still public; Gitea deliberately sends private, must-revalidate caching rather than no-store so Back and history work. The report's own notes say the disclosure didn't recur and that the same history entry later returned 404."
+    },
+    {
+      "name": "Blocked user can still follow the account that blocked them",
+      "summary": "The report says that after one user blocks another, the blocked user can still follow the user who blocked them.",
+      "expected": "The reported expectation is that a blocked user can't follow the user who blocked them.",
+      "actual": "The blocked account was a site administrator; its Follow succeeded and persisted after a refresh. Non-administrator blocked users are prevented from following.",
+      "reproSteps": [
+        "As one user, block a site administrator account.",
+        "As the administrator, open the blocking user's profile and click Follow.",
+        "Refresh and check whether the follow was accepted."
+      ],
+      "reason": "Intended: blocks don't apply to site administrators. Gitea deliberately treats an administrator as not blocked (its blocking documentation says a blocked user with admin permissions can still perform all actions), and blocks against regular users are enforced."
+    },
+    {
+      "name": "Browser Back retains the newer profile repository search draft while restoring earlier results",
+      "summary": "After searching for repository A then B and going Back, the URL and results restore A while the search box retains the last typed B draft.",
+      "expected": "The report expects the visible search text to restore A together with its results.",
+      "actual": "The browser restores the last typed field value B, while the response input value attribute, URL and repository results correctly restore A. Normal submissions, Forward and navigation without editing the field are consistent.",
+      "reproSteps": [
+        "On a user profile Repositories tab, search for a uniquely named repository A and confirm its matching result.",
+        "Search for a different uniquely named repository B and confirm its matching result.",
+        "Press browser Back and compare the URL, visible query field and results.",
+        "Observe A in the URL and results while B remains in the search field."
+      ],
+      "reason": "User rejected the reported draft-only display mismatch, consistent with gitea-pass2-007. Both reviewers reproduced the mismatch but disagreed on classification: Claude rejected it as browser-restored draft state, while Codex recommended acceptance at severity 1. This rejection is the explicit human judgment; it does not claim the observation failed to reproduce. A later Sort action applying the visible draft was observed separately and is excluded from this rejection, as are hidden filters or incorrect server search results."
+    },
+    {
+      "name": "Location over 50 characters is silently truncated and reported as success",
+      "summary": "The report says that a profile Location longer than 50 characters is accepted by the server, cut to 50 characters, and saved with a success message.",
+      "expected": "The reported expectation is a validation error and no save.",
+      "actual": "The report described 'Your profile has been updated.' and a stored Location of the first 50 characters after removing the input's maxlength and submitting 51 characters.",
+      "reproSteps": [
+        "Open user Settings > Profile.",
+        "Remove the Location input's maxlength attribute and enter 51 characters.",
+        "Click Update Profile and reload."
+      ],
+      "reason": "Not reproducible, and the server can't do it: UpdateProfileForm.Location is bound with MaxSize(50) (services/forms/user_form.go) and routers/web/user/setting/profile.go returns on ctx.HasError() before UpdateUser, so 51 or more characters (form, programmatic value, direct POST, CJK) shows 'form.Location must contain at most 50 characters.' and nothing is saved. The only success-plus-50-characters path is the browser's own maxlength=50 on the input (templates/user/settings/profile.tmpl) cutting the typed text before submit, so the server never receives 51. The validation re-render discarding the other unsaved fields is the separate accepted entry 'Profile edits are cleared after invalid Website URL submission'."
+    },
+    {
+      "name": "Username can be changed to the reserved name 'admin'",
+      "summary": "The report says that profile settings let a user rename their account to 'admin', which it treats as a reserved username, and that the profile then takes over the /admin URL instead of the Site Administration panel.",
+      "expected": "The reported expectation is an error that 'admin' is reserved, with the username unchanged.",
+      "actual": "The rename succeeded with 'Your profile has been updated.', and /admin showed the user's profile.",
+      "reproSteps": [
+        "As a non-admin test user, open Settings > Profile.",
+        "Change Username to admin and click Update Profile.",
+        "Open /admin."
+      ],
+      "reason": "Intended in this version (1.24). 'admin' was reserved only while Site Administration lived at /admin. go-gitea/gitea#32189 (shipped in 1.23) moved the admin routes to /-/admin and removed \"admin\" from reservedUsernames in models/user/user.go, resolving go-gitea/gitea#32181, which asked to allow a user named admin (SSO setups using that name failed with 'name is reserved'). The pinned list holds only top-level paths still in use (api, user, explore, org, repo, issues, ...), which is why explore and user are rejected. With a user named admin, /-/admin stays reachable and the navbar links there; /admin showing that user's profile is normal /{username} routing."
+    },
+    {
+      "name": "Profile visibility, theme and language dropdowns have no accessible names",
+      "summary": "The report says the User visibility, Theme and Language dropdowns in user settings are exposed as comboboxes with empty accessible names.",
+      "expected": "The reported expectation is that each control's accessible name matches its visible label.",
+      "actual": "The Fomantic dropdowns have no aria-label or aria-labelledby and their visible labels are not associated; selecting values with the mouse works.",
+      "reproSteps": [
+        [
+          "Sign in and open /user/settings; inspect the User visibility dropdown."
+        ],
+        [
+          "Sign in and open /user/settings/appearance; inspect the Theme dropdown."
+        ],
+        [
+          "Sign in and open /user/settings/appearance; inspect the Language dropdown."
+        ]
+      ],
+      "reason": "Out of scope: this is screen-reader accessibility (label association on visually labelled controls), not a functional defect. The dropdowns open, select and save normally with the mouse. Accessibility findings are excluded from this benchmark's ground truth."
+    },
+    {
+      "name": "Block user and Edit note modals do not trap keyboard focus",
+      "summary": "The report says Shift+Tab from the note field in the Block user or Edit note modal moves focus to the page footer behind the overlay, and the modals lack dialog semantics.",
+      "expected": "The reported expectation is that focus stays inside the modal and the modal is exposed as a named dialog.",
+      "actual": "Shift+Tab from the note field focused the footer API link while the modal stayed open; the modal has neither role=dialog nor aria-modal.",
+      "reproSteps": [
+        "Sign in, open another user's profile and click Block user.",
+        "Press Shift+Tab from the focused note field."
+      ],
+      "reason": "Out of scope: this is keyboard-only accessibility (focus trapping and dialog semantics), not a functional defect. The behaviour is as described (templates/shared/user/block_user_dialog.tmpl and blocked_users.tmpl use a plain Fomantic modal, whose a11y gaps Gitea documents in web_src/js/modules/fomantic/aria.md), but the modals' Cancel, Block and Save buttons work with the mouse. Keyboard and accessibility findings are excluded from this benchmark's ground truth."
+    },
+    {
+      "name": "Theme picker renders two conflicting visible selections",
+      "summary": "The report claims Appearance displays a native theme select alongside the custom dropdown and changing the native control leaves a stale custom label.",
+      "expected": "The reported expectation is one visible theme selection matching the value that Update Theme saves.",
+      "actual": "The report describes a visible native select and stale dropdown label. The supplied verification instead shows one visible dropdown with synchronized label and submitted value during normal mouse/keyboard selection; the native select is hidden.",
+      "reproSteps": [
+        "Open Settings > Appearance at desktop or mobile width.",
+        "Use the normal theme dropdown to select a theme and compare its visible label with the selection saved by Update Theme.",
+        "The original claim requires a second visible native select; verify whether one is actually available without modifying the DOM."
+      ],
+      "reason": "User rejected the original report as not reproduced through the rendered UI. The pinned dropdown stylesheet hides its native select with display:none!important, and the supplied verification shows normal selections updating the visible label and submitted value together. This rejection does not cover the separately discovered browser Back variant that restores a hidden form value without updating its label; that variant was not graded or credited to this report."
+    },
+    {
+      "name": "Corrupt avatar error exposes internal decoder text",
+      "summary": "Uploading a truncated PNG displays “UploadAvatar: image.DecodeConfig: unexpected EOF” instead of explaining that the image file is damaged or unreadable.",
+      "expected": "A clear message explains that the image is corrupt or cannot be read and asks the user to choose a valid image.",
+      "actual": "The banner displays “UploadAvatar: image.DecodeConfig: unexpected EOF”.",
+      "reproSteps": [
+        "/user/settings",
+        "Open Profile settings as eval.",
+        "Choose a corrupt PNG containing the PNG signature followed by incomplete data.",
+        "Click Update Avatar and read the error banner."
+      ],
+      "reason": "Labeler reproduced it and judged it works as intended."
+    }
+  ]
+}

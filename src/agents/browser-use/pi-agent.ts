@@ -9,16 +9,16 @@ import path from "node:path";
 import { setTimeout as delay } from "node:timers/promises";
 import { z } from "zod";
 
+import { hostedAgentRules } from "../../evals/hosted-agent-rules";
+import { LenientReportSchema, ReportSchema } from "../../evals/reports";
+import { writeJson } from "../../shared/json-file";
 import {
   AgentContext,
   EvalAgent,
   EvalAgentDefinition,
   PI_MODELS,
   PiModel,
-} from "../../evals/agent";
-import { hostedAgentRules } from "../../evals/hosted-agent-rules";
-import { writeJson } from "../../evals/json-file";
-import { LenientReportSchema, ReportSchema } from "../../evals/reports";
+} from "../types";
 import { BrowserUseClient } from "./client";
 
 /** Luna uses Browser Use's recommended effort; Sol and Terra match the Codex configuration. */

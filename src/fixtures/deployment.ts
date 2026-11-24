@@ -1,6 +1,6 @@
 import path from "node:path";
 
-import { FixtureDeployment, FixtureDeploymentFile } from "../evals/types";
+import { FixtureDeployment, FixtureDeploymentFile } from "./types";
 
 export type DeploymentLayer = { directory: string; files: string[] };
 

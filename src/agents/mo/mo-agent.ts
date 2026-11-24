@@ -3,24 +3,16 @@ import path from "node:path";
 import { setTimeout } from "node:timers/promises";
 import { z } from "zod";
 
-import {
-  AgentContext,
-  EvalAgent,
-  EvalAgentDefinition,
-} from "../../evals/agent";
-import { getMoCost } from "../../evals/cost";
-import { writeJson } from "../../evals/json-file";
-import { runMoCommand, validateMoCli } from "../../evals/mo-cli";
+import { writeJson } from "../../shared/json-file";
+import { AgentContext, EvalAgent, EvalAgentDefinition } from "../types";
+import { runMoCommand, validateMoCli } from "./cli";
+import { MoReadSchema, MoStatusSchema } from "./cli-schemas";
+import { getMoCost } from "./cost";
 import {
   MoCostSchema,
   MoFindingsSchema,
   MoReportSchema,
-} from "../../evals/reports";
-import {
-  MoReadSchema,
-  MoStatusSchema,
-  isMoSessionReportReady,
-} from "./cli-schemas";
+} from "./report-schemas";
 
 const SessionSchema = z.object({ sessionId: z.string().min(1) });
 
@@ -41,7 +33,14 @@ export class MoAgent implements EvalAgent {
     onReady?: () => number,
   ) {
     onReady?.();
-    const startArgs = ["start", message];
+    // Mo sees no org knowledge base, MCP servers or repositories, matching the other agents' fixture-only limits.
+    // Evals score findings only, so Mo skips the flow observer's test-case recording and its cost.
+    const startArgs = [
+      "start",
+      message,
+      "--ignore-org-context",
+      "--no-test-cases",
+    ];
     if (this.context.effort) startArgs.push("--effort", this.context.effort);
     if (this.context.maxConcurrentSubAgents !== undefined) {
       startArgs.push(
@@ -71,24 +70,11 @@ export class MoAgent implements EvalAgent {
     const sessionId = this.requireSessionId();
     const answered = new Set<string>();
     while (!signal.aborted) {
-      let status = MoStatusSchema.parse(
+      const status = MoStatusSchema.parse(
         JSON.parse(await this.mo(["status", sessionId], signal)),
       );
-      if (
-        status.attentionPending === undefined &&
-        isMoSessionReportReady(status)
-      ) {
-        status = MoStatusSchema.parse(
-          JSON.parse(await this.mo(["status", sessionId, "--full"], signal)),
-        );
-      }
-      const display = status.displayState ?? status.state;
-      const lifecycle = status.sessionState ?? status.state;
-      if (
-        display === "needs_you" ||
-        lifecycle === "waitingOnUser" ||
-        display === "blocked"
-      ) {
+      const display = status.status;
+      if (display === "needs_you" || display === "blocked") {
         // Automated evals answer each input once without extending their budget.
         const read = MoReadSchema.parse(
           JSON.parse(
@@ -106,7 +92,7 @@ export class MoAgent implements EvalAgent {
             ),
           ),
         );
-        const inputId = read.pendingInput?.id;
+        const inputId = read.pendingQuestions?.[0]?.id;
         if (inputId) {
           if (!answered.has(inputId)) {
             const message =
@@ -122,24 +108,20 @@ export class MoAgent implements EvalAgent {
           continue;
         }
       }
-      const ready = isMoSessionReportReady(status);
       const hasFindings =
-        (status.counts?.bugs ?? status.findings?.bugs?.length ?? 0) > 0 ||
-        (status.counts?.verdicts ?? status.findings?.verdicts?.length ?? 0) > 0;
-      const failedDisplay = ["cancelled", "failed_start", "failed"].includes(
-        display ?? "",
-      );
-      const terminalStop =
-        lifecycle === "stopped" && display !== "waiting_on_agents";
+        (status.counts?.bugs ?? 0) > 0 || (status.counts?.verdicts ?? 0) > 0;
       if (
-        lifecycle === "failed" ||
-        failedDisplay ||
-        terminalStop ||
-        (ready && display === "blocked" && !hasFindings)
+        display === "cancelled" ||
+        display === "failed" ||
+        (display === "blocked" && !hasFindings)
       ) {
         throw new Error(`Mo session ${sessionId} needs attention: ${display}.`);
       }
-      if (ready && lifecycle === "idle" && status.latestTurn?.completedAt) {
+      // A sleeping session has scheduled more work, so only ready or a blocked session with findings is done.
+      if (
+        (display === "ready" || display === "blocked") &&
+        status.latestTurn?.completedAt
+      ) {
         signal.throwIfAborted();
         return;
       }

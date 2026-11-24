@@ -43,7 +43,7 @@ jobs:
       - name: Stage dataset
         run: |
           mkdir dataset
-          cp -R fixtures/oss/. dataset/
+          cp -R fixtures/web/oss/. dataset/
           cp DATASET_CARD.md dataset/README.md
       # The card's configs point the Dataset Viewer at these tables; the JSON stays the source.
       - name: Build viewer tables
@@ -56,8 +56,8 @@ jobs:
           out = root / "data"
           out.mkdir()
           tables = {"areas": [], "bugs": [], "known_invalid": []}
-          story = ["id", "name", "summary", "expected", "actual", "reproSteps"]
-          for area_dir in sorted(root.glob("*/e2e/areas/*")):
+          story = ["name", "summary", "expected", "actual", "reproSteps"]
+          for area_dir in sorted(root.glob("*/areas/*")):
               app, area = area_dir.parts[1], area_dir.name
               brief = json.loads((area_dir / "fixture.json").read_text())["productArea"]
               bugs = json.loads((area_dir / "ground-truth.json").read_text())["bugs"]
@@ -72,11 +72,17 @@ jobs:
                   "bugs": len(bugs),
                   "knownInvalid": len(invalid),
               })
+              def cases(steps):
+                  # Labels may hold one list of steps or a list of cases; the viewer gets cases.
+                  return steps if steps and isinstance(steps[0], list) else [steps]
+
               for bug in bugs:
                   row = {"app": app, "area": area, **{k: bug.get(k) for k in story}}
+                  row["reproSteps"] = cases(row["reproSteps"])
                   tables["bugs"].append({**row, "severity": bug["severity"]})
               for bug in invalid:
                   row = {"app": app, "area": area, **{k: bug.get(k) for k in story}}
+                  row["reproSteps"] = cases(row["reproSteps"])
                   tables["known_invalid"].append({**row, "reason": bug["reason"]})
           for name, rows in tables.items():
               with open(out / f"{name}.jsonl", "w") as f:

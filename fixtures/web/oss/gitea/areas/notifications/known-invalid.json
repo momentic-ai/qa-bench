@@ -1,0 +1,115 @@
+{
+  "bugs": [
+    {
+      "name": "Watching a repository doesn't deliver a notification for a newly created issue",
+      "summary": "The report says that a user watching a repository gets no notification when another user opens a new issue in it.",
+      "expected": "The reported expectation is that the watcher receives an unread notification for the new issue.",
+      "actual": "After alex watched a new repository and eval opened an issue in it, alex's Unread notifications were reported to show only older entries, even after a refresh.",
+      "reproSteps": [
+        "As one user, create a repository.",
+        "As a second user, watch the repository.",
+        "As the first user, open an issue in the repository.",
+        "As the second user, check Notifications > Unread."
+      ],
+      "reason": "Not reproduced: watchers do get a notification for a new issue. Notifications are created by a background queue, so they arrive shortly after the issue is opened; in repeated runs, including the reported setup, the watcher's unread count went up with the new issue within a few seconds, and a manual repro confirmed it. The person who opens the issue is deliberately not notified of their own action ('dont notify user who cause notification' in models/activities/notification_list.go), so a report about the issue author not being notified is also intended."
+    },
+    {
+      "name": "A comment on a subscribed issue doesn't generate an unread notification",
+      "summary": "The report says that after a user subscribes to an issue, another user's new comment on it (or an @mention of the subscriber in a comment) doesn't produce an unread notification for the subscriber.",
+      "expected": "The reported expectation is that the subscriber receives an unread notification for the new comment.",
+      "actual": "After alex subscribed to an issue and eval commented on it, alex's Unread notifications were reported to show only older entries, even after a refresh; an @alex mention comment on the same issue was reported the same way.",
+      "reproSteps": [
+        "As one user, create an issue.",
+        "As a second user, open the issue and click Subscribe.",
+        "As the first user, add a comment to the issue (optionally @mentioning the second user).",
+        "As the second user, check Notifications > Unread."
+      ],
+      "reason": "Not reproduced: subscribers and mentioned users do get an unread notification for a new comment. Notifications are created by a background queue, so they arrive shortly after the comment is posted; in repeated runs the new notification appeared once the queue ran, a manual repro confirmed it works, and a user who wasn't subscribed correctly got nothing. The commenter is deliberately not notified of their own comment."
+    },
+    {
+      "name": "Pinning a notification marks another unread notification read",
+      "summary": "The report says that pinning one notification also marks a different unread notification as read.",
+      "expected": "The reported expectation is that pinning changes only the pinned notification, and other unread notifications stay unread.",
+      "actual": "Pinning fresh notifications changed only the pinned one; every other unread notification stayed unread and the unread count dropped by exactly one, including after a reload.",
+      "reproSteps": [
+        "Make sure the account has at least two unread notifications.",
+        "On the Notifications page, pin one of them.",
+        "Check whether the other notification is still unread."
+      ],
+      "reason": "Not reproducible: the Pin action posts a single notification id, and the server updates only that notification. The only actions that mark other notifications read are Mark all as read and opening an issue, both intended. The report came from a run on an account shared with other agents, whose concurrent actions most likely changed the other notification."
+    },
+    {
+      "name": "Marking a pinned notification read clears another unread notification",
+      "summary": "The report says that marking a pinned notification as read also marks a different unread notification as read.",
+      "expected": "The reported expectation is that marking one notification as read leaves other unread notifications unread.",
+      "actual": "Pinning a notification, marking all as read, marking another notification unread, and then marking the pinned one read left the other notification unread every time, including through the API.",
+      "reproSteps": [
+        "Pin notification A and mark all notifications as read.",
+        "From the Read tab, mark notification B as unread.",
+        "Mark notification A as read.",
+        "Check whether notification B is still unread."
+      ],
+      "reason": "Not reproducible: the Mark as read action posts a single notification id, and the server updates only that notification. The only actions that mark other notifications read are Mark all as read and opening an issue, both intended. The report came from a run on an account shared with other agents, whose concurrent actions most likely changed the other notification."
+    },
+    {
+      "name": "Notification row actions cannot be reached with the keyboard",
+      "summary": "The report says that a notification's Pin, Mark as read and Mark as unread controls only appear on mouse hover, so Tab skips from the notification link to the page footer and the controls can't be used with the keyboard alone.",
+      "expected": "The reported expectation is that focusing a notification reveals its action controls and Tab can reach them.",
+      "actual": "Tab moved from the notification link directly to the footer; the row actions appeared only when the row was hovered with the mouse.",
+      "reproSteps": [
+        "Open the Notifications page with a pinned or read notification.",
+        "Move the pointer away from the notification row.",
+        "Tab to the notification's link, then press Tab again."
+      ],
+      "reason": "Out of scope: this is keyboard-only accessibility of hover-revealed controls, not a functional defect. The behaviour is as described (web_src/css/user.css hides .notifications-buttons with display:none and shows them only on .notifications-item:hover, with no focus rule), but keyboard and accessibility reachability findings are excluded from this benchmark's ground truth."
+    },
+    {
+      "name": "Watching filter and sort selections do not apply from the keyboard",
+      "summary": "The report says that on Notifications > Watching, highlighting a Filter or Sort option with the arrow keys and pressing Enter closes the menu without applying the option, while a mouse click applies it.",
+      "expected": "The reported expectation is that pressing Enter on a highlighted option applies it as a mouse click does.",
+      "actual": "Arrow keys highlighted Archived or Least recently updated, but Enter left the URL and repository list unchanged; clicking the same option applied it.",
+      "reproSteps": [
+        "Open Notifications > Watching.",
+        "Open Filter, use ArrowDown to highlight Archived and press Enter.",
+        "Compare with clicking Archived."
+      ],
+      "reason": "Out of scope: this is keyboard-only accessibility of a dropdown's selection, not a functional defect. The same options work with the mouse. Keyboard and accessibility reachability findings are excluded from this benchmark's ground truth."
+    },
+    {
+      "name": "Pinned notification has no Unpin button",
+      "summary": "The report says a pinned notification shows only Mark as read, with no Unpin control, on both the Unread and Read views.",
+      "expected": "The reported expectation is a separate Unpin button next to Mark as read.",
+      "actual": "A pinned notification showed only Mark as read; clicking it set the notification to read, which removed the pin and moved it to the Read tab, where it showed Pin and Mark as unread.",
+      "reproSteps": [
+        "Open Notifications with an unread notification and pin it.",
+        "Hover the pinned row and check its action buttons.",
+        "Click Mark as read and open the Read tab."
+      ],
+      "reason": "Intended: pinned is a third notification status, and Mark as read is the designed way to unpin, since it sets the status to read. templates/user/notification/notification_div.tmpl shows Pin for non-pinned rows, Mark as read for unread or pinned rows, and Mark as unread for read rows; there is no Unpin action, unchanged on upstream main."
+    },
+    {
+      "name": "Pinned notifications show up in the Read tab",
+      "summary": "A pinned notification remains visible when viewing Read notifications.",
+      "expected": "The reported expectation is that Read excludes pinned notifications.",
+      "actual": "Pinned notifications appear in the Read tab as well as the Unread tab.",
+      "reproSteps": [
+        "Pin an issue notification.",
+        "Open Notifications > Read.",
+        "Observe that the pinned notification remains listed."
+      ],
+      "reason": "Intended: the notification list explicitly includes NotificationStatusPinned alongside the requested Read or Unread status. Pins remain visible in both views. Mere presence in Read is not a failure."
+    },
+    {
+      "name": "Unread notification link stays on the first comment",
+      "summary": "Later comments reorder an unread issue notification without changing its link to the earliest unread comment.",
+      "expected": "The reported expectation is that every new comment changes the unread notification link to the newest comment.",
+      "actual": "While the notification stays unread, its link continues to target the earlier comment.",
+      "reproSteps": [
+        "Receive a notification for a comment on a subscribed issue and leave it unread.",
+        "Have another user add another comment to the same issue.",
+        "Inspect the unread notification link; it still targets the earlier unread comment."
+      ],
+      "reason": "Intended: updateIssueNotification changes CommentID only when the previous notification is Read. Its explicit rationale is to avoid missing older unread comments. Later comments update the actor and ordering while retaining the first unread target."
+    }
+  ]
+}

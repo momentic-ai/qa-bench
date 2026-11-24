@@ -1,0 +1,993 @@
+{
+  "bugs": [
+    {
+      "name": "Pull request summary uses plural commits for one commit",
+      "summary": "A pull request containing exactly one commit uses the plural “1 commits” in its merge summary.",
+      "expected": "The merge summary should use the singular “1 commit” when the pull request contains one commit.",
+      "actual": "The summary says “wants to merge 1 commits” while the Commits tab shows a count of 1.",
+      "reproSteps": [
+        "Sign in as eval with password momentic-eval-1 and open eval/harbor-handbook.",
+        "Create a disposable branch from main, add a small Markdown file, and commit it once on that branch.",
+        "Create a pull request from the new branch into main.",
+        "Open its conversation page and confirm that the Commits tab shows 1.",
+        "Read the merge summary and observe “1 commits” instead of “1 commit”."
+      ],
+      "severity": 1
+    },
+    {
+      "name": "Review submission from the latest single-commit PR view fails with HTTP 404",
+      "summary": "The latest single-commit PR diff offers an enabled Review panel, but submitting its comment uses a missing commit-scoped route and posts no review.",
+      "expected": "Submitting an enabled review from the latest/head single-commit PR diff should post the review successfully through the canonical PR review-submission endpoint.",
+      "actual": "The review is not submitted. A raw JSON parse error banner appears, the page stays on the commit-filtered URL, and the text remains in the panel.",
+      "reproSteps": [
+        "Sign in as eval and create or use a PR whose latest/head commit can be selected from Files Changed.",
+        "Through the PR commit selector, open the latest single-commit diff. Confirm Review is enabled.",
+        "Open Review, type a unique comment, and click Comment.",
+        "Observe that no review is posted, the page stays on the commit-scoped URL with the draft retained, and the request reaches HTTP 404. The recorded banner exposes a JSON parsing error."
+      ],
+      "severity": 3
+    },
+    {
+      "name": "Review submission HTTP error is mislabeled Network error and exposes a JSON SyntaxError",
+      "summary": "A failed Review-panel submission receives a plaintext HTTP 404, but the UI labels a resulting client JSON parse exception as a network error.",
+      "expected": "When Review submission receives an HTTP error, show understandable submission-failure feedback and preserve the draft. Distinguish an HTTP rejection from a network outage, and do not expose an internal JSON parser exception.",
+      "actual": "The server responds HTTP404 with plain text Not found. The banner says Network error followed by SyntaxError: Unexpected token N / Not found is not valid JSON. The review draft remains in the panel.",
+      "reproSteps": [
+        "Sign in as eval and open a PR’s latest/head single-commit Files Changed view, where Review is enabled.",
+        "Open Review, enter a unique comment, and click Comment.",
+        "Observe the red banner combining Network error, SyntaxError and invalid JSON details. The request reached the server and received HTTP404; it was not a transport failure."
+      ],
+      "severity": 1
+    },
+    {
+      "name": "Reviewed by you omits a pull request with a recorded review by the current user",
+      "summary": "An open PR authored by the signed-in eval records that eval’s review comment, but global Pull Requests > Reviewed by you remains at 0 and shows no results, even after refresh.",
+      "expected": "The eval-authored PR should appear in the “Reviewed by you” view because the PR timeline records that the same eval reviewed it.",
+      "actual": "PR #8 displayed “eval reviewed now,” the submitted review comment, and eval in the Reviewers sidebar. Global Pull Requests > Reviewed by you showed a count of 0 and “No results”; this remained true after refreshing.",
+      "reproSteps": [
+        "Sign in as eval using the fixture credentials and open eval/harbor-handbook.",
+        "Create a fresh branch, add a file, and open a pull request into main authored by eval.",
+        "Open Files Changed → Review, enter a review comment, and submit with Comment.",
+        "Confirm the pull request timeline records eval’s review and the Reviewers sidebar includes eval.",
+        "Open global Pull Requests → Reviewed by you with state=open. Refresh and observe count 0 and No results despite the recorded review."
+      ],
+      "severity": 1
+    },
+    {
+      "name": "Global Pull Requests dashboard lists and counts PRs from repositories with Pull Requests disabled",
+      "summary": "After Pull Requests is disabled for a repository, the global dashboard still includes its open PR in results and counts, presenting an unavailable PR as actionable.",
+      "expected": "The global Pull Requests dashboard should exclude PRs from repositories where Pull Requests is disabled, including their contribution to the displayed open count and repository grouping. Disabling the feature must not leave an actionable dashboard result leading to an unavailable detail page.",
+      "actual": "With Pull Requests disabled on qa-pull-review/pull-sandbox, the repository navigation has no Pull Requests tab, but /pulls still lists Organization release review and counts it as 1 Open and In your repositories 1. Clicking its title reaches 404 Not Found while the same administrator retains repository access.",
+      "reproSteps": [
+        "Sign in as eval with administration access to an initialized disposable repository. Create an open pull request between two changed branches, or use an existing open PR.",
+        "Open repository Settings, disable Pull Requests, and save. Confirm the repository navigation no longer has a Pull Requests tab; remain signed in as the same administrator.",
+        "Choose Pull Requests in the global navigation to open /pulls. Locate the PR from the repository whose Pull Requests feature was disabled. Observe that it remains listed and contributes to the open count and repository grouping.",
+        "Click that visible PR title. Observe 404 Not Found. The qualifying failure is retaining the unavailable PR in the global results/counts; the repository intentionally disabling its detail route is not a separate bug."
+      ],
+      "severity": 3
+    },
+    {
+      "name": "Assigned-to-you exact search hides a matching assigned pull request",
+      "summary": "The global Pull Requests dashboard lists an assigned PR without a query, but searching a matching title term under Assigned to you hides it while the same query under Created by you finds it.",
+      "expected": "An open PR assigned to the signed-in user remains visible under Assigned to you when an Exact search matches its title. Searching must retain the matching assigned result and its count.",
+      "actual": "Assigned to you lists the open PR Update README.md with count 1 before searching. Submitting README with Exact selected retains type=assigned but changes the count to 0 and shows No results. Created by you returns the same PR for the same query.",
+      "reproSteps": [
+        "Sign in as eval and create a disposable PR titled Update README.md, authored by eval and assigned to eval. Confirm its assignee on the PR detail.",
+        "Open global Pull Requests and select Assigned to you with state Open and an empty search. Confirm that Update README.md appears and the Assigned to you count includes it.",
+        "Enter README in Search pulls with Exact selected and submit. The URL retains type=assigned and includes q=README&search_mode=exact.",
+        "Observe that the assigned matching PR disappears, Assigned to you shows 0, and No results appears.",
+        "Choose Created by you with the same README query. Confirm the PR appears, establishing that its matching title is searchable. Return to Assigned to you and repeat the search."
+      ],
+      "severity": 3
+    },
+    {
+      "name": "Bulk Open reopens a closed PR whose head branch was deleted, leaving it broken",
+      "summary": "Bulk Open reopens a closed PR after its head branch is deleted, bypassing the detail page’s explicit reopening prohibition and leaving a broken open PR.",
+      "expected": "Bulk Open must enforce the same deleted-head restriction as PR detail: keep the PR closed and explain that its deleted branch prevents reopening.",
+      "actual": "The detail page says the PR cannot be reopened because its branch was deleted and offers no Reopen control. Bulk Open nevertheless persists an Open state and reopened event; the resulting detail page reports missing fork information and offers no merge control.",
+      "reproSteps": [
+        "Sign in as eval and create a disposable open PR with its own head branch.",
+        "Close the PR, use Delete Branch, and confirm deletion. On the PR detail, confirm the deleted-branch notice and absence of a Reopen control.",
+        "Open the repository Pull Requests list, select Closed, select the PR’s checkbox, and click bulk Open.",
+        "Open the PR detail again. It is now Open with a reopened event, but its merge box says This pull request is broken due to missing fork information and has no merge control."
+      ],
+      "severity": 3
+    },
+    {
+      "name": "Re-request review on the author's comment review fails with a raw JSON error",
+      "summary": "After an author submits a comment-only review of their own pull request, the reviewer sidebar offers Re-request review for that author. The action fails with a raw network/JSON exception on every attempt.",
+      "expected": "The sidebar should offer review re-request only when it can succeed, or display a clear validation message for a self-review request.",
+      "actual": "Clicking the circular Re-request review action beside admin displays 'Network error SyntaxError: Failed to execute json on Response: Unexpected end of JSON input' and creates no review request. Reloading and repeating reproduces the error.",
+      "reproSteps": [
+        "Sign in as admin and open a pull request authored by admin, such as /admin/bugbash-code-flows/pulls/4.",
+        "Open Files Changed, choose Review, submit a Comment review.",
+        "Return to Conversation. In Reviewers, admin now appears with a Re-request review action.",
+        "Click Re-request review beside admin.",
+        "Observe the raw network/JSON error. Reload and repeat to confirm it fails again."
+      ],
+      "severity": 3
+    },
+    {
+      "name": "Global /pulls text search drops the selected Author (poster) filter",
+      "summary": "Submitting text search on the global PR dashboard drops its selected Author filter and admits PRs by other authors.",
+      "expected": "Keep the selected Author filter when submitting a text search, returning PRs matching both the keyword and author.",
+      "actual": "The URL becomes /pulls?type=your_repositories&sort=recentupdate&state=open&q=ownership&search_mode=exact with no poster parameter, and eval's PR #5 shows up in the results.",
+      "reproSteps": [
+        "Sign in as eval. Create or use an open PR by eval with a unique title token, and identify another fixture author such as alex.",
+        "Open global /pulls and select alex through Author. Confirm the eval-authored PR is excluded and poster=alex is present in the URL.",
+        "Search the unique title token and submit.",
+        "Observe poster disappears and the eval-authored matching PR is returned. A combined q-and-poster query retains the correct empty result."
+      ],
+      "severity": 3
+    },
+    {
+      "name": "Quote Reply drops the quoted comment when submitting a reply",
+      "summary": "Quote Reply visibly inserts the source comment into the editor, but the posted reply omits it; the omission persisted after refresh and a second attempt.",
+      "expected": "Submitting a reply composed with Quote Reply should preserve the visibly inserted quoted source along with the reply text.",
+      "actual": "In two attempts, the editor visibly showed the source quote followed by reply text before submission, but the posted reply displayed only the reply text. The omission remained after refreshing the PR conversation.",
+      "reproSteps": [
+        "Open /admin/harbor-handbook/pulls and load the supplied signed-in admin session; no credentials were entered, and the session remained signed in.",
+        "As admin, create a fresh private repository named pulls-comment-quote-20260611-4827 through the UI, initialize it with the default main branch, and create the repository.",
+        "Create branch pulls-comment-quote-feature, add pulls-comment-quote.txt with a short pulls-comment-prefixed line, and commit it through the UI.",
+        "Create an open pull request from pulls-comment-quote-feature into main.",
+        "On the pull request Conversation view, post a top-level comment: “pulls-comment: quoted source”. Open that comment’s actions menu and choose Quote Reply.",
+        "Confirm the editor visibly contains “> pulls-comment: quoted source”, append “pulls-comment: reply text” on the following line, and submit with Comment.",
+        "Inspect the posted reply at /admin/pulls-comment-quote-20260611-4827/pulls/1#issuecomment-44; it shows only “pulls-comment: reply text”. Refresh and confirm the omission persists.",
+        "To rule out accidentally replacing the quote while typing, repeat with a second top-level comment “pulls-comment: quoted source retry” and append “pulls-comment: retry reply text”; the editor visibly shows both before submission, but the posted reply shows only the reply text at /admin/pulls-comment-quote-20260611-4827/pulls/1#issuecomment-67."
+      ],
+      "severity": 3
+    },
+    {
+      "name": "Top-level Pull Requests search drops Assignee filter and includes unassigned PR",
+      "summary": "Submitting search on the top-level Pull Requests dashboard drops the selected assignee filter and displays a matching unassigned PR that was excluded before the search.",
+      "expected": "Search should retain the selected assignee and return only matching pull requests assigned to that user.",
+      "actual": "With Assignee=eval selected, the dashboard URL contains assignee=eval and excludes the unassigned fixture. Submitting a keyword shared by the assigned and unassigned fixtures removes assignee=eval and shows both pull requests. The unassigned result remains visible after waiting for the search to settle.",
+      "reproSteps": [
+        "Sign in as the Gitea fixture account eval. Use fresh disposable records and a unique shared title token.",
+        "Create a disposable initialized repository and two changed branches. Open two pull requests with titles containing the shared token; assign one to eval and leave the other unassigned.",
+        "Open the top-level Pull Requests dashboard at /pulls, keep the Open state, and select eval through its Assignee control.",
+        "Confirm the URL contains assignee=eval and the unassigned PR is excluded from the narrowed list.",
+        "Enter the shared token into the dashboard search and click the magnifying-glass search button.",
+        "Observe that assignee=eval disappears from the URL and the results include both fixtures, including the unassigned PR. Wait at least five seconds to confirm the broadened result remains."
+      ],
+      "severity": 3
+    },
+    {
+      "name": "Pull Requests dashboard does not visibly indicate the active assignee outside the dropdown",
+      "summary": "The top-level Pull Requests dashboard does not visibly distinguish Assignee=eval from no explicit assignee filter while the dropdown is closed.",
+      "expected": "The collapsed filter control or another visible indicator should identify the active assignee, so the current result scope is apparent without opening the dropdown or reading the URL.",
+      "actual": "With assignee=eval active, the closed control still displays only Assignee with the same styling as the unfiltered control and no selected-name chip, avatar, or active badge. Reopening the dropdown reveals eval in its input. Without a keyword, assigned records are correctly retained and unassigned records excluded; the missing feedback is a visual-state defect, separate from search dropping the filter.",
+      "reproSteps": [
+        "Sign in as fixture account eval and open the top-level Pull Requests dashboard at /pulls with In your repositories and Open selected. Use disposable assigned and unassigned records to compare the unfiltered and filtered results.",
+        "Open Assignee, select eval, and close the dropdown. Confirm assignee=eval is in the URL and unassigned records are excluded.",
+        "Inspect the collapsed results view. The control still reads only Assignee and has no selected username, avatar, chip, or active styling to distinguish it from the unfiltered state.",
+        "Reopen Assignee and observe eval in its input; close it and observe that the selection is no longer visibly identified.",
+        "Repeat the display comparison with a keyword q and assignee=eval both present in the /pulls URL. The collapsed control still reads only Assignee. This step checks selection feedback rather than the correctness of exact-search results."
+      ],
+      "severity": 1
+    },
+    {
+      "name": "Bulk Open bypasses the duplicate pull request check",
+      "summary": "Reopening a closed pull request from its own page is refused while an identical pull request is open, but selecting it in the Closed list and choosing bulk Open reopens it anyway, leaving two identical open pull requests.",
+      "expected": "Bulk Open refuses to reopen a pull request while another open, unmerged pull request has the same source and target branches, as the pull request's own Reopen button and pull request creation do.",
+      "actual": "The pull request's Reopen button shows \"You cannot perform a reopen operation because there is a pending pull request (#N) with identical properties.\" and keeps it closed. Bulk Open from the Closed list reopens it with no message, so both identical pull requests are open and mergeable. The API state change to open behaves the same.",
+      "reproSteps": [
+        "Sign in as the fixture account. In a repository, open a pull request from a branch into main, then close it.",
+        "Open a second pull request from the same branch into main.",
+        "On the closed pull request's page, choose Reopen and observe it is refused because an identical pull request is pending.",
+        "Open the repository's Pull Requests list, switch to Closed, tick the closed pull request, and choose Open from the bulk actions.",
+        "Observe it reopens, and both identical pull requests are now listed as Open with merge controls."
+      ],
+      "severity": 3
+    },
+    {
+      "name": "Ignore Whitespace for Conflicts still blocks a whitespace-only pull request",
+      "summary": "The repository setting Ignore Whitespace for Conflicts saves and reloads as enabled, but conflict detection never uses it by default, so a pull request whose only difference from the base is whitespace is still marked conflicting and cannot be merged.",
+      "expected": "With Ignore Whitespace for Conflicts enabled, a pull request whose changes conflict with the base only in whitespace is mergeable.",
+      "actual": "With the setting saved and confirmed enabled, a fresh pull request where both branches changed the same line and differ only in the amount of whitespace shows 'This pull request has changes conflicting with the target branch', lists the file, and offers no merge button. The same pull request opened with the setting off looks identical. Comparing the branches with Ignore changes in amount of whitespace shows no differences.",
+      "reproSteps": [
+        "In a new repository, commit base.txt on main containing one line: 'Advance target branch for rebase merge QA.'",
+        "Create a branch and change that line to use two spaces after 'Advance'.",
+        "On main, change the same line to use three spaces after 'Advance'.",
+        "In Settings → Pull Requests, enable Ignore Whitespace for Conflicts, save, and reload to confirm it is checked.",
+        "Open a pull request from the branch into main and wait for the mergeability check. Observe it is marked conflicting on base.txt with no merge button."
+      ],
+      "severity": 3
+    },
+    {
+      "name": "Submitting a pull request review leaves the Conversation count unchanged",
+      "summary": "Submitting a review with text (Comment, Approve or Request changes) saves it and shows it in the timeline, but the pull request's Conversation tab count and the PR list's comment count don't increase. Reloading doesn't fix them; the count is corrected only when an ordinary comment is later posted.",
+      "expected": "Submitting a review increases the Conversation tab count, and the PR list's comment count, by one.",
+      "actual": "After submitting a review comment, the Conversation badge stayed the same (for example 4 → 4, or 0 with a review visible), including after reload. The next ordinary comment made the count jump by two (0 → 2) as it recounted.",
+      "reproSteps": [
+        "Open a pull request and note the Conversation tab count.",
+        "Open Files Changed > Review, enter a review message and submit it as Comment.",
+        "Return to Conversation: the review appears in the timeline but the count is unchanged, even after reload.",
+        "Post an ordinary comment and watch the count jump by two."
+      ],
+      "severity": 1
+    },
+    {
+      "name": "PR command-line instructions say autodetect manual merge is disabled when it is enabled",
+      "summary": "With Enable autodetect manual merge turned on in repository settings, a pull request's View command line instructions still warn that the merge cannot be detected because autodetect manual merge is not enabled.",
+      "expected": "The command-line instructions show the 'autodetect manual merge is not enabled' warning only when the option is off.",
+      "actual": "With Enable autodetect manual merge checked and saved, the PR's expanded command line instructions said: 'Warning: This operation cannot merge pull request because \"autodetect manual merge\" is not enabled.' It showed with Manually merged both on and off.",
+      "reproSteps": [
+        "In repository Settings > Advanced, check Enable autodetect manual merge and save.",
+        "Open an open pull request's Conversation tab.",
+        "Expand View command line instructions and read the warning."
+      ],
+      "severity": 1
+    },
+    {
+      "name": "Files Changed on an empty pull request shows a bare 'after commit not found in PR commits' error",
+      "summary": "Gitea allows creating a pull request between equal branches ('This PR will be empty'), but opening that pull request's Files Changed tab replaces the whole page with a bare HTTP 400 error, 'after commit not found in PR commits', with no navigation.",
+      "expected": "Files Changed on an empty pull request stays inside the pull request page and shows that there are no changes.",
+      "actual": "On an open pull request with zero commits, clicking Files Changed showed only the text 'after commit not found in PR commits' (HTTP 400) with no page header or navigation. The Commits tab handled the empty PR correctly.",
+      "reproSteps": [
+        "Create a new branch from main without changes.",
+        "Open New Pull Request from that branch into main; the comparison says the branches are equal and the PR will be empty. Create it.",
+        "On the new pull request, click Files Changed."
+      ],
+      "severity": 5
+    },
+    {
+      "name": "Saving a pull request description leaves its task checkboxes disabled until reload",
+      "summary": "After editing and saving a pull request description that contains a task list, the rendered task checkboxes are disabled and cannot be toggled until the page is reloaded.",
+      "expected": "Right after saving, the PR author can toggle the description's task checkboxes, as on a fresh page load.",
+      "actual": "Saving a description with '- [ ] Verify conflict' and '- [x] Create branch' rendered both checkboxes disabled, so clicking them did nothing. Reloading the pull request made them enabled and toggling worked. Saving an unchanged task-list description had the same effect.",
+      "reproSteps": [
+        "Open a pull request you authored and choose Edit from the description's menu.",
+        "Enter a task list such as '- [ ] one' and '- [x] two' and click Save.",
+        "Try to toggle a checkbox, then reload the page and try again."
+      ],
+      "severity": 3
+    },
+    {
+      "name": "Changing a closed pull request's target branch fails with an empty error message",
+      "summary": "On a closed pull request, the title editor still lets the user pick a different 'merge into' branch, but Save fails with the toast 'Failed to update PR target branch:' and nothing after the colon, and the editor stays open.",
+      "expected": "Either the target-branch control is disabled on a closed pull request, or the error clearly says the pull request must be reopened before its target can change.",
+      "actual": "On a closed pull request, Edit allowed choosing a different target branch. Save got HTTP 409 with the server message 'The pull request has been closed.', but the toast read 'Failed to update PR target branch:' with no reason, and the editor stayed open. After reopening, the same change succeeded.",
+      "reproSteps": [
+        "Close an open pull request.",
+        "Click Edit beside its title and choose a different 'merge into' branch.",
+        "Click Save and read the error toast."
+      ],
+      "severity": 1
+    },
+    {
+      "name": "Cancelled target-branch change in the PR title editor persists",
+      "summary": "In a pull request's title editor, choosing a different 'merge into' branch and clicking Cancel doesn't discard that choice. The change stays pending in the editor and is applied the next time the editor is saved, even for a title-only edit.",
+      "expected": "Cancel discards the pending target-branch selection, so a later Save keeps the original target branch.",
+      "actual": "After selecting a new target branch and clicking Cancel, the summary still showed main. Clicking Edit again without reloading, changing only the title and saving retargeted the PR to the cancelled branch and added a 'changed target branch' event; the PR's diff and commits changed accordingly.",
+      "reproSteps": [
+        "Open a pull request and click Edit beside its title.",
+        "Choose a different 'merge into' branch, then click Cancel.",
+        "Without reloading, click Edit again, change only the title and click Save.",
+        "Check the PR's target branch and timeline."
+      ],
+      "severity": 3
+    },
+    {
+      "name": "Remove WIP prefix silently does nothing when the PR title is only the prefix",
+      "summary": "On a draft pull request whose title is only a WIP prefix ('WIP:', '[WIP]' or 'wip:'), clicking 'Remove WIP: prefix' reloads the page with no change and no message; the PR stays a draft and can't be merged.",
+      "expected": "Clicking 'Remove WIP: prefix' either takes the pull request out of draft or explains that a non-empty title is needed.",
+      "actual": "With the title set to exactly 'WIP:', clicking 'Remove WIP: prefix' reloaded the page; the PR stayed in Draft titled 'WIP:', the button was still shown, and no error or feedback appeared.",
+      "reproSteps": [
+        "Open a draft pull request and edit its title to exactly 'WIP:'.",
+        "Click 'Remove WIP: prefix' in the merge box.",
+        "Check the PR's title and draft status."
+      ],
+      "severity": 3
+    },
+    {
+      "name": "Confirming a stale fast-forward-only merge after the base advances shows a server error",
+      "summary": "If the base branch gains a new commit while a 'Fast-forward only' merge confirmation is open, confirming it shows 'server error: 500' instead of explaining that the base changed. The PR correctly stays unmerged.",
+      "expected": "The stale fast-forward-only merge is refused with a message explaining that the base branch changed (as Gitea does for other out-of-date merges), not a server error.",
+      "actual": "Confirming the fast-forward-only merge after a new commit landed on main showed 'server error: 500' and left the PR open. Reloading removed the Fast-forward only option.",
+      "reproSteps": [
+        "Open a pull request, choose Fast-forward only and open the merge confirmation; leave the tab open.",
+        "In another tab, commit a different change directly to the base branch.",
+        "Return to the first tab without reloading and confirm the merge."
+      ],
+      "severity": 1
+    },
+    {
+      "name": "Users without write access can still post reviews and code comments on a locked pull request",
+      "summary": "After a pull request's conversation is locked, users without write access (including the PR's own author when not a collaborator) can no longer post general comments, but can still post inline code comments, submit reviews (Comment, Approve, Request changes) and reply to review threads.",
+      "expected": "On a locked pull request, every commenting path, including code comments, reviews and review-thread replies, refuses users without write access, as general comments do.",
+      "actual": "After the owner locked a fork PR, a non-collaborator saw no general comment editor and a general comment POST was refused, but from Files Changed they published an inline 'Add single comment' and a summary Comment review, both visible while the PR stayed locked. A different non-collaborator who wasn't the author posted a review-thread reply and Approve and Request changes reviews the same way.",
+      "reproSteps": [
+        "Have a user without write access open a pull request (or use any non-collaborator on a public repository's PR).",
+        "As the repository owner, choose Lock conversation on the PR.",
+        "As the non-collaborator, open Files Changed and add a single inline comment, then submit a Comment review.",
+        "Check whether the comments were published while the PR is locked."
+      ],
+      "severity": 3
+    },
+    {
+      "name": "With only Manually merged enabled, a mergeable PR says all merge options are disabled and hides the manual option",
+      "summary": "When Manually merged is the only merge style enabled in repository settings, an open, mergeable pull request says 'This pull request cannot be merged because all repository merge options are disabled' and offers no Manually merged control. Enabling any automatic style makes Manually merged appear in the merge dropdown.",
+      "expected": "When Manually merged is enabled, it is offered on a mergeable pull request even if it is the only enabled merge style.",
+      "actual": "With the five automatic styles unchecked and Manually merged checked, a mergeable PR showed 'cannot be merged because all repository merge options are disabled' with no manual-merge control. After also enabling Create merge commit, the merge dropdown offered Manually merged, which opened the merge-commit-ID form. A conflicting PR showed the separate manual-merge form either way.",
+      "reproSteps": [
+        "In repository Settings, uncheck all five automatic merge styles, keep Manually merged checked and save.",
+        "Open an open, mergeable pull request and look at the merge box.",
+        "Enable Create merge commit as well, save, and check the merge dropdown again."
+      ],
+      "severity": 3
+    },
+    {
+      "name": "Manually merged ignores the checked Delete Branch option",
+      "summary": "Marking a pull request as Manually merged with the form's Delete Branch option checked (or pre-checked by the repository default) records the merge but never deletes the source branch.",
+      "expected": "Confirming Manually merged with Delete Branch checked deletes the source branch, as the other merge styles do.",
+      "actual": "After confirming Manually merged with Delete Branch checked, the PR showed 'Manually merged' and the timeline recorded the manual merge, but the PR still offered 'The branch … can now be deleted' with a Delete Branch button, and the source branch still opened with its files.",
+      "reproSteps": [
+        "Open a pull request whose merge box offers Manually merged.",
+        "Choose Manually merged, enter a merge commit ID that is on the base branch and check Delete Branch.",
+        "Confirm, then check whether the source branch still exists."
+      ],
+      "severity": 3
+    },
+    {
+      "name": "Reopened draft pull request loses its Remove WIP prefix button after the merge box refreshes",
+      "summary": "After closing and reopening a draft (WIP) pull request, the merge box first shows the 'Remove WIP: prefix' button, then about two seconds later its automatic refresh redraws the box without it. Reloading the page brings the button back.",
+      "expected": "The Remove WIP prefix button stays available to the PR author or a writer after the merge box refreshes.",
+      "actual": "After reopening a WIP pull request, 'Remove WIP: prefix' appeared, then disappeared when the merge box refreshed itself about two seconds later, leaving no button until a manual reload.",
+      "reproSteps": [
+        "Open a pull request whose title starts with 'WIP:' and close it.",
+        "Reopen it and watch the merge box for a few seconds.",
+        "Reload the page and look at the merge box again."
+      ],
+      "severity": 1
+    },
+    {
+      "name": "Rebasing or force-pushing a pull request branch is shown as adding commits",
+      "summary": "After a pull request's branch is updated by rebase (or force-pushed), the Conversation timeline says the user 'added 2 commits' and lists both the old and the rewritten commit, although the pull request now contains one commit. The force-push isn't recorded on the stored push event, so it is rendered as an ordinary push.",
+      "expected": "A rebase or force-push appears in the timeline as a force-push replacing the earlier commit, and the timeline doesn't claim commits were added that the pull request doesn't contain.",
+      "actual": "After Update branch by rebase on a one-commit pull request, the timeline said 'added 2 commits' and listed the old commit and the rebased commit with the same message. The Commits tab and the header showed one commit. Updating by merge was described correctly.",
+      "reproSteps": [
+        "Open a pull request with one commit whose base branch has since advanced.",
+        "Choose Update branch by rebase from the branch-update dropdown.",
+        "Open the Conversation timeline and compare its newest entry with the Commits tab."
+      ],
+      "severity": 3
+    },
+    {
+      "name": "Closed cross-repository pull request can't be reopened because its existing source branch is reported deleted",
+      "summary": "Reopening a closed pull request whose source branch is in a different repository (for example from a fork) fails with 'The origin branch is delete, cannot reopen.' even though the source branch still exists. The check looks for the target branch's name in the source repository, so it only passes if the source repository happens to have a branch with that name.",
+      "expected": "A closed, unmerged cross-repository pull request whose source branch still exists can be reopened.",
+      "actual": "After closing the pull request and clicking Reopen, it stayed Closed with the error 'The origin branch is delete, cannot reopen.' The source branch link still opened the branch and its latest commit, and repeated Reopen gave the same error.",
+      "reproSteps": [
+        "Create a pull request from a branch in one repository into a differently named branch of another repository (for example between a repository and its fork).",
+        "Close the pull request without deleting any branch.",
+        "Click Reopen.",
+        "Check whether it reopens, and confirm the source branch still exists."
+      ],
+      "severity": 3
+    },
+    {
+      "name": "Failed rebase update shows no error and leaves the PR unchanged",
+      "summary": "When 'Update branch by rebase' can't rebase a pull request's branch (for example because earlier commits conflict when replayed, even though the current files were reconciled), the page simply reloads: the branch is still out of date, its commits are unchanged, and nothing explains why the update didn't happen. The defect is the missing failure feedback, not that the rebase failed.",
+      "expected": "If updating a pull request branch by rebase fails, the page says so and explains why, instead of appearing to do nothing.",
+      "actual": "On a pull request whose history included an earlier resolved conflict, choosing Update branch by rebase returned to the same page with the same five commits, the out-of-date warning and the default update button, and no error or success message anywhere.",
+      "reproSteps": [
+        "Open a pull request that is behind its base branch and whose head history contains a commit that conflicts with the base when replayed (for example, a conflict that was later resolved by a merge update).",
+        "From the update dropdown choose Update branch by rebase and click it.",
+        "Check whether the branch was updated, and whether any error explains why it wasn't."
+      ],
+      "severity": 1
+    },
+    {
+      "name": "Re-enabling pull requests silently turns on branch deletion and changes merge defaults",
+      "summary": "Turning a repository's pull requests off and back on in Settings > Advanced Settings doesn't restore the previous pull request settings. While pull requests are disabled, the form shows every merge option checked and every merge style selected, so re-enabling saves those: the default merge style becomes Fast-forward only and Manually merged, Delete pull request branch after merge, and autodetect manual merge all turn on. The settings page greys these options out, rather than hiding them, while the feature is off, which tells the user they'll be kept and simply inactive; saving actually deletes them.",
+      "expected": "Re-enabling pull requests keeps the repository's previous pull request settings, as the greyed-out options shown while pull requests are disabled suggest, or applies the same defaults as a new repository, without silently turning on branch deletion and manual merge options.",
+      "actual": "A repository set to Create merge commit, with Manually merged, delete-branch-after-merge and autodetect manual merge unchecked, came back as Fast-forward only with all three checked after pull requests were disabled and re-enabled. The values stayed after reload, and a new pull request's merge confirmation used Fast-forward only with Delete Branch checked.",
+      "reproSteps": [
+        "In a repository's Settings > Advanced Settings, set Default Merge Style to Create merge commit, uncheck Manually merged, Delete pull request branch after merge by default and Enable autodetect manual merge, and save.",
+        "Uncheck Enable Repository Pull Requests and save.",
+        "Check Enable Repository Pull Requests again, save, and reload.",
+        "Compare the pull request settings with the ones saved in the first step."
+      ],
+      "severity": 3
+    },
+    {
+      "name": "Files Changed shows a bare 'after commit not found in PR commits' error after a rebase update leaves the pull request with no commits",
+      "summary": "When Update branch by rebase succeeds but leaves the pull request with zero commits of its own (its changes are already in the base), opening Files Changed replaces the whole page with the plain text 'after commit not found in PR commits' instead of showing the pull request with an empty diff.",
+      "expected": "After a successful branch update that leaves no commits, Files Changed still shows the pull request page with an empty comparison or a clear message.",
+      "actual": "After Update branch by rebase succeeded and the pull request showed 0 commits, clicking Files Changed opened /pulls/13/files with only the plain text 'after commit not found in PR commits'.",
+      "reproSteps": [
+        "Open a pull request whose head changes are already contained in its base branch (for example after earlier merge updates brought the base into agreement), with the base since advanced.",
+        "From the update dropdown choose Update branch by rebase and run it; confirm the pull request shows 0 commits.",
+        "Click the Files Changed tab."
+      ],
+      "severity": 5
+    },
+    {
+      "name": "Submitting an outdated compare form creates a second open pull request for the same branches",
+      "summary": "If the New Pull Request form on a compare page is submitted after a pull request for the same head and base branches was opened elsewhere (for example in another tab), Gitea creates a second open pull request for the same branches without any warning. The web create path doesn't check for an existing open pull request, although the compare page normally shows View Pull Request for such a pair and the API refuses duplicates.",
+      "expected": "Submitting the form when an open pull request already exists for the same head and base is refused and points to the existing pull request.",
+      "actual": "With the compare form for qa-creation-edge-0712 into main left open in one tab, a pull request was created from a second tab (#16). Submitting the original form then created #17. Both were open for the same branches with the same commit.",
+      "reproSteps": [
+        "Open the compare page for a changed branch into main and expand New Pull Request, but don't submit.",
+        "In a second tab, open the same comparison and create the pull request.",
+        "Back in the first tab, without refreshing, click Create Pull Request.",
+        "Check whether a second open pull request exists for the same branches."
+      ],
+      "severity": 3
+    },
+    {
+      "name": "Pull request diff totals overcount right after Update branch by rebase",
+      "summary": "Immediately after Update branch by rebase, the pull request's +/- totals beside the tabs include changes from the base branch (for example +3 -1 instead of +2 -1). Files Changed shows the correct totals, and the Conversation page corrects itself after navigating away and back.",
+      "expected": "After a rebase update, the pull request's +/- totals count only its own changes against the current base, matching Files Changed.",
+      "actual": "On a pull request showing +2 -1, after main gained a one-line file and the branch was updated by rebase, the Conversation page showed +3 -1. Files Changed showed +2 -1 with only README changed, and returning to Conversation then showed +2 -1.",
+      "reproSteps": [
+        "Open a pull request that changes one file, and note its +/- totals.",
+        "Add a new file to the base branch so the pull request is out of date.",
+        "Choose Update branch by rebase and run it.",
+        "Compare the totals shown right after the update with Files Changed, then return to Conversation."
+      ],
+      "severity": 1
+    },
+    {
+      "name": "Retargeted pull request still says its changes are already on the target branch",
+      "summary": "If a pull request's diff had become empty against its old base and it is then retargeted to a branch where it does add changes, the merge panel keeps saying 'The changes on this branch are already on the target branch. This will be an empty commit.' while Files Changed shows real changes. The empty status from the old base is never cleared when the target changes; merging still works.",
+      "expected": "After retargeting, the merge panel describes the pull request against its new target; a pull request that adds files isn't described as empty.",
+      "actual": "Pull request #13, retargeted to main after its diff against the old base had become empty, showed two added files (2 additions) in Files Changed, while Conversation's merge panel said 'The changes on this branch are already on the target branch. This will be an empty commit.'",
+      "reproSteps": [
+        "Open a pull request whose changes are already contained in its current base branch, so its merge panel says it will be an empty commit.",
+        "Edit the pull request and change its target to a branch that doesn't contain those changes; save.",
+        "Compare Files Changed with the merge panel on the Conversation tab."
+      ],
+      "severity": 1
+    },
+    {
+      "name": "Organization Pull Requests search drops the selected Author filter",
+      "summary": "On an organization's Pull Requests page, submitting a text search after choosing an Author removes the Author filter, so pull requests by other authors appear. The search form doesn't carry the poster value.",
+      "expected": "Submitting a search on the organization Pull Requests page keeps the selected Author filter.",
+      "actual": "After selecting Author alex and searching 'orange', the URL no longer had poster=alex and eval's 'ListQA orange harbor' pull request was listed.",
+      "reproSteps": [
+        "In an organization repository, open pull requests by two different authors whose titles share a word.",
+        "On the organization's Pull Requests page, choose one author in the Author filter.",
+        "Search for the shared word.",
+        "Check whether pull requests by the other author appear."
+      ],
+      "severity": 3
+    },
+    {
+      "name": "Organization Pull Requests 'Assigned to you' search omits a matching assigned pull request",
+      "summary": "On an organization's Pull Requests page, 'Assigned to you' with a text search shows No results even though a pull request assigned to the user matches it. The search index doesn't store current assignees.",
+      "expected": "A pull request assigned to the signed-in user stays in the organization's 'Assigned to you' list when a search matches it.",
+      "actual": "'Assigned to you' listed 'qa-org Alpha review proposal' (count 1); after searching 'Alpha' the count became 0 with No results.",
+      "reproSteps": [
+        "In an organization repository, open a pull request and assign it to yourself.",
+        "On the organization's Pull Requests page, choose 'Assigned to you' and confirm it's listed.",
+        "Search for a word from its title.",
+        "Check whether it is still listed."
+      ],
+      "severity": 3
+    },
+    {
+      "name": "Organization Pull Requests 'Reviewed by you' omits a pull request the user reviewed",
+      "summary": "On an organization's Pull Requests page, 'Reviewed by you' doesn't list a pull request the user authored and submitted a Comment review on, because the filter excludes the user's own pull requests.",
+      "expected": "'Reviewed by you' lists open pull requests on which the signed-in user has submitted a review.",
+      "actual": "After eval submitted a Comment review on its own pull request 'qa-org Alpha review proposal' (the timeline showed 'eval reviewed'), the organization's 'Reviewed by you' showed count 0 and No results.",
+      "reproSteps": [
+        "In an organization repository, open a pull request and submit a Comment review on it yourself.",
+        "Open the organization's Pull Requests page and choose 'Reviewed by you'.",
+        "Check whether the pull request is listed."
+      ],
+      "severity": 1
+    },
+    {
+      "name": "Organization Pull Requests search drops the selected Assignee filter",
+      "summary": "On an organization's Pull Requests page, submitting a text search after choosing an Assignee removes the Assignee filter, so pull requests assigned to someone else appear. The search form doesn't carry the assignee value.",
+      "expected": "Submitting a search on the organization Pull Requests page keeps the selected Assignee filter.",
+      "actual": "With Assignee 'qa' selected and No results shown, submitting the search 'Alpha' again brought back 'qa-org Alpha review proposal', which is assigned to eval.",
+      "reproSteps": [
+        "In an organization repository, open a pull request assigned to one user.",
+        "On the organization's Pull Requests page, search for a word from its title and choose a different user in the Assignee filter; confirm No results.",
+        "Submit the search again.",
+        "Check whether the pull request assigned to the other user appears."
+      ],
+      "severity": 3
+    },
+    {
+      "name": "Repository Pull Requests 'Assigned to you' search omits a matching assigned pull request",
+      "summary": "In a repository's Pull Requests list, choosing Type > Assigned to you (or an Assignee filter) and searching for a word from an assigned pull request's title returns no results. Without a search the same pull request is listed. Keyword searches use the issue index, which only stores a legacy single-assignee field, so pull requests assigned the normal way never match.",
+      "expected": "Adding a search to Assigned to you only narrows the list: an open pull request assigned to the signed-in user whose title contains the search word stays listed.",
+      "actual": "Two open pull requests assigned to eval with 'zephyrqx' in their titles were listed under Assigned to you with no search. Searching 'zephyrqx' under Assigned to you showed 0 Open, 0 Closed and No results, while the same search under All or Created by you listed both.",
+      "reproSteps": [
+        "In a repository, open a pull request with a distinctive word in its title and assign it to yourself.",
+        "Open the repository's Pull Requests list and choose Type > Assigned to you; confirm the pull request is listed.",
+        "Search for the distinctive word from its title.",
+        "Check whether the pull request is still listed."
+      ],
+      "severity": 3
+    },
+    {
+      "name": "Whitespace-only inline review comment is saved as an empty discussion",
+      "summary": "In a pull request's Files Changed view, an empty inline comment is blocked, but one containing only spaces is accepted. It's saved as a pending review discussion that shows \"No description provided.\", and Add single comment publishes it to the timeline as a contentless review comment.",
+      "expected": "A whitespace-only inline review comment is rejected like an empty one, as the main pull request comment box does.",
+      "actual": "Entering only spaces in an inline comment and clicking Start Review saved a pending discussion showing \"No description provided.\" and increased the review counter; it persisted after reload. Add single comment with only spaces published a contentless review comment visible to other users. Replies with only spaces were also saved.",
+      "reproSteps": [
+        "Open a pull request's Files Changed tab and click the + on a changed line.",
+        "Type only spaces in the comment box and click Start Review (or Add single comment).",
+        "Check whether the comment is rejected or saved, and how it appears.",
+        "Reload the page and check the review counter and the conversation."
+      ],
+      "severity": 3
+    },
+    {
+      "name": "Repository Pull Requests 'Review requested' with a search hides a pull request awaiting your review",
+      "summary": "On a repository's Pull Requests list, combining a text search with Type → Review requested shows No results, even though a matching pull request requests your review. Requesting a reviewer never refreshes the search index, so the search doesn't know about the request; Review requested without a search works.",
+      "expected": "A pull request that requests your review and matches the search stays listed when Review requested is combined with the search.",
+      "actual": "Searching for the pull request's title listed it, but choosing Review requested with that search showed No results with 0 Open and 0 Closed. Review requested without a search listed it, and posting a comment on the pull request made the combined search find it.",
+      "reproSteps": [
+        "Open a pull request and request another user's review.",
+        "As that user, open the repository's Pull Requests list and search for a word from the pull request's title; confirm it's listed.",
+        "With the search still applied, choose Type → Review requested.",
+        "Check whether the pull request is still listed, then clear the search and compare."
+      ],
+      "severity": 3
+    },
+    {
+      "name": "Squash merging a pull request with no remaining changes fails",
+      "summary": "When a pull request's changes are already on the target branch, the merge box says it will create an empty commit and still offers squash merging, but Create squash commit fails and the pull request stays open. The squash step commits without allowing an empty commit.",
+      "expected": "Squash merging a pull request whose changes are already on the target completes, consistent with the empty-commit notice, or squash isn't offered for it.",
+      "actual": "Confirming Create squash commit failed with a server error; after a reload the pull request was still open and unmerged. Create merge commit on the same pull request succeeded.",
+      "reproSteps": [
+        "Open a pull request, then make its branch's changes already present on the target branch (for example, revert the change on the branch, or merge the same change into the target).",
+        "Confirm the merge box says the merge will be an empty commit.",
+        "Choose Create squash commit and confirm.",
+        "Reload and check whether the pull request was merged."
+      ],
+      "severity": 3
+    },
+    {
+      "name": "Failed squash merge of an empty pull request shows only a bare \"server error: 500\"",
+      "summary": "When squash merging a pull request with no remaining changes fails, the only feedback is a red \"server error: 500\" notification. It doesn't say what went wrong or what to do instead, such as using a merge commit.",
+      "expected": "A failed squash merge shows a message that explains why it failed and how to proceed.",
+      "actual": "Only a red \"server error: 500\" notification appeared, with no explanation; the squash confirmation form stayed open.",
+      "reproSteps": [
+        "Open a pull request whose changes are already on the target branch (the merge box says the merge will be an empty commit).",
+        "Choose Create squash commit and confirm.",
+        "Read the error message that appears."
+      ],
+      "severity": 1
+    },
+    {
+      "name": "Adding WIP to a long pull request title silently truncates it permanently",
+      "summary": "For a pull request title near the 255-character limit, clicking \"Add WIP: prefix\" silently cuts the end of the title to make room, and \"Remove WIP: prefix\" can't restore it. No error or notification tells the user the title was shortened.",
+      "expected": "Adding the WIP prefix to a title that would exceed the limit shows an error, or saves with a clear notification that the title was shortened, instead of silently losing text.",
+      "actual": "Adding WIP to a 255-character title replaced its end with an ellipsis without any message. Removing WIP and refreshing left the title at 248 characters, permanently missing the original ending.",
+      "reproSteps": [
+        "Create a pull request with a title of about 255 characters, ending in a recognisable word.",
+        "Click \"Add WIP: prefix\", then \"Remove WIP: prefix\".",
+        "Refresh and open Edit beside the title to compare it with the original."
+      ],
+      "severity": 1
+    },
+    {
+      "name": "Moving or renaming a reviewed file hides its inline comments in Files Changed",
+      "summary": "After a file with inline review comments is moved into a folder or renamed in a later commit, its comment threads (resolved or pending) no longer appear in the pull request's Files Changed view, even with Show outdated comments enabled. The comments are still tied to the old path.",
+      "expected": "Inline comments on a file that was later moved or renamed stay visible in Files Changed, at least as outdated comments.",
+      "actual": "After moving the reviewed file to a folder, its resolved conversation disappeared from Files Changed, and turning on Show outdated comments didn't bring it back. The Conversation tab still listed it.",
+      "reproSteps": [
+        "Open a pull request, add an inline comment on a changed file, and resolve it (or leave it pending).",
+        "Push a commit that moves the file into a folder or renames it.",
+        "Open Files Changed, enable Show outdated comments, and look for the comment."
+      ],
+      "severity": 3
+    },
+    {
+      "name": "Reopened pull request doesn't offer Update branch after its target advanced while it was closed",
+      "summary": "If commits are pushed to a pull request's target branch while the pull request is closed, reopening it doesn't show that the branch is behind or offer the Update branch button, even after a reload. How far behind it is only gets recalculated for open pull requests when the target changes.",
+      "expected": "After reopening, the pull request shows that its branch is behind the target and offers Update branch.",
+      "actual": "After closing the pull request, committing to its target branch and reopening it, the merge box showed no out-of-date message and no Update branch button, although comparing the branches showed the target was a commit ahead.",
+      "reproSteps": [
+        "Open a pull request whose branch is up to date with its target, then close it.",
+        "Push or commit a change directly to the target branch.",
+        "Reopen the pull request and reload the page.",
+        "Check the merge box for an out-of-date message and an Update branch button."
+      ],
+      "severity": 3
+    },
+    {
+      "name": "Organization Pull Requests Open/Closed switch drops the selected Author and Assignee filters",
+      "summary": "On an organization's Pull Requests page, switching between Open and Closed while an Author or Assignee filter is selected drops those filters, so pull requests by other authors or with other assignees appear.",
+      "expected": "Switching between Open and Closed keeps the selected Author and Assignee filters.",
+      "actual": "With Author and Assignee set to the same user on the Closed tab, clicking Open removed both filters from the URL and listed an unassigned pull request.",
+      "reproSteps": [
+        "In an organization repository, open two pull requests by the same author, one assigned to them and one unassigned, and close the assigned one.",
+        "On the organization's Pull Requests page, open Closed and choose that user in Author and Assignee.",
+        "Click Open.",
+        "Check whether the Author and Assignee filters are still applied."
+      ],
+      "severity": 3
+    },
+    {
+      "name": "Global pull-request keyword search sorts by stale due dates after sidebar updates",
+      "severity": 3,
+      "summary": "Setting or changing a pull request due date updates the database without refreshing the search index. The global PR dashboard orders keyword searches using outdated indexed dates while displaying the current saved dates.",
+      "expected": "Nearest and Farthest due-date sorting on global Pull Requests uses current saved deadlines for matching PRs.",
+      "actual": "With matching PRs due November 15 and December 20, Nearest due date can place December 20 first, and Farthest can retain an equally incorrect stale order. Reloading does not repair the ordering. Clearing the keyword or using the repository PR list sorts correctly. Posting comments on both PRs refreshes their index records and restores ordering; another due-date-only edit can break it again.",
+      "reproSteps": [
+        "Create two disposable pull requests whose titles share a fresh nonnumeric search prefix.",
+        "Set their due dates from the PR sidebar, giving the older PR an earlier date and the newer PR a later date.",
+        "Open global Pull Requests, select Created by you and Open, search for the prefix, and choose Nearest due date.",
+        "Observe the later-dated PR listed above the earlier-dated PR. Reload and compare Nearest/Farthest ordering against the displayed saved dates.",
+        "As controls, clear the keyword or use the repository PR list and confirm current-date ordering.",
+        "Post a normal comment on each PR, repeat the global keyword sort and confirm it recovers. Change only a due date and check for stale ordering again."
+      ]
+    },
+    {
+      "name": "Previous and Next conversation navigation leaves target comments hidden in collapsed files",
+      "severity": 3,
+      "summary": "Files Changed conversation navigation changes the comment URL without expanding its collapsed file, leaving the target discussion hidden.",
+      "expected": "Previous and Next reveal the target conversation, expanding its file when necessary.",
+      "actual": "The URL changes to the target comment but its Viewed or manually collapsed file remains folded. The discussion stays hidden. Expanding the file manually or reloading the comment URL reveals it.",
+      "reproSteps": [
+        "Create a pull request with inline review conversations in two different files.",
+        "Mark the first file Viewed so it collapses.",
+        "Click Previous beneath the second file’s conversation.",
+        "Observe the target comment hash in the URL while the first file and its discussion remain collapsed.",
+        "Expand the first file or reload the target comment URL to reveal the discussion."
+      ]
+    },
+    {
+      "name": "Pull-request Quote Reply populates the draft but leaves Comment disabled",
+      "severity": 3,
+      "summary": "Choosing Quote Reply populates the comment composer, but Comment stays disabled. Switching to Preview and back to Write does not enable posting the generated quote.",
+      "expected": "Quote Reply should produce a draft that can be posted using Comment without requiring an extra text edit.",
+      "actual": "Quote Reply populates Write and Preview, but Comment remains disabled. Typing a space enables submission and the quote posts successfully.",
+      "reproSteps": [
+        "Create a disposable pull request and post a discussion comment.",
+        "Edit the comment and save it.",
+        "With the reply composer empty, choose Quote Reply from that comment’s menu.",
+        "Observe the populated draft and disabled Comment button, including after switching Preview and Write.",
+        "Type a space and confirm Comment enables and posts the quote."
+      ]
+    },
+    {
+      "name": "Reversed fork comparison says the branches are equal when they differ",
+      "summary": "When a fork's branch has changes and the comparison is reversed (the fork branch as base and the upstream branch as head, for example via Switch head and base and Switch comparison type), the compare page shows \"These branches are equal\" and no files, although the branches' contents differ. It happens whenever the head is an ancestor of the base.",
+      "expected": "The reversed comparison shows the file differences between the two branches.",
+      "actual": "The forward comparison showed the fork's added README lines. After switching head and base and the comparison type, the page showed the right branches but \"These branches are equal.\" and no diff.",
+      "reproSteps": [
+        "Fork a repository and add a commit to a branch in the fork.",
+        "Compare the upstream main with the fork branch and confirm the diff is shown.",
+        "Click Switch head and base, then Switch comparison type.",
+        "Check whether the page shows the differences or says the branches are equal."
+      ],
+      "severity": 3
+    },
+    {
+      "name": "After a merge is refused because the pull request was closed, the page still shows it as open",
+      "summary": "If a pull request is closed in another tab while its merge confirmation is open, submitting the merge is correctly refused with \"The pull request has been closed.\", but the page doesn't update: it keeps the green Open badge and an enabled merge button until it's reloaded.",
+      "expected": "Once the merge is refused because the pull request is closed, the page updates to show it as Closed, without the merge action.",
+      "actual": "After the error \"The pull request has been closed.\", the page still showed Open and an enabled merge button; only a reload showed it as Closed.",
+      "reproSteps": [
+        "Open a pull request and start a merge (open the merge confirmation) in tab A.",
+        "In tab B, close the pull request.",
+        "In tab A, confirm the merge.",
+        "Check the error and whether the page now shows the pull request as Closed."
+      ],
+      "severity": 1
+    },
+    {
+      "name": "Switching pull request type retains the previous assignment restriction",
+      "severity": 3,
+      "summary": "After selecting Assigned to you, switching Type to Created by you shows No results instead of the user's unassigned pull request. The prior assignment restriction remains in effect.",
+      "expected": "Created by you lists the matching pull request authored by eval; changing the Type choice replaces its previous implicit restriction.",
+      "actual": "Switching Assigned to you → Created by you retains assignee=<current user>, hiding unassigned PRs authored by that user. Selecting Created by you directly or clearing Assignee lists them correctly.",
+      "reproSteps": [
+        "Create an open unassigned pull request authored by the signed-in user.",
+        "Open the repository Pull Requests list and verify Created by you directly lists it.",
+        "Choose Type → Assigned to you, then Type → Created by you.",
+        "Observe the retained assignee URL parameter and missing qualifying PR.",
+        "Clear the Assignee restriction and confirm the PR reappears."
+      ]
+    },
+    {
+      "name": "Deleting a discussion comment leaves the conversation count stale",
+      "severity": 1,
+      "summary": "Deleting a PR discussion comment removes it from the timeline but leaves the Conversation badge unchanged until reload.",
+      "expected": "The Conversation count reflects a completed discussion-comment deletion immediately.",
+      "actual": "The sole comment disappears while Conversation still shows 1; reload shows 0. Deleting one of several comments also leaves the old count. Locked and unlocked PRs reproduce.",
+      "reproSteps": [
+        "Create a disposable PR and post a discussion comment.",
+        "Note the Conversation count and delete that comment through its menu.",
+        "Observe the comment is absent but the badge retains the previous count.",
+        "Reload and confirm the corrected count."
+      ]
+    },
+    {
+      "name": "Global Review requested omits pull request pending alex's review",
+      "severity": 3,
+      "summary": "Global Review requested keyword search omits newly requested PRs because review-request changes do not refresh the search index.",
+      "expected": "A matching keyword narrows the current reviewer-filtered list without hiding a qualifying PR.",
+      "actual": "Fresh PRs awaiting the viewer’s review appear without a keyword but disappear with a matching title keyword. Numeric search works; posting an ordinary comment refreshes the index and restores results. Removed requests can remain in keyword results.",
+      "reproSteps": [
+        "Create two fresh PRs authored by a user other than the reviewer.",
+        "Request the reviewer through the PR sidebar after creating each PR.",
+        "As the reviewer, open global Pull Requests → Review requested without a keyword and confirm the PRs appear.",
+        "Enter a matching title keyword and observe the missing PRs.",
+        "Clear the keyword as a control, then post an ordinary comment on one affected PR and confirm keyword results recover for it."
+      ]
+    },
+    {
+      "name": "Global Reviewed by you omits an approved pull request",
+      "severity": 3,
+      "summary": "Global Reviewed by you keyword search omits newly reviewed PRs because submitting a review does not refresh indexed reviewer metadata.",
+      "expected": "A matching keyword narrows the current reviewer-filtered list without hiding a qualifying PR.",
+      "actual": "Another author’s PR with the viewer’s persisted approval appears in Reviewed by you without a keyword, but disappears with a matching keyword. Posting an ordinary comment restores keyword results.",
+      "reproSteps": [
+        "Create two fresh PRs authored by a user other than the reviewer.",
+        "As the reviewer, submit Approve through Files Changed → Review and reload to confirm it persists.",
+        "As the reviewer, open global Pull Requests → Reviewed by you without a keyword and confirm the PRs appear.",
+        "Enter a matching title keyword and observe the missing PRs.",
+        "Clear the keyword as a control, then post an ordinary comment on one affected PR and confirm keyword results recover for it."
+      ]
+    },
+    {
+      "name": "Organization requested-review search hides a matching team review request",
+      "severity": 3,
+      "summary": "Organization Review requested keyword search omits matching PRs requested from the viewer’s team because indexed requested reviewers do not expand team membership.",
+      "expected": "A matching PR requesting review from a team the viewer belongs to remains listed when searching Review requested.",
+      "actual": "Fresh team-requested PRs appear without a keyword but disappear for matching title keywords. Numeric searches work. Ordinary-comment reindexing does not repair team-only requests, while an indexed direct request to the user works.",
+      "reproSteps": [
+        "Create an organization repository and a reviewer team containing another fixture user.",
+        "Create two fresh PRs and request review from that team.",
+        "As the team member, open organization Pull Requests → Review requested and confirm the PRs appear without search.",
+        "Submit a matching title keyword and observe missing results. Clear it or search by PR number as controls.",
+        "Post an ordinary comment to refresh indexing and confirm the team-only request remains absent. Compare an individually requested reviewer after index refresh."
+      ]
+    },
+    {
+      "name": "Organization Reviewed by you search hides matching reviewed pull request",
+      "severity": 3,
+      "summary": "Organization Reviewed by you keyword search omits persisted reviews because review submissions do not refresh indexed reviewer metadata.",
+      "expected": "A matching title search retains another author’s PR already listed under Reviewed by you.",
+      "actual": "After alex approves fresh PRs, the organization’s unsearched Reviewed by you list includes them. Matching title keywords hide them. An ordinary comment refreshes indexing and restores only the commented PR.",
+      "reproSteps": [
+        "Create an organization repository and two PRs authored by one user. Give a different reviewer organization access.",
+        "As that reviewer, approve each PR through Files Changed → Review and reload to verify the approvals.",
+        "Open organization Pull Requests → Reviewed by you without a keyword and confirm both are listed.",
+        "Submit a matching title word and observe missing results.",
+        "Clear the search to restore results; comment on one PR and confirm only it recovers in keyword results."
+      ]
+    },
+    {
+      "name": "Pull request lists still link a deleted source branch, which opens a 404",
+      "summary": "After a pull request's source branch is deleted (for example by merging with Delete branch), the pull request's own page shows the branch name as plain text, but every pull request list (repository, global, organization, milestone and subscription lists) still shows it as a link, which opens a Page Not Found error. The list template always links the branch without checking whether it still exists.",
+      "expected": "Pull request lists show a deleted source branch as plain text, as the pull request page does, instead of linking to a missing page.",
+      "actual": "After merging with Delete branch, the closed pull request's row in the lists still linked the source branch; clicking it opened a 404 Page Not Found page. Links for branches that still exist opened normally.",
+      "reproSteps": [
+        "Merge a pull request with Delete branch checked (or delete its source branch after closing it).",
+        "Open the repository's Pull Requests list and show closed pull requests.",
+        "Click the source branch name in that pull request's row."
+      ],
+      "severity": 3
+    },
+    {
+      "name": "Repository Reviewed by you search omits an approved pull request",
+      "summary": "On a repository's Pull Requests list, Type 'Reviewed by you' with a matching keyword shows No results for a pull request the user just approved, because submitting a review doesn't refresh the reviewer data in the search index.",
+      "expected": "Reviewed by you with a matching keyword lists every pull request the user has reviewed.",
+      "actual": "After alex approved a fresh pull request and the approval persisted on reload, the repository list with Reviewed by you and a matching title keyword showed No results. Without the keyword the pull request is listed; after alex adds an ordinary comment (which reindexes it), the keyword search finds it.",
+      "reproSteps": [
+        "As one user, open a pull request in a repository and request a review from a second user.",
+        "As the reviewer, submit an Approve review from Files Changed and reload to confirm it persists.",
+        "As the reviewer, open the repository's Pull Requests list, choose Reviewed by you and confirm the pull request is listed.",
+        "Search for a keyword from its title and observe No results."
+      ],
+      "severity": 3
+    },
+    {
+      "name": "Global Pull Requests Open/Closed switch drops the selected Author filter",
+      "summary": "On the global Pull Requests page, choosing an Author and then clicking the Open or Closed tab drops the poster parameter, so the list shows pull requests by every author.",
+      "expected": "Switching between Open and Closed keeps the selected Author filter.",
+      "actual": "With alex selected as Author, the tabs read 0 Open and 2 Closed. Clicking Closed opened a URL without poster=alex and listed pull requests by eval and other users. Opening the URL with poster=alex&state=closed directly shows only alex's 2 closed pull requests, and the Sort links on the same page keep the filter.",
+      "reproSteps": [
+        "Open the global Pull Requests page (/pulls).",
+        "Choose a user in the Author filter.",
+        "Click the Closed (or Open) tab.",
+        "Observe that the URL loses the author and the list shows pull requests by other authors."
+      ],
+      "severity": 3
+    },
+    {
+      "name": "Organization Pull Requests 'Review requested' search hides a pull request whose review was requested after it was created",
+      "summary": "On an organization's Pull Requests page, Review requested lists a pull request awaiting the user's review, but adding a matching search term shows No results. Requesting a review after a pull request is created doesn't update the search index, so keyword searches still think nobody was asked to review it.",
+      "expected": "Review requested with a matching search term lists every pull request awaiting the user's review.",
+      "actual": "As alex, the organization's Review requested list showed both fresh pull requests (count 2). Searching the title of the one whose review was requested after creation showed No results and a count of 0; searching the one created with alex as reviewer found it. After an ordinary comment on the first pull request, the same search found it.",
+      "reproSteps": [
+        "In an organization repository that a second user can read, open a pull request without reviewers.",
+        "Request a review from the second user on that pull request.",
+        "As the second user, open the organization's Pull Requests page and choose Review requested; the pull request is listed.",
+        "Search for a word from its title and observe No results."
+      ],
+      "severity": 3
+    },
+    {
+      "name": "Commenting on a pull request that was just locked shows a raw JSON SyntaxError",
+      "summary": "If the owner locks a pull request's conversation while a non-collaborator has a comment draft open, clicking Comment shows a 'Network error SyntaxError … is not valid JSON' toast instead of saying the conversation is locked.",
+      "expected": "Submitting the stale comment explains that the conversation was locked, and the draft is kept.",
+      "actual": "Clicking Comment showed the toast: Network error SyntaxError: Unexpected token '<', \"<!DOCTYPE \"... is not valid JSON. The comment was not posted and the draft stayed in the editor.",
+      "reproSteps": [
+        "As a repository owner, create a public repository and a pull request; use a second user who is not a collaborator.",
+        "As the second user, open the pull request and type a comment without submitting.",
+        "As the owner, in another session, lock the conversation on that pull request.",
+        "Without reloading, click Comment as the second user."
+      ],
+      "severity": 1
+    },
+    {
+      "name": "Deleting a reviewed line moves its inline comment onto the next line without marking it outdated",
+      "summary": "When a later commit deletes a line that has an inline review comment, Files Changed shows the comment on whatever line now has that line number, as a current comment. It isn't marked Outdated and stays visible with outdated comments hidden.",
+      "expected": "A comment on a deleted line is marked outdated and hidden along with other outdated comments, and is never shown as current on a different line.",
+      "actual": "A comment on line 2 ('Second review line') of a three-line file was left in a review. After a commit deleted that line, Files Changed with outdated comments hidden showed the comment under 'Third review line' (now line 2) with no Outdated tag.",
+      "reproSteps": [
+        "Open a pull request that adds a file with three lines.",
+        "In Files Changed, comment on line 2 and submit the review.",
+        "Push a commit to the pull request branch that deletes line 2.",
+        "Reload Files Changed with outdated comments hidden: the comment now sits under the former line 3 with no Outdated tag."
+      ],
+      "severity": 1
+    },
+    {
+      "name": "Delete Branch on a closed pull request silently fails when an open pull request uses the same branch",
+      "summary": "A closed, unmerged pull request still offers Delete Branch even when another open pull request uses the same source branch. Confirming sends the cleanup request, which is refused with a 404, and the page shows nothing: the button stays and the branch still exists.",
+      "expected": "When another open pull request uses the source branch, the closed pull request doesn't offer Delete Branch (as merged pull requests already don't), or deleting shows an error explaining why.",
+      "actual": "After confirming Delete Branch on the closed pull request, POST .../pulls/<n>/cleanup returned 404. The dialog closed with no message, the Delete Branch button stayed, and the Branches page still listed the branch, linked to the open pull request.",
+      "reproSteps": [
+        "Open a pull request from a branch, then close it without merging.",
+        "Open a new pull request from the same branch and leave it open.",
+        "Open the closed pull request, click Delete Branch and confirm.",
+        "Observe that nothing happens and the branch still exists."
+      ],
+      "severity": 3
+    },
+    {
+      "name": "With squash as the default merge style, Create merge commit uses the squash commit title",
+      "summary": "When a repository's Default Merge Style is Create squash commit, choosing Create merge commit or Rebase then create merge commit on a pull request still pre-fills the squash-format title '<title> (#N)'. Merging without editing creates a two-parent merge commit with that subject. In a repository whose default is Create merge commit, the same styles pre-fill the 'Merge pull request ...' title.",
+      "expected": "Create merge commit and Rebase then create merge commit pre-fill \"Merge pull request '<title>' (#N) from <branch> into <base>\" whatever the repository's default merge style is, as they do when the default is Create merge commit.",
+      "actual": "With the default set to squash, choosing Create merge commit pre-filled 'Add getting started guide (#1)'. Merging created a two-parent merge commit with that subject. In a control repository with the default set to Create merge commit, the same choice pre-filled \"Merge pull request 'Add getting started guide' (#1) from docs-guide into main\".",
+      "reproSteps": [
+        "In a repository's Settings > Pull Requests, set Default Merge Style to Create squash commit and save.",
+        "Open a pull request that can be merged and cannot fast-forward.",
+        "In the merge box dropdown, choose Create merge commit and click the merge button.",
+        "Check the pre-filled title, then merge and open the new commit on the base branch."
+      ],
+      "severity": 1
+    },
+    {
+      "name": "Saving an empty pull request title silently discards the edit",
+      "summary": "Clearing an existing draft pull request title and clicking Save closes the editor and restores the previous title without explaining why the change was rejected.",
+      "expected": "Reject the empty title with visible validation and keep the editor available to correct it.",
+      "actual": "The title editor closes, the previous title remains, and no validation or error message appears anywhere on the page (confirmed with a whole-page multimodal assertion).",
+      "reproSteps": [
+        "As repository owner eval, create a disposable branch from main, add a file and commit it through the browser.",
+        "Create a pull request with a nonempty WIP: title so it is Draft.",
+        "Open the pull request, click Edit beside the title, clear the title completely and click Save."
+      ],
+      "severity": 1
+    },
+    {
+      "name": "Disabled merge style remains saved as repository default",
+      "summary": "When Default Merge Style is set to Create squash commit, disabling that merge style and saving leaves Default Merge Style set to Create squash commit, including after refresh.",
+      "expected": "The default should be an allowed merge style, or saving should request a valid enabled default.",
+      "actual": "Settings report successful update. Create squash commit is unchecked, but Default Merge Style still displays Create squash commit after refresh.",
+      "reproSteps": [
+        "As eval repository owner, create an initialized disposable repository and open its repository settings.",
+        "Set Default Merge Style to Create squash commit and save.",
+        "Uncheck Create squash commit under Merge Styles and save.",
+        "Refresh and inspect PR settings."
+      ],
+      "severity": 3
+    },
+    {
+      "name": "Changing the base branch silently discards attachment-only drafts",
+      "summary": "Uploading an attachment to the pull request form without modifying the title or description, then selecting another base branch, discards the attachment without an unsaved changes warning.",
+      "expected": "Warn before navigating away from the form or preserve the uploaded attachment across branch changes.",
+      "actual": "The page navigates immediately upon selecting a new branch without any warning, and reopening the creation form shows the attachment is gone.",
+      "reproSteps": [
+        "/eval/harbor-handbook",
+        "Existing disposable branches qa/pr-create-repeat, qa/pr-creation-validation and qa/creation-attachments provide changed comparisons. Preserve shared PR #5. Use any small text file for the upload.",
+        "Open comparison qa/pr-create-repeat...qa/creation-attachments and click New Pull Request.",
+        "Leave the default title Add creation attachment fixture and description empty. Upload a small text file named attachment-only.txt and wait for successful upload.",
+        "Change the merge-into branch to qa/pr-creation-validation.",
+        "Click New Pull Request again and inspect the attachment area."
+      ],
+      "severity": 3
+    },
+    {
+      "name": "Empty Comment review asks the author to describe requested changes",
+      "summary": "Submitting an empty Comment review displays “You need to leave a comment indicating the requested change(s).” even though Comment was selected and the author cannot request changes on their own PR.",
+      "expected": "Validation should ask for a review comment without implying that the author selected Request changes.",
+      "actual": "The validation banner says “You need to leave a comment indicating the requested change(s).” after submitting Comment.",
+      "reproSteps": [
+        "/eval/harbor-handbook/pulls/5",
+        "Open an open pull request as its author, with no pending inline review comments.",
+        "Open Files Changed and click Review.",
+        "Leave Review comment empty and click Comment."
+      ],
+      "severity": 1
+    },
+    {
+      "name": "Inline comment edit indicator appears only after reload",
+      "summary": "Saving an edit to an inline review comment updates its text immediately but leaves its header without an edited indicator.",
+      "expected": "Saving the edit immediately displays an edited indicator in the comment header alongside the updated text.",
+      "actual": "The edited text appears immediately, but no edited indicator is added to the comment header.",
+      "reproSteps": [
+        "Create a disposable branch with a changed text file and open a pull request.",
+        "On Files Changed, add an inline comment, start a review and submit it as Comment.",
+        "Open that published inline comment's ellipsis menu and choose Edit.",
+        "Change its text to 'Markdown review comment edited after publishing.' and Save.",
+        "Observe that the new text appears but its header has no edited marker. Reload to see the edited marker appear."
+      ],
+      "severity": 1
+    },
+    {
+      "name": "Removed review request remains displayed when draft reload is cancelled",
+      "summary": "Removing a reviewer while PR edits are in progress leaves the reviewer displayed in the sidebar and dropdown on the active tab, despite the review request being removed on the server.",
+      "expected": "Removing a reviewer should update the Reviewers sidebar and dropdown on the current page to reflect the removal.",
+      "actual": "The current page continues displaying maya as a requested reviewer, while a separate tab confirms the review request was removed on the server ('No Reviewers' and removal timeline event).",
+      "reproSteps": [
+        "/eval/harbor-handbook/pulls",
+        "Open own disposable PR and request maya as reviewer.",
+        "Enter a new discussion comment draft; in observed run a PR title draft was also open.",
+        "Click the trash icon beside maya in Reviewers and cancel the resulting leave-page/reload warning.",
+        "Observe maya still listed in the original sidebar.",
+        "Open the same PR in a new tab: No Reviewers and the review-request removal event are shown."
+      ],
+      "severity": 3
+    },
+    {
+      "name": "Mentioning you omits pull requests whose comment mentions eval",
+      "summary": "I created PR #18, \"qa-global mention check mo7\", in eval/harbor-handbook from the fresh branch qa-global-mo7 (made from docs/release-owners) into main. Then I posted a comment that mentions @eval, and it shows as a linked mention in the conversation. On the global Pull Requests page with Mentioning you selected and the search set to qa-global, the page shows 0 Open, 0 Closed, a Mentioning you count of 0, and No results.",
+      "expected": "PR #18 shows up under Mentioning you, because its conversation contains a saved @eval mention.",
+      "actual": "Mentioning you shows a count of 0, 0 Open / 0 Closed, and \"No results\" for qa-global.",
+      "reproSteps": [
+        "Signed in as eval (saved session), open /eval/harbor-handbook/src/branch/docs/release-owners",
+        "In the branch dropdown, type qa-global-mo7 and click 'Create branch qa-global-mo7'",
+        "Open /eval/harbor-handbook/compare/main...qa-global-mo7, click New Pull Request, set the title to 'qa-global mention check mo7' and click Create Pull Request (this created PR #18)",
+        "Post the comment 'qa-global mentiontoken-Otter @eval please inspect ownership coverage.' and confirm it appears with @eval linked",
+        "Open /pulls?type=mentioned&state=open&q=qa-global (Mentioning you filter)",
+        "Observe: Mentioning you count 0, 0 Open, No results"
+      ],
+      "severity": 3
+    },
+    {
+      "name": "Title editor stays open after save when draft reload is cancelled",
+      "summary": "Saving a pull request title while an unsent comment draft is present prompts a leave-page warning. Cancelling that warning leaves the title editor open with no indication that the title was saved.",
+      "expected": "The saved title should appear in read mode while the separate comment draft remains available.",
+      "actual": "The title is saved, as shown in a newly opened tab, but the original tab still shows the title input and Save/Cancel controls.",
+      "reproSteps": [
+        "As eval, open a disposable pull request.",
+        "Edit its title to a new value.",
+        "Enter an unsent draft in Leave a comment.",
+        "Save the title and cancel the browser leave-page warning.",
+        "Observe that the title editor remains open without save confirmation.",
+        "Open the same pull request in a new tab and observe the new title in read mode."
+      ],
+      "severity": 1
+    },
+    {
+      "name": "Rejected merge still reports automatic merge eligibility after base conflict",
+      "summary": "When main's base-only.txt is updated while the PR merge confirmation form is open, confirming the merge rejects it with an error directing users to review status and status checks, and leaves the PR claiming it can be merged automatically.",
+      "expected": "Rejecting the merge updates the PR's mergeability status and indicates the conflict rather than continuing to claim it can be merged automatically and pointing to review/status checks.",
+      "actual": "At 00:07.200, an error banner states 'This pull request is not ready to be merged, check review status and status checks.' while the PR still displays 'This pull request can be merged automatically.' and retains the 'Create merge commit' confirmation button with no conflicting file identified.",
+      "reproSteps": [
+        "Sign in as eval and create an initialized disposable repository.",
+        "On main, add base-only.txt containing 'Second independent base advance' and commit.",
+        "Create a branch changing base-only.txt from 'Second independent base advance' to 'Feature stale merge input', and open a PR targeting main.",
+        "Open Create merge commit confirmation while PR is automatically mergeable.",
+        "In another tab edit main's base-only.txt to 'Main changed while merge form open' and commit.",
+        "Return to the unchanged PR tab and confirm Create merge commit.",
+        "Observe rejected merge alongside unchanged automatic-merge status and confirmation button."
+      ],
+      "severity": 3
+    }
+  ]
+}
