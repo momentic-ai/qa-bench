@@ -1,7 +1,7 @@
 # QA bench
 
 A benchmark of AI QA agents finding real bugs in open-source web apps. It runs
-Mo, Codex, Claude Code and Devin against 20 product areas of Gitea, Metabase,
+Mo, Codex, Claude Code, Devin and Browser Use against 20 product areas of Gitea, Metabase,
 Twenty and Saleor, then grades their bug reports against 1,396 human-reviewed
 bug labels. Results: [momentic.ai/qa-bench](https://momentic.ai/qa-bench).
 Write-up: [momentic.ai/blog/qa-bench](https://momentic.ai/blog/qa-bench).
