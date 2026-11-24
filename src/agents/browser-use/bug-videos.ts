@@ -3,10 +3,10 @@ import path from "node:path";
 import { setTimeout as delay } from "node:timers/promises";
 import { z } from "zod";
 
+import { BrowserRecorder } from "../../browser-tools/recording/browser-recorder";
+import { cutBugVideos } from "../../browser-tools/recording/bug-videos";
 import { LenientReportSchema } from "../../evals/reports";
 import { writeJson } from "../../shared/json-file";
-import { BrowserRecorder } from "../browser-recorder";
-import { cutBugVideos } from "../bug-videos";
 
 type Report = z.infer<typeof LenientReportSchema>;
 
