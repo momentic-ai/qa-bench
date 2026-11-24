@@ -38,7 +38,7 @@ export function e2eInstructions(fixture: Fixture) {
  * that targets the fixture. Returns the agent shell's environment, which the
  * config reads its settings from. `broker` is a Browserbase broker URL;
  * without it e2e launches local Chromium. `settingsRecord` gets the settings
- * without passwords, as run evidence.
+ * without passwords or the broker URL, as run evidence.
  */
 export async function prepareE2E({
   workspace,
@@ -89,8 +89,12 @@ export async function prepareE2E({
       ]),
     ),
   };
+  // The broker URL hands out Browserbase sessions while the run lasts, so record only its use.
   await writeJson(settingsRecord, {
-    ...setup,
+    targetUrl: setup.targetUrl,
+    browser: broker ? "browserbase" : "local",
+    model,
+    journal,
     credentials: Object.fromEntries(
       accounts.map(({ name, username }) => [name, { username }]),
     ),
