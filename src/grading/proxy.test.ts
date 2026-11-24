@@ -17,7 +17,7 @@ test("QA bench grades through the authenticated proxy and does not fall back aft
     path: string | undefined;
     authorization: string | undefined;
     tag: string | undefined;
-    body: { reasoning: { effort: string }; store: boolean };
+    body: { model: string; reasoning: { effort: string }; store: boolean };
   }[] = [];
   let fallbackFailure = false;
   let primaryFailure: number | "stream" | undefined;
@@ -46,6 +46,7 @@ test("QA bench grades through the authenticated proxy and does not fall back aft
           : undefined,
       body: z
         .object({
+          model: z.string(),
           reasoning: z.object({ effort: z.string() }),
           store: z.boolean(),
         })
@@ -93,7 +94,7 @@ test("QA bench grades through the authenticated proxy and does not fall back aft
     for (const event of [
       {
         type: "response.created",
-        response: { id: "response-test", created_at: 1, model: "gpt-6.1-sol" },
+        response: { id: "response-test", created_at: 1, model: "gpt-6-luna" },
       },
       { type: "response.output_item.added", output_index: 0, item },
       {
@@ -144,6 +145,7 @@ test("QA bench grades through the authenticated proxy and does not fall back aft
     for (const request of requests) {
       assert.equal(request.path, "/custom/v1/responses");
       assert.equal(request.tag, "grader");
+      assert.equal(request.body.model, "gpt-6-luna");
       assert.equal(request.body.reasoning.effort, "high");
       assert.equal(request.body.store, false);
     }
@@ -161,7 +163,9 @@ test("QA bench grades through the authenticated proxy and does not fall back aft
           .every(
             (request) =>
               request.authorization === "Bearer first-key" &&
-              request.tag === "grader",
+              request.tag === "grader" &&
+              request.body.model === "gpt-6-luna" &&
+              request.body.reasoning.effort === "high",
           ),
       );
     }
