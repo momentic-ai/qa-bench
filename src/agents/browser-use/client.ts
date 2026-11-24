@@ -25,7 +25,7 @@ export class BrowserUseClient {
       signal,
       version = "v4",
     }: {
-      method?: "GET" | "POST" | "PATCH";
+      method?: "GET" | "POST" | "PATCH" | "DELETE";
       body?: unknown;
       signal?: AbortSignal;
       /** Browser sessions without an agent live in v3. */
@@ -48,7 +48,7 @@ export class BrowserUseClient {
     );
     // Provider error payloads can echo task credentials; keep them out of logs.
     if (!response.ok) throw new BrowserUseApiError(response.status, endpoint);
-    return response.json();
+    return response.status === 204 ? undefined : response.json();
   }
 
   isTransient(error: unknown) {

@@ -24,7 +24,9 @@ export function fixtureHostnames(url: URL) {
     url.password ||
     !/^[a-z0-9-]+\.e2b\.app$/.test(url.hostname)
   )
-    throw new Error("Devin QA requires an exact HTTPS E2B fixture hostname.");
+    throw new Error(
+      "Hosted agents require an exact HTTPS E2B fixture hostname.",
+    );
   return [url.hostname];
 }
 

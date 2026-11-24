@@ -102,10 +102,11 @@ export function parseFullAppOptions(args: string[]): FullAppOptions {
   if (values["prevent-cheating"]) {
     if (
       !values.agent?.startsWith("codex-") &&
-      !values.agent?.startsWith("claude-")
+      !values.agent?.startsWith("claude-") &&
+      values.agent !== "browser-use"
     )
       throw new Error(
-        "--prevent-cheating applies only to Codex and Claude agents.",
+        "--prevent-cheating applies only to Codex, Claude and Browser Use agents.",
       );
     if (values["grade-only"])
       throw new Error(

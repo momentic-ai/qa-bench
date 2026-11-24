@@ -6,6 +6,7 @@ import { z } from "zod";
 import { hostedAgentRules } from "../../evals/hosted-agent-rules";
 import { LenientReportSchema, ReportSchema } from "../../evals/reports";
 import { writeJson } from "../../shared/json-file";
+import { fixtureHostnames } from "../devin/qa-security";
 import { AgentContext, EvalAgent, EvalAgentDefinition } from "../types";
 import { BrowserUseApiError, BrowserUseClient } from "./client";
 
@@ -39,6 +40,7 @@ export class BrowserUseAgent implements EvalAgent {
   readonly preparesEnvironment = true;
   private session: z.infer<typeof SessionSchema> | undefined;
   private workspaceId: string | undefined;
+  private networkPolicyId: string | undefined;
   /** Runs replaced by an interrupting follow-up; their terminal states do not end the session. */
   private readonly interruptedRunIds = new Set<string>();
   private stopping = false;
@@ -47,6 +49,7 @@ export class BrowserUseAgent implements EvalAgent {
 
   constructor(
     private readonly context: AgentContext,
+    private readonly preventCheating = false,
     private readonly client = BrowserUseClient.fromEnvironment(),
   ) {}
 
@@ -66,6 +69,20 @@ export class BrowserUseAgent implements EvalAgent {
       }),
     );
     this.workspaceId = workspace.id;
+    if (this.preventCheating) {
+      // Blocks browser navigation only; the agent's built-in search stays prompt-restricted.
+      this.networkPolicyId = z.object({ id: z.string().min(1) }).parse(
+        await this.client.request("network-policies", {
+          method: "POST",
+          body: {
+            name: `momentic-qa-${randomUUID()}`,
+            defaultAction: "block",
+            allow: { domains: fixtureHostnames(this.context.targetUrl) },
+          },
+          signal,
+        }),
+      ).id;
+    }
     const task = `${message}
 
 ${hostedAgentRules({
@@ -100,7 +117,13 @@ ${hostedAgentRules({
             workspaceId,
             outputSchema: z.toJSONSchema(ReportSchema),
             // Fixtures are public E2B hosts; a residential proxy only adds cost and latency.
-            browserSettings: { proxyCountryCode: null, allowResizing: true },
+            browserSettings: {
+              proxyCountryCode: null,
+              allowResizing: true,
+              ...(this.networkPolicyId
+                ? { networkPolicyId: this.networkPolicyId }
+                : {}),
+            },
           },
         }),
       );
@@ -179,6 +202,19 @@ ${hostedAgentRules({
   }
 
   private async stopSession() {
+    try {
+      await this.stopRuns();
+    } finally {
+      // Projects hold at most 100 policies.
+      if (this.networkPolicyId)
+        await this.client.request(
+          `network-policies/${encodeURIComponent(this.networkPolicyId)}`,
+          { method: "DELETE" },
+        );
+    }
+  }
+
+  private async stopRuns() {
     // A cutoff during launch must still stop the run once its ID arrives.
     await this.launch?.catch(() => undefined);
     if (!this.session) return;
@@ -283,18 +319,21 @@ ${hostedAgentRules({
   }
 }
 
-export const browserUseAgent: EvalAgentDefinition = {
-  name: "Browser Use",
-  reportSubdirectory: "browser-use",
-  // New Browser Use projects allow 10 concurrent browsers.
-  concurrency: 5,
-  config: {
-    model: "browser-use-default",
-    proxy: "none",
-    retrieval: "prompt-restricted",
-  },
-  validateEnvironment() {
-    BrowserUseClient.fromEnvironment();
-  },
-  create: (context) => new BrowserUseAgent(context),
-};
+export function browserUseAgent(preventCheating = false): EvalAgentDefinition {
+  return {
+    name: "Browser Use",
+    reportSubdirectory: "browser-use",
+    // New Browser Use projects allow 10 concurrent browsers.
+    concurrency: 5,
+    config: {
+      model: "browser-use-default",
+      proxy: "none",
+      retrieval: "prompt-restricted",
+      ...(preventCheating ? { preventCheating } : {}),
+    },
+    validateEnvironment() {
+      BrowserUseClient.fromEnvironment();
+    },
+    create: (context) => new BrowserUseAgent(context, preventCheating),
+  };
+}

@@ -195,7 +195,7 @@ Results also include Codex with `gpt-6.1-terra` and Claude Code with
 
 Coding agents can search the web and find examples of these bugs online instead
 of testing the fixture against its intended behavior. We recommend
-`--prevent-cheating` for Codex and Claude Code runs. The flag is off by
+`--prevent-cheating` for Codex, Claude Code and Browser Use runs. The flag is off by
 default so new runs stay comparable with saved ones, and `merge` labels runs
 that use it separately.
 
@@ -208,7 +208,9 @@ sandbox, which has no network access.
 Claude Code already omits WebSearch and WebFetch from its tool list. With the flag, it also applies the browser restrictions above. Shared agent-browser sessions are kept alive across disconnects. Browserbase sessions get the requested time budget plus two minutes, up to the provider's six-hour limit.
 
 Browser Use's API has no switch for its built-in search tool, so its runs
-record `retrieval: "prompt-restricted"` and rely on the prompt rule above.
+record `retrieval: "prompt-restricted"` and rely on the prompt rule above. With
+`--prevent-cheating`, a Browser Use network policy blocks every browser host
+except the fixture's; it does not cover the search tool.
 Browser Use Pi has no search tool, but its worker can fetch any URL, so it
 records the same setting. Its pages aren't limited to the fixture host: Pi's
 domain policy drops the whole browser connection when a page dialog blocks it.
