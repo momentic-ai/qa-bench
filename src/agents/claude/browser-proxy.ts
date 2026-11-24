@@ -16,6 +16,7 @@ const ResponseSchema = z
 
 export type BrowserLaunch = {
   command: string;
+  cwd: string;
   args: string[];
   env: Record<string, string>;
   disabledTools: string[];
@@ -35,6 +36,7 @@ class PlaywrightProcess {
 
   constructor(launch: BrowserLaunch) {
     this.child = spawn(launch.command, launch.args, {
+      cwd: launch.cwd,
       env: launch.env,
       detached: process.platform !== "win32",
       stdio: ["pipe", "pipe", "pipe"],
