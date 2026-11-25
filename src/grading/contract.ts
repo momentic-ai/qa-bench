@@ -53,6 +53,10 @@ export const JudgeOutputSchema = z
 export const GRADING_OUTPUT_SCHEMA = z.toJSONSchema(JudgeOutputSchema, {
   target: "openai-3.0",
 });
+export const GRADING_RETRY_INSTRUCTION =
+  "The previous response failed validation. Correct the error below and return the complete findings array in the original order.";
+
+export class JudgeAssessmentError extends Error {}
 
 // One entry per finding, so a finding can never land in two sets.
 export function toAssessment(
@@ -62,7 +66,7 @@ export function toAssessment(
   knownInvalid: KnownInvalidFinding[],
 ): Omit<Assessment, "duplicates"> {
   if (output.findings.length !== findingCount) {
-    throw new Error(
+    throw new JudgeAssessmentError(
       `Judge returned ${output.findings.length} entries for ${findingCount} findings.`,
     );
   }
@@ -79,15 +83,24 @@ export function toAssessment(
       knownInvalid,
       unverified: [],
     }[item.set];
-    const entry = index === null ? undefined : entries[index];
     if (
-      (item.set === "unverified") !== (index === null) ||
-      (index !== null && !entry) ||
-      (reproStepsIndex !== null &&
-        reproStepsIndex >= (entry?.reproSteps.length ?? 0))
+      item.set === "unverified" &&
+      (index !== null || reproStepsIndex !== null)
     ) {
-      throw new Error(
-        `Judge chose a missing entry or reproSteps case for finding ${findingIndex}.`,
+      throw new JudgeAssessmentError(
+        `Finding ${findingIndex} is unverified and must have null index and reproStepsIndex.`,
+      );
+    }
+    const entry = index === null ? undefined : entries[index];
+    if (item.set !== "unverified" && !entry) {
+      throw new JudgeAssessmentError(
+        `Finding ${findingIndex} selected index ${index} for ${item.set}, where the entry count is ${entries.length}. A match requires an existing zero-based index.`,
+      );
+    }
+    const reproCaseCount = entry?.reproSteps.length ?? 0;
+    if (reproStepsIndex !== null && reproStepsIndex >= reproCaseCount) {
+      throw new JudgeAssessmentError(
+        `Finding ${findingIndex} selected reproStepsIndex ${reproStepsIndex} for ${item.set}[${index}], where the reproSteps case count is ${reproCaseCount}. Use an existing zero-based case index, or null if no case matches.`,
       );
     }
     if (item.set === "groundTruth") {
@@ -188,6 +201,7 @@ export const GRADING_METHOD_SHA256 = createHash("sha256")
   .update(
     JSON.stringify({
       promptTemplate: GRADING_PROMPT_TEMPLATE,
+      retryInstruction: GRADING_RETRY_INSTRUCTION,
       outputSchema: GRADING_OUTPUT_SCHEMA,
       threadOptions: GRADING_THREAD_OPTIONS,
       inputSchemas: [

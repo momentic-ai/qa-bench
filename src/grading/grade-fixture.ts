@@ -34,7 +34,9 @@ import {
   GRADING_METHOD_SHA256,
   GRADING_OUTPUT_SCHEMA,
   GRADING_PROMPT_TEMPLATE,
+  GRADING_RETRY_INSTRUCTION,
   GRADING_THREAD_OPTIONS,
+  JudgeAssessmentError,
   JudgeOutputSchema,
   gradingPrompt,
   toAssessment,
@@ -316,17 +318,17 @@ export async function judge(
     };
   }
   const prompt = gradingPrompt(fixture.name, groundTruth, knownInvalid, bugs);
-  // One retry absorbs an occasional malformed judge answer.
+  let requestPrompt = prompt;
   for (let attempt = 1; ; attempt++) {
     let finalResponse: string;
     if (runPrompt) {
-      finalResponse = await runPrompt(prompt, signal);
+      finalResponse = await runPrompt(requestPrompt, signal);
     } else {
       const thread = codex.startThread({
         ...GRADING_THREAD_OPTIONS,
         workingDirectory: root,
       });
-      const result = await thread.run(prompt, {
+      const result = await thread.run(requestPrompt, {
         signal,
         outputSchema: GRADING_OUTPUT_SCHEMA,
       });
@@ -343,6 +345,11 @@ export async function judge(
       );
     } catch (err) {
       if (attempt >= 2) throw err;
+      const feedback =
+        err instanceof JudgeAssessmentError
+          ? err.message
+          : "Return valid JSON that matches the output schema.";
+      requestPrompt = `${prompt}\n\n${GRADING_RETRY_INSTRUCTION}\n${feedback}`;
     }
   }
 }
