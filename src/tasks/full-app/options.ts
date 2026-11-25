@@ -93,10 +93,11 @@ export function parseFullAppOptions(args: string[]): FullAppOptions {
   if (values["prevent-cheating"]) {
     if (
       !values.agent?.startsWith("codex-") &&
-      !values.agent?.startsWith("claude-")
+      !values.agent?.startsWith("claude-") &&
+      values.agent !== "browser-use"
     )
       throw new Error(
-        "--prevent-cheating applies only to Codex and Claude agents.",
+        "--prevent-cheating applies only to Codex, Claude and Browser Use agents.",
       );
     if (values["grade-only"])
       throw new Error(
@@ -104,14 +105,19 @@ export function parseFullAppOptions(args: string[]): FullAppOptions {
       );
   }
   if (values["record-bugs"]) {
+    const browserUse = values.agent === "browser-use";
     if (
       !values.agent?.startsWith("codex-") &&
-      !values.agent?.startsWith("claude-")
+      !values.agent?.startsWith("claude-") &&
+      !browserUse
     )
-      throw new Error("--record-bugs applies only to Codex and Claude agents.");
-    if (values.agent.endsWith("-e2e"))
+      throw new Error(
+        "--record-bugs applies only to Codex, Claude and Browser Use agents.",
+      );
+    if (values.agent?.endsWith("-e2e"))
       throw new Error("--record-bugs does not support e2e agents yet.");
-    if (values.browser !== "local")
+    // Browser Use always uses a Browser Use Cloud browser.
+    if (!browserUse && values.browser !== "local")
       throw new Error("--record-bugs needs --browser local for now.");
     if (values["grade-only"])
       throw new Error("--record-bugs applies to new runs, not --grade-only.");

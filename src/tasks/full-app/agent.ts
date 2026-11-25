@@ -1,3 +1,4 @@
+import { browserUseAgent } from "../../agents/browser-use/agent";
 import { claudeAgent } from "../../agents/claude/claude-agent";
 import { codexAgent } from "../../agents/codex/codex-agent";
 import { devinQaAgent } from "../../agents/devin/qa-agent";
@@ -18,6 +19,11 @@ export function createFullAppAgent(
       return moAgent;
     case "devin-qa":
       return devinQaAgent;
+    case "browser-use":
+      return browserUseAgent({
+        preventCheating: options.preventCheating,
+        recordBugs: options.recordBugs,
+      });
     case "codex-playwright-mcp":
     case "codex-agent-browser":
     case "codex-e2e":

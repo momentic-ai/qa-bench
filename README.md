@@ -1,7 +1,7 @@
 # QA bench
 
 A benchmark of AI QA agents finding real bugs in open-source web apps. It runs
-Mo, Codex, Claude Code and Devin against 20 product areas of Gitea, Metabase,
+Mo, Codex, Claude Code, Devin and Browser Use against 20 product areas of Gitea, Metabase,
 Twenty and Saleor, then grades their bug reports against 1,396 human-reviewed
 bug labels. Results: [momentic.ai/qa-bench](https://momentic.ai/qa-bench).
 Write-up: [momentic.ai/blog/qa-bench](https://momentic.ai/blog/qa-bench).
@@ -15,7 +15,8 @@ publish, run the Hugging Face sync workflow from `main` in GitHub Actions.
 
 Each run gets a fresh copy of the app at a pinned commit, with seeded data, in
 its own E2B sandbox. Codex and Claude Code drive hosted Browserbase browsers, not
-local ones. Devin uses its own browser, and Mo uses Momentic's hosted browsers.
+local ones. Devin uses its own browser, Browser Use uses a Browser Use Cloud
+browser, and Mo uses Momentic's hosted browsers.
 Areas live in [`fixtures/web/oss`](fixtures/web/oss).
 
 | App      | Areas | Labeled bugs |
@@ -45,6 +46,7 @@ reflected. Per-area results are in
 | Claude Code, Opus 5.5, e2e\*            | 20    | 39.4            | 57.3            | 4.1%           | 89.6%             | 127.3         | $8.98                    |
 | Claude Code, Opus 5.5, agent-browser    | 20    | 24.0            | 41.0            | 2.9%           | 77.0%             | 81.0          | $2.45                    |
 | Devin                                   | 20    | 16.0            | 27.0            | 1.9%           | 84.4%             | 65.0          | $3.89                    |
+| Browser Use\*                           | 20    | 19.0            | 22.0            | 1.6%           | 86.9%             | 44.7          | $0.27                    |
 | Claude Code, Sonnet 5.5, Playwright MCP | 20    | 12.0            | 15.0            | 1.1%           | 72.6%             | 26.7          | $2.08                    |
 | Claude Code, Sonnet 5.5, agent-browser  | 20    | 8.7             | 13.0            | 0.9%           | 65.0%             | 20.0          | $0.68                    |
 
@@ -55,7 +57,8 @@ e2e on Gitea repository settings at 60 minutes. OpenAI's cybersecurity policy
 refused one of those runs three times, so that area has two.
 
 \* Pending label review. The e2e runs left 106 distinct findings (135 reports)
-that match no label; the other rows have none. Reviewing them will raise
+that match no label. The Browser Use runs left 23% of their 60-minute
+reports unmatched. The other rows have none. Reviewing them will raise
 Correct and Recall where they are real bugs, and can lower Precision and Score
 where they are invalid.
 
@@ -78,6 +81,7 @@ pnpm build-template --cpu 4 --memory 8
 | `BROWSERBASE_API_KEY`                  | Codex and Claude Code, unless using `--browser local` |
 | `MOMENTIC_API_KEY`                     | Mo, unless signed in with `qa login`                  |
 | `DEVIN_ORGANIZATION_ID`, `DEVIN_TOKEN` | Devin ([setup](src/agents/devin/README.md))           |
+| `BROWSER_USE_API_KEY`                  | Browser Use                                           |
 
 To grade through an OpenAI-compatible Responses proxy, set `GRADING_BASE_URL`
 (for example, `https://gateway.example/v1`). Use `GRADING_API_KEY` for its bearer
@@ -107,9 +111,9 @@ pnpm merge --fixtures saleor/areas/vouchers
 ```
 
 `--agent` takes `mo`, `codex-playwright-mcp`, `claude-playwright-mcp`,
-`codex-agent-browser`, `claude-agent-browser`, `codex-e2e`, `claude-e2e` or
-`devin-qa`. `--fixtures` takes an app (`gitea`), all of its areas
-(`gitea/areas`), one area, or `oss-areas`.
+`codex-agent-browser`, `claude-agent-browser`, `codex-e2e`, `claude-e2e`,
+`devin-qa` or `browser-use`. `--fixtures` takes an app
+(`gitea`), all of its areas (`gitea/areas`), one area, or `oss-areas`.
 
 Each run is graded when it finishes and saved to
 `reports/<agent>/<fixture>/<run-id>/`. `merge` writes `reports/comparison.md`.
@@ -123,7 +127,9 @@ Every agent gets the same short brief from
 area's scope and entry points, and the rule not to read benchmark files. Codex,
 Claude Code and Devin are also told which browser to use and how to save
 findings. Devin's prompt adds its
-[isolation rules](src/agents/devin/README.md).
+[isolation rules](src/agents/devin/README.md). Browser Use gets the
+same rules from [`hosted-agents.ts`](src/agents/hosted-agents.ts), but keeps its
+findings in `qa-report.json` in its workspace.
 
 ### Time
 
@@ -147,6 +153,7 @@ Versions are pinned in [`package.json`](package.json).
 | Codex       | `gpt-6.1-sol`, medium        | Playwright MCP, agent-browser or e2e, on Browserbase |
 | Claude Code | `claude-opus-5-5`, medium    | Playwright MCP, agent-browser or e2e, on Browserbase |
 | Devin       | Devin's defaults             | Devin's native browser                               |
+| Browser Use | Browser Use's defaults       | Browser Use Cloud, without a proxy                   |
 
 Results also include Codex with `gpt-6.1-terra` and Claude Code with
 `claude-sonnet-5-5`. Use `--model` to run them.
@@ -175,13 +182,14 @@ Results also include Codex with `gpt-6.1-terra` and Claude Code with
 - `--browser local` replaces Browserbase with headless Chromium on the host.
   Playwright MCP runs then have no subagents, and `merge` labels them separately.
 - Mo manages its own subagents, and `--max-concurrent-sub-agents` caps them.
-  Devin runs in one session with no child sessions.
+  Devin runs in one session with no child sessions. Browser Use runs one
+  Browser Use Cloud agent session with one browser.
 
 ### Web access
 
 Coding agents can search the web and find examples of these bugs online instead
 of testing the fixture against its intended behavior. We recommend
-`--prevent-cheating` for Codex and Claude Code runs. The flag is off by
+`--prevent-cheating` for Codex, Claude Code and Browser Use runs. The flag is off by
 default so new runs stay comparable with saved ones, and `merge` labels runs
 that use it separately.
 
@@ -192,6 +200,11 @@ as a coverage limitation. Playwright MCP runs already use Codex's read-only
 sandbox, which has no network access.
 
 Claude Code already omits WebSearch and WebFetch from its tool list. With the flag, it also applies the browser restrictions above. Shared agent-browser sessions are kept alive across disconnects. Browserbase sessions get the requested time budget plus two minutes, up to the provider's six-hour limit.
+
+Browser Use's API has no switch for its built-in search tool, so its runs
+record `retrieval: "prompt-restricted"` and rely on the prompt rule above.
+With `--prevent-cheating`, a Browser Use network policy blocks every browser
+host except the fixture's. It doesn't cover the search tool.
 
 The flag doesn't stop fixtures that fetch from code hosts on the server, such
 as Gitea's "New Migration" from GitHub.
@@ -250,6 +263,8 @@ Costs:
 - Claude Code is the cost reported by the Agent SDK, plus estimated Browserbase
   time.
 - Mo is its reported session spend.
+- Browser Use is its reported model and search cost, plus its browser's
+  reported browser and proxy cost.
 - Devin's cost isn't recorded by this repo. Its figures were calculated
   separately.
 

@@ -16,18 +16,6 @@ const ProfileSchema = z.object({
   remove_github_cli_token: z.literal(true),
 });
 
-/** Only fixture hosts are eligible; never allow a shared E2B domain wildcard. */
-export function fixtureHostnames(url: URL) {
-  if (
-    url.protocol !== "https:" ||
-    url.username ||
-    url.password ||
-    !/^[a-z0-9-]+\.e2b\.app$/.test(url.hostname)
-  )
-    throw new Error("Devin QA requires an exact HTTPS E2B fixture hostname.");
-  return [url.hostname];
-}
-
 export function profileRequest(hostnames: string[]) {
   const hash = createHash("sha256")
     .update(JSON.stringify(hostnames))
