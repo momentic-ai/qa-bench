@@ -14,7 +14,8 @@ import { AgentContext, EvalAgent, EvalAgentDefinition } from "../types";
 import { BrowserUseBugVideos } from "./bug-videos";
 import { BrowserUseApiError, BrowserUseClient, browserUsd } from "./client";
 
-const REPORT_FILE = "qa-report.json";
+/** The report both Browser Use agents keep in their workspace, collected if a run is cut off. */
+export const REPORT_FILE = "qa-report.json";
 const TERMINAL = new Set(["completed", "failed", "cancelled"]);
 
 const SessionSchema = z.object({

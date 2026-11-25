@@ -21,6 +21,7 @@ import {
   PI_MODELS,
   PiModel,
 } from "../types";
+import { REPORT_FILE } from "./agent";
 import { BrowserUseBugVideos } from "./bug-videos";
 import { BrowserUseClient, CloudBrowserSchema, browserUsd } from "./client";
 
@@ -30,7 +31,6 @@ const REASONING = {
   "gpt-6.1-sol": "medium",
   "gpt-6.1-terra": "medium",
 } as const;
-const REPORT_FILE = "qa-report.json";
 /** Without --minutes, match the longest published budget. */
 const DEFAULT_TIMEOUT_MS = 120 * 60_000;
 
