@@ -12,12 +12,7 @@ import { writeJson } from "../../shared/json-file";
 import { hostedAgentRules } from "../hosted-agents";
 import { AgentContext, EvalAgent, EvalAgentDefinition } from "../types";
 import { BrowserUseBugVideos } from "./bug-videos";
-import {
-  BrowserUseApiError,
-  BrowserUseClient,
-  browserUsd,
-  sumUsd,
-} from "./client";
+import { BrowserUseClient, browserUsd, sumUsd } from "./client";
 
 /** The report Browser Use keeps in its workspace, collected if a run is cut off. */
 const REPORT_FILE = "qa-report.json";
@@ -123,10 +118,15 @@ ${hostedAgentRules({
     try {
       run = await this.postRun(task, workspaceId);
     } catch (error) {
-      // The provider may have started the run even though no ID came back.
-      const found = await this.client
-        .findWorkspaceRun(workspaceId)
-        .catch(() => undefined);
+      // The provider may have started the run even though no ID came back,
+      // and a run still being created can take a few seconds to be listed.
+      let found: { id: string; sessionId: string } | undefined;
+      for (let attempt = 0; attempt < 3 && !found; attempt++) {
+        if (attempt) await delay(5000);
+        found = await this.client
+          .findWorkspaceRun(workspaceId)
+          .catch(() => undefined);
+      }
       if (!found) throw error;
       run = found;
     }
@@ -163,12 +163,18 @@ ${hostedAgentRules({
       );
   }
 
+  /** The browser only serves cost and videos, so a failed lookup is logged, not fatal. */
   private async watchBrowser(signal: AbortSignal) {
     if (!this.session) return;
-    const browser = await this.client.findSessionBrowser(
-      this.session.sessionId,
-      signal,
-    );
+    const browser = await this.client
+      .findSessionBrowser(this.session.sessionId, signal)
+      .catch((error: unknown) => {
+        if (signal.aborted) throw error;
+        process.stderr.write(
+          `Browser Use browser not found: ${String(error)}\n`,
+        );
+        return undefined;
+      });
     this.browserId = browser?.id;
     if (!this.videos) return;
     if (!browser?.cdpUrl) {
@@ -185,6 +191,8 @@ ${hostedAgentRules({
     if (!this.session || this.stopping)
       throw new Error("Browser Use session is not active.");
     await this.refresh(signal);
+    // A finished run has its final answer; a message now would start another run.
+    if (TERMINAL.has(this.session.status)) return;
     const runId = this.session.latestRunId;
     // Marked before sending, so observe cannot end the session as the interrupt lands.
     this.interruptedRunIds.add(runId);
@@ -256,15 +264,33 @@ ${hostedAgentRules({
 
   private async stopSession() {
     try {
-      await this.stopRuns();
-      await this.videos?.stop();
-      // The session keeps its browser for follow-ups until an idle timeout.
-      if (this.browserId) await this.client.stopBrowser(this.browserId);
-      this.stoppedAt = Date.now();
+      try {
+        await this.stopRuns();
+      } finally {
+        // Stop recording and the browser even if the runs did not stop cleanly.
+        await this.videos?.stop();
+        await this.stopBrowser();
+      }
     } finally {
       if (this.networkPolicyId)
         await this.client.deletePolicy(this.networkPolicyId);
     }
+  }
+
+  private async stopBrowser() {
+    // A browser not found at start may be listed by now.
+    if (!this.browserId && this.session)
+      this.browserId = (
+        await this.client
+          .findSessionBrowser(
+            this.session.sessionId,
+            AbortSignal.timeout(30_000),
+          )
+          .catch(() => undefined)
+      )?.id;
+    // The session keeps its browser for follow-ups until an idle timeout.
+    if (this.browserId) await this.client.stopBrowser(this.browserId);
+    this.stoppedAt = Date.now();
   }
 
   private async stopRuns() {
@@ -411,11 +437,15 @@ ${hostedAgentRules({
     );
     if (!file?.url) return undefined;
     const response = await fetch(file.url, { signal });
-    if (!response.ok)
-      throw new BrowserUseApiError(response.status, "workspace report");
-    const parsed = LenientReportSchema.safeParse(
-      JSON.parse(await response.text()),
-    );
+    if (!response.ok) return undefined;
+    let json: unknown;
+    try {
+      json = JSON.parse(await response.text());
+    } catch {
+      // A run cut off mid-write can leave the file truncated.
+      return undefined;
+    }
+    const parsed = LenientReportSchema.safeParse(json);
     return parsed.success ? parsed.data : undefined;
   }
 }
