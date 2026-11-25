@@ -7,6 +7,10 @@ python manage.py shell <<'PY'
 from django.contrib.auth import get_user_model
 from saleor.permission.models import Permission
 
+admin = get_user_model().objects.get(email="admin@example.com")
+admin.set_password("momentic-eval-1")
+admin.save()
+
 for name in ("maya", "jordan"):
     user, created = get_user_model().objects.get_or_create(
         email=f"{name}@example.test",
