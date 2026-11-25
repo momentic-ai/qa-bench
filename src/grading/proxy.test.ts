@@ -195,3 +195,52 @@ test("QA bench grades through the authenticated proxy and does not fall back aft
     );
   }
 });
+
+test("QA bench recovers a match after the judge selects a missing repro case", async () => {
+  const [fixture] = await selectComparisonFixtures("gitea/areas/labels");
+  const codex = new Codex({ codexPathOverride: process.execPath });
+  const finding = {
+    name: "Save discards edits",
+    summary: "Saving discards edits.",
+    expected: "Save persists edits.",
+    actual: "Edits disappear.",
+    reproSteps: ["Edit a label and save."],
+  };
+  await assert.doesNotReject(async () => {
+    const assessment = await judge(
+      fixture,
+      [{ ...finding, reproSteps: [finding.reproSteps], severity: 3 }],
+      [],
+      [finding],
+      codex,
+      undefined,
+      async (prompt) =>
+        JSON.stringify({
+          findings: [
+            {
+              set: "groundTruth",
+              index: 0,
+              reproStepsIndex: prompt.includes(
+                "Finding 0 selected reproStepsIndex 1 for groundTruth[0], where the reproSteps case count is 1.",
+              )
+                ? 0
+                : 1,
+              reason: "Saving the edit discards it in both cases.",
+              clarity: 5,
+              severity: 3,
+              severityReason: "The edit is lost.",
+            },
+          ],
+        }),
+    );
+
+    assert.deepEqual(assessment.matches, [
+      {
+        findingIndex: 0,
+        groundTruthIndex: 0,
+        reproStepsIndex: 0,
+        reason: "Saving the edit discards it in both cases.",
+      },
+    ]);
+  });
+});
