@@ -131,7 +131,7 @@ area's scope and entry points, and the rule not to read benchmark files. Codex,
 Claude Code and Devin are also told which browser to use and how to save
 findings. Devin's prompt adds its
 [isolation rules](src/agents/devin/README.md). Both Browser Use agents get the
-same rules from [`hosted-agent-rules.ts`](src/evals/hosted-agent-rules.ts); only
+same rules from [`hosted-agents.ts`](src/agents/hosted-agents.ts); only
 how they save findings differs. Browser Use keeps `qa-report.json` in its
 workspace, and Browser Use Pi checkpoints it.
 
@@ -195,6 +195,7 @@ Results also include Codex with `gpt-6.1-terra` and Claude Code with
   a commit, on the host. It drives one Browser Use Cloud browser over raw CDP.
   Its JavaScript worker has the host's network and filesystem access, so run it
   on a machine or VM you're happy to expose.
+  The SDK declares Node.js 22.19 or later.
 
 ### Web access
 

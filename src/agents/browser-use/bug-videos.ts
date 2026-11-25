@@ -1,25 +1,30 @@
-import { rm } from "node:fs/promises";
+import { readFile, rm } from "node:fs/promises";
 import path from "node:path";
 import { setTimeout as delay } from "node:timers/promises";
 import { z } from "zod";
 
 import { BrowserRecorder } from "../../browser-tools/recording/browser-recorder";
-import { cutBugVideos } from "../../browser-tools/recording/bug-videos";
+import {
+  appendBrowserLog,
+  cutBugVideos,
+} from "../../browser-tools/recording/bug-videos";
 import { LenientReportSchema } from "../../evals/reports";
 import { writeJson } from "../../shared/json-file";
 
 type Report = z.infer<typeof LenientReportSchema>;
 
 /**
- * Records a Browser Use browser over its own CDP connection and notes when each
+ * Records a Browser Use browser, or takes Pi's own frames, and notes when each
  * bug first appears in the saved report, so each bug gets a clip like Codex's.
- * Bugs are matched by name, and a bug's time is when a poll first saw it.
+ * Bugs are matched by name and occurrence. A bug's time is when a poll, or the
+ * final report if no poll saw it, first showed it.
  */
 export class BrowserUseBugVideos {
   private readonly recorder: BrowserRecorder;
   private readonly browserLog: string;
   private readonly frames: string;
-  private readonly firstSeen = new Map<string, string>();
+  /** For each bug name, when each of its occurrences first appeared. */
+  private readonly firstSeen = new Map<string, string[]>();
   private readonly stopped = new AbortController();
   private polling: Promise<void> | undefined;
 
@@ -32,12 +37,29 @@ export class BrowserUseBugVideos {
     this.recorder = new BrowserRecorder(this.browserLog, this.frames);
   }
 
-  start(
-    cdpUrl: string,
+  /** Records the browser over its own CDP connection. */
+  record(cdpUrl: string) {
+    this.recorder.record(cdpUrl);
+  }
+
+  /** Adds the frames Pi's recorder saved; a second CDP client gets no frames while Pi drives. */
+  async addPiFrames(manifestPath: string) {
+    const { frames } = z
+      .object({
+        frames: z.array(z.object({ file: z.string(), timestamp: z.number() })),
+      })
+      .parse(JSON.parse(await readFile(manifestPath, "utf8")));
+    for (const frame of frames)
+      await appendBrowserLog(this.browserLog, {
+        at: new Date(frame.timestamp).toISOString(),
+        frame: path.join(path.dirname(manifestPath), frame.file),
+      });
+  }
+
+  poll(
     readReport: (signal: AbortSignal) => Promise<Report | undefined>,
     intervalMs: number,
   ) {
-    this.recorder.record(cdpUrl);
     const { signal } = this.stopped;
     this.polling = (async () => {
       while (!signal.aborted) {
@@ -50,8 +72,27 @@ export class BrowserUseBugVideos {
 
   private note(report: Report | undefined) {
     const now = new Date().toISOString();
-    for (const bug of report?.bugs ?? [])
-      if (!this.firstSeen.has(bug.name)) this.firstSeen.set(bug.name, now);
+    const counts = new Map<string, number>();
+    for (const bug of report?.bugs ?? []) {
+      const count = (counts.get(bug.name) ?? 0) + 1;
+      counts.set(bug.name, count);
+      const seen = this.firstSeen.get(bug.name) ?? [];
+      if (seen.length < count) seen.push(now);
+      this.firstSeen.set(bug.name, seen);
+    }
+  }
+
+  /** One stable ID and time per report entry, numbering repeated names. */
+  private submissions(report: Report) {
+    const counts = new Map<string, number>();
+    return report.bugs.map((bug) => {
+      const index = counts.get(bug.name) ?? 0;
+      counts.set(bug.name, index + 1);
+      return {
+        id: index ? `${bug.name} (${index + 1})` : bug.name,
+        submittedAt: this.firstSeen.get(bug.name)?.[index] ?? "",
+      };
+    });
   }
 
   /** Call before the browser stops, so the last frames are saved. */
@@ -64,13 +105,11 @@ export class BrowserUseBugVideos {
   /** Adds a clip to each bug it can; videos never decide a run's result. */
   async attach(report: Report, signal: AbortSignal) {
     this.note(report);
+    const submissions = this.submissions(report);
     try {
       const { recordings, errors } = await cutBugVideos({
         browserLog: this.browserLog,
-        bugs: report.bugs.map((bug) => ({
-          id: bug.name,
-          submittedAt: this.firstSeen.get(bug.name) ?? new Date().toISOString(),
-        })),
+        bugs: submissions,
         reportDirectory: this.reportDirectory,
         signal: AbortSignal.any([signal, AbortSignal.timeout(300_000)]),
       });
@@ -83,8 +122,8 @@ export class BrowserUseBugVideos {
       }
       return {
         ...report,
-        bugs: report.bugs.map((bug) => {
-          const recording = recordings.get(bug.name);
+        bugs: report.bugs.map((bug, index) => {
+          const recording = recordings.get(submissions[index].id);
           return recording ? { ...bug, recording } : bug;
         }),
       };
@@ -92,8 +131,9 @@ export class BrowserUseBugVideos {
       process.stderr.write(`Bug videos failed: ${String(err)}\n`);
       return report;
     } finally {
-      await rm(this.frames, { recursive: true, force: true });
-      await rm(this.browserLog, { force: true });
+      // Leftover frames only cost disk space; they must not lose the report.
+      await rm(this.frames, { recursive: true, force: true }).catch(() => {});
+      await rm(this.browserLog, { force: true }).catch(() => {});
     }
   }
 }

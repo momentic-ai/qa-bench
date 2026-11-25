@@ -4,6 +4,7 @@ import {
   Type,
   builtinModels,
 } from "@browser_use/pi";
+import { randomUUID } from "node:crypto";
 import { readFile } from "node:fs/promises";
 import path from "node:path";
 
@@ -101,6 +102,9 @@ export class BrowserUsePiAgent implements EvalAgent {
   private result: RunResult<unknown> | undefined;
   private readonly cancel = new AbortController();
   private termination: Promise<void> | undefined;
+  private stopping = false;
+  private browserStopped = false;
+  private policyDeleted = false;
 
   constructor(
     private readonly context: AgentContext,
@@ -113,6 +117,48 @@ export class BrowserUsePiAgent implements EvalAgent {
         context.runDirectory,
         context.reportDirectory,
       );
+  }
+
+  private async createBrowser(timeLimitMs: number) {
+    const runTag = randomUUID();
+    try {
+      return CloudBrowserSchema.parse(
+        await this.client.request("browsers", {
+          method: "POST",
+          body: {
+            // Browser Use's policy fails each blocked request; the CDP connection survives.
+            ...(this.networkPolicyId
+              ? { networkPolicyId: this.networkPolicyId }
+              : {}),
+            metadata: { qaBenchRun: runTag },
+            timeout: Math.min(240, Math.ceil(timeLimitMs / 60_000) + 10),
+            enableRecording: false,
+            // Fixtures are public E2B hosts; a residential proxy only adds cost and latency.
+            proxyCountryCode: null,
+            // Without it the browser ignores viewport emulation and window resizing, so the
+            // responsive widths in the brief are unreachable.
+            allowResizing: true,
+          },
+        }),
+      );
+    } catch (error) {
+      // The provider may have created it even though no ID came back.
+      const found = await this.client
+        .findBrowserByMetadata("qaBenchRun", runTag)
+        .catch(() => undefined);
+      if (found) {
+        this.browserId = found.id;
+        if (this.stopping) await this.releaseCloud().catch(() => undefined);
+      }
+      throw error;
+    }
+  }
+
+  /** Termination may finish while a create is pending; clean up what it could not see. */
+  private async cleanUpIfStopped() {
+    if (!this.stopping) return;
+    await this.releaseCloud();
+    throw new Error("Browser Use Pi was stopped during startup.");
   }
 
   private get workspace() {
@@ -129,30 +175,16 @@ export class BrowserUsePiAgent implements EvalAgent {
       throw new Error("Browser Use Pi requires a fixture URL.");
     // Provision the browser here, as Browser.cloud would, so its ID and cost stay reachable.
     const timeLimitMs = this.context.timeLimitMs ?? DEFAULT_TIMEOUT_MS;
-    if (this.options.preventCheating)
+    if (this.options.preventCheating) {
       this.networkPolicyId = await this.client.createFixturePolicy(
         this.context.targetUrl,
         signal,
       );
-    const browser = CloudBrowserSchema.parse(
-      await this.client.request("browsers", {
-        method: "POST",
-        body: {
-          // Browser Use's proxy answers blocked hosts with 403, so the CDP connection survives.
-          ...(this.networkPolicyId
-            ? { networkPolicyId: this.networkPolicyId }
-            : {}),
-          timeout: Math.min(240, Math.ceil(timeLimitMs / 60_000) + 10),
-          enableRecording: false,
-          // Fixtures are public E2B hosts; a residential proxy only adds cost and latency.
-          proxyCountryCode: null,
-          // Without it the browser ignores viewport emulation and window resizing, so the
-          // responsive widths in the brief are unreachable.
-          allowResizing: true,
-        },
-      }),
-    );
+      await this.cleanUpIfStopped();
+    }
+    const browser = await this.createBrowser(timeLimitMs);
     this.browserId = browser.id;
+    await this.cleanUpIfStopped();
     await writeJson(
       path.join(this.context.reportDirectory, "browser-use-pi-browser.json"),
       { id: browser.id },
@@ -160,17 +192,13 @@ export class BrowserUsePiAgent implements EvalAgent {
     if (!browser.cdpUrl)
       throw new Error("Browser Use Cloud returned no CDP URL.");
     signal.throwIfAborted();
-    this.videos?.start(
-      browser.cdpUrl,
-      async () => {
-        const text = await readFile(
-          path.join(this.workspace, REPORT_FILE),
-          "utf8",
-        );
-        return LenientReportSchema.parse(JSON.parse(text));
-      },
-      2000,
-    );
+    this.videos?.poll(async () => {
+      const text = await readFile(
+        path.join(this.workspace, REPORT_FILE),
+        "utf8",
+      );
+      return LenientReportSchema.parse(JSON.parse(text));
+    }, 2000);
     this.agent = await BrowserUse.create({
       model: `openai/${this.model}`,
       models: piModels(),
@@ -178,6 +206,15 @@ export class BrowserUsePiAgent implements EvalAgent {
       browser: { cdpUrl: browser.cdpUrl },
       dedicatedBrowser: true,
       workspace: this.workspace,
+      // Pi samples screenshots for bug videos; 10,000 frames is its cap.
+      ...(this.videos
+        ? {
+            recording: {
+              intervalMs: Math.max(500, Math.ceil(timeLimitMs / 9_000)),
+              maxFrames: 10_000,
+            },
+          }
+        : {}),
       // No allowedDomains: Pi's policy closes the whole CDP connection when it cannot arm a
       // tab blocked by a dialog. The worker can fetch any URL with or without a policy.
       telemetry: false,
@@ -216,7 +253,8 @@ ${hostedAgentRules({
     return {
       completion: run.then(async (result) => {
         this.result = result;
-        if (result.status === "error" && result.partial === undefined)
+        // Collection still exports the latest checkpoint, but the run is recorded as failed.
+        if (result.status === "error")
           throw new Error(`Browser Use Pi run failed: ${result.error}`);
       }),
     };
@@ -234,22 +272,39 @@ ${hostedAgentRules({
   }
 
   async terminate() {
-    this.termination ??= this.stop();
-    await this.termination;
+    const termination = this.termination ?? this.stop();
+    this.termination = termination;
+    try {
+      await termination;
+    } catch (error) {
+      // A later call retries cleanup instead of reusing the failure.
+      if (this.termination === termination) this.termination = undefined;
+      throw error;
+    }
   }
 
   private async stop() {
+    this.stopping = true;
     try {
       this.cancel.abort();
       this.result ??= await this.run?.catch(() => undefined);
       await this.videos?.stop();
       await this.agent?.close();
     } finally {
-      try {
-        if (this.browserId) await this.client.stopBrowser(this.browserId);
-      } finally {
-        if (this.networkPolicyId)
-          await this.client.deletePolicy(this.networkPolicyId);
+      await this.releaseCloud();
+    }
+  }
+
+  private async releaseCloud() {
+    try {
+      if (this.browserId && !this.browserStopped) {
+        await this.client.stopBrowser(this.browserId);
+        this.browserStopped = true;
+      }
+    } finally {
+      if (this.networkPolicyId && !this.policyDeleted) {
+        await this.client.deletePolicy(this.networkPolicyId);
+        this.policyDeleted = true;
       }
     }
   }
@@ -267,6 +322,12 @@ ${hostedAgentRules({
         : await this.partialReport(result);
     if (!saved)
       throw new Error("Browser Use Pi did not checkpoint a structured report.");
+    if (this.videos && result.recordingPath)
+      await this.videos
+        .addPiFrames(result.recordingPath)
+        .catch((error: unknown) =>
+          process.stderr.write(`Pi frames not read: ${String(error)}\n`),
+        );
     const report = this.videos
       ? await this.videos.attach(saved, signal)
       : saved;

@@ -12,11 +12,18 @@ import { writeJson } from "../../shared/json-file";
 import { hostedAgentRules } from "../hosted-agents";
 import { AgentContext, EvalAgent, EvalAgentDefinition } from "../types";
 import { BrowserUseBugVideos } from "./bug-videos";
-import { BrowserUseApiError, BrowserUseClient, browserUsd } from "./client";
+import {
+  BrowserUseApiError,
+  BrowserUseClient,
+  browserUsd,
+  sumUsd,
+} from "./client";
 
 /** The report both Browser Use agents keep in their workspace, collected if a run is cut off. */
 export const REPORT_FILE = "qa-report.json";
 const TERMINAL = new Set(["completed", "failed", "cancelled"]);
+/** Browser Use settles LLM charges up to about 90 s after a run ends. */
+const COST_SETTLE_MS = 90_000;
 
 const SessionSchema = z.object({
   sessionId: z.string().min(1),
@@ -48,9 +55,10 @@ export class BrowserUseAgent implements EvalAgent {
   private networkPolicyId: string | undefined;
   private browserId: string | undefined;
   private readonly videos: BrowserUseBugVideos | undefined;
-  /** Runs replaced by an interrupting follow-up; their terminal states do not end the session. */
+  /** Runs sent an interrupting follow-up; their terminal states do not end the session. */
   private readonly interruptedRunIds = new Set<string>();
   private stopping = false;
+  private stoppedAt: number | undefined;
   private termination: Promise<void> | undefined;
   private launch: Promise<void> | undefined;
 
@@ -111,8 +119,29 @@ ${hostedAgentRules({
   }
 
   private async createRun(task: string, workspaceId: string) {
+    let run: { id: string; sessionId: string };
+    try {
+      run = await this.postRun(task, workspaceId);
+    } catch (error) {
+      // The provider may have started the run even though no ID came back.
+      const found = await this.client
+        .findWorkspaceRun(workspaceId)
+        .catch(() => undefined);
+      if (!found) throw error;
+      run = found;
+    }
+    this.session = {
+      sessionId: run.sessionId,
+      workspaceId,
+      latestRunId: run.id,
+      status: "queued",
+    };
+    await this.saveSession();
+  }
+
+  private async postRun(task: string, workspaceId: string) {
     // No model or modelParams: Browser Use applies its product default.
-    const run = z
+    return z
       .object({ id: z.string().min(1), sessionId: z.string().min(1) })
       .parse(
         await this.client.request("runs", {
@@ -132,13 +161,6 @@ ${hostedAgentRules({
           },
         }),
       );
-    this.session = {
-      sessionId: run.sessionId,
-      workspaceId,
-      latestRunId: run.id,
-      status: "queued",
-    };
-    await this.saveSession();
   }
 
   private async watchBrowser(signal: AbortSignal) {
@@ -155,30 +177,35 @@ ${hostedAgentRules({
       );
       return;
     }
-    this.videos.start(
-      browser.cdpUrl,
-      (poll) => this.readWorkspaceReport(poll),
-      20_000,
-    );
+    this.videos.record(browser.cdpUrl);
+    this.videos.poll((poll) => this.readWorkspaceReport(poll), 20_000);
   }
 
   async send(message: string, signal: AbortSignal) {
     if (!this.session || this.stopping)
       throw new Error("Browser Use session is not active.");
     await this.refresh(signal);
-    this.interruptedRunIds.add(this.session.latestRunId);
-    // Queued messages wait for the active run; interrupt so the agent finalizes before the cutoff.
-    await this.client.request(
-      `sessions/${encodeURIComponent(this.session.sessionId)}/queue`,
-      {
-        method: "POST",
-        body: {
-          text: `${message} Rewrite ${REPORT_FILE} now, then finish with the same JSON as your final answer.`,
-          interrupt: true,
+    const runId = this.session.latestRunId;
+    // Marked before sending, so observe cannot end the session as the interrupt lands.
+    this.interruptedRunIds.add(runId);
+    try {
+      // Queued messages wait for the active run; interrupt so the agent finalizes before the cutoff.
+      await this.client.request(
+        `sessions/${encodeURIComponent(this.session.sessionId)}/queue`,
+        {
+          method: "POST",
+          body: {
+            text: `${message} Rewrite ${REPORT_FILE} now, then finish with the same JSON as your final answer.`,
+            interrupt: true,
+          },
+          signal,
         },
-        signal,
-      },
-    );
+      );
+    } catch (error) {
+      // Without a follow-up, the original run's end still ends the session.
+      this.interruptedRunIds.delete(runId);
+      throw error;
+    }
   }
 
   private async observe(signal: AbortSignal) {
@@ -233,6 +260,7 @@ ${hostedAgentRules({
       await this.videos?.stop();
       // The session keeps its browser for follow-ups until an idle timeout.
       if (this.browserId) await this.client.stopBrowser(this.browserId);
+      this.stoppedAt = Date.now();
     } finally {
       if (this.networkPolicyId)
         await this.client.deletePolicy(this.networkPolicyId);
@@ -246,7 +274,13 @@ ${hostedAgentRules({
     this.stopping = true;
     const stopped = AbortSignal.timeout(120_000);
     while (true) {
-      await this.refresh(stopped);
+      try {
+        await this.refresh(stopped);
+      } catch (error) {
+        if (!this.client.isTransient(error)) throw error;
+        await delay(2000, undefined, { signal: stopped });
+        continue;
+      }
       if (TERMINAL.has(this.session.status)) {
         // An interrupted run's follow-up may still be starting.
         if (!this.interruptedRunIds.has(this.session.latestRunId)) return;
@@ -266,21 +300,44 @@ ${hostedAgentRules({
   }
 
   async collectResults(signal: AbortSignal) {
+    try {
+      return await this.collect(signal);
+    } finally {
+      // Collection may read the workspace report, so the workspace goes last.
+      if (this.workspaceId)
+        await this.client
+          .deleteWorkspace(this.workspaceId)
+          .catch((error: unknown) =>
+            process.stderr.write(
+              `Browser Use workspace not deleted: ${String(error)}\n`,
+            ),
+          );
+    }
+  }
+
+  private async collect(signal: AbortSignal) {
     if (!this.session) throw new Error("Browser Use did not start a run.");
-    const run = RunSchema.parse(
-      await this.client.request(
-        `runs/${encodeURIComponent(this.session.latestRunId)}`,
-        { signal },
-      ),
-    );
-    await writeJson(
-      path.join(this.context.reportDirectory, "browser-use-run.json"),
-      run,
-    );
-    // The final answer is reconciled; the workspace file survives a cutoff.
-    const output = LenientReportSchema.safeParse(run.output);
-    const saved = output.success
-      ? output.data
+    // The final answer is reconciled; the workspace file survives a cutoff or a failed lookup.
+    let output: unknown;
+    try {
+      const run = RunSchema.parse(
+        await this.client.request(
+          `runs/${encodeURIComponent(this.session.latestRunId)}`,
+          { signal },
+        ),
+      );
+      await writeJson(
+        path.join(this.context.reportDirectory, "browser-use-run.json"),
+        run,
+      );
+      output = run.output;
+    } catch (error) {
+      if (signal.aborted) throw error;
+      process.stderr.write(`Browser Use run lookup failed: ${String(error)}\n`);
+    }
+    const parsed = LenientReportSchema.safeParse(output);
+    const saved = parsed.success
+      ? parsed.data
       : await this.readWorkspaceReport(signal);
     if (!saved)
       throw new Error("Browser Use did not persist a structured report.");
@@ -293,6 +350,12 @@ ${hostedAgentRules({
     );
     let costUsd: number | null = null;
     try {
+      if (this.stoppedAt !== undefined)
+        await delay(
+          Math.max(0, this.stoppedAt + COST_SETTLE_MS - Date.now()),
+          undefined,
+          { signal },
+        );
       const cost = CostSchema.parse(
         await this.client.request(
           `sessions/${encodeURIComponent(this.session.sessionId)}/cost`,
@@ -302,17 +365,19 @@ ${hostedAgentRules({
       const browser = this.browserId
         ? await this.client.getBrowser(this.browserId, signal)
         : undefined;
-      const browserCost = browser ? browserUsd(browser) : null;
       // The session's browser cost can read 0 until its browser stops; read the browser itself.
-      costUsd =
-        Number(cost.llmCostUsd) +
-        Number(cost.searchCostUsd) +
-        (browserCost ?? 0);
+      const modelCost = sumUsd([cost.llmCostUsd, cost.searchCostUsd]);
+      const browserCost = browser ? browserUsd(browser) : null;
+      costUsd = modelCost === null ? null : modelCost + (browserCost ?? 0);
       await writeJson(path.join(this.context.reportDirectory, "cost.json"), {
         ...cost,
         browserUsd: browserCost,
         estimatedUsd: costUsd,
-        costComplete: browserCost !== null,
+        // Complete only once the browser stopped and charges had time to settle.
+        costComplete:
+          costUsd !== null &&
+          browserCost !== null &&
+          this.stoppedAt !== undefined,
       });
     } catch (error) {
       // A failed cost export must not discard otherwise usable findings.

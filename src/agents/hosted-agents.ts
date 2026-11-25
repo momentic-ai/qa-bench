@@ -29,7 +29,7 @@ const SOURCES = [
   "previous reports",
 ];
 
-/** Rules appended to the shared bugbash brief; only the save and submit mechanics differ by provider. */
+/** Rules appended to the shared bugbash brief, with each provider's retrieval tools, isolation notes and report mechanics. */
 export function hostedAgentRules(rules: HostedAgentRules) {
   const sources = [...SOURCES, ...(rules.privateSources ?? [])];
   const isolation = rules.isolation ? `${rules.isolation} ` : "";

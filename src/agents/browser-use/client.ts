@@ -21,6 +21,7 @@ export const CloudBrowserSchema = z
     cdpUrl: z.string().nullish(),
     browserCost: z.string().nullish(),
     proxyCost: z.string().nullish(),
+    metadata: z.record(z.string(), z.string()).nullish(),
   })
   .passthrough();
 export type CloudBrowser = z.infer<typeof CloudBrowserSchema>;
@@ -77,20 +78,37 @@ export class BrowserUseClient {
 
   /** Blocks browser navigation to every host but the fixture's; built-in search is not covered. */
   async createFixturePolicy(targetUrl: URL, signal: AbortSignal) {
-    return z.object({ id: z.string().min(1) }).parse(
-      await this.request("network-policies", {
-        method: "POST",
-        body: {
-          name: `momentic-qa-${randomUUID()}`,
-          defaultAction: "block",
-          allow: { domains: fixtureHostnames(targetUrl) },
-        },
-        signal,
-      }),
-    ).id;
+    const name = `momentic-qa-${randomUUID()}`;
+    try {
+      return z.object({ id: z.string().min(1) }).parse(
+        await this.request("network-policies", {
+          method: "POST",
+          body: {
+            name,
+            defaultAction: "block",
+            allow: { domains: fixtureHostnames(targetUrl) },
+          },
+          signal,
+        }),
+      ).id;
+    } catch (error) {
+      // The provider may have created it even though no ID came back.
+      await this.deletePolicyNamed(name).catch(() => undefined);
+      throw error;
+    }
   }
 
-  /** Projects hold at most 100 policies, so each run deletes its own. */
+  private async deletePolicyNamed(name: string) {
+    const { items } = z
+      .object({
+        items: z.array(z.object({ id: z.string(), name: z.string() })),
+      })
+      .parse(await this.request("network-policies?pageSize=100"));
+    const policy = items.find((item) => item.name === name);
+    if (policy) await this.deletePolicy(policy.id);
+  }
+
+  /** Projects hold at most 100 policies, so runs delete the policies they create. */
   async deletePolicy(id: string) {
     await this.request(`network-policies/${encodeURIComponent(id)}`, {
       method: "DELETE",
@@ -116,6 +134,36 @@ export class BrowserUseClient {
     return undefined;
   }
 
+  /** Finds a run whose create response was lost, by the workspace made for it. */
+  async findWorkspaceRun(workspaceId: string) {
+    const { runs } = z
+      .object({
+        runs: z.array(
+          z.object({
+            id: z.string().min(1),
+            sessionId: z.string().min(1),
+            workspaceId: z.string().nullish(),
+          }),
+        ),
+      })
+      .parse(await this.request("runs?limit=50"));
+    return runs.find((run) => run.workspaceId === workspaceId);
+  }
+
+  /** Finds a browser whose create response was lost, by the metadata sent with it. */
+  async findBrowserByMetadata(key: string, value: string) {
+    const { items } = z
+      .object({ items: z.array(CloudBrowserSchema) })
+      .parse(await this.request("browsers?pageSize=100"));
+    return items.find((item) => item.metadata?.[key] === value);
+  }
+
+  async deleteWorkspace(id: string) {
+    await this.request(`workspaces/${encodeURIComponent(id)}`, {
+      method: "DELETE",
+    });
+  }
+
   /** Stops a browser now instead of after its idle timeout, which bills by the minute. */
   async stopBrowser(id: string) {
     const stopped = AbortSignal.timeout(120_000);
@@ -135,7 +183,15 @@ export class BrowserUseClient {
   }
 }
 
-/** Browser time plus proxy traffic, as the browser reports them. */
+/** Browser time plus proxy traffic, as the browser reports them; null when either is missing or invalid. */
 export function browserUsd(browser: CloudBrowser) {
-  return Number(browser.browserCost ?? 0) + Number(browser.proxyCost ?? 0);
+  return sumUsd([browser.browserCost, browser.proxyCost]);
+}
+
+/** Sums provider USD strings; null unless every part is a finite, nonnegative number. */
+export function sumUsd(parts: (string | null | undefined)[]) {
+  const values = parts.map((part) => (part == null ? NaN : Number(part)));
+  return values.every((value) => Number.isFinite(value) && value >= 0)
+    ? values.reduce((total, value) => total + value, 0)
+    : null;
 }
