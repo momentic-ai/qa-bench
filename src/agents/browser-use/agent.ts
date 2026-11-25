@@ -19,8 +19,8 @@ import {
   sumUsd,
 } from "./client";
 
-/** The report both Browser Use agents keep in their workspace, collected if a run is cut off. */
-export const REPORT_FILE = "qa-report.json";
+/** The report Browser Use keeps in its workspace, collected if a run is cut off. */
+const REPORT_FILE = "qa-report.json";
 const TERMINAL = new Set(["completed", "failed", "cancelled"]);
 /** Browser Use settles LLM charges up to about 90 s after a run ends. */
 const COST_SETTLE_MS = 90_000;

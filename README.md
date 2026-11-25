@@ -15,8 +15,8 @@ publish, run the Hugging Face sync workflow from `main` in GitHub Actions.
 
 Each run gets a fresh copy of the app at a pinned commit, with seeded data, in
 its own E2B sandbox. Codex and Claude Code drive hosted Browserbase browsers, not
-local ones. Devin uses its own browser, both Browser Use agents use Browser Use
-Cloud browsers, and Mo uses Momentic's hosted browsers.
+local ones. Devin uses its own browser, Browser Use uses a Browser Use Cloud
+browser, and Mo uses Momentic's hosted browsers.
 Areas live in [`fixtures/web/oss`](fixtures/web/oss).
 
 | App      | Areas | Labeled bugs |
@@ -41,15 +41,12 @@ reflected. Per-area results are in
 | Codex, GPT-6.1 Sol, e2e\*               | 20    | 77.3            | 83.7            | 6.0%           | 90.3%             | 205.6         | $2.08                    |
 | Codex, GPT-6.1 Terra, Playwright MCP    | 20    | 83.3            | 82.7            | 5.9%           | 81.6%             | 177.0         | $0.53                    |
 | Codex, GPT-6.1 Sol, agent-browser       | 20    | 68.0            | 64.3            | 4.6%           | 76.3%             | 144.3         | $0.96                    |
-| Browser Use Pi, GPT-6.1 Sol\*           | 20    | 57.7            | 61.3            | 4.4%           | 93.9%             | 148.0         | $1.53                    |
 | Claude Code, Opus 5.5, Playwright MCP   | 20    | 38.0            | 59.0            | 4.2%           | 79.5%             | 122.7         | $4.09                    |
 | Codex, GPT-6.1 Terra, agent-browser     | 20    | 59.3            | 57.7            | 4.1%           | 76.2%             | 126.3         | $0.27                    |
 | Claude Code, Opus 5.5, e2e\*            | 20    | 39.4            | 57.3            | 4.1%           | 89.6%             | 127.3         | $8.98                    |
-| Browser Use Pi, GPT-6.1 Terra\*         | 20    | 55.0            | 51.0            | 3.7%           | 85.5%             | 107.0         | $0.58                    |
 | Claude Code, Opus 5.5, agent-browser    | 20    | 24.0            | 41.0            | 2.9%           | 77.0%             | 81.0          | $2.45                    |
 | Devin                                   | 20    | 16.0            | 27.0            | 1.9%           | 84.4%             | 65.0          | $3.89                    |
 | Browser Use\*                           | 20    | 19.0            | 22.0            | 1.6%           | 86.9%             | 44.7          | $0.27                    |
-| Browser Use Pi, GPT-6 Luna\*            | 20    | 17.3            | 18.3            | 1.3%           | 90.2%             | 35.0          | $0.22                    |
 | Claude Code, Sonnet 5.5, Playwright MCP | 20    | 12.0            | 15.0            | 1.1%           | 72.6%             | 26.7          | $2.08                    |
 | Claude Code, Sonnet 5.5, agent-browser  | 20    | 8.7             | 13.0            | 0.9%           | 65.0%             | 20.0          | $0.68                    |
 
@@ -60,7 +57,7 @@ e2e on Gitea repository settings at 60 minutes. OpenAI's cybersecurity policy
 refused one of those runs three times, so that area has two.
 
 \* Pending label review. The e2e runs left 106 distinct findings (135 reports)
-that match no label. The Browser Use runs left 10–27% of their 60-minute
+that match no label. The Browser Use runs left 23% of their 60-minute
 reports unmatched. The other rows have none. Reviewing them will raise
 Correct and Recall where they are real bugs, and can lower Precision and Score
 where they are invalid.
@@ -76,15 +73,15 @@ pnpm build-template
 pnpm build-template --cpu 4 --memory 8
 ```
 
-| Environment variable                   | Needed for                                                     |
-| -------------------------------------- | -------------------------------------------------------------- |
-| `E2B_API_KEY`                          | All runs                                                       |
-| `OPENAI_API_KEY`                       | Grading unless `GRADING_API_KEY` is set, Codex, Browser Use Pi |
-| `ANTHROPIC_API_KEY`                    | Claude Code                                                    |
-| `BROWSERBASE_API_KEY`                  | Codex and Claude Code, unless using `--browser local`          |
-| `MOMENTIC_API_KEY`                     | Mo, unless signed in with `qa login`                           |
-| `DEVIN_ORGANIZATION_ID`, `DEVIN_TOKEN` | Devin ([setup](src/agents/devin/README.md))                    |
-| `BROWSER_USE_API_KEY`                  | Browser Use and Browser Use Pi                                 |
+| Environment variable                   | Needed for                                            |
+| -------------------------------------- | ----------------------------------------------------- |
+| `E2B_API_KEY`                          | All runs                                              |
+| `OPENAI_API_KEY`                       | Grading unless `GRADING_API_KEY` is set, and Codex    |
+| `ANTHROPIC_API_KEY`                    | Claude Code                                           |
+| `BROWSERBASE_API_KEY`                  | Codex and Claude Code, unless using `--browser local` |
+| `MOMENTIC_API_KEY`                     | Mo, unless signed in with `qa login`                  |
+| `DEVIN_ORGANIZATION_ID`, `DEVIN_TOKEN` | Devin ([setup](src/agents/devin/README.md))           |
+| `BROWSER_USE_API_KEY`                  | Browser Use                                           |
 
 To grade through an OpenAI-compatible Responses proxy, set `GRADING_BASE_URL`
 (for example, `https://gateway.example/v1`). Use `GRADING_API_KEY` for its bearer
@@ -115,7 +112,7 @@ pnpm merge --fixtures saleor/areas/vouchers
 
 `--agent` takes `mo`, `codex-playwright-mcp`, `claude-playwright-mcp`,
 `codex-agent-browser`, `claude-agent-browser`, `codex-e2e`, `claude-e2e`,
-`devin-qa`, `browser-use` or `browser-use-pi`. `--fixtures` takes an app
+`devin-qa` or `browser-use`. `--fixtures` takes an app
 (`gitea`), all of its areas (`gitea/areas`), one area, or `oss-areas`.
 
 Each run is graded when it finishes and saved to
@@ -130,10 +127,9 @@ Every agent gets the same short brief from
 area's scope and entry points, and the rule not to read benchmark files. Codex,
 Claude Code and Devin are also told which browser to use and how to save
 findings. Devin's prompt adds its
-[isolation rules](src/agents/devin/README.md). Both Browser Use agents get the
-same rules from [`hosted-agents.ts`](src/agents/hosted-agents.ts); only
-how they save findings differs. Browser Use keeps `qa-report.json` in its
-workspace, and Browser Use Pi checkpoints it.
+[isolation rules](src/agents/devin/README.md). Browser Use gets the
+same rules from [`hosted-agents.ts`](src/agents/hosted-agents.ts), but keeps its
+findings in `qa-report.json` in its workspace.
 
 ### Time
 
@@ -151,18 +147,16 @@ to Mo.
 
 Versions are pinned in [`package.json`](package.json).
 
-| Agent          | Model and reasoning effort   | Browser                                              |
-| -------------- | ---------------------------- | ---------------------------------------------------- |
-| Mo             | Chosen by Momentic's service | Hosted by Momentic                                   |
-| Codex          | `gpt-6.1-sol`, medium        | Playwright MCP, agent-browser or e2e, on Browserbase |
-| Claude Code    | `claude-opus-5-5`, medium    | Playwright MCP, agent-browser or e2e, on Browserbase |
-| Devin          | Devin's defaults             | Devin's native browser                               |
-| Browser Use    | Browser Use's defaults       | Browser Use Cloud, without a proxy                   |
-| Browser Use Pi | `gpt-6-luna`, high           | Browser Use Cloud, without a proxy                   |
+| Agent       | Model and reasoning effort   | Browser                                              |
+| ----------- | ---------------------------- | ---------------------------------------------------- |
+| Mo          | Chosen by Momentic's service | Hosted by Momentic                                   |
+| Codex       | `gpt-6.1-sol`, medium        | Playwright MCP, agent-browser or e2e, on Browserbase |
+| Claude Code | `claude-opus-5-5`, medium    | Playwright MCP, agent-browser or e2e, on Browserbase |
+| Devin       | Devin's defaults             | Devin's native browser                               |
+| Browser Use | Browser Use's defaults       | Browser Use Cloud, without a proxy                   |
 
 Results also include Codex with `gpt-6.1-terra` and Claude Code with
-`claude-sonnet-5-5`. Use `--model` to run them. `--model gpt-6.1-sol` or
-`--model gpt-6.1-terra` runs Browser Use Pi at medium effort, matching Codex.
+`claude-sonnet-5-5`. Use `--model` to run them.
 
 ### Browsers and subagents
 
@@ -190,12 +184,6 @@ Results also include Codex with `gpt-6.1-terra` and Claude Code with
 - Mo manages its own subagents, and `--max-concurrent-sub-agents` caps them.
   Devin runs in one session with no child sessions. Browser Use runs one
   Browser Use Cloud agent session with one browser.
-- Browser Use Pi runs the open-source
-  [browser-use-pi](https://github.com/browser-use/browser-use-pi) SDK, pinned to
-  a commit, on the host. It drives one Browser Use Cloud browser over raw CDP.
-  Its JavaScript worker has the host's network and filesystem access, so run it
-  on a machine or VM you're happy to expose.
-  The SDK declares Node.js 22.19 or later.
 
 ### Web access
 
@@ -215,11 +203,8 @@ Claude Code already omits WebSearch and WebFetch from its tool list. With the fl
 
 Browser Use's API has no switch for its built-in search tool, so its runs
 record `retrieval: "prompt-restricted"` and rely on the prompt rule above.
-Browser Use Pi has no search tool, but its worker can fetch any URL, so it
-records the same setting. With `--prevent-cheating`, a Browser Use network
-policy blocks every browser host except the fixture's for both agents. It
-covers neither the search tool nor Pi's worker. Pi's own domain policy stays
-off, because it drops the whole browser connection when a page dialog blocks it.
+With `--prevent-cheating`, a Browser Use network policy blocks every browser
+host except the fixture's. It doesn't cover the search tool.
 
 The flag doesn't stop fixtures that fetch from code hosts on the server, such
 as Gitea's "New Migration" from GitHub.
@@ -280,8 +265,6 @@ Costs:
 - Mo is its reported session spend.
 - Browser Use is its reported model and search cost, plus its browser's
   reported browser and proxy cost.
-- Browser Use Pi is token usage at Pi's catalog prices, plus the reported
-  browser and proxy cost.
 - Devin's cost isn't recorded by this repo. Its figures were calculated
   separately.
 

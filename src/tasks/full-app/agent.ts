@@ -1,5 +1,4 @@
 import { browserUseAgent } from "../../agents/browser-use/agent";
-import { browserUsePiAgent } from "../../agents/browser-use/pi-agent";
 import { claudeAgent } from "../../agents/claude/claude-agent";
 import { codexAgent } from "../../agents/codex/codex-agent";
 import { devinQaAgent } from "../../agents/devin/qa-agent";
@@ -12,12 +11,7 @@ export function createFullAppAgent(
   agent: Agent,
   options: Pick<
     FullAppOptions,
-    | "browser"
-    | "codexModel"
-    | "claudeModel"
-    | "piModel"
-    | "preventCheating"
-    | "recordBugs"
+    "browser" | "codexModel" | "claudeModel" | "preventCheating" | "recordBugs"
   >,
 ): EvalAgentDefinition {
   switch (agent) {
@@ -27,11 +21,6 @@ export function createFullAppAgent(
       return devinQaAgent;
     case "browser-use":
       return browserUseAgent({
-        preventCheating: options.preventCheating,
-        recordBugs: options.recordBugs,
-      });
-    case "browser-use-pi":
-      return browserUsePiAgent(options.piModel, {
         preventCheating: options.preventCheating,
         recordBugs: options.recordBugs,
       });

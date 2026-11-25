@@ -1,20 +1,17 @@
-import { readFile, rm } from "node:fs/promises";
+import { rm } from "node:fs/promises";
 import path from "node:path";
 import { setTimeout as delay } from "node:timers/promises";
 import { z } from "zod";
 
 import { BrowserRecorder } from "../../browser-tools/recording/browser-recorder";
-import {
-  appendBrowserLog,
-  cutBugVideos,
-} from "../../browser-tools/recording/bug-videos";
+import { cutBugVideos } from "../../browser-tools/recording/bug-videos";
 import { LenientReportSchema } from "../../evals/reports";
 import { writeJson } from "../../shared/json-file";
 
 type Report = z.infer<typeof LenientReportSchema>;
 
 /**
- * Records a Browser Use browser, or takes Pi's own frames, and notes when each
+ * Records a Browser Use browser over its own CDP connection and notes when each
  * bug first appears in the saved report, so each bug gets a clip like Codex's.
  * Bugs are matched by name and occurrence. A bug's time is when a poll, or the
  * final report if no poll saw it, first showed it.
@@ -40,20 +37,6 @@ export class BrowserUseBugVideos {
   /** Records the browser over its own CDP connection. */
   record(cdpUrl: string) {
     this.recorder.record(cdpUrl);
-  }
-
-  /** Adds the frames Pi's recorder saved; a second CDP client gets no frames while Pi drives. */
-  async addPiFrames(manifestPath: string) {
-    const { frames } = z
-      .object({
-        frames: z.array(z.object({ file: z.string(), timestamp: z.number() })),
-      })
-      .parse(JSON.parse(await readFile(manifestPath, "utf8")));
-    for (const frame of frames)
-      await appendBrowserLog(this.browserLog, {
-        at: new Date(frame.timestamp).toISOString(),
-        frame: path.join(path.dirname(manifestPath), frame.file),
-      });
   }
 
   poll(

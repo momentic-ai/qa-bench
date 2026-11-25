@@ -8,8 +8,6 @@ import {
   CodexModel,
   MO_EFFORTS,
   MoEffort,
-  PI_MODELS,
-  PiModel,
 } from "../../agents/types";
 import {
   executionOptions,
@@ -31,7 +29,6 @@ export type FullAppOptions = {
   effort?: MoEffort;
   codexModel?: CodexModel;
   claudeModel?: ClaudeModel;
-  piModel?: PiModel;
   outputDirectory: string;
   browser: Browser;
   preventCheating?: boolean;
@@ -86,24 +83,18 @@ export function parseFullAppOptions(args: string[]): FullAppOptions {
   }
   let codexModel: CodexModel | undefined;
   let claudeModel: ClaudeModel | undefined;
-  let piModel: PiModel | undefined;
   if (values.model !== undefined) {
     if (values.agent?.startsWith("codex-"))
       codexModel = parseModel(CODEX_MODELS, values.model);
     else if (values.agent?.startsWith("claude-"))
       claudeModel = parseModel(CLAUDE_MODELS, values.model);
-    else if (values.agent === "browser-use-pi")
-      piModel = parseModel(PI_MODELS, values.model);
-    else
-      throw new Error(
-        "--model applies only to Codex, Claude and Browser Use Pi agents.",
-      );
+    else throw new Error("--model applies only to Codex and Claude agents.");
   }
   if (values["prevent-cheating"]) {
     if (
       !values.agent?.startsWith("codex-") &&
       !values.agent?.startsWith("claude-") &&
-      !values.agent?.startsWith("browser-use")
+      values.agent !== "browser-use"
     )
       throw new Error(
         "--prevent-cheating applies only to Codex, Claude and Browser Use agents.",
@@ -114,7 +105,7 @@ export function parseFullAppOptions(args: string[]): FullAppOptions {
       );
   }
   if (values["record-bugs"]) {
-    const browserUse = values.agent?.startsWith("browser-use") ?? false;
+    const browserUse = values.agent === "browser-use";
     if (
       !values.agent?.startsWith("codex-") &&
       !values.agent?.startsWith("claude-") &&
@@ -125,7 +116,7 @@ export function parseFullAppOptions(args: string[]): FullAppOptions {
       );
     if (values.agent?.endsWith("-e2e"))
       throw new Error("--record-bugs does not support e2e agents yet.");
-    // Browser Use agents always use Browser Use Cloud browsers.
+    // Browser Use always uses a Browser Use Cloud browser.
     if (!browserUse && values.browser !== "local")
       throw new Error("--record-bugs needs --browser local for now.");
     if (values["grade-only"])
@@ -145,7 +136,6 @@ export function parseFullAppOptions(args: string[]): FullAppOptions {
     effort,
     codexModel,
     claudeModel,
-    piModel,
     ...(values["prevent-cheating"] ? { preventCheating: true } : {}),
     ...(values["record-bugs"] ? { recordBugs: true } : {}),
     outputDirectory: outputDirectory ?? REPORTS_DIRECTORY,
